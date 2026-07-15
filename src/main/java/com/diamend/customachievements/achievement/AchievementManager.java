@@ -132,13 +132,40 @@ public class AchievementManager {
         Material icon = Material.matchMaterial(section.getString("icon", "NETHER_STAR"));
         achievement.setIcon(icon != null ? icon : Material.NETHER_STAR);
 
-        achievement.setTrigger(TriggerType.fromString(section.getString("trigger", "MANUAL")));
-        achievement.setTarget(section.getString("target", "ANY"));
-        achievement.setAmount(section.getInt("amount", 1));
         achievement.setAnnounce(section.getBoolean("announce", true));
         achievement.setRewardXp(section.getInt("reward-xp", 0));
         achievement.setRewardCommands(new ArrayList<>(section.getStringList("reward-commands")));
+
+        // Requirements: prefer the new list form; fall back to the legacy
+        // single trigger/target/amount fields for older files.
+        achievement.getRequirements().clear();
+        List<Map<?, ?>> reqList = section.getMapList("requirements");
+        if (!reqList.isEmpty()) {
+            for (Map<?, ?> map : reqList) {
+                achievement.getRequirements().add(readRequirement(map));
+            }
+        } else {
+            achievement.getRequirements().add(new Requirement(
+                    TriggerType.fromString(section.getString("trigger", "MANUAL")),
+                    section.getString("target", "ANY"),
+                    section.getInt("amount", 1)));
+        }
+        if (achievement.getRequirements().isEmpty()) {
+            achievement.getRequirements().add(new Requirement());
+        }
         return achievement;
+    }
+
+    private Requirement readRequirement(Map<?, ?> map) {
+        TriggerType trigger = TriggerType.fromString(String.valueOf(map.get("trigger")));
+        Object rawTarget = map.get("target");
+        String target = rawTarget != null ? String.valueOf(rawTarget) : "ANY";
+        int amount = 1;
+        Object rawAmount = map.get("amount");
+        if (rawAmount instanceof Number number) {
+            amount = number.intValue();
+        }
+        return new Requirement(trigger, target, amount);
     }
 
     private void write(YamlConfiguration config, Achievement achievement) {
@@ -146,12 +173,19 @@ public class AchievementManager {
         config.set(base + ".display-name", achievement.getDisplayName());
         config.set(base + ".description", achievement.getDescription());
         config.set(base + ".icon", achievement.getIcon().name());
-        config.set(base + ".trigger", achievement.getTrigger().name());
-        config.set(base + ".target", achievement.getTarget());
-        config.set(base + ".amount", achievement.getAmount());
         config.set(base + ".announce", achievement.isAnnounce());
         config.set(base + ".reward-xp", achievement.getRewardXp());
         config.set(base + ".reward-commands", achievement.getRewardCommands());
+
+        List<Map<String, Object>> reqList = new ArrayList<>();
+        for (Requirement requirement : achievement.getRequirements()) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("trigger", requirement.getTrigger().name());
+            map.put("target", requirement.getTarget());
+            map.put("amount", requirement.getAmount());
+            reqList.add(map);
+        }
+        config.set(base + ".requirements", reqList);
     }
 
     // ------------------------------------------------------------------
@@ -212,5 +246,17 @@ public class AchievementManager {
         veteran.setAmount(60);
         veteran.setAnnounce(false);
         achievements.put(veteran.getId(), veteran);
+
+        // Multi-objective example: must satisfy BOTH requirements.
+        Achievement prepared = new Achievement("well_prepared");
+        prepared.setDisplayName("<yellow>Well Prepared");
+        prepared.setDescription(new ArrayList<>(List.of("<gray>Craft a shield and", "<gray>cook some food.")));
+        prepared.setIcon(Material.SHIELD);
+        prepared.setAnnounce(true);
+        prepared.setRewardXp(30);
+        prepared.getRequirements().clear();
+        prepared.getRequirements().add(new Requirement(TriggerType.ITEM_CRAFT, "SHIELD", 1));
+        prepared.getRequirements().add(new Requirement(TriggerType.ITEM_CRAFT, "COOKED_BEEF", 8));
+        achievements.put(prepared.getId(), prepared);
     }
 }

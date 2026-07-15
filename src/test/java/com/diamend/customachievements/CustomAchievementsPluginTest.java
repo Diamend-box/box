@@ -1,6 +1,7 @@
 package com.diamend.customachievements;
 
 import com.diamend.customachievements.achievement.Achievement;
+import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.data.PlayerData;
 import org.junit.jupiter.api.AfterEach;
@@ -116,5 +117,35 @@ class CustomAchievementsPluginTest {
         PlayerMock player = server.addPlayer();
         assertTrue(player.performCommand("achievements list"),
                 "the list sub-command should dispatch successfully");
+    }
+
+    @Test
+    void multipleTriggersRequireAll() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("dual_objective");
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(new Requirement(TriggerType.BLOCK_BREAK, "STONE", 2));
+        achievement.getRequirements().add(new Requirement(TriggerType.ENTITY_KILL, "ZOMBIE", 1));
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        // First objective done, second not -> still locked.
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 2);
+        assertFalse(data.isCompleted("dual_objective"), "not complete until every objective is done");
+
+        // Second objective done -> unlocked.
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "ZOMBIE", 1);
+        assertTrue(data.isCompleted("dual_objective"), "completes once all objectives are done");
+    }
+
+    @Test
+    void multiRequirementSurvivesSaveAndLoad() {
+        // The seeded "well_prepared" has two requirements; force a reload so it
+        // is parsed back from the written achievements.yml (new list format).
+        plugin.getAchievementManager().load();
+        Achievement reloaded = plugin.getAchievementManager().get("well_prepared");
+        assertNotNull(reloaded, "seeded multi-objective achievement should exist");
+        assertEquals(2, reloaded.getRequirements().size(),
+                "multiple requirements should survive the save/load round-trip");
     }
 }

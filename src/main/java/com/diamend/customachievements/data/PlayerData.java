@@ -45,12 +45,23 @@ public class PlayerData {
         return progress;
     }
 
-    /** Adds progress toward an achievement and returns the new total. */
+    /** Adds progress toward a key and returns the new total. */
     public int addProgress(String id, int amount) {
         int updated = getProgress(id) + amount;
         progress.put(key(id), updated);
         dirty = true;
         return updated;
+    }
+
+    /** Sets progress for a key to an exact value (used by threshold objectives). */
+    public void setProgress(String id, int value) {
+        progress.put(key(id), value);
+        dirty = true;
+    }
+
+    /** Composite progress key for a single requirement of an achievement. */
+    public static String requirementKey(String achievementId, int index) {
+        return achievementId.toLowerCase(Locale.ROOT) + "#" + index;
     }
 
     public void setCompleted(String id) {

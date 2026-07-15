@@ -4,14 +4,17 @@ import org.bukkit.Material;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * A single custom achievement definition.
  *
- * <p>Instances are mutable so the in-game editor can build one up field by
- * field. Use {@link #copy()} when editing an existing achievement so the
- * stored definition is only replaced once the editor is saved.
+ * <p>An achievement carries presentation/reward data plus a list of
+ * {@link Requirement}s (objectives). It is unlocked when <em>every</em>
+ * requirement is complete.
+ *
+ * <p>For backward compatibility with the original single-trigger design, the
+ * {@code getTrigger()/getTarget()/getAmount()} helpers delegate to the first
+ * requirement, so existing callers (and the current editor) keep working.
  */
 public class Achievement {
 
@@ -19,29 +22,20 @@ public class Achievement {
     private String displayName;
     private List<String> description;
     private Material icon;
-    private TriggerType trigger;
-    private String target;
-    private int amount;
     private boolean announce;
     private int rewardXp;
     private List<String> rewardCommands;
-
-    // Lazily parsed REACH_LOCATION target, cached against the string it was
-    // parsed from so it stays in sync when the target changes.
-    private transient LocationTarget cachedLocation;
-    private transient String cachedLocationSource;
+    private final List<Requirement> requirements = new ArrayList<>();
 
     public Achievement(String id) {
         this.id = id;
         this.displayName = "New Achievement";
         this.description = new ArrayList<>(List.of("An amazing feat!"));
         this.icon = Material.NETHER_STAR;
-        this.trigger = TriggerType.MANUAL;
-        this.target = "ANY";
-        this.amount = 1;
         this.announce = true;
         this.rewardXp = 0;
         this.rewardCommands = new ArrayList<>();
+        this.requirements.add(new Requirement());
     }
 
     /** Returns a deep, independent copy of this achievement. */
@@ -50,45 +44,34 @@ public class Achievement {
         other.displayName = this.displayName;
         other.description = new ArrayList<>(this.description);
         other.icon = this.icon;
-        other.trigger = this.trigger;
-        other.target = this.target;
-        other.amount = this.amount;
         other.announce = this.announce;
         other.rewardXp = this.rewardXp;
         other.rewardCommands = new ArrayList<>(this.rewardCommands);
+        other.requirements.clear();
+        for (Requirement requirement : this.requirements) {
+            other.requirements.add(requirement.copy());
+        }
         return other;
     }
 
-    /** True when this achievement matches the given target key (case-insensitive, ANY = wildcard). */
-    public boolean matchesTarget(String key) {
-        if (!trigger.usesTarget()) {
-            return true;
-        }
-        if (target == null || target.isBlank() || target.equalsIgnoreCase("ANY")) {
-            return true;
-        }
-        return key != null && target.equalsIgnoreCase(key);
+    // ------------------------------------------------------------------
+    // Requirements
+    // ------------------------------------------------------------------
+
+    public List<Requirement> getRequirements() {
+        return requirements;
     }
 
-    /** How many units of progress are required to complete this achievement. */
-    public int requiredAmount() {
-        return trigger.isProgress() ? Math.max(1, amount) : 1;
-    }
-
-    /**
-     * The parsed location target for {@link TriggerType#REACH_LOCATION}
-     * achievements, or {@code null} when the target isn't a valid location.
-     */
-    public LocationTarget getLocationTarget() {
-        if (!Objects.equals(cachedLocationSource, target)) {
-            cachedLocation = LocationTarget.parse(target);
-            cachedLocationSource = target;
+    /** The first requirement, creating one if the list is somehow empty. */
+    public Requirement primary() {
+        if (requirements.isEmpty()) {
+            requirements.add(new Requirement());
         }
-        return cachedLocation;
+        return requirements.get(0);
     }
 
     // ------------------------------------------------------------------
-    // Getters / setters
+    // Presentation / rewards
     // ------------------------------------------------------------------
 
     public String getId() {
@@ -123,30 +106,6 @@ public class Achievement {
         this.icon = icon;
     }
 
-    public TriggerType getTrigger() {
-        return trigger;
-    }
-
-    public void setTrigger(TriggerType trigger) {
-        this.trigger = trigger;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
-    }
-
-    public int getAmount() {
-        return amount;
-    }
-
-    public void setAmount(int amount) {
-        this.amount = Math.max(1, amount);
-    }
-
     public boolean isAnnounce() {
         return announce;
     }
@@ -169,5 +128,45 @@ public class Achievement {
 
     public void setRewardCommands(List<String> rewardCommands) {
         this.rewardCommands = rewardCommands;
+    }
+
+    // ------------------------------------------------------------------
+    // Single-requirement convenience delegates (used by the editor).
+    // ------------------------------------------------------------------
+
+    public TriggerType getTrigger() {
+        return primary().getTrigger();
+    }
+
+    public void setTrigger(TriggerType trigger) {
+        primary().setTrigger(trigger);
+    }
+
+    public String getTarget() {
+        return primary().getTarget();
+    }
+
+    public void setTarget(String target) {
+        primary().setTarget(target);
+    }
+
+    public int getAmount() {
+        return primary().getAmount();
+    }
+
+    public void setAmount(int amount) {
+        primary().setAmount(amount);
+    }
+
+    public int requiredAmount() {
+        return primary().requiredAmount();
+    }
+
+    public boolean matchesTarget(String key) {
+        return primary().matchesTarget(key);
+    }
+
+    public LocationTarget getLocationTarget() {
+        return primary().getLocationTarget();
     }
 }

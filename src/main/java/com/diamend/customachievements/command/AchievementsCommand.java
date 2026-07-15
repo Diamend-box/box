@@ -94,8 +94,16 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             String status;
             if (data != null && data.isCompleted(achievement.getId())) {
                 status = "<green>✔";
-            } else if (data != null && achievement.getTrigger().isProgress()) {
-                status = "<yellow>" + data.getProgress(achievement.getId()) + "/" + achievement.requiredAmount();
+            } else if (data != null) {
+                int total = achievement.getRequirements().size();
+                int done = 0;
+                for (int i = 0; i < total; i++) {
+                    if (data.getProgress(PlayerData.requirementKey(achievement.getId(), i))
+                            >= achievement.getRequirements().get(i).requiredAmount()) {
+                        done++;
+                    }
+                }
+                status = "<yellow>" + done + "/" + total + " objectives";
             } else {
                 status = "<red>✖";
             }

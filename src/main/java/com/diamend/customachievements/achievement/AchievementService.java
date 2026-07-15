@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Predicate;
 
 /**
@@ -39,49 +40,75 @@ public class AchievementService {
      * matching, not-yet-completed achievement and awarding any that finish.
      */
     public void handle(Player player, TriggerType type, String targetKey, int amount) {
-        handle(player, type, achievement -> achievement.matchesTarget(targetKey), amount);
+        handle(player, type, requirement -> requirement.matchesTarget(targetKey), false, amount);
     }
 
     /**
-     * As {@link #handle(Player, TriggerType, String, int)}, but with a custom
-     * matcher for triggers whose targets aren't simple string keys (locations,
-     * dimensions with multiple aliases, ...).
+     * Advances every matching requirement across all not-yet-completed
+     * achievements, then awards any achievement whose requirements are now all
+     * complete. Requirements are matched by trigger type and the given matcher.
+     *
+     * @param threshold when true the matched requirement is marked done (its
+     *                  progress set to the required amount) rather than having
+     *                  {@code amount} added — used by location/dimension/level
+     *                  triggers that describe a state, not a running count.
      */
-    public void handle(Player player, TriggerType type, Predicate<Achievement> matcher, int amount) {
-        if (amount <= 0) {
+    public void handle(Player player, TriggerType type, Predicate<Requirement> matcher,
+                       boolean threshold, int amount) {
+        if (!threshold && amount <= 0) {
             return;
         }
         PlayerData data = playerData.get(player.getUniqueId());
         for (Achievement achievement : achievements.all()) {
-            if (achievement.getTrigger() != type) {
-                continue;
-            }
             if (data.isCompleted(achievement.getId())) {
                 continue;
             }
-            if (!matcher.test(achievement)) {
-                continue;
+            List<Requirement> requirements = achievement.getRequirements();
+            boolean changed = false;
+            for (int i = 0; i < requirements.size(); i++) {
+                Requirement requirement = requirements.get(i);
+                if (requirement.getTrigger() != type || !matcher.test(requirement)) {
+                    continue;
+                }
+                String key = PlayerData.requirementKey(achievement.getId(), i);
+                if (threshold) {
+                    data.setProgress(key, requirement.requiredAmount());
+                } else {
+                    data.addProgress(key, amount);
+                }
+                changed = true;
             }
-            int total = data.addProgress(achievement.getId(), amount);
-            if (total >= achievement.requiredAmount()) {
+            if (changed && isComplete(achievement, data)) {
                 award(player, achievement, data);
             }
         }
     }
 
-    /** Advances REACH_LOCATION achievements whose radius contains the given location. */
+    /** True when every requirement of the achievement has reached its required amount. */
+    private boolean isComplete(Achievement achievement, PlayerData data) {
+        List<Requirement> requirements = achievement.getRequirements();
+        for (int i = 0; i < requirements.size(); i++) {
+            String key = PlayerData.requirementKey(achievement.getId(), i);
+            if (data.getProgress(key) < requirements.get(i).requiredAmount()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Advances REACH_LOCATION requirements whose radius contains the given location. */
     public void handleLocation(Player player, Location location) {
         if (location == null) {
             return;
         }
-        handle(player, TriggerType.REACH_LOCATION, achievement -> {
-            LocationTarget target = achievement.getLocationTarget();
+        handle(player, TriggerType.REACH_LOCATION, requirement -> {
+            LocationTarget target = requirement.getLocationTarget();
             return target != null && target.contains(location);
-        }, 1);
+        }, true, 1);
     }
 
     /**
-     * Advances REACH_DIMENSION achievements for the world the player is now in.
+     * Advances REACH_DIMENSION requirements for the world the player is now in.
      * The target may be the world's name (e.g. {@code world_nether}), its
      * namespaced key (e.g. {@code minecraft:the_nether} or a custom
      * {@code mypack:skylands}), or its environment
@@ -94,10 +121,10 @@ public class AchievementService {
         String name = world.getName();
         String key = world.getKey().toString();
         String environment = world.getEnvironment().name();
-        handle(player, TriggerType.REACH_DIMENSION, achievement ->
-                achievement.matchesTarget(name)
-                        || achievement.matchesTarget(key)
-                        || achievement.matchesTarget(environment), 1);
+        handle(player, TriggerType.REACH_DIMENSION, requirement ->
+                requirement.matchesTarget(name)
+                        || requirement.matchesTarget(key)
+                        || requirement.matchesTarget(environment), false, 1);
     }
 
     /** Directly grants an achievement (manual / command / API). Returns false if already owned. */

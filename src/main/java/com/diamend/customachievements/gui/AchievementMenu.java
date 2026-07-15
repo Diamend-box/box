@@ -2,6 +2,7 @@ package com.diamend.customachievements.gui;
 
 import com.diamend.customachievements.CustomAchievementsPlugin;
 import com.diamend.customachievements.achievement.Achievement;
+import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.data.PlayerData;
 import com.diamend.customachievements.util.Items;
 import com.diamend.customachievements.util.Text;
@@ -122,30 +123,49 @@ public class AchievementMenu implements Menu {
         }
         lore.add(Component.empty());
 
+        List<Requirement> requirements = achievement.getRequirements();
         if (completed) {
             lore.add(Text.item("<green>✔ Unlocked"));
-        } else if (achievement.getTrigger().isProgress()) {
-            int current = Math.min(data.getProgress(achievement.getId()), achievement.requiredAmount());
-            int required = achievement.requiredAmount();
-            lore.add(Text.item("<gray>Progress: <yellow>" + current + "<gray>/<yellow>" + required));
-            lore.add(Text.item(progressBar(current, required)));
+        } else if (requirements.size() == 1) {
+            renderRequirementLine(lore, achievement, requirements.get(0), 0, data, false);
         } else {
-            lore.add(Text.item("<red>✖ Locked"));
+            lore.add(Text.item("<gray>Objectives:"));
+            for (int i = 0; i < requirements.size(); i++) {
+                renderRequirementLine(lore, achievement, requirements.get(i), i, data, true);
+            }
         }
 
         if (admin) {
             lore.add(Component.empty());
             lore.add(Text.item("<dark_gray>id: " + achievement.getId()));
-            lore.add(Text.item("<dark_gray>trigger: " + achievement.getTrigger().name()));
-            if (achievement.getTrigger().usesTarget()) {
-                lore.add(Text.item("<dark_gray>target: " + achievement.getTarget()));
-            }
+            lore.add(Text.item("<dark_gray>objectives: " + requirements.size()));
             lore.add(Component.empty());
             lore.add(Text.item("<yellow>Click to edit"));
         }
 
         Material icon = achievement.getIcon() != null ? achievement.getIcon() : Material.NETHER_STAR;
         return Items.of(icon, Text.item(achievement.getDisplayName()), lore, completed);
+    }
+
+    private void renderRequirementLine(List<Component> lore, Achievement achievement, Requirement requirement,
+                                       int index, PlayerData data, boolean multi) {
+        int required = requirement.requiredAmount();
+        int current = Math.min(data.getProgress(PlayerData.requirementKey(achievement.getId(), index)), required);
+        boolean done = current >= required;
+        if (multi) {
+            String mark = done ? "<green>✔ " : "<gray>☐ ";
+            String progress = requirement.getTrigger().isProgress() && required > 1
+                    ? " <dark_gray>(" + current + "/" + required + ")"
+                    : "";
+            lore.add(Text.item(mark + "<gray>" + requirement.describe() + progress));
+        } else if (requirement.getTrigger().isProgress()) {
+            lore.add(Text.item("<gray>Progress: <yellow>" + current + "<gray>/<yellow>" + required));
+            lore.add(Text.item(progressBar(current, required)));
+        } else if (done) {
+            lore.add(Text.item("<green>✔ Unlocked"));
+        } else {
+            lore.add(Text.item("<red>✖ Locked"));
+        }
     }
 
     private String progressBar(int current, int required) {
