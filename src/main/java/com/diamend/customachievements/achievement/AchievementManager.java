@@ -36,22 +36,22 @@ public class AchievementManager {
         if (!file.exists()) {
             seedDefaults();
             save();
+            plugin.getLogger().info("Loaded " + achievements.size() + " custom achievement(s) (seeded defaults).");
             return;
         }
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
         ConfigurationSection root = config.getConfigurationSection("achievements");
-        if (root == null) {
-            return;
-        }
-        for (String id : root.getKeys(false)) {
-            ConfigurationSection section = root.getConfigurationSection(id);
-            if (section == null) {
-                continue;
-            }
-            try {
-                achievements.put(id.toLowerCase(Locale.ROOT), read(id, section));
-            } catch (RuntimeException ex) {
-                plugin.getLogger().log(Level.WARNING, "Failed to load achievement '" + id + "'", ex);
+        if (root != null) {
+            for (String id : root.getKeys(false)) {
+                ConfigurationSection section = root.getConfigurationSection(id);
+                if (section == null) {
+                    continue;
+                }
+                try {
+                    achievements.put(id.toLowerCase(Locale.ROOT), read(id, section));
+                } catch (RuntimeException ex) {
+                    plugin.getLogger().log(Level.WARNING, "Failed to load achievement '" + id + "'", ex);
+                }
             }
         }
         plugin.getLogger().info("Loaded " + achievements.size() + " custom achievement(s).");
