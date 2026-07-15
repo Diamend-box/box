@@ -63,12 +63,12 @@ public class AchievementTriggerListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onFish(PlayerFishEvent event) {
         if (event.getState() == PlayerFishEvent.State.CAUGHT_FISH) {
-            service.handle(event.getPlayer(), TriggerType.FISH_CAUGHT, null, 1);
+            service.handle(event.getPlayer(), TriggerType.FISH_CAUGHT, (String) null, 1);
         }
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
-        service.handle(event.getEntity(), TriggerType.PLAYER_DEATH, null, 1);
+        service.handle(event.getEntity(), TriggerType.PLAYER_DEATH, (String) null, 1);
     }
 }

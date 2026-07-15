@@ -2,6 +2,7 @@ name: CustomAchievements
 version: '${project.version}'
 main: com.diamend.customachievements.CustomAchievementsPlugin
 api-version: '1.21'
+softdepend: [MythicMobs]
 author: diamend
 description: Create and track fully custom, GUI-based achievements.
 website: https://github.com/diamend-box/box

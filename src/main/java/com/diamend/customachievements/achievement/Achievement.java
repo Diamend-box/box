@@ -4,6 +4,7 @@ import org.bukkit.Material;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A single custom achievement definition.
@@ -24,6 +25,11 @@ public class Achievement {
     private boolean announce;
     private int rewardXp;
     private List<String> rewardCommands;
+
+    // Lazily parsed REACH_LOCATION target, cached against the string it was
+    // parsed from so it stays in sync when the target changes.
+    private transient LocationTarget cachedLocation;
+    private transient String cachedLocationSource;
 
     public Achievement(String id) {
         this.id = id;
@@ -67,6 +73,18 @@ public class Achievement {
     /** How many units of progress are required to complete this achievement. */
     public int requiredAmount() {
         return trigger.isProgress() ? Math.max(1, amount) : 1;
+    }
+
+    /**
+     * The parsed location target for {@link TriggerType#REACH_LOCATION}
+     * achievements, or {@code null} when the target isn't a valid location.
+     */
+    public LocationTarget getLocationTarget() {
+        if (!Objects.equals(cachedLocationSource, target)) {
+            cachedLocation = LocationTarget.parse(target);
+            cachedLocationSource = target;
+        }
+        return cachedLocation;
     }
 
     // ------------------------------------------------------------------

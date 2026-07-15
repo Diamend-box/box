@@ -7,13 +7,16 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.time.Duration;
+import java.util.function.Predicate;
 
 /**
  * Central place where achievement progress is applied and completions are
@@ -36,6 +39,15 @@ public class AchievementService {
      * matching, not-yet-completed achievement and awarding any that finish.
      */
     public void handle(Player player, TriggerType type, String targetKey, int amount) {
+        handle(player, type, achievement -> achievement.matchesTarget(targetKey), amount);
+    }
+
+    /**
+     * As {@link #handle(Player, TriggerType, String, int)}, but with a custom
+     * matcher for triggers whose targets aren't simple string keys (locations,
+     * dimensions with multiple aliases, ...).
+     */
+    public void handle(Player player, TriggerType type, Predicate<Achievement> matcher, int amount) {
         if (amount <= 0) {
             return;
         }
@@ -47,7 +59,7 @@ public class AchievementService {
             if (data.isCompleted(achievement.getId())) {
                 continue;
             }
-            if (!achievement.matchesTarget(targetKey)) {
+            if (!matcher.test(achievement)) {
                 continue;
             }
             int total = data.addProgress(achievement.getId(), amount);
@@ -55,6 +67,37 @@ public class AchievementService {
                 award(player, achievement, data);
             }
         }
+    }
+
+    /** Advances REACH_LOCATION achievements whose radius contains the given location. */
+    public void handleLocation(Player player, Location location) {
+        if (location == null) {
+            return;
+        }
+        handle(player, TriggerType.REACH_LOCATION, achievement -> {
+            LocationTarget target = achievement.getLocationTarget();
+            return target != null && target.contains(location);
+        }, 1);
+    }
+
+    /**
+     * Advances REACH_DIMENSION achievements for the world the player is now in.
+     * The target may be the world's name (e.g. {@code world_nether}), its
+     * namespaced key (e.g. {@code minecraft:the_nether} or a custom
+     * {@code mypack:skylands}), or its environment
+     * ({@code NORMAL}/{@code NETHER}/{@code THE_END}/{@code CUSTOM}).
+     */
+    public void handleDimension(Player player, World world) {
+        if (world == null) {
+            return;
+        }
+        String name = world.getName();
+        String key = world.getKey().toString();
+        String environment = world.getEnvironment().name();
+        handle(player, TriggerType.REACH_DIMENSION, achievement ->
+                achievement.matchesTarget(name)
+                        || achievement.matchesTarget(key)
+                        || achievement.matchesTarget(environment), 1);
     }
 
     /** Directly grants an achievement (manual / command / API). Returns false if already owned. */
@@ -116,7 +159,10 @@ public class AchievementService {
                     .deserialize(broadcast,
                             Placeholder.component("player", Component.text(player.getName())),
                             Placeholder.component("name", name)));
-            Bukkit.broadcast(message);
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                online.sendMessage(message);
+            }
+            Bukkit.getConsoleSender().sendMessage(message);
         }
 
         playerData.save(player.getUniqueId());

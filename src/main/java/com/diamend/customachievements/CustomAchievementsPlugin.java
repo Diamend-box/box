@@ -9,6 +9,8 @@ import com.diamend.customachievements.gui.ChatInputManager;
 import com.diamend.customachievements.listener.AchievementTriggerListener;
 import com.diamend.customachievements.listener.ConnectionListener;
 import com.diamend.customachievements.listener.GuiListener;
+import com.diamend.customachievements.listener.MythicMobsHook;
+import com.diamend.customachievements.listener.WorldTriggerListener;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -68,6 +70,8 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new AchievementTriggerListener(achievementService), this);
+        getServer().getPluginManager().registerEvents(new WorldTriggerListener(achievementService), this);
+        MythicMobsHook.register(this, achievementService);
     }
 
     private void registerCommand() {
@@ -86,7 +90,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
             // Every minute (1200 ticks), grant a minute of playtime progress.
             playtimeTask = getServer().getScheduler().runTaskTimer(this, () -> {
                 for (Player player : getServer().getOnlinePlayers()) {
-                    achievementService.handle(player, TriggerType.PLAYTIME_MINUTES, null, 1);
+                    achievementService.handle(player, TriggerType.PLAYTIME_MINUTES, (String) null, 1);
                 }
             }, 1200L, 1200L);
         }

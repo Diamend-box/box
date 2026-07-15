@@ -2,11 +2,13 @@ package com.diamend.customachievements.gui;
 
 import com.diamend.customachievements.CustomAchievementsPlugin;
 import com.diamend.customachievements.achievement.Achievement;
+import com.diamend.customachievements.achievement.LocationTarget;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.util.Items;
 import com.diamend.customachievements.util.Text;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -102,11 +104,16 @@ public class EditorMenu implements Menu {
         // Description
         List<String> descLines = new ArrayList<>();
         descLines.add("<gray>Current:");
+        if (draft.getDescription().isEmpty()) {
+            descLines.add("<dark_gray>(empty)");
+        }
         for (String line : draft.getDescription()) {
             descLines.add("<white>• " + line);
         }
         descLines.add("");
-        descLines.add("<yellow>Click to edit (use | for new lines)");
+        descLines.add("<yellow>Left-click: rewrite (use | for new lines)");
+        descLines.add("<yellow>Right-click: append a line");
+        descLines.add("<yellow>Shift-right-click: remove last line");
         inventory.setItem(SLOT_DESC, Items.of(Material.BOOK,
                 Text.item("<aqua>Description"), lore(descLines)));
 
@@ -119,15 +126,7 @@ public class EditorMenu implements Menu {
                         "<yellow>Left-click: next   <yellow>Right-click: previous")));
 
         // Target
-        boolean usesTarget = draft.getTrigger().usesTarget();
-        inventory.setItem(SLOT_TARGET, Items.of(usesTarget ? Material.TARGET : Material.STRUCTURE_VOID,
-                Text.item("<aqua>Target"),
-                usesTarget
-                        ? lore("<white>" + draft.getTarget(),
-                        "",
-                        "<gray>A block/item/entity name, or ANY.",
-                        "<yellow>Click to edit")
-                        : lore("<dark_gray>Not used by this trigger.")));
+        inventory.setItem(SLOT_TARGET, buildTargetItem());
 
         // Amount
         boolean progress = draft.getTrigger().isProgress();
@@ -187,6 +186,49 @@ public class EditorMenu implements Menu {
         }
     }
 
+    private ItemStack buildTargetItem() {
+        TriggerType trigger = draft.getTrigger();
+        if (!trigger.usesTarget()) {
+            return Items.of(Material.STRUCTURE_VOID, Text.item("<aqua>Target"),
+                    lore("<dark_gray>Not used by this trigger."));
+        }
+        return switch (trigger) {
+            case REACH_LOCATION -> {
+                LocationTarget location = draft.getLocationTarget();
+                yield Items.of(Material.COMPASS, Text.item("<aqua>Target Location"),
+                        lore(location != null ? "<white>" + location.pretty() : "<red>Not set",
+                                "",
+                                "<gray>Completed when a player enters the",
+                                "<gray>radius around this point.",
+                                "",
+                                "<yellow>Left-click: use your current location",
+                                "<yellow>Right-click: type world x y z [radius]"));
+            }
+            case REACH_DIMENSION -> Items.of(Material.END_PORTAL_FRAME, Text.item("<aqua>Target Dimension"),
+                    lore("<white>" + draft.getTarget(),
+                            "",
+                            "<gray>A world name, a key (minecraft:the_nether,",
+                            "<gray>mypack:skylands, ...), or an environment:",
+                            "<gray>NORMAL / NETHER / THE_END / CUSTOM.",
+                            "",
+                            "<yellow>Left-click: use your current world",
+                            "<yellow>Right-click: type a name or key"));
+            case MYTHIC_MOB_KILL -> Items.of(Material.ZOMBIE_HEAD, Text.item("<aqua>Target Mythic Mob"),
+                    lore("<white>" + draft.getTarget(),
+                            "",
+                            "<gray>The MythicMobs internal mob name",
+                            "<gray>(as written in its config), or ANY.",
+                            "<gray>Requires the MythicMobs plugin.",
+                            "",
+                            "<yellow>Click to edit"));
+            default -> Items.of(Material.TARGET, Text.item("<aqua>Target"),
+                    lore("<white>" + draft.getTarget(),
+                            "",
+                            "<gray>A block/item/entity name, or ANY.",
+                            "<yellow>Click to edit"));
+        };
+    }
+
     @Override
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getRawSlot();
@@ -210,23 +252,31 @@ public class EditorMenu implements Menu {
             case SLOT_ICON -> handleIcon(event);
             case SLOT_NAME -> promptText("Enter the display name (MiniMessage supported):",
                     input -> draft.setDisplayName(input));
-            case SLOT_DESC -> promptText("Enter the description (use | to separate lines):", input -> {
-                List<String> lines = new ArrayList<>();
-                for (String part : input.split("\\|")) {
-                    lines.add(part.trim());
+            case SLOT_DESC -> {
+                if (click == ClickType.SHIFT_RIGHT) {
+                    List<String> description = draft.getDescription();
+                    if (!description.isEmpty()) {
+                        description.remove(description.size() - 1);
+                    }
+                    rebuild();
+                } else if (click.isRightClick()) {
+                    promptText("Enter a line to append to the description:",
+                            input -> draft.getDescription().add(input.trim()));
+                } else {
+                    promptText("Enter the description (use | to separate lines):", input -> {
+                        List<String> lines = new ArrayList<>();
+                        for (String part : input.split("\\|")) {
+                            lines.add(part.trim());
+                        }
+                        draft.setDescription(lines);
+                    });
                 }
-                draft.setDescription(lines);
-            });
+            }
             case SLOT_TRIGGER -> {
                 draft.setTrigger(click.isRightClick() ? draft.getTrigger().prev() : draft.getTrigger().next());
                 rebuild();
             }
-            case SLOT_TARGET -> {
-                if (draft.getTrigger().usesTarget()) {
-                    promptText("Enter a target name (or ANY). e.g. DIAMOND_ORE, ZOMBIE:",
-                            this::applyTarget);
-                }
-            }
+            case SLOT_TARGET -> handleTarget(click);
             case SLOT_AMOUNT -> {
                 if (draft.getTrigger().isProgress()) {
                     draft.setAmount(draft.getAmount() + delta(click, 1, 10));
@@ -286,25 +336,79 @@ public class EditorMenu implements Menu {
         }
     }
 
+    private void handleTarget(ClickType click) {
+        switch (draft.getTrigger()) {
+            case REACH_LOCATION -> {
+                if (click.isRightClick()) {
+                    promptText("Enter the location as: <world> <x> <y> <z> [radius]", this::applyTarget);
+                } else {
+                    Location loc = viewer.getLocation();
+                    draft.setTarget(new LocationTarget(viewer.getWorld().getName(),
+                            loc.getBlockX() + 0.5, loc.getBlockY(), loc.getBlockZ() + 0.5, 5).serialize());
+                    rebuild();
+                }
+            }
+            case REACH_DIMENSION -> {
+                if (click.isRightClick()) {
+                    promptText("Enter a world name/key (e.g. minecraft:the_nether, mypack:skylands) "
+                            + "or NETHER/THE_END/NORMAL/CUSTOM:", this::applyTarget);
+                } else {
+                    draft.setTarget(viewer.getWorld().getKey().toString());
+                    rebuild();
+                }
+            }
+            case MYTHIC_MOB_KILL -> promptText("Enter the MythicMobs internal mob name (or ANY):",
+                    this::applyTarget);
+            case MANUAL, FISH_CAUGHT, PLAYER_DEATH, PLAYTIME_MINUTES -> {
+                // No target for these triggers.
+            }
+            default -> promptText("Enter a target name (or ANY). e.g. DIAMOND_ORE, ZOMBIE:",
+                    this::applyTarget);
+        }
+    }
+
     private void applyTarget(String input) {
         String value = input.trim();
-        if (value.equalsIgnoreCase("ANY")) {
-            draft.setTarget("ANY");
-            return;
-        }
-        if (draft.getTrigger() == TriggerType.ENTITY_KILL) {
-            try {
-                EntityType type = EntityType.valueOf(value.toUpperCase(Locale.ROOT));
-                draft.setTarget(type.name());
-            } catch (IllegalArgumentException ex) {
-                viewer.sendMessage(Text.parse("<red>Unknown entity type: <white>" + input));
+        switch (draft.getTrigger()) {
+            case REACH_LOCATION -> {
+                LocationTarget parsed = LocationTarget.parse(value);
+                if (parsed == null) {
+                    viewer.sendMessage(Text.parse(
+                            "<red>Could not read that location. Format: <white>world x y z [radius]"));
+                } else {
+                    draft.setTarget(parsed.serialize());
+                }
             }
-        } else {
-            Material material = Material.matchMaterial(value);
-            if (material == null) {
-                viewer.sendMessage(Text.parse("<red>Unknown material: <white>" + input));
-            } else {
-                draft.setTarget(material.name());
+            case REACH_DIMENSION, MYTHIC_MOB_KILL -> {
+                if (value.isBlank()) {
+                    viewer.sendMessage(Text.parse("<red>The target cannot be empty."));
+                } else {
+                    draft.setTarget(value);
+                }
+            }
+            case ENTITY_KILL -> {
+                if (value.equalsIgnoreCase("ANY")) {
+                    draft.setTarget("ANY");
+                    return;
+                }
+                try {
+                    EntityType type = EntityType.valueOf(value.toUpperCase(Locale.ROOT));
+                    draft.setTarget(type.name());
+                } catch (IllegalArgumentException ex) {
+                    viewer.sendMessage(Text.parse("<red>Unknown entity type: <white>" + input));
+                }
+            }
+            default -> {
+                if (value.equalsIgnoreCase("ANY")) {
+                    draft.setTarget("ANY");
+                    return;
+                }
+                Material material = Material.matchMaterial(value);
+                if (material == null) {
+                    viewer.sendMessage(Text.parse("<red>Unknown material: <white>" + input));
+                } else {
+                    draft.setTarget(material.name());
+                }
             }
         }
     }
@@ -325,6 +429,10 @@ public class EditorMenu implements Menu {
         if (draft.getTrigger().usesTarget()
                 && (draft.getTarget() == null || draft.getTarget().isBlank())) {
             draft.setTarget("ANY");
+        }
+        if (draft.getTrigger() == TriggerType.REACH_LOCATION && draft.getLocationTarget() == null) {
+            viewer.sendMessage(Text.parse("<red>Set a valid target location first (click the compass)."));
+            return;
         }
         plugin.getAchievementManager().put(draft);
         viewer.sendMessage(Text.parse("<green>Saved achievement <white>" + draft.getId() + "<green>."));

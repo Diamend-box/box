@@ -192,6 +192,17 @@ public class AchievementManager {
         slayer.getRewardCommands().add("give %player% golden_apple 1");
         achievements.put(slayer.getId(), slayer);
 
+        Achievement tourist = new Achievement("hot_tourist");
+        tourist.setDisplayName("<red>Hot Tourist");
+        tourist.setDescription(new ArrayList<>(List.of("<gray>Set foot in the Nether.")));
+        tourist.setIcon(Material.NETHERRACK);
+        tourist.setTrigger(TriggerType.REACH_DIMENSION);
+        tourist.setTarget("NETHER");
+        tourist.setAmount(1);
+        tourist.setAnnounce(true);
+        tourist.setRewardXp(50);
+        achievements.put(tourist.getId(), tourist);
+
         Achievement veteran = new Achievement("veteran");
         veteran.setDisplayName("<light_purple>Veteran");
         veteran.setDescription(new ArrayList<>(List.of("<gray>Play for 60 minutes.")));

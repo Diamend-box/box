@@ -15,7 +15,10 @@ still **locked** (with live progress bars).
 - 📖 **Player achievement menu** – a paginated book of every achievement showing
   ✔ *Unlocked* / ✖ *Locked* and a progress bar for in-progress goals.
 - ⚙️ **Automatic tracking** for many trigger types (mining, building, killing,
-  crafting, eating, fishing, deaths, playtime) plus **manual/command** grants.
+  crafting, eating, fishing, deaths, playtime, reaching **locations** and
+  **dimensions** – including custom ones) plus **manual/command** grants.
+- 🐉 **MythicMobs support** – achievements for killing specific MythicMobs mobs
+  (optional soft-dependency; works with MythicMobs 4.x and 5.x).
 - 🏆 **Rewards** – grant XP and/or run console commands on unlock.
 - 📢 **Unlock feedback** – toast sound, on-screen title, personal message and an
   optional server-wide broadcast.
@@ -40,7 +43,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.0.0.jar`.
+The finished plugin is written to `target/CustomAchievements-1.1.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io`, so the build
@@ -81,10 +84,20 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    - **Identifier** – the unique key (only editable while creating).
    - **Icon** – click while holding an item to use it, or click empty-handed to
      type a material name.
-   - **Display Name** / **Description** – click to type in chat (MiniMessage
-     colours supported; use `|` to split the description into multiple lines).
+   - **Display Name** – click to type in chat (MiniMessage colours supported).
+   - **Description** – left-click to rewrite it (use `|` to split lines),
+     right-click to append a line, shift-right-click to remove the last line.
+     Works when creating *and* when editing an existing achievement.
    - **Trigger** – left-click for the next type, right-click for the previous.
-   - **Target** – the block / item / entity to match, or `ANY`.
+   - **Target** – depends on the trigger:
+     - blocks/items/entities: type a name, or `ANY`;
+     - *Reach a Location*: **left-click to capture your current position**
+       (radius 5), or right-click to type `world x y z [radius]`;
+     - *Reach a Dimension*: **left-click to use the world you're in**, or
+       right-click to type a world name, a namespaced key
+       (`minecraft:the_nether`, `mypack:skylands`, ...) or an environment
+       (`NORMAL` / `NETHER` / `THE_END` / `CUSTOM`);
+     - *Kill Mythic Mobs*: type the mob's MythicMobs internal name, or `ANY`.
    - **Required Amount** – left/right click ±1, shift-click ±10.
    - **Broadcast on Unlock** – click to toggle.
    - **Reward XP** – left/right click ±10, shift-click ±100.
@@ -106,13 +119,41 @@ one, open it in the editor and **shift-click** the Delete button.
 | `BLOCK_BREAK` | Material | Blocks broken |
 | `BLOCK_PLACE` | Material | Blocks placed |
 | `ENTITY_KILL` | EntityType | Mobs killed |
+| `MYTHIC_MOB_KILL` | MythicMobs internal name | MythicMobs mobs killed |
 | `ITEM_CRAFT` | Material | Items crafted |
 | `ITEM_CONSUME` | Material | Items eaten/drunk |
 | `FISH_CAUGHT` | – | Fish reeled in |
 | `PLAYER_DEATH` | – | Deaths |
 | `PLAYTIME_MINUTES` | – | Minutes played |
+| `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
+| `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
 
-`target: ANY` (or a blank target) matches everything for that trigger.
+`target: ANY` (or a blank target) matches everything for that trigger
+(except `REACH_LOCATION`, which always needs a concrete location).
+
+### Location & dimension targets
+
+- **`REACH_LOCATION`** stores its target as `world;x;y;z;radius` (the editor
+  fills this in for you). The achievement completes the moment a player is
+  inside that sphere — walking, teleporting, or logging in there all count.
+- **`REACH_DIMENSION`** matches the world a player just entered against the
+  target in three ways, so **custom dimensions work out of the box**:
+  - the world's *name* (`world_nether`, `spawn`, `skyblock_world`, ...)
+  - the world's *namespaced key* (`minecraft:the_nether`, `mypack:skylands`, ...
+    — this is how datapack/plugin dimensions are addressed)
+  - the world's *environment*: `NORMAL`, `NETHER`, `THE_END` or `CUSTOM`
+    (`NETHER` matches every nether-type world, however it's named).
+
+### MythicMobs
+
+If [MythicMobs](https://mythiccraft.io/) is installed, `MYTHIC_MOB_KILL`
+achievements trigger when a player kills a mob whose **internal name** (the id
+used in your MythicMobs `Mobs/*.yml` config, e.g. `SkeletalKnight`) matches the
+target. `ANY` matches every MythicMobs kill. The integration is a soft
+dependency wired up via reflection — the plugin loads and runs fine without
+MythicMobs, and both MythicMobs **5.x** and **4.x** are supported. Regular
+`ENTITY_KILL` achievements still count MythicMobs kills by their base entity
+type.
 
 ---
 
@@ -149,8 +190,8 @@ plugins/CustomAchievements/
     └── <uuid>.yml        # each player's completed list + progress
 ```
 
-On first run four example achievements are created so you have something to look
-at (Getting Wood, Diamonds Forever, Monster Hunter, Veteran).
+On first run five example achievements are created so you have something to look
+at (Getting Wood, Diamonds Forever, Monster Hunter, Hot Tourist, Veteran).
 
 ---
 
