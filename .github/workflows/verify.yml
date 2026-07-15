@@ -75,12 +75,22 @@ jobs:
           path: artifact
       - name: Fetch latest Paper 1.21.4
         run: |
-          set -euo pipefail
+          set -uo pipefail
           VER=1.21.4
-          BUILD=$(curl -sf "https://api.papermc.io/v2/projects/paper/versions/$VER/builds" | jq -r '.builds[-1].build')
-          echo "Using Paper $VER build $BUILD"
-          curl -sf -o paper.jar \
-            "https://api.papermc.io/v2/projects/paper/versions/$VER/builds/$BUILD/downloads/paper-$VER-$BUILD.jar"
+          UA="diamend-box-box-ci/1.0 (+https://github.com/Diamend-box/box)"
+          # Paper's v2 API was retired; use the v3 "Fill" API (requires a UA).
+          curl -sf -H "User-Agent: $UA" \
+            "https://fill.papermc.io/v3/projects/paper/versions/$VER/builds" -o builds.json \
+            || { echo "::error::failed to query Paper Fill API"; exit 1; }
+          URL=$(jq -r '(if type=="array" then . else .builds end)
+                       | max_by(.id)
+                       | (.downloads["server:default"].url // .downloads.application.url // empty)' builds.json)
+          if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+            echo "::error::could not resolve a Paper download URL"; head -c 2000 builds.json; exit 1
+          fi
+          echo "Downloading: $URL"
+          curl -sf -H "User-Agent: $UA" -o paper.jar "$URL" || { echo "::error::download failed"; exit 1; }
+          ls -la paper.jar
       - name: Boot server with the plugin
         run: |
           set -uo pipefail

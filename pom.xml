@@ -35,22 +35,24 @@
         <!-- Tests: run the plugin against a real Bukkit/Paper API impl.
              MockBukkit downloads the matching server implementation at test
              runtime, so `mvn test` needs network access. -->
+        <!-- MockBukkit 4.45.0 is the release built against paper-api 1.21.4,
+             so the mock server's version check matches this project. -->
         <dependency>
             <groupId>org.mockbukkit.mockbukkit</groupId>
             <artifactId>mockbukkit-v1.21</artifactId>
-            <version>4.110.0</version>
+            <version>4.45.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.0.3</version>
+            <version>5.12.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>
-            <version>6.0.3</version>
+            <version>1.12.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
