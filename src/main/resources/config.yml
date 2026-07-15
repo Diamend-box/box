@@ -1,0 +1,29 @@
+# =====================================================================
+#  CustomAchievements configuration
+# =====================================================================
+# Text values support MiniMessage formatting, e.g. <green>, <bold>,
+# <gradient:#ff0000:#00ff00>text</gradient>, etc.
+
+# Broadcast a message to the whole server when a player unlocks an
+# achievement that has "announce" enabled.
+announce-broadcasts: true
+
+# Play the classic "challenge complete" sound to a player when they
+# unlock an achievement.
+play-sound: true
+
+# Show a title/subtitle on screen when a player unlocks an achievement.
+show-title: true
+
+# Track playtime so PLAYTIME_MINUTES achievements can be earned.
+playtime-tracking: true
+
+# Save all online players' progress to disk every X minutes (safety net
+# against crashes). Set to 0 to disable periodic saving.
+autosave-minutes: 5
+
+messages:
+  prefix: "<gradient:#f9d423:#ff4e50><bold>Achievements</bold></gradient> <dark_gray>»</dark_gray> "
+  unlocked: "<green>You unlocked <white><name></white>!"
+  broadcast: "<yellow><player></yellow> <gray>unlocked the achievement</gray> <white><name></white><gray>!</gray>"
+  title: "<gradient:#f9d423:#ff4e50><bold>Achievement Unlocked</bold></gradient>"
