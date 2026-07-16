@@ -5,6 +5,11 @@ A Minecraft **1.21.4** (Paper) plugin that lets server staff create fully
 a menu of all achievements to see which ones they've **unlocked** and which are
 still **locked** (with live progress bars).
 
+> ℹ️ **Made with AI.** This plugin was written by an AI assistant (Anthropic's
+> Claude) working from a human's requests, and is maintained the same way. It's
+> shared here in the interest of transparency — review the code and test it on
+> your own server before relying on it in production.
+
 ---
 
 ## Features

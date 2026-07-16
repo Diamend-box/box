@@ -2,6 +2,8 @@
 
 All notable changes to **CustomAchievements** are documented here.
 
+> This plugin was written with AI assistance (Anthropic's Claude).
+
 ## [1.4.0]
 ### Added
 - **`ITEM_OBTAIN` trigger** — count items a player picks up.
