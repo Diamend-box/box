@@ -1,6 +1,7 @@
 package com.diamend.customachievements.achievement;
 
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +24,11 @@ public class Achievement {
     private List<String> description;
     private Material icon;
     private boolean announce;
+    private boolean hidden;
+    private String category;
     private int rewardXp;
     private List<String> rewardCommands;
+    private final List<ItemStack> rewardItems = new ArrayList<>();
     private final List<Requirement> requirements = new ArrayList<>();
 
     public Achievement(String id) {
@@ -33,6 +37,8 @@ public class Achievement {
         this.description = new ArrayList<>(List.of("An amazing feat!"));
         this.icon = Material.NETHER_STAR;
         this.announce = true;
+        this.hidden = false;
+        this.category = "";
         this.rewardXp = 0;
         this.rewardCommands = new ArrayList<>();
         this.requirements.add(new Requirement());
@@ -45,8 +51,13 @@ public class Achievement {
         other.description = new ArrayList<>(this.description);
         other.icon = this.icon;
         other.announce = this.announce;
+        other.hidden = this.hidden;
+        other.category = this.category;
         other.rewardXp = this.rewardXp;
         other.rewardCommands = new ArrayList<>(this.rewardCommands);
+        for (ItemStack item : this.rewardItems) {
+            other.rewardItems.add(item.clone());
+        }
         other.requirements.clear();
         for (Requirement requirement : this.requirements) {
             other.requirements.add(requirement.copy());
@@ -112,6 +123,26 @@ public class Achievement {
 
     public void setAnnounce(boolean announce) {
         this.announce = announce;
+    }
+
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    public void setHidden(boolean hidden) {
+        this.hidden = hidden;
+    }
+
+    public String getCategory() {
+        return category == null ? "" : category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category == null ? "" : category.trim();
+    }
+
+    public List<ItemStack> getRewardItems() {
+        return rewardItems;
     }
 
     public int getRewardXp() {

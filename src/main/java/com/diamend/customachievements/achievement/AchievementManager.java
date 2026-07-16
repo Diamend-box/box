@@ -97,6 +97,22 @@ public class AchievementManager {
         return achievements.size();
     }
 
+    /** Distinct non-empty categories, in first-seen order. */
+    public List<String> categories() {
+        List<String> categories = new ArrayList<>();
+        for (Achievement achievement : achievements.values()) {
+            String category = achievement.getCategory();
+            if (!category.isBlank() && !categories.contains(category)) {
+                categories.add(category);
+            }
+        }
+        return categories;
+    }
+
+    public boolean hasCategories() {
+        return !categories().isEmpty();
+    }
+
     /** Adds or replaces an achievement and persists to disk. */
     public void put(Achievement achievement) {
         achievements.put(achievement.getId().toLowerCase(Locale.ROOT), achievement);
@@ -133,8 +149,19 @@ public class AchievementManager {
         achievement.setIcon(icon != null ? icon : Material.NETHER_STAR);
 
         achievement.setAnnounce(section.getBoolean("announce", true));
+        achievement.setHidden(section.getBoolean("hidden", false));
+        achievement.setCategory(section.getString("category", ""));
         achievement.setRewardXp(section.getInt("reward-xp", 0));
         achievement.setRewardCommands(new ArrayList<>(section.getStringList("reward-commands")));
+
+        List<?> rawItems = section.getList("reward-items");
+        if (rawItems != null) {
+            for (Object object : rawItems) {
+                if (object instanceof org.bukkit.inventory.ItemStack item) {
+                    achievement.getRewardItems().add(item.clone());
+                }
+            }
+        }
 
         // Requirements: prefer the new list form; fall back to the legacy
         // single trigger/target/amount fields for older files.
@@ -174,8 +201,13 @@ public class AchievementManager {
         config.set(base + ".description", achievement.getDescription());
         config.set(base + ".icon", achievement.getIcon().name());
         config.set(base + ".announce", achievement.isAnnounce());
+        config.set(base + ".hidden", achievement.isHidden());
+        config.set(base + ".category", achievement.getCategory());
         config.set(base + ".reward-xp", achievement.getRewardXp());
         config.set(base + ".reward-commands", achievement.getRewardCommands());
+        if (!achievement.getRewardItems().isEmpty()) {
+            config.set(base + ".reward-items", achievement.getRewardItems());
+        }
 
         List<Map<String, Object>> reqList = new ArrayList<>();
         for (Requirement requirement : achievement.getRequirements()) {

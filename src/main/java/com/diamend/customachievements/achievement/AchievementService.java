@@ -78,8 +78,12 @@ public class AchievementService {
                 }
                 changed = true;
             }
-            if (changed && isComplete(achievement, data)) {
-                award(player, achievement, data);
+            if (changed) {
+                if (isComplete(achievement, data)) {
+                    award(player, achievement, data);
+                } else {
+                    sendProgress(player, achievement, data);
+                }
             }
         }
     }
@@ -113,10 +117,51 @@ public class AchievementService {
                     changed = true;
                 }
             }
-            if (changed && isComplete(achievement, data)) {
-                award(player, achievement, data);
+            if (changed) {
+                if (isComplete(achievement, data)) {
+                    award(player, achievement, data);
+                } else {
+                    sendProgress(player, achievement, data);
+                }
             }
         }
+    }
+
+    // Throttle for action-bar progress messages, keyed by uuid#achievementId.
+    private final java.util.Map<String, Long> lastProgress = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Shows an unobtrusive action-bar progress update (if enabled), throttled per achievement. */
+    private void sendProgress(Player player, Achievement achievement, PlayerData data) {
+        if (!plugin.getConfig().getBoolean("progress-feedback", true)) {
+            return;
+        }
+        String key = player.getUniqueId() + "#" + achievement.getId();
+        long now = System.currentTimeMillis();
+        Long last = lastProgress.get(key);
+        if (last != null && now - last < 750L) {
+            return;
+        }
+        lastProgress.put(key, now);
+
+        Component name = Text.parse(achievement.getDisplayName());
+        List<Requirement> requirements = achievement.getRequirements();
+        Component detail;
+        if (requirements.size() == 1) {
+            Requirement requirement = requirements.get(0);
+            int required = requirement.requiredAmount();
+            int current = Math.min(data.getProgress(PlayerData.requirementKey(achievement.getId(), 0)), required);
+            detail = Text.parse("<gray> — <yellow>" + current + "<gray>/<yellow>" + required);
+        } else {
+            int done = 0;
+            for (int i = 0; i < requirements.size(); i++) {
+                if (data.getProgress(PlayerData.requirementKey(achievement.getId(), i))
+                        >= requirements.get(i).requiredAmount()) {
+                    done++;
+                }
+            }
+            detail = Text.parse("<gray> — <yellow>" + done + "<gray>/<yellow>" + requirements.size() + " objectives");
+        }
+        player.sendActionBar(name.append(detail));
     }
 
     /** True when every requirement of the achievement has reached its required amount. */
@@ -185,6 +230,15 @@ public class AchievementService {
         // Rewards.
         if (achievement.getRewardXp() > 0) {
             player.giveExp(achievement.getRewardXp());
+        }
+        for (org.bukkit.inventory.ItemStack item : achievement.getRewardItems()) {
+            if (item == null || item.getType().isAir()) {
+                continue;
+            }
+            for (org.bukkit.inventory.ItemStack leftover
+                    : player.getInventory().addItem(item.clone()).values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
         }
         for (String command : achievement.getRewardCommands()) {
             if (command == null || command.isBlank()) {

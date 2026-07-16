@@ -25,7 +25,14 @@ still **locked** (with live progress bars).
   *and* MiniMessage, mixed freely.
 - 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
   skill-level achievements; the plugin runs fine without either.
-- 🏆 **Rewards** – grant XP and/or run console commands on unlock.
+- 🕵️ **Secret achievements** – hidden entries show as `???` until unlocked.
+- 🗂️ **Optional categories** – group achievements into tabs (only shown once you
+  actually use categories).
+- 🏆 **Rewards** – grant XP, give **items**, and/or run console commands on unlock.
+- 📊 **Leaderboard & progress** – `/ca top`, per-category completion %, and an
+  optional action-bar progress readout as players advance.
+- 🛡️ **Anti-farm option** – optionally ignore player-placed blocks so
+  place-and-break can't farm break achievements.
 - 📢 **Unlock feedback** – toast sound, on-screen title, personal message and an
   optional server-wide broadcast.
 - 💾 **Per-player persistence** – progress is saved to disk and survives restarts.
@@ -49,7 +56,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.2.1.jar`.
+The finished plugin is written to `target/CustomAchievements-1.3.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io`, so the build
@@ -67,11 +74,12 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
 | --- | --- | --- |
 | `/ca` | Open **your** achievements menu | `customachievements.use` |
 | `/ca list` | List achievements in chat | `customachievements.use` |
+| `/ca top` | Completion leaderboard | `customachievements.use` |
 | `/ca admin` | Open the **management** menu (edit / create) | `customachievements.admin` |
 | `/ca create` | Open the editor to build a new achievement | `customachievements.admin` |
-| `/ca grant <player> <id>` | Grant an achievement to an online player | `customachievements.admin` |
-| `/ca revoke <player> <id>` | Revoke an achievement | `customachievements.admin` |
-| `/ca reset <player>` | Reset all of a player's achievements | `customachievements.admin` |
+| `/ca grant <player> <id>` | Grant an achievement (online or offline) | `customachievements.admin` |
+| `/ca revoke <player> <id>` | Revoke an achievement (online or offline) | `customachievements.admin` |
+| `/ca reset <player>` | Reset a player's achievements (online or offline) | `customachievements.admin` |
 | `/ca reload` | Reload config + achievements from disk | `customachievements.admin` |
 
 ### Permissions
@@ -190,6 +198,8 @@ announce-broadcasts: true   # server-wide message on unlock (per-achievement tog
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
+progress-feedback: true     # action-bar progress readout as players advance
+count-player-placed-blocks: true  # false = don't count breaking blocks you placed
 autosave-minutes: 5         # periodic save of online players (0 to disable)
 
 messages:

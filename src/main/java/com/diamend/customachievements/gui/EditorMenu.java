@@ -32,9 +32,13 @@ public class EditorMenu implements Menu {
     private static final int SLOT_NAME = 14;
     private static final int SLOT_DESC = 16;
     private static final int SLOT_ANNOUNCE = 19;
-    private static final int SLOT_XP = 21;
-    private static final int SLOT_COMMANDS = 23;
+    private static final int SLOT_HIDDEN = 20;
+    private static final int SLOT_CATEGORY = 21;
+    private static final int SLOT_XP = 22;
+    private static final int SLOT_ITEMS = 23;
+    private static final int SLOT_COMMANDS = 24;
     private static final int SLOT_ADD = 45;
+    private static final int SLOT_CLONE = 46;
     private static final int SLOT_SAVE = 48;
     private static final int SLOT_CANCEL = 50;
     private static final int SLOT_DELETE = 52;
@@ -107,9 +111,24 @@ public class EditorMenu implements Menu {
                 Text.item("<aqua>Broadcast on Unlock: " + (draft.isAnnounce() ? "<green>ON" : "<red>OFF")),
                 lore("<gray>Announce to the whole server.", "", "<yellow>Click to toggle")));
 
+        inventory.setItem(SLOT_HIDDEN, Items.of(draft.isHidden() ? Material.BLACK_DYE : Material.GLOWSTONE_DUST,
+                Text.item("<aqua>Secret: " + (draft.isHidden() ? "<green>ON" : "<red>OFF")),
+                lore("<gray>Hidden achievements show as <white>???",
+                        "<gray>until a player unlocks them.", "", "<yellow>Click to toggle")));
+
+        inventory.setItem(SLOT_CATEGORY, Items.of(Material.CHEST,
+                Text.item("<aqua>Category"),
+                lore(draft.getCategory().isBlank() ? "<dark_gray>(none)" : "<white>" + draft.getCategory(), "",
+                        "<gray>Groups achievements into tabs.",
+                        "<yellow>Click to set  <yellow>Right-click to clear")));
+
         inventory.setItem(SLOT_XP, Items.of(Material.EXPERIENCE_BOTTLE,
                 Text.item("<aqua>Reward XP: <white>" + draft.getRewardXp()),
                 lore("<gray>Experience granted on unlock.", "", "<yellow>Click to type a number")));
+
+        inventory.setItem(SLOT_ITEMS, Items.of(Material.CHEST_MINECART,
+                Text.item("<aqua>Reward Items: <white>" + draft.getRewardItems().size()),
+                lore("<gray>Items given to the player on unlock.", "", "<yellow>Click to edit")));
 
         List<String> cmdLines = new ArrayList<>();
         if (draft.getRewardCommands().isEmpty()) {
@@ -152,6 +171,8 @@ public class EditorMenu implements Menu {
         inventory.setItem(SLOT_CANCEL, Items.of(Material.BARRIER, Text.item("<red><bold>Cancel"),
                 lore("<gray>Discard changes and go back.")));
         if (!creating) {
+            inventory.setItem(SLOT_CLONE, Items.of(Material.BOOK, Text.item("<aqua><bold>Duplicate"),
+                    lore("<gray>Create a copy of this achievement", "<gray>as a new draft to edit.")));
             inventory.setItem(SLOT_DELETE, Items.of(Material.TNT, Text.item("<dark_red><bold>Delete"),
                     lore("<gray>Permanently remove this achievement.", "", "<red>Shift-click to confirm.")));
         }
@@ -219,6 +240,20 @@ public class EditorMenu implements Menu {
                 draft.setAnnounce(!draft.isAnnounce());
                 rebuild();
             }
+            case SLOT_HIDDEN -> {
+                draft.setHidden(!draft.isHidden());
+                rebuild();
+            }
+            case SLOT_CATEGORY -> {
+                if (click.isRightClick()) {
+                    draft.setCategory("");
+                    rebuild();
+                } else {
+                    promptText("Enter a category name (groups achievements into tabs):",
+                            input -> draft.setCategory(input.trim()));
+                }
+            }
+            case SLOT_ITEMS -> new RewardItemsMenu(plugin, viewer, draft, this).open(viewer);
             case SLOT_XP -> promptText("Enter the reward XP amount:", input -> {
                 try {
                     draft.setRewardXp(Math.max(0, Integer.parseInt(input.trim())));
@@ -244,6 +279,20 @@ public class EditorMenu implements Menu {
                     draft.getRequirements().add(new Requirement());
                     new RequirementEditorMenu(plugin, viewer, draft,
                             draft.getRequirements().size() - 1, this).open(viewer);
+                }
+            }
+            case SLOT_CLONE -> {
+                if (!creating) {
+                    Achievement copy = draft.copy();
+                    String base = draft.getId() + "_copy";
+                    String id = base;
+                    int n = 1;
+                    while (plugin.getAchievementManager().exists(id)) {
+                        id = base + n++;
+                    }
+                    copy.setId(id);
+                    viewer.sendMessage(Text.parse("<green>Editing a copy — set an id and Save to keep it."));
+                    new EditorMenu(plugin, viewer, copy, true).open(viewer);
                 }
             }
             case SLOT_SAVE -> save();

@@ -4,6 +4,8 @@ import com.diamend.customachievements.achievement.Achievement;
 import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.data.PlayerData;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -169,6 +171,44 @@ class CustomAchievementsPluginTest {
 
         plugin.getAchievementService().handleGauge(player, TriggerType.AURASKILLS_LEVEL, "MINING", 25);
         assertTrue(data.isCompleted("master_miner"), "reaching the level in the right skill completes it");
+    }
+
+    @Test
+    void hiddenCategoryAndItemsSurviveReload() {
+        Achievement achievement = new Achievement("secret_one");
+        achievement.setHidden(true);
+        achievement.setCategory("Combat");
+        achievement.getRewardItems().add(new ItemStack(Material.DIAMOND, 3));
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementManager().load(); // reload from disk
+        Achievement reloaded = plugin.getAchievementManager().get("secret_one");
+        assertNotNull(reloaded);
+        assertTrue(reloaded.isHidden(), "hidden flag persists");
+        assertEquals("Combat", reloaded.getCategory(), "category persists");
+        assertEquals(1, reloaded.getRewardItems().size(), "reward item persists");
+        assertEquals(Material.DIAMOND, reloaded.getRewardItems().get(0).getType(), "reward item type persists");
+    }
+
+    @Test
+    void itemRewardsAreGivenOnUnlock() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("gift");
+        achievement.setTrigger(TriggerType.MANUAL);
+        achievement.getRewardItems().add(new ItemStack(Material.DIAMOND, 2));
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().grant(player, achievement);
+        assertTrue(player.getInventory().contains(Material.DIAMOND), "reward item should be delivered on unlock");
+    }
+
+    @Test
+    void categoriesAreDetected() {
+        Achievement achievement = new Achievement("cat_test");
+        achievement.setCategory("Exploration");
+        plugin.getAchievementManager().put(achievement);
+        assertTrue(plugin.getAchievementManager().hasCategories(), "categories should be detected");
+        assertTrue(plugin.getAchievementManager().categories().contains("Exploration"));
     }
 
     @Test

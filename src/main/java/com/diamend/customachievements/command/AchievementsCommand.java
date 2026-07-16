@@ -16,6 +16,8 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Handles {@code /achievements} and its sub-commands.
@@ -47,6 +49,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "grant", "give" -> grant(sender, args);
             case "revoke", "take" -> revoke(sender, args);
             case "reset" -> reset(sender, args);
+            case "top", "leaderboard" -> top(sender);
             case "reload" -> reload(sender);
             default -> help(sender);
         }
@@ -64,6 +67,10 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         }
         if (!admin && !player.hasPermission(PERM_USE)) {
             noPermission(player);
+            return;
+        }
+        if (!admin && plugin.getAchievementManager().hasCategories()) {
+            new com.diamend.customachievements.gui.CategoryMenu(plugin, player).open(player);
             return;
         }
         new AchievementMenu(plugin, player, admin).open(player);
@@ -120,22 +127,34 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<red>Usage: /ca grant <player> <id>"));
             return;
         }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            sender.sendMessage(Text.parse("<red>Player <white>" + args[1] + "<red> is not online."));
-            return;
-        }
         Achievement achievement = plugin.getAchievementManager().get(args[2]);
         if (achievement == null) {
             sender.sendMessage(Text.parse("<red>No achievement with id <white>" + args[2] + "<red>."));
             return;
         }
-        if (plugin.getAchievementService().grant(target, achievement)) {
-            sender.sendMessage(Text.parse("<green>Granted <white>" + achievement.getId()
-                    + "<green> to <white>" + target.getName() + "<green>."));
-        } else {
-            sender.sendMessage(Text.parse("<yellow>" + target.getName() + " already has that achievement."));
+        Player online = Bukkit.getPlayerExact(args[1]);
+        if (online != null) {
+            if (plugin.getAchievementService().grant(online, achievement)) {
+                sender.sendMessage(Text.parse("<green>Granted <white>" + achievement.getId()
+                        + "<green> to <white>" + online.getName() + "<green>."));
+            } else {
+                sender.sendMessage(Text.parse("<yellow>" + online.getName() + " already has that achievement."));
+            }
+            return;
         }
+        UUID uuid = resolveOffline(sender, args[1]);
+        if (uuid == null) {
+            return;
+        }
+        PlayerData data = plugin.getPlayerDataManager().loadDetached(uuid);
+        if (data.isCompleted(achievement.getId())) {
+            sender.sendMessage(Text.parse("<yellow>" + args[1] + " already has that achievement."));
+            return;
+        }
+        data.setCompleted(achievement.getId());
+        plugin.getPlayerDataManager().saveNow(data);
+        sender.sendMessage(Text.parse("<green>Granted <white>" + achievement.getId() + "<green> to <white>"
+                + args[1] + " <gray>(offline — item/command rewards skipped)."));
     }
 
     private void revoke(CommandSender sender, String[] args) {
@@ -146,16 +165,24 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<red>Usage: /ca revoke <player> <id>"));
             return;
         }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            sender.sendMessage(Text.parse("<red>Player <white>" + args[1] + "<red> is not online."));
+        Player online = Bukkit.getPlayerExact(args[1]);
+        if (online != null) {
+            PlayerData data = plugin.getPlayerDataManager().get(online.getUniqueId());
+            data.revoke(args[2]);
+            plugin.getPlayerDataManager().save(online.getUniqueId());
+            sender.sendMessage(Text.parse("<green>Revoked <white>" + args[2]
+                    + "<green> from <white>" + online.getName() + "<green>."));
             return;
         }
-        PlayerData data = plugin.getPlayerDataManager().get(target.getUniqueId());
+        UUID uuid = resolveOffline(sender, args[1]);
+        if (uuid == null) {
+            return;
+        }
+        PlayerData data = plugin.getPlayerDataManager().loadDetached(uuid);
         data.revoke(args[2]);
-        plugin.getPlayerDataManager().save(target.getUniqueId());
+        plugin.getPlayerDataManager().saveNow(data);
         sender.sendMessage(Text.parse("<green>Revoked <white>" + args[2]
-                + "<green> from <white>" + target.getName() + "<green>."));
+                + "<green> from <white>" + args[1] + " <gray>(offline)."));
     }
 
     private void reset(CommandSender sender, String[] args) {
@@ -166,15 +193,64 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<red>Usage: /ca reset <player>"));
             return;
         }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            sender.sendMessage(Text.parse("<red>Player <white>" + args[1] + "<red> is not online."));
+        Player online = Bukkit.getPlayerExact(args[1]);
+        if (online != null) {
+            PlayerData data = plugin.getPlayerDataManager().get(online.getUniqueId());
+            data.reset();
+            plugin.getPlayerDataManager().save(online.getUniqueId());
+            sender.sendMessage(Text.parse("<green>Reset all achievements for <white>" + online.getName() + "<green>."));
             return;
         }
-        PlayerData data = plugin.getPlayerDataManager().get(target.getUniqueId());
+        UUID uuid = resolveOffline(sender, args[1]);
+        if (uuid == null) {
+            return;
+        }
+        PlayerData data = plugin.getPlayerDataManager().loadDetached(uuid);
         data.reset();
-        plugin.getPlayerDataManager().save(target.getUniqueId());
-        sender.sendMessage(Text.parse("<green>Reset all achievements for <white>" + target.getName() + "<green>."));
+        plugin.getPlayerDataManager().saveNow(data);
+        sender.sendMessage(Text.parse("<green>Reset all achievements for <white>" + args[1] + " <gray>(offline)."));
+    }
+
+    /** Resolves an offline player's UUID, or messages an error and returns null. */
+    private UUID resolveOffline(CommandSender sender, String name) {
+        org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
+        if (!offline.hasPlayedBefore()) {
+            sender.sendMessage(Text.parse("<red>Player <white>" + name + "<red> has never joined this server."));
+            return null;
+        }
+        return offline.getUniqueId();
+    }
+
+    private void top(CommandSender sender) {
+        if (!sender.hasPermission(PERM_USE)) {
+            noPermission(sender);
+            return;
+        }
+        sender.sendMessage(Text.parse("<gray>Building the leaderboard..."));
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<Map.Entry<UUID, Integer>> ranked =
+                    new ArrayList<>(plugin.getPlayerDataManager().completedCounts().entrySet());
+            ranked.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                sender.sendMessage(Text.parse("<gold><bold>Achievement Leaderboard"));
+                int rank = 1;
+                for (Map.Entry<UUID, Integer> entry : ranked) {
+                    if (rank > 10 || entry.getValue() <= 0) {
+                        break;
+                    }
+                    String name = Bukkit.getOfflinePlayer(entry.getKey()).getName();
+                    if (name == null) {
+                        name = entry.getKey().toString().substring(0, 8);
+                    }
+                    sender.sendMessage(Text.parse(" <yellow>" + rank + ".<white> " + name
+                            + " <gray>— <green>" + entry.getValue()));
+                    rank++;
+                }
+                if (rank == 1) {
+                    sender.sendMessage(Text.parse("<gray>No completions yet."));
+                }
+            });
+        });
     }
 
     private void reload(CommandSender sender) {
@@ -191,6 +267,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Text.parse("<gold><bold>CustomAchievements"));
         sender.sendMessage(Text.parse("<yellow>/ca <gray>- Open your achievements menu"));
         sender.sendMessage(Text.parse("<yellow>/ca list <gray>- List achievements in chat"));
+        sender.sendMessage(Text.parse("<yellow>/ca top <gray>- Completion leaderboard"));
         if (sender.hasPermission(PERM_ADMIN)) {
             sender.sendMessage(Text.parse("<yellow>/ca admin <gray>- Manage achievements (GUI)"));
             sender.sendMessage(Text.parse("<yellow>/ca create <gray>- Create a new achievement"));
@@ -217,7 +294,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("list"));
+            List<String> subs = new ArrayList<>(List.of("list", "top"));
             if (sender.hasPermission(PERM_ADMIN)) {
                 subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "reload"));
             }

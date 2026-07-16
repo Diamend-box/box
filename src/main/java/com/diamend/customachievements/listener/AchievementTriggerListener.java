@@ -2,6 +2,7 @@ package com.diamend.customachievements.listener;
 
 import com.diamend.customachievements.achievement.AchievementService;
 import com.diamend.customachievements.achievement.TriggerType;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,25 +14,47 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Translates in-game events into achievement progress via {@link AchievementService}.
+ *
+ * <p>When {@code count-player-placed-blocks} is disabled, blocks a player placed
+ * are remembered (in memory) so breaking them again doesn't farm BLOCK_BREAK
+ * objectives.
  */
 public class AchievementTriggerListener implements Listener {
 
+    private final Plugin plugin;
     private final AchievementService service;
+    private final Set<String> playerPlaced = ConcurrentHashMap.newKeySet();
 
-    public AchievementTriggerListener(AchievementService service) {
+    public AchievementTriggerListener(Plugin plugin, AchievementService service) {
+        this.plugin = plugin;
         this.service = service;
+    }
+
+    private static String key(Block block) {
+        return block.getWorld().getName() + ':' + block.getX() + ',' + block.getY() + ',' + block.getZ();
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
+        boolean wasPlaced = playerPlaced.remove(key(event.getBlock()));
+        if (wasPlaced && !plugin.getConfig().getBoolean("count-player-placed-blocks", true)) {
+            return; // anti-farm: don't count breaking a block the player placed
+        }
         service.handle(event.getPlayer(), TriggerType.BLOCK_BREAK, event.getBlock().getType().name(), 1);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
+        if (!plugin.getConfig().getBoolean("count-player-placed-blocks", true)) {
+            playerPlaced.add(key(event.getBlock()));
+        }
         service.handle(event.getPlayer(), TriggerType.BLOCK_PLACE, event.getBlock().getType().name(), 1);
     }
 

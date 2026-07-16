@@ -15,8 +15,15 @@ play-sound: true
 # Show a title/subtitle on screen when a player unlocks an achievement.
 show-title: true
 
-# Track playtime so PLAYTIME_MINUTES achievements can be earned.
+# Track playtime so PLAYTIME_HOURS achievements can be earned.
 playtime-tracking: true
+
+# Show an action-bar progress update as players make progress (throttled).
+progress-feedback: true
+
+# When false, breaking a block you placed yourself won't count toward
+# BLOCK_BREAK achievements (prevents place-and-break farming).
+count-player-placed-blocks: true
 
 # Save all online players' progress to disk every X minutes (safety net
 # against crashes). Set to 0 to disable periodic saving.

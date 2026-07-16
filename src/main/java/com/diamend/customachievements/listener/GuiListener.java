@@ -29,15 +29,27 @@ public class GuiListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof Menu menu) {
-            event.setCancelled(true);
+            if (menu.cancelClick(event)) {
+                event.setCancelled(true);
+            }
             menu.handleClick(event);
         }
     }
 
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
-        if (event.getView().getTopInventory().getHolder() instanceof Menu) {
+        // Only cancel drags for read-only menus; editable menus (reward items)
+        // permit dragging items into their content area.
+        if (event.getView().getTopInventory().getHolder() instanceof Menu menu
+                && menu.cancelClick(null)) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof Menu menu) {
+            menu.onClose();
         }
     }
 

@@ -2,7 +2,11 @@ package com.diamend.customachievements.listener;
 
 import com.diamend.customachievements.achievement.AchievementService;
 import com.diamend.customachievements.achievement.TriggerType;
+import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.event.skill.SkillLevelUpEvent;
+import dev.aurelium.auraskills.api.skill.Skills;
+import dev.aurelium.auraskills.api.user.SkillsUser;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
@@ -25,5 +29,19 @@ public class AuraSkillsListener implements Listener {
     public void onSkillLevelUp(SkillLevelUpEvent event) {
         String skill = event.getSkill() != null ? event.getSkill().name() : "ANY";
         service.handleGauge(event.getPlayer(), TriggerType.AURASKILLS_LEVEL, skill, event.getLevel());
+    }
+
+    /**
+     * Syncs a player's current level in every default skill so achievements for
+     * levels they already have complete on join (not only on the next level-up).
+     */
+    public void syncLevels(Player player) {
+        SkillsUser user = AuraSkillsApi.get().getUser(player.getUniqueId());
+        if (user == null) {
+            return;
+        }
+        for (Skills skill : Skills.values()) {
+            service.handleGauge(player, TriggerType.AURASKILLS_LEVEL, skill.name(), user.getSkillLevel(skill));
+        }
     }
 }

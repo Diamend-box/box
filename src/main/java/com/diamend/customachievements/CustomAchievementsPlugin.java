@@ -26,6 +26,9 @@ public class CustomAchievementsPlugin extends JavaPlugin {
     private AchievementService achievementService;
     private ChatInputManager chatInput;
 
+    // Non-null only when AuraSkills is installed.
+    private com.diamend.customachievements.listener.AuraSkillsListener auraSkills;
+
     private BukkitTask playtimeTask;
     private BukkitTask autosaveTask;
 
@@ -61,7 +64,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
             autosaveTask.cancel();
         }
         if (playerDataManager != null) {
-            playerDataManager.saveAll();
+            playerDataManager.saveAllAndShutdown();
         }
         getLogger().info("CustomAchievements disabled.");
     }
@@ -69,7 +72,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
-        getServer().getPluginManager().registerEvents(new AchievementTriggerListener(achievementService), this);
+        getServer().getPluginManager().registerEvents(new AchievementTriggerListener(this, achievementService), this);
         getServer().getPluginManager().registerEvents(new WorldTriggerListener(achievementService), this);
         MythicMobsHook.register(this, achievementService);
 
@@ -78,10 +81,11 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         // present, so we don't hard-depend on it.
         if (getServer().getPluginManager().isPluginEnabled("AuraSkills")) {
             try {
-                getServer().getPluginManager().registerEvents(
-                        new com.diamend.customachievements.listener.AuraSkillsListener(achievementService), this);
+                this.auraSkills = new com.diamend.customachievements.listener.AuraSkillsListener(achievementService);
+                getServer().getPluginManager().registerEvents(auraSkills, this);
                 getLogger().info("Hooked into AuraSkills.");
             } catch (Throwable ex) {
+                this.auraSkills = null;
                 getLogger().warning("AuraSkills is present but the hook failed to load: " + ex.getMessage());
             }
         }
@@ -91,6 +95,23 @@ public class CustomAchievementsPlugin extends JavaPlugin {
     public void syncPlaytime(Player player) {
         int hours = player.getStatistic(org.bukkit.Statistic.PLAY_ONE_MINUTE) / 72000; // 20 ticks * 3600s
         achievementService.handleGauge(player, TriggerType.PLAYTIME_HOURS, null, hours);
+    }
+
+    /** If AuraSkills is present, syncs the player's current skill levels shortly after join. */
+    public void syncAuraSkills(Player player) {
+        if (auraSkills == null) {
+            return;
+        }
+        // Delay so AuraSkills has finished loading the player's user data.
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                try {
+                    auraSkills.syncLevels(player);
+                } catch (Throwable ignored) {
+                    // AuraSkills not ready / user missing — level-up events still cover it.
+                }
+            }
+        }, 40L);
     }
 
     private void registerCommand() {

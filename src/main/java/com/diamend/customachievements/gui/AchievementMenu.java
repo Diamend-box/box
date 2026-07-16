@@ -30,6 +30,7 @@ public class AchievementMenu implements Menu {
 
     private static final int SLOT_PREV = 45;
     private static final int SLOT_CREATE = 46;
+    private static final int SLOT_BACK = 48;
     private static final int SLOT_INFO = 49;
     private static final int SLOT_NEXT = 53;
 
@@ -37,14 +38,21 @@ public class AchievementMenu implements Menu {
     private final Player viewer;
     private final boolean admin;
 
+    private final String categoryFilter; // null = show all
+
     private Inventory inventory;
     private int page;
     private List<Achievement> cachedList = new ArrayList<>();
 
     public AchievementMenu(CustomAchievementsPlugin plugin, Player viewer, boolean admin) {
+        this(plugin, viewer, admin, null);
+    }
+
+    public AchievementMenu(CustomAchievementsPlugin plugin, Player viewer, boolean admin, String categoryFilter) {
         this.plugin = plugin;
         this.viewer = viewer;
         this.admin = admin;
+        this.categoryFilter = categoryFilter;
     }
 
     @Override
@@ -54,10 +62,17 @@ public class AchievementMenu implements Menu {
     }
 
     private void rebuild() {
-        cachedList = plugin.getAchievementManager().asList();
+        cachedList = new ArrayList<>();
+        for (Achievement achievement : plugin.getAchievementManager().all()) {
+            if (categoryFilter == null || categoryFilter.equalsIgnoreCase(achievement.getCategory())) {
+                cachedList.add(achievement);
+            }
+        }
         Component title = admin
                 ? Text.parse("<dark_red><bold>Manage Achievements")
-                : Text.parse("<dark_aqua><bold>Achievements");
+                : Text.parse(categoryFilter != null && !categoryFilter.isBlank()
+                        ? "<dark_aqua><bold>" + categoryFilter
+                        : "<dark_aqua><bold>Achievements");
         if (inventory == null) {
             inventory = Bukkit.createInventory(this, SIZE, title);
         }
@@ -96,8 +111,10 @@ public class AchievementMenu implements Menu {
                 unlocked++;
             }
         }
+        int total = cachedList.size();
         List<Component> infoLore = new ArrayList<>();
-        infoLore.add(Text.item("<gray>Unlocked: <green>" + unlocked + "<gray>/<white>" + cachedList.size()));
+        infoLore.add(Text.item("<gray>Unlocked: <green>" + unlocked + "<gray>/<white>" + total
+                + (total > 0 ? " <dark_gray>(" + (unlocked * 100 / total) + "%)" : "")));
         infoLore.add(Text.item("<gray>Page: <white>" + (page + 1) + "<gray>/<white>" + totalPages));
         if (admin) {
             infoLore.add(Component.empty());
@@ -105,6 +122,11 @@ public class AchievementMenu implements Menu {
         }
         inventory.setItem(SLOT_INFO, Items.of(Material.BOOK,
                 Text.item("<gold><bold>Achievement Progress"), infoLore));
+
+        if (categoryFilter != null && !admin) {
+            inventory.setItem(SLOT_BACK, Items.of(Material.OAK_DOOR,
+                    Text.item("<yellow>« Back to Categories")));
+        }
 
         if (admin) {
             List<Component> createLore = new ArrayList<>();
@@ -117,6 +139,14 @@ public class AchievementMenu implements Menu {
 
     private ItemStack render(Achievement achievement, PlayerData data) {
         boolean completed = data.isCompleted(achievement.getId());
+
+        // Secret achievements stay hidden (to non-admins) until unlocked.
+        if (achievement.isHidden() && !completed && !admin) {
+            return Items.of(Material.GRAY_DYE, Text.item("<dark_gray><obfuscated>???</obfuscated>"),
+                    List.of(Text.item("<dark_gray>A secret achievement."),
+                            Text.item("<dark_gray>Unlock it to reveal it.")));
+        }
+
         List<Component> lore = new ArrayList<>();
         for (String line : achievement.getDescription()) {
             lore.add(Text.item(line));
@@ -138,7 +168,9 @@ public class AchievementMenu implements Menu {
         if (admin) {
             lore.add(Component.empty());
             lore.add(Text.item("<dark_gray>id: " + achievement.getId()));
-            lore.add(Text.item("<dark_gray>objectives: " + requirements.size()));
+            lore.add(Text.item("<dark_gray>objectives: " + requirements.size()
+                    + (achievement.isHidden() ? "  •  secret" : "")
+                    + (achievement.getCategory().isBlank() ? "" : "  •  " + achievement.getCategory())));
             lore.add(Component.empty());
             lore.add(Text.item("<yellow>Click to edit"));
         }
@@ -204,6 +236,10 @@ public class AchievementMenu implements Menu {
         if (admin && slot == SLOT_CREATE) {
             Achievement draft = new Achievement(suggestId());
             new EditorMenu(plugin, viewer, draft, true).open(viewer);
+            return;
+        }
+        if (slot == SLOT_BACK && categoryFilter != null && !admin) {
+            new CategoryMenu(plugin, viewer).open(viewer);
             return;
         }
         // Clicking an achievement tile.

@@ -22,6 +22,7 @@ public class ConnectionListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         plugin.getPlayerDataManager().load(event.getPlayer().getUniqueId());
         plugin.syncPlaytime(event.getPlayer());
+        plugin.syncAuraSkills(event.getPlayer());
     }
 
     @EventHandler
