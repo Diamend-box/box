@@ -49,7 +49,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.2.0.jar`.
+The finished plugin is written to `target/CustomAchievements-1.2.1.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io`, so the build
@@ -93,7 +93,7 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
      type a material name.
    - **Display Name** – click to type in chat (`&`-codes and MiniMessage).
    - **Description** – left-click to rewrite it (use `|` to split lines),
-     right-click to append a line, shift-right-click to remove the last line.
+     right-click to add a line, shift-right-click to remove the last line.
    - **Broadcast on Unlock** – click to toggle.
    - **Reward XP** – click to type the amount.
    - **Reward Commands** – left-click to add one (use `%player%`), right-click to

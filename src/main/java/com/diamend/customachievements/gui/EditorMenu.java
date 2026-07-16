@@ -100,7 +100,7 @@ public class EditorMenu implements Menu {
         }
         descLines.add("");
         descLines.add("<yellow>Left: rewrite (| for new lines)");
-        descLines.add("<yellow>Right: append line  <yellow>Shift-right: remove last");
+        descLines.add("<yellow>Right: add a line  <yellow>Shift-right: remove last");
         inventory.setItem(SLOT_DESC, Items.of(Material.BOOK, Text.item("<aqua>Description"), lore(descLines)));
 
         inventory.setItem(SLOT_ANNOUNCE, Items.of(draft.isAnnounce() ? Material.LIME_DYE : Material.GRAY_DYE,
@@ -203,7 +203,7 @@ public class EditorMenu implements Menu {
                     }
                     rebuild();
                 } else if (click.isRightClick()) {
-                    promptText("Enter a line to append to the description:",
+                    promptText("Enter a line to add to the description:",
                             input -> draft.getDescription().add(input.trim()));
                 } else {
                     promptText("Enter the description (use | to separate lines):", input -> {
