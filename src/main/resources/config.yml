@@ -15,6 +15,16 @@ play-sound: true
 # Show a title/subtitle on screen when a player unlocks an achievement.
 show-title: true
 
+# EXPERIMENTAL: show a native Minecraft "advancement toast" pop-up on unlock.
+# Uses runtime advancement registration, which some server builds don't allow;
+# if unsupported it disables itself automatically (unlocks are unaffected).
+advancement-toast: false
+
+# Use an anvil GUI for text entry in the editor instead of chat. This keeps
+# typed text out of chat entirely (so chat-bridge plugins like DiscordSRV can't
+# relay it). Set to false to fall back to typing in chat.
+use-anvil-input: true
+
 # Track playtime so PLAYTIME_HOURS achievements can be earned.
 playtime-tracking: true
 

@@ -284,6 +284,11 @@ public class AchievementService {
             }
         }
 
+        // Native advancement toast (experimental; off by default).
+        if (config.getBoolean("advancement-toast", false)) {
+            ToastNotifier.show(plugin, player, achievement);
+        }
+
         // Title.
         if (config.getBoolean("show-title", true)) {
             Component titleText = Text.parse(config.getString("messages.title", "<gold>Achievement Unlocked"));

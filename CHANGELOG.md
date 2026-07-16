@@ -4,6 +4,16 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.5.0]
+### Added
+- **Off-chat editor input** — text fields in the editor now use an **anvil**
+  rename box instead of chat, so typed details never enter chat (fixes
+  chat-bridge plugins like DiscordSRV relaying them). Toggle with
+  `use-anvil-input` (falls back to chat when off).
+- **Advancement toast** on unlock (experimental, `advancement-toast: false` by
+  default). Uses runtime advancement registration and self-disables on server
+  builds that don't allow it — unlocks are never affected.
+
 ## [1.4.0]
 ### Added
 - **`ITEM_OBTAIN` trigger** — count items a player picks up.

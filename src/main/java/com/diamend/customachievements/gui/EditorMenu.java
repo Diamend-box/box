@@ -357,6 +357,15 @@ public class EditorMenu implements Menu {
     }
 
     private void promptText(String prompt, java.util.function.Consumer<String> apply) {
+        if (plugin.getConfig().getBoolean("use-anvil-input", true)) {
+            new AnvilInputMenu(plugin, viewer, prompt, input -> {
+                if (input != null && !input.isBlank()) {
+                    apply.accept(input);
+                }
+                open(viewer);
+            }, () -> open(viewer)).open(viewer);
+            return;
+        }
         viewer.closeInventory();
         viewer.sendMessage(Text.parse("<gold>» <yellow>" + prompt));
         viewer.sendMessage(Text.parse("<gray>Type in chat, or type <white>cancel<gray> to go back."));
