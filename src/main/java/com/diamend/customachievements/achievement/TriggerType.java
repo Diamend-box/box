@@ -17,6 +17,7 @@ public enum TriggerType {
     AURASKILLS_LEVEL("AuraSkills Level", true, true, Material.EXPERIENCE_BOTTLE),
     ITEM_CRAFT("Craft Items", true, true, Material.CRAFTING_TABLE),
     ITEM_CONSUME("Consume Items", true, true, Material.COOKED_BEEF),
+    ITEM_OBTAIN("Obtain Items", true, true, Material.HOPPER),
     FISH_CAUGHT("Catch Fish", false, true, Material.FISHING_ROD),
     PLAYER_DEATH("Player Deaths", false, true, Material.SKELETON_SKULL),
     PLAYTIME_HOURS("Playtime (hours)", false, true, Material.CLOCK),
@@ -56,6 +57,11 @@ public enum TriggerType {
     /** Triggers whose progress is a live gauge (set to a value) rather than a running count. */
     public boolean isGauge() {
         return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL;
+    }
+
+    /** Item-based triggers that can optionally match by custom item name. */
+    public boolean isItemTrigger() {
+        return this == ITEM_CRAFT || this == ITEM_CONSUME || this == ITEM_OBTAIN;
     }
 
     public static TriggerType fromString(String raw) {

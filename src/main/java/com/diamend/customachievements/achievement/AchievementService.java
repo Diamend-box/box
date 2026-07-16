@@ -176,6 +176,30 @@ public class AchievementService {
         return true;
     }
 
+    /**
+     * Advances item-based requirements (craft / consume / obtain), matching by
+     * material or, when the objective opts in, by the item's custom name.
+     */
+    public void handleItem(Player player, TriggerType type, org.bukkit.inventory.ItemStack item, int amount) {
+        if (item == null || amount <= 0) {
+            return;
+        }
+        String material = item.getType().name();
+        String name = itemName(item);
+        handle(player, type, requirement -> requirement.matchesItem(material, name), false, amount);
+    }
+
+    private String itemName(org.bukkit.inventory.ItemStack item) {
+        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasDisplayName()) {
+            return null;
+        }
+        Component displayName = meta.displayName();
+        return displayName == null ? null
+                : net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(displayName);
+    }
+
     /** Advances REACH_LOCATION requirements whose radius contains the given location. */
     public void handleLocation(Player player, Location location) {
         if (location == null) {

@@ -75,12 +75,20 @@ public class AchievementTriggerListener implements Listener {
         if (result == null) {
             return;
         }
-        service.handle(player, TriggerType.ITEM_CRAFT, result.getType().name(), Math.max(1, result.getAmount()));
+        service.handleItem(player, TriggerType.ITEM_CRAFT, result, Math.max(1, result.getAmount()));
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
-        service.handle(event.getPlayer(), TriggerType.ITEM_CONSUME, event.getItem().getType().name(), 1);
+        service.handleItem(event.getPlayer(), TriggerType.ITEM_CONSUME, event.getItem(), 1);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPickup(org.bukkit.event.entity.EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            ItemStack stack = event.getItem().getItemStack();
+            service.handleItem(player, TriggerType.ITEM_OBTAIN, stack, Math.max(1, stack.getAmount()));
+        }
     }
 
     @EventHandler(ignoreCancelled = true)

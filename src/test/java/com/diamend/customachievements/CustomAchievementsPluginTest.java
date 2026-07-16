@@ -212,6 +212,27 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void itemObtainMatchesByCustomName() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("compressed_iron");
+        Requirement requirement = new Requirement(TriggerType.ITEM_OBTAIN, "Compressed Iron Ingots", 1);
+        requirement.setMatchByName(true);
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(requirement);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        ItemStack named = new ItemStack(Material.IRON_BLOCK);
+        var meta = named.getItemMeta();
+        meta.displayName(net.kyori.adventure.text.Component.text("Compressed Iron Ingots"));
+        named.setItemMeta(meta);
+
+        // Wrong material but right custom name -> should complete.
+        plugin.getAchievementService().handleItem(player, TriggerType.ITEM_OBTAIN, named, 1);
+        assertTrue(data.isCompleted("compressed_iron"), "custom-name match should complete regardless of material");
+    }
+
+    @Test
     void multiRequirementSurvivesSaveAndLoad() {
         // The seeded "well_prepared" has two requirements; force a reload so it
         // is parsed back from the written achievements.yml (new list format).

@@ -27,7 +27,7 @@ public final class TargetCatalog {
     /** Whether a paginated picker makes sense for this trigger's target. */
     public static boolean hasPicker(TriggerType trigger) {
         return switch (trigger) {
-            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ENTITY_KILL,
+            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ENTITY_KILL,
                  AURASKILLS_LEVEL, REACH_DIMENSION -> true;
             default -> false;
         };
@@ -43,7 +43,7 @@ public final class TargetCatalog {
                     }
                 }
             }
-            case ITEM_CRAFT, ITEM_CONSUME -> {
+            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN -> {
                 for (Material material : Material.values()) {
                     if (material.isItem() && !material.isAir()) {
                         options.add(new TargetOption(material.name(), material));

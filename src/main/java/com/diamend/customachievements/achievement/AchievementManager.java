@@ -192,7 +192,9 @@ public class AchievementManager {
         if (rawAmount instanceof Number number) {
             amount = number.intValue();
         }
-        return new Requirement(trigger, target, amount);
+        Requirement requirement = new Requirement(trigger, target, amount);
+        requirement.setMatchByName(Boolean.TRUE.equals(map.get("match-by-name")));
+        return requirement;
     }
 
     private void write(YamlConfiguration config, Achievement achievement) {
@@ -215,6 +217,9 @@ public class AchievementManager {
             map.put("trigger", requirement.getTrigger().name());
             map.put("target", requirement.getTarget());
             map.put("amount", requirement.getAmount());
+            if (requirement.isMatchByName()) {
+                map.put("match-by-name", true);
+            }
             reqList.add(map);
         }
         config.set(base + ".requirements", reqList);

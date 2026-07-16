@@ -28,6 +28,7 @@ public class RequirementEditorMenu implements Menu {
     private static final int SLOT_TRIGGER = 10;
     private static final int SLOT_TARGET = 12;
     private static final int SLOT_AMOUNT = 14;
+    private static final int SLOT_BYNAME = 15;
     private static final int SLOT_DELETE = 16;
     private static final int SLOT_BACK = 22;
 
@@ -84,6 +85,17 @@ public class RequirementEditorMenu implements Menu {
                     Text.item("<aqua>Required Amount"), lore("<dark_gray>Not used by this trigger.")));
         }
 
+        if (trigger.isItemTrigger()) {
+            inventory.setItem(SLOT_BYNAME, Items.of(
+                    requirement.isMatchByName() ? Material.NAME_TAG : Material.PAPER,
+                    Text.item("<aqua>Match by: " + (requirement.isMatchByName()
+                            ? "<green>Custom Name" : "<white>Material")),
+                    lore("<gray>Match a custom item display name",
+                            "<gray>(e.g. \"Compressed Iron Ingots\")",
+                            "<gray>instead of the material type.", "",
+                            "<yellow>Click to toggle")));
+        }
+
         if (draft.getRequirements().size() > 1) {
             inventory.setItem(SLOT_DELETE, Items.of(Material.TNT,
                     Text.item("<dark_red>Delete Objective"), lore("<red>Shift-click to confirm.")));
@@ -130,6 +142,12 @@ public class RequirementEditorMenu implements Menu {
                 open(viewer);
             }, () -> open(viewer)).open(viewer);
             case SLOT_TARGET -> handleTarget(click, requirement);
+            case SLOT_BYNAME -> {
+                if (requirement.getTrigger().isItemTrigger()) {
+                    requirement.setMatchByName(!requirement.isMatchByName());
+                    open(viewer);
+                }
+            }
             case SLOT_AMOUNT -> {
                 if (requirement.getTrigger().isProgress()) {
                     promptNumber("Enter the required amount:", value -> requirement.setAmount(value));
@@ -156,10 +174,10 @@ public class RequirementEditorMenu implements Menu {
         switch (trigger) {
             case REACH_LOCATION -> {
                 if (click.isRightClick()) {
-                    promptText("Enter the location as: <world> <x> <y> <z> [radius]", input -> {
+                    promptText("Enter a location (world x y z [radius]) OR a threshold like Y>319:", input -> {
                         LocationTarget parsed = LocationTarget.parse(input);
                         if (parsed == null) {
-                            viewer.sendMessage(Text.parse("<red>Bad format. Use: world x y z [radius]"));
+                            viewer.sendMessage(Text.parse("<red>Bad format. Use: world x y z [radius], or Y>319"));
                         } else {
                             requirement.setTarget(parsed.serialize());
                         }
@@ -173,14 +191,26 @@ public class RequirementEditorMenu implements Menu {
             }
             case MYTHIC_MOB_KILL -> promptText("Enter the MythicMobs internal name (or ANY):",
                     input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
-            default -> new TargetPickerMenu(plugin, viewer, "Select Target",
-                    TargetCatalog.forTrigger(trigger),
-                    value -> {
-                        requirement.setTarget(validateTarget(trigger, value));
-                        open(viewer);
-                    },
-                    () -> open(viewer)).open(viewer);
+            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN -> {
+                if (requirement.isMatchByName()) {
+                    promptText("Enter the custom item name to match (or ANY):",
+                            input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
+                } else {
+                    openTargetPicker(trigger, requirement);
+                }
+            }
+            default -> openTargetPicker(trigger, requirement);
         }
+    }
+
+    private void openTargetPicker(TriggerType trigger, Requirement requirement) {
+        new TargetPickerMenu(plugin, viewer, "Select Target",
+                TargetCatalog.forTrigger(trigger),
+                value -> {
+                    requirement.setTarget(validateTarget(trigger, value));
+                    open(viewer);
+                },
+                () -> open(viewer)).open(viewer);
     }
 
     private String validateTarget(TriggerType trigger, String value) {

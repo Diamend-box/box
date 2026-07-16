@@ -14,6 +14,7 @@ public class Requirement {
     private TriggerType trigger;
     private String target;
     private int amount;
+    private boolean matchByName;
 
     // Lazily parsed REACH_LOCATION target, cached against the source string.
     private transient LocationTarget cachedLocation;
@@ -30,7 +31,9 @@ public class Requirement {
     }
 
     public Requirement copy() {
-        return new Requirement(trigger, target, amount);
+        Requirement other = new Requirement(trigger, target, amount);
+        other.matchByName = this.matchByName;
+        return other;
     }
 
     /** True when this requirement matches the given target key (ANY = wildcard). */
@@ -42,6 +45,26 @@ public class Requirement {
             return true;
         }
         return key != null && target.equalsIgnoreCase(key);
+    }
+
+    /**
+     * Item matching: when {@link #matchByName} is set, compares the target
+     * against the item's custom display name; otherwise against its material.
+     */
+    public boolean matchesItem(String materialName, String itemName) {
+        if (target == null || target.isBlank() || target.equalsIgnoreCase("ANY")) {
+            return true;
+        }
+        String candidate = matchByName ? itemName : materialName;
+        return candidate != null && target.equalsIgnoreCase(candidate);
+    }
+
+    public boolean isMatchByName() {
+        return matchByName;
+    }
+
+    public void setMatchByName(boolean matchByName) {
+        this.matchByName = matchByName;
     }
 
     /** Units of progress needed to finish this requirement. */
@@ -73,7 +96,8 @@ public class Requirement {
             default -> {
                 String verb = trigger.display();
                 if (trigger.usesTarget() && target != null && !target.equalsIgnoreCase("ANY")) {
-                    yield verb + ": " + target + " x" + amount;
+                    String label = matchByName ? "\"" + target + "\"" : target;
+                    yield verb + ": " + label + " x" + amount;
                 }
                 yield verb + " x" + amount;
             }
