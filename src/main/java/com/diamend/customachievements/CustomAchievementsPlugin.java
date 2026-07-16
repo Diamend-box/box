@@ -72,6 +72,25 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new AchievementTriggerListener(achievementService), this);
         getServer().getPluginManager().registerEvents(new WorldTriggerListener(achievementService), this);
         MythicMobsHook.register(this, achievementService);
+
+        // AuraSkills integration is loaded reflectively-safe: the listener class
+        // (which imports AuraSkills types) is only referenced when the plugin is
+        // present, so we don't hard-depend on it.
+        if (getServer().getPluginManager().isPluginEnabled("AuraSkills")) {
+            try {
+                getServer().getPluginManager().registerEvents(
+                        new com.diamend.customachievements.listener.AuraSkillsListener(achievementService), this);
+                getLogger().info("Hooked into AuraSkills.");
+            } catch (Throwable ex) {
+                getLogger().warning("AuraSkills is present but the hook failed to load: " + ex.getMessage());
+            }
+        }
+    }
+
+    /** Reads a player's total playtime (hours) and updates gauge objectives. */
+    public void syncPlaytime(Player player) {
+        int hours = player.getStatistic(org.bukkit.Statistic.PLAY_ONE_MINUTE) / 72000; // 20 ticks * 3600s
+        achievementService.handleGauge(player, TriggerType.PLAYTIME_HOURS, null, hours);
     }
 
     private void registerCommand() {
@@ -87,10 +106,11 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     private void startTasks() {
         if (getConfig().getBoolean("playtime-tracking", true)) {
-            // Every minute (1200 ticks), grant a minute of playtime progress.
+            // Every minute, refresh each online player's playtime-hours gauge
+            // from the server's persisted PLAY_ONE_MINUTE statistic.
             playtimeTask = getServer().getScheduler().runTaskTimer(this, () -> {
                 for (Player player : getServer().getOnlinePlayers()) {
-                    achievementService.handle(player, TriggerType.PLAYTIME_MINUTES, (String) null, 1);
+                    syncPlaytime(player);
                 }
             }, 1200L, 1200L);
         }

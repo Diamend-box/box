@@ -139,6 +139,39 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void playtimeGaugeCompletesAtThreshold() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("marathon");
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(new Requirement(TriggerType.PLAYTIME_HOURS, "ANY", 2));
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handleGauge(player, TriggerType.PLAYTIME_HOURS, null, 1);
+        assertEquals(1, data.getProgress(PlayerData.requirementKey("marathon", 0)), "gauge reflects current value");
+        assertFalse(data.isCompleted("marathon"));
+
+        plugin.getAchievementService().handleGauge(player, TriggerType.PLAYTIME_HOURS, null, 2);
+        assertTrue(data.isCompleted("marathon"), "completes at the threshold");
+    }
+
+    @Test
+    void auraSkillsGaugeMatchesSkillAndLevel() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("master_miner");
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(new Requirement(TriggerType.AURASKILLS_LEVEL, "MINING", 25));
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handleGauge(player, TriggerType.AURASKILLS_LEVEL, "FARMING", 30);
+        assertFalse(data.isCompleted("master_miner"), "a different skill should not count");
+
+        plugin.getAchievementService().handleGauge(player, TriggerType.AURASKILLS_LEVEL, "MINING", 25);
+        assertTrue(data.isCompleted("master_miner"), "reaching the level in the right skill completes it");
+    }
+
+    @Test
     void multiRequirementSurvivesSaveAndLoad() {
         // The seeded "well_prepared" has two requirements; force a reload so it
         // is parsed back from the written achievements.yml (new list format).

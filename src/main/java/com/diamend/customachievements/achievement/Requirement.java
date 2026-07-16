@@ -67,7 +67,9 @@ public class Requirement {
                 yield "Reach " + (loc != null ? loc.pretty() : target);
             }
             case REACH_DIMENSION -> "Enter " + target + (amount > 1 ? " (x" + amount + ")" : "");
-            case PLAYTIME_MINUTES -> "Play for " + amount + " minute(s)";
+            case PLAYTIME_HOURS -> "Play for " + amount + " hour(s)";
+            case AURASKILLS_LEVEL -> "Reach level " + amount
+                    + (target != null && !target.equalsIgnoreCase("ANY") ? " in " + target : " in any skill");
             default -> {
                 String verb = trigger.display();
                 if (trigger.usesTarget() && target != null && !target.equalsIgnoreCase("ANY")) {

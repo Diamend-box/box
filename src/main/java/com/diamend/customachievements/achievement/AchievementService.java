@@ -84,6 +84,41 @@ public class AchievementService {
         }
     }
 
+    /**
+     * Updates gauge-style requirements (playtime, AuraSkills level) to reflect a
+     * current value rather than accumulating. Progress is set to the value
+     * (capped at the requirement's amount); the achievement is awarded once all
+     * requirements are satisfied.
+     */
+    public void handleGauge(Player player, TriggerType type, String targetKey, int value) {
+        if (value < 0) {
+            return;
+        }
+        PlayerData data = playerData.get(player.getUniqueId());
+        for (Achievement achievement : achievements.all()) {
+            if (data.isCompleted(achievement.getId())) {
+                continue;
+            }
+            List<Requirement> requirements = achievement.getRequirements();
+            boolean changed = false;
+            for (int i = 0; i < requirements.size(); i++) {
+                Requirement requirement = requirements.get(i);
+                if (requirement.getTrigger() != type || !requirement.matchesTarget(targetKey)) {
+                    continue;
+                }
+                int capped = Math.min(value, requirement.requiredAmount());
+                String key = PlayerData.requirementKey(achievement.getId(), i);
+                if (data.getProgress(key) != capped) {
+                    data.setProgress(key, capped);
+                    changed = true;
+                }
+            }
+            if (changed && isComplete(achievement, data)) {
+                award(player, achievement, data);
+            }
+        }
+    }
+
     /** True when every requirement of the achievement has reached its required amount. */
     private boolean isComplete(Achievement achievement, PlayerData data) {
         List<Requirement> requirements = achievement.getRequirements();

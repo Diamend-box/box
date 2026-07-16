@@ -238,12 +238,12 @@ public class AchievementManager {
         achievements.put(tourist.getId(), tourist);
 
         Achievement veteran = new Achievement("veteran");
-        veteran.setDisplayName("<light_purple>Veteran");
-        veteran.setDescription(new ArrayList<>(List.of("<gray>Play for 60 minutes.")));
+        veteran.setDisplayName("&d&lVeteran");
+        veteran.setDescription(new ArrayList<>(List.of("&7Play for 10 hours.")));
         veteran.setIcon(Material.CLOCK);
-        veteran.setTrigger(TriggerType.PLAYTIME_MINUTES);
+        veteran.setTrigger(TriggerType.PLAYTIME_HOURS);
         veteran.setTarget("ANY");
-        veteran.setAmount(60);
+        veteran.setAmount(10);
         veteran.setAnnounce(false);
         achievements.put(veteran.getId(), veteran);
 

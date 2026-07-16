@@ -1,68 +1,44 @@
 package com.diamend.customachievements.achievement;
 
+import org.bukkit.Material;
+
+import java.util.Locale;
+
 /**
- * The kinds of events that can complete a custom achievement.
- *
- * <p>Each trigger either fires once ({@code MANUAL}, {@code REACH_LOCATION})
- * or accumulates progress up to the achievement's required amount. Some
- * triggers match against a "target" (a {@link org.bukkit.Material},
- * {@link org.bukkit.entity.EntityType}, world, location or MythicMobs mob
- * name), while others simply count occurrences.
+ * The kinds of events that can complete an achievement objective.
  */
 public enum TriggerType {
 
-    /** Only granted through the command or another plugin's API. */
-    MANUAL("Manual / Command", false, false),
-
-    /** Break blocks of the target material. */
-    BLOCK_BREAK("Break Blocks", true, true),
-
-    /** Place blocks of the target material. */
-    BLOCK_PLACE("Place Blocks", true, true),
-
-    /** Kill entities of the target type. */
-    ENTITY_KILL("Kill Entities", true, true),
-
-    /** Kill MythicMobs mobs with the target internal name (requires MythicMobs). */
-    MYTHIC_MOB_KILL("Kill Mythic Mobs", true, true),
-
-    /** Craft items of the target material. */
-    ITEM_CRAFT("Craft Items", true, true),
-
-    /** Eat or drink items of the target material. */
-    ITEM_CONSUME("Consume Items", true, true),
-
-    /** Reel in anything while fishing. */
-    FISH_CAUGHT("Catch Fish", false, true),
-
-    /** Die as a player. */
-    PLAYER_DEATH("Player Deaths", false, true),
-
-    /** Accumulate minutes of playtime while online. */
-    PLAYTIME_MINUTES("Playtime (minutes)", false, true),
-
-    /** Enter a radius around a fixed point (target: world;x;y;z;radius). */
-    REACH_LOCATION("Reach a Location", true, false),
-
-    /** Enter a world/dimension, including custom ones (target: name, key or environment). */
-    REACH_DIMENSION("Reach a Dimension", true, true);
+    MANUAL("Manual / Command", false, false, Material.COMMAND_BLOCK),
+    BLOCK_BREAK("Break Blocks", true, true, Material.DIAMOND_PICKAXE),
+    BLOCK_PLACE("Place Blocks", true, true, Material.BRICKS),
+    ENTITY_KILL("Kill Entities", true, true, Material.DIAMOND_SWORD),
+    MYTHIC_MOB_KILL("Kill Mythic Mobs", true, true, Material.WITHER_SKELETON_SKULL),
+    AURASKILLS_LEVEL("AuraSkills Level", true, true, Material.EXPERIENCE_BOTTLE),
+    ITEM_CRAFT("Craft Items", true, true, Material.CRAFTING_TABLE),
+    ITEM_CONSUME("Consume Items", true, true, Material.COOKED_BEEF),
+    FISH_CAUGHT("Catch Fish", false, true, Material.FISHING_ROD),
+    PLAYER_DEATH("Player Deaths", false, true, Material.SKELETON_SKULL),
+    PLAYTIME_HOURS("Playtime (hours)", false, true, Material.CLOCK),
+    REACH_LOCATION("Reach a Location", true, false, Material.COMPASS),
+    REACH_DIMENSION("Reach a Dimension", true, true, Material.END_PORTAL_FRAME);
 
     private final String display;
     private final boolean usesTarget;
     private final boolean usesAmount;
+    private final Material icon;
 
-    TriggerType(String display, boolean usesTarget, boolean usesAmount) {
+    TriggerType(String display, boolean usesTarget, boolean usesAmount, Material icon) {
         this.display = display;
         this.usesTarget = usesTarget;
         this.usesAmount = usesAmount;
+        this.icon = icon;
     }
 
-    /** Human readable label shown in the editor GUI. */
     public String display() {
         return display;
     }
 
-    /** Whether this trigger matches a target key. */
     public boolean usesTarget() {
         return usesTarget;
     }
@@ -72,22 +48,26 @@ public enum TriggerType {
         return usesAmount;
     }
 
-    public TriggerType next() {
-        TriggerType[] values = values();
-        return values[(ordinal() + 1) % values.length];
+    /** Icon used to represent this trigger in the picker GUI. */
+    public Material icon() {
+        return icon;
     }
 
-    public TriggerType prev() {
-        TriggerType[] values = values();
-        return values[(ordinal() - 1 + values.length) % values.length];
+    /** Triggers whose progress is a live gauge (set to a value) rather than a running count. */
+    public boolean isGauge() {
+        return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL;
     }
 
     public static TriggerType fromString(String raw) {
         if (raw == null) {
             return MANUAL;
         }
+        String value = raw.trim().toUpperCase(Locale.ROOT);
+        if (value.equals("PLAYTIME_MINUTES")) {
+            return PLAYTIME_HOURS; // legacy alias
+        }
         try {
-            return valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+            return valueOf(value);
         } catch (IllegalArgumentException ex) {
             return MANUAL;
         }

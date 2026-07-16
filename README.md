@@ -17,8 +17,14 @@ still **locked** (with live progress bars).
 - ⚙️ **Automatic tracking** for many trigger types (mining, building, killing,
   crafting, eating, fishing, deaths, playtime, reaching **locations** and
   **dimensions** – including custom ones) plus **manual/command** grants.
-- 🐉 **MythicMobs support** – achievements for killing specific MythicMobs mobs
-  (optional soft-dependency; works with MythicMobs 4.x and 5.x).
+- 🎯 **Multiple objectives** – an achievement can require several triggers at
+  once; it unlocks only when every objective is complete.
+- 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
+  menus (no typing IDs from memory).
+- 🎨 **Flexible text** – names/descriptions accept classic `&` colour codes
+  *and* MiniMessage, mixed freely.
+- 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
+  skill-level achievements; the plugin runs fine without either.
 - 🏆 **Rewards** – grant XP and/or run console commands on unlock.
 - 📢 **Unlock feedback** – toast sound, on-screen title, personal message and an
   optional server-wide broadcast.
@@ -43,7 +49,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.1.0.jar`.
+The finished plugin is written to `target/CustomAchievements-1.2.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io`, so the build
@@ -80,30 +86,29 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
 ## Creating an achievement (GUI walkthrough)
 
 1. Run `/ca admin` and click **+ Create New Achievement** (or run `/ca create`).
-2. The **editor** opens. Each item is a field you can click:
+2. The **editor** opens. The top row holds the achievement's presentation and
+   rewards; each item is a clickable field:
    - **Identifier** – the unique key (only editable while creating).
    - **Icon** – click while holding an item to use it, or click empty-handed to
      type a material name.
-   - **Display Name** – click to type in chat (MiniMessage colours supported).
+   - **Display Name** – click to type in chat (`&`-codes and MiniMessage).
    - **Description** – left-click to rewrite it (use `|` to split lines),
      right-click to append a line, shift-right-click to remove the last line.
-     Works when creating *and* when editing an existing achievement.
-   - **Trigger** – left-click for the next type, right-click for the previous.
-   - **Target** – depends on the trigger:
-     - blocks/items/entities: type a name, or `ANY`;
-     - *Reach a Location*: **left-click to capture your current position**
-       (radius 5), or right-click to type `world x y z [radius]`;
-     - *Reach a Dimension*: **left-click to use the world you're in**, or
-       right-click to type a world name, a namespaced key
-       (`minecraft:the_nether`, `mypack:skylands`, ...) or an environment
-       (`NORMAL` / `NETHER` / `THE_END` / `CUSTOM`);
-     - *Kill Mythic Mobs*: type the mob's MythicMobs internal name, or `ANY`.
-   - **Required Amount** – left/right click ±1, shift-click ±10.
    - **Broadcast on Unlock** – click to toggle.
-   - **Reward XP** – left/right click ±10, shift-click ±100.
+   - **Reward XP** – click to type the amount.
    - **Reward Commands** – left-click to add one (use `%player%`), right-click to
      clear.
-3. Click **Save**. The achievement is written to `achievements.yml` immediately
+3. Below that is the **Objectives** area. Click **+ Add Objective** (or an
+   existing one) to open the objective editor, where you pick:
+   - **Trigger** – click to open the **trigger picker** (a menu of all triggers).
+   - **Target** – click to open the **target picker**, a paginated, searchable
+     grid of the relevant options (materials / entities / skills / dimensions).
+     Special cases: *Reach a Location* captures your current position on
+     left-click (or type `world x y z [radius]`); *Kill Mythic Mobs* is typed.
+   - **Required Amount** – click to type a number.
+   Shift-right-click an objective tile to remove it. An achievement unlocks only
+   when **all** its objectives are complete.
+4. Click **Save**. The achievement is written to `achievements.yml` immediately
    and appears in every player's menu.
 
 To edit an existing achievement, open `/ca admin` and click its icon. To delete
@@ -120,13 +125,34 @@ one, open it in the editor and **shift-click** the Delete button.
 | `BLOCK_PLACE` | Material | Blocks placed |
 | `ENTITY_KILL` | EntityType | Mobs killed |
 | `MYTHIC_MOB_KILL` | MythicMobs internal name | MythicMobs mobs killed |
+| `AURASKILLS_LEVEL` | AuraSkills skill (or ANY) | Reach a skill level |
 | `ITEM_CRAFT` | Material | Items crafted |
 | `ITEM_CONSUME` | Material | Items eaten/drunk |
 | `FISH_CAUGHT` | – | Fish reeled in |
 | `PLAYER_DEATH` | – | Deaths |
-| `PLAYTIME_MINUTES` | – | Minutes played |
+| `PLAYTIME_HOURS` | – | Hours played (from server statistics) |
 | `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
 | `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
+
+### Multiple objectives
+
+An achievement can have **several objectives** (triggers). It unlocks only once
+**all** of them are complete, and each objective tracks its own progress (shown
+per-line in the menu). Add/edit objectives from the editor, or in
+`achievements.yml` under a `requirements:` list.
+
+### Text formatting
+
+Names and descriptions accept **both** classic colour codes (`&a`, `&l`,
+`&#ff8800`) **and** [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
+(`<green>`, `<bold>`, `<gradient:…>`) — you can mix them.
+
+### AuraSkills
+
+If [AuraSkills](https://wiki.aurelium.dev/auraskills) is installed,
+`AURASKILLS_LEVEL` objectives complete when a player reaches the required level
+in the chosen skill (or ANY skill). Soft dependency — the plugin runs fine
+without it.
 
 `target: ANY` (or a blank target) matches everything for that trigger
 (except `REACH_LOCATION`, which always needs a concrete location).
@@ -163,7 +189,7 @@ type.
 announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
-playtime-tracking: true     # enable PLAYTIME_MINUTES achievements
+playtime-tracking: true     # enable PLAYTIME_HOURS achievements
 autosave-minutes: 5         # periodic save of online players (0 to disable)
 
 messages:
@@ -190,8 +216,8 @@ plugins/CustomAchievements/
     └── <uuid>.yml        # each player's completed list + progress
 ```
 
-On first run five example achievements are created so you have something to look
-at (Getting Wood, Diamonds Forever, Monster Hunter, Hot Tourist, Veteran).
+On first run six example achievements are created so you have something to look
+at (Getting Wood, Diamonds Forever, Monster Hunter, Hot Tourist, Veteran, Well Prepared).
 
 ---
 

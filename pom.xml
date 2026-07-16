@@ -6,7 +6,7 @@
 
     <groupId>com.diamend</groupId>
     <artifactId>CustomAchievements</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
 
     <name>CustomAchievements</name>
@@ -29,6 +29,14 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>1.21.4-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Optional soft-dependency: only used when AuraSkills is installed. -->
+        <dependency>
+            <groupId>dev.aurelium</groupId>
+            <artifactId>auraskills-api-bukkit</artifactId>
+            <version>2.3.12</version>
             <scope>provided</scope>
         </dependency>
 
