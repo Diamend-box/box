@@ -22,7 +22,12 @@ advancement-toast: false
 
 # Use an anvil GUI for text entry in the editor instead of chat. This keeps
 # typed text out of chat entirely (so chat-bridge plugins like DiscordSRV can't
-# relay it). Set to false to fall back to typing in chat.
+# relay it). Type in the anvil's rename field, then click the right-hand result
+# slot to confirm. Set this to false to use the old method (typing in chat).
+#
+# The anvil input is powered by the bundled AnvilGUI library. If it can't open
+# on your server build for any reason, the editor automatically falls back to
+# chat input, so the editor always works either way.
 use-anvil-input: true
 
 # Track playtime so PLAYTIME_HOURS achievements can be earned.

@@ -26,6 +26,9 @@ still **locked** (with live progress bars).
   once; it unlocks only when every objective is complete.
 - 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
   menus (no typing IDs from memory).
+- ⌨️ **Off-chat text entry** – editor prompts use an anvil GUI so typed values
+  never hit chat (keeps them away from chat-bridge plugins like DiscordSRV);
+  toggle off in the config to type in chat instead.
 - 🎨 **Flexible text** – names/descriptions accept classic `&` colour codes
   *and* MiniMessage, mixed freely.
 - 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
@@ -63,13 +66,15 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.3.0.jar`.
+The finished plugin is written to `target/CustomAchievements-1.7.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
-> The build downloads the Paper API from `https://repo.papermc.io`, so the build
-> machine needs access to that repository (any normal dev machine or CI runner
-> does). No other third-party libraries are shaded in — MiniMessage/Adventure
-> ship with Paper.
+> The build downloads the Paper API from `https://repo.papermc.io` and the
+> [AnvilGUI](https://github.com/WesJD/AnvilGUI) library from
+> `https://mvn.wesjd.net`, so the build machine needs access to those
+> repositories (any normal dev machine or CI runner does). AnvilGUI is shaded
+> in (relocated) to power the off-chat anvil editor; MiniMessage/Adventure ship
+> with Paper.
 
 ---
 
@@ -127,7 +132,8 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    and appears in every player's menu.
 
 To edit an existing achievement, open `/ca admin` and click its icon. To delete
-one, open it in the editor and **shift-click** the Delete button.
+one, open it in the editor and click the **Delete** button, then click it again
+to confirm (a two-step guard so you can't wipe an achievement by accident).
 
 ---
 
@@ -161,6 +167,18 @@ per-line in the menu). Add/edit objectives from the editor, or in
 Names and descriptions accept **both** classic colour codes (`&a`, `&l`,
 `&#ff8800`) **and** [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
 (`<green>`, `<bold>`, `<gradient:…>`) — you can mix them.
+
+### Editor text entry (anvil vs chat)
+
+When the editor asks you to type something (a name, a number, a command…), it
+opens a small **anvil GUI**: type into the rename field and click the right-hand
+result slot to confirm, or close the menu to cancel. Nothing you type reaches
+chat, so chat-bridge plugins (DiscordSRV, etc.) never relay editor input. This
+is powered by the bundled [AnvilGUI](https://github.com/WesJD/AnvilGUI) library.
+
+Prefer the old behaviour? Set `use-anvil-input: false` in `config.yml` to type
+in chat instead. Either way, if the anvil can't open on your server build the
+editor falls back to chat automatically, so it always works.
 
 ### AuraSkills
 
@@ -227,6 +245,8 @@ their own progress. (Ids may contain underscores — that's fine.)
 announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
+advancement-toast: false    # EXPERIMENTAL native advancement-toast pop-up on unlock
+use-anvil-input: true        # editor prompts use the off-chat anvil GUI (false = type in chat)
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
 progress-feedback: true     # action-bar progress readout as players advance
 count-player-placed-blocks: true  # false = don't count breaking blocks you placed

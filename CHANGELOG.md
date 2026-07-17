@@ -4,6 +4,22 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.7.0]
+### Fixed
+- **Off-chat anvil editor input now actually works.** The previous version built
+  the anvil with `Bukkit.createInventory(..., ANVIL, ...)`, which produces a
+  non-functional anvil: `PrepareAnvilEvent` never fires and the rename text is
+  never captured (PaperMC/Paper#9892), so confirming did nothing. It is now
+  powered by the bundled **AnvilGUI** library (shaded and relocated), which
+  opens a real anvil menu. Type in the rename field and click the result slot to
+  confirm.
+### Added
+- If the anvil can't open on a given server build, the editor now **falls back
+  to chat input automatically**, so text entry always works.
+### Changed
+- `use-anvil-input` still toggles the anvil off (type in chat instead); it now
+  drives the AnvilGUI-backed prompt. Defaults to `true`.
+
 ## [1.6.0]
 ### Added
 - **PlaceholderAPI support** (soft dependency) — show live, per-player

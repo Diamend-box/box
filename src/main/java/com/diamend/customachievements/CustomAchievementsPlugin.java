@@ -194,4 +194,13 @@ public class CustomAchievementsPlugin extends JavaPlugin {
     public ChatInputManager getChatInput() {
         return chatInput;
     }
+
+    /**
+     * Whether editor text prompts should use the off-chat anvil GUI. When false
+     * (or when the anvil can't be built on this server build) the editor falls
+     * back to typing in chat.
+     */
+    public boolean isAnvilInputEnabled() {
+        return getConfig().getBoolean("use-anvil-input", true);
+    }
 }

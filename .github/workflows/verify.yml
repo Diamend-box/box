@@ -25,6 +25,25 @@ jobs:
           cache: maven
       - name: Package
         run: mvn -B -ntp -DskipTests clean package
+      - name: Assert AnvilGUI is shaded and relocated
+        run: |
+          set -uo pipefail
+          JAR=$(ls target/CustomAchievements-*.jar | head -1)
+          echo "Inspecting $JAR"
+          LIST=$(unzip -l "$JAR")
+          # The relocated AnvilGUI entrypoint must be bundled.
+          echo "$LIST" | grep -q "com/diamend/customachievements/libs/anvilgui/AnvilGUI.class" \
+            || { echo "::error::relocated AnvilGUI entrypoint missing from jar (bad shade)"; exit 1; }
+          # The NMS version wrappers must be bundled too, else the anvil throws
+          # NoClassDefFoundError at open time (which the smoke test can't reach).
+          echo "$LIST" | grep -qE "com/diamend/customachievements/libs/anvilgui/version/.+\.class" \
+            || { echo "::error::AnvilGUI version wrappers missing from jar (bad shade include)"; exit 1; }
+          # The original package must NOT leak (would clash with other plugins
+          # that also shade AnvilGUI).
+          if echo "$LIST" | grep -qE " net/wesjd/anvilgui/"; then
+            echo "::error::un-relocated net.wesjd.anvilgui classes present in jar"; exit 1
+          fi
+          echo "AnvilGUI is bundled and relocated correctly."
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:

@@ -53,14 +53,6 @@ public class GuiListener implements Listener {
         }
     }
 
-    @EventHandler
-    public void onPrepareAnvil(org.bukkit.event.inventory.PrepareAnvilEvent event) {
-        if (event.getView().getTopInventory().getHolder()
-                instanceof com.diamend.customachievements.gui.AnvilInputMenu anvil) {
-            anvil.onPrepare(event);
-        }
-    }
-
     @EventHandler(priority = EventPriority.LOW)
     public void onChat(AsyncChatEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();

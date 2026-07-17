@@ -6,7 +6,7 @@
 
     <groupId>com.diamend</groupId>
     <artifactId>CustomAchievements</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
     <packaging>jar</packaging>
 
     <name>CustomAchievements</name>
@@ -26,6 +26,11 @@
         <repository>
             <id>placeholderapi</id>
             <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+        <!-- AnvilGUI (bundled/shaded; powers the off-chat anvil text editor). -->
+        <repository>
+            <id>mvn-wesjd-net</id>
+            <url>https://mvn.wesjd.net/</url>
         </repository>
     </repositories>
 
@@ -51,6 +56,15 @@
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Off-chat anvil text entry. Bundled into the plugin jar (shaded and
+             relocated below) because it isn't provided by the server. -->
+        <dependency>
+            <groupId>net.wesjd</groupId>
+            <artifactId>anvilgui</artifactId>
+            <version>1.10.13-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
 
         <!-- Tests: run the plugin against a real Bukkit/Paper API impl.
@@ -90,6 +104,37 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+            </plugin>
+            <!-- Bundle AnvilGUI into the jar and relocate its package so it can't
+                 clash with another plugin that also shades AnvilGUI. Only the
+                 AnvilGUI artifact is bundled; paper-api and the soft deps stay
+                 provided. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>net.wesjd:*</include>
+                                </includes>
+                            </artifactSet>
+                            <relocations>
+                                <relocation>
+                                    <pattern>net.wesjd.anvilgui</pattern>
+                                    <shadedPattern>com.diamend.customachievements.libs.anvilgui</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <resources>
