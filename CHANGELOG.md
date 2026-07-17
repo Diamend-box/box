@@ -4,6 +4,11 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.5.1]
+### Added
+- `/ca info <id>` — print an achievement's details (objectives, rewards,
+  category, secret flag) in chat. Reward commands are shown to admins only.
+
 ## [1.5.0]
 ### Added
 - **Off-chat editor input** — text fields in the editor now use an **anvil**

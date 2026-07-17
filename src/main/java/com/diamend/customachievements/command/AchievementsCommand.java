@@ -50,6 +50,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "revoke", "take" -> revoke(sender, args);
             case "reset" -> reset(sender, args);
             case "top", "leaderboard" -> top(sender);
+            case "info", "inspect" -> info(sender, args);
             case "reload" -> reload(sender);
             default -> help(sender);
         }
@@ -253,6 +254,61 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         });
     }
 
+    private void info(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(PERM_USE)) {
+            noPermission(sender);
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(Text.parse("<red>Usage: /ca info <id>"));
+            return;
+        }
+        Achievement achievement = plugin.getAchievementManager().get(args[1]);
+        if (achievement == null) {
+            sender.sendMessage(Text.parse("<red>No achievement with id <white>" + args[1] + "<red>."));
+            return;
+        }
+        boolean admin = sender.hasPermission(PERM_ADMIN);
+
+        sender.sendMessage(Text.parse("<gold><bold>" + achievement.getDisplayName()
+                + " <dark_gray>(" + achievement.getId() + ")"));
+        for (String line : achievement.getDescription()) {
+            sender.sendMessage(Text.parse("<gray>" + line));
+        }
+        if (!achievement.getCategory().isBlank()) {
+            sender.sendMessage(Text.parse("<gray>Category: <white>" + achievement.getCategory()));
+        }
+        if (achievement.isHidden()) {
+            sender.sendMessage(Text.parse("<gray>Secret: <white>yes"));
+        }
+
+        sender.sendMessage(Text.parse("<yellow>Objectives <gray>(all required):"));
+        int index = 1;
+        for (var requirement : achievement.getRequirements()) {
+            sender.sendMessage(Text.parse(" <dark_gray>" + index + ". <white>" + requirement.describe()));
+            index++;
+        }
+
+        java.util.List<String> rewards = new ArrayList<>();
+        if (achievement.getRewardXp() > 0) {
+            rewards.add(achievement.getRewardXp() + " XP");
+        }
+        if (!achievement.getRewardItems().isEmpty()) {
+            rewards.add(achievement.getRewardItems().size() + " item(s)");
+        }
+        if (!rewards.isEmpty()) {
+            sender.sendMessage(Text.parse("<yellow>Rewards: <white>" + String.join(", ", rewards)));
+        }
+        if (admin && !achievement.getRewardCommands().isEmpty()) {
+            sender.sendMessage(Text.parse("<yellow>Reward commands:"));
+            for (String command : achievement.getRewardCommands()) {
+                sender.sendMessage(Text.parse(" <dark_gray>- <white>/" + command));
+            }
+        }
+        sender.sendMessage(Text.parse("<gray>Broadcasts on unlock: <white>"
+                + (achievement.isAnnounce() ? "yes" : "no")));
+    }
+
     private void reload(CommandSender sender) {
         if (!hasAdmin(sender)) {
             return;
@@ -267,6 +323,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Text.parse("<gold><bold>CustomAchievements"));
         sender.sendMessage(Text.parse("<yellow>/ca <gray>- Open your achievements menu"));
         sender.sendMessage(Text.parse("<yellow>/ca list <gray>- List achievements in chat"));
+        sender.sendMessage(Text.parse("<yellow>/ca info <id> <gray>- Show an achievement's details"));
         sender.sendMessage(Text.parse("<yellow>/ca top <gray>- Completion leaderboard"));
         if (sender.hasPermission(PERM_ADMIN)) {
             sender.sendMessage(Text.parse("<yellow>/ca admin <gray>- Manage achievements (GUI)"));
@@ -294,7 +351,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("list", "top"));
+            List<String> subs = new ArrayList<>(List.of("list", "info", "top"));
             if (sender.hasPermission(PERM_ADMIN)) {
                 subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "reload"));
             }
@@ -302,6 +359,15 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             for (String sub : subs) {
                 if (sub.startsWith(prefix)) {
                     out.add(sub);
+                }
+            }
+            return out;
+        }
+        // /ca info <id> is available to everyone with use permission.
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+            for (Achievement achievement : plugin.getAchievementManager().all()) {
+                if (achievement.getId().startsWith(args[1].toLowerCase(Locale.ROOT))) {
+                    out.add(achievement.getId());
                 }
             }
             return out;
