@@ -4,6 +4,18 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.6.0]
+### Added
+- **PlaceholderAPI support** (soft dependency) — show live, per-player
+  achievement info on holograms, scoreboards, signs and chat. Placeholders:
+  `%customachievements_completed%`, `_total%`, `_remaining%`, `_percent%`,
+  and per-achievement `_status_<id>%`, `_progress_<id>%`, `_percent_<id>%`,
+  `_name_<id>%`. Secret achievements read as `???` until unlocked.
+### Changed
+- **Editor delete is now a two-step confirm** — the Delete button arms on the
+  first click ("Click again to DELETE") and only removes the achievement on a
+  second click; clicking anything else cancels. Prevents accidental deletion.
+
 ## [1.5.1]
 ### Added
 - `/ca info <id>` — print an achievement's details (objectives, rewards,

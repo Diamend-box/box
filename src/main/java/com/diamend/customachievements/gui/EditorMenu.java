@@ -53,6 +53,8 @@ public class EditorMenu implements Menu {
     private final boolean creating;
 
     private Inventory inventory;
+    // Two-step delete guard: the first click arms, the second confirms.
+    private boolean deleteArmed;
 
     public EditorMenu(CustomAchievementsPlugin plugin, Player viewer, Achievement draft, boolean creating) {
         this.plugin = plugin;
@@ -173,8 +175,16 @@ public class EditorMenu implements Menu {
         if (!creating) {
             inventory.setItem(SLOT_CLONE, Items.of(Material.BOOK, Text.item("<aqua><bold>Duplicate"),
                     lore("<gray>Create a copy of this achievement", "<gray>as a new draft to edit.")));
-            inventory.setItem(SLOT_DELETE, Items.of(Material.TNT, Text.item("<dark_red><bold>Delete"),
-                    lore("<gray>Permanently remove this achievement.", "", "<red>Shift-click to confirm.")));
+            if (deleteArmed) {
+                inventory.setItem(SLOT_DELETE, Items.of(Material.REDSTONE_BLOCK,
+                        Text.item("<red><bold>Click again to DELETE"),
+                        lore("<gray>Permanently removes <white>" + draft.getId() + "<gray>.", "",
+                                "<red>Click once more to confirm,",
+                                "<yellow>or click anything else to cancel.")));
+            } else {
+                inventory.setItem(SLOT_DELETE, Items.of(Material.TNT, Text.item("<dark_red><bold>Delete"),
+                        lore("<gray>Permanently remove this achievement.", "", "<red>Click to confirm deletion.")));
+            }
         }
     }
 
@@ -182,6 +192,12 @@ public class EditorMenu implements Menu {
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getRawSlot();
         ClickType click = event.getClick();
+
+        // Any interaction other than the delete button cancels a pending deletion.
+        if (deleteArmed && slot != SLOT_DELETE) {
+            deleteArmed = false;
+            rebuild();
+        }
 
         // Objective tiles.
         for (int i = 0; i < OBJECTIVE_SLOTS.length; i++) {
@@ -298,10 +314,16 @@ public class EditorMenu implements Menu {
             case SLOT_SAVE -> save();
             case SLOT_CANCEL -> new AchievementMenu(plugin, viewer, true).open(viewer);
             case SLOT_DELETE -> {
-                if (!creating && click == ClickType.SHIFT_LEFT) {
-                    plugin.getAchievementManager().remove(draft.getId());
-                    viewer.sendMessage(Text.parse("<red>Deleted achievement <white>" + draft.getId() + "<red>."));
-                    new AchievementMenu(plugin, viewer, true).open(viewer);
+                if (!creating) {
+                    if (deleteArmed) {
+                        deleteArmed = false;
+                        plugin.getAchievementManager().remove(draft.getId());
+                        viewer.sendMessage(Text.parse("<red>Deleted achievement <white>" + draft.getId() + "<red>."));
+                        new AchievementMenu(plugin, viewer, true).open(viewer);
+                    } else {
+                        deleteArmed = true;
+                        rebuild();
+                    }
                 }
             }
             default -> {

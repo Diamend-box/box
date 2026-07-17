@@ -70,6 +70,16 @@ public final class Text {
                 .serialize(parse(input));
     }
 
+    /**
+     * Renders to a legacy section-sign ({@code §}) coloured string. Useful for
+     * external consumers (e.g. PlaceholderAPI / holograms) that expect classic
+     * colour codes rather than Adventure components or MiniMessage tags.
+     */
+    public static String legacy(String input) {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                .serialize(parse(input));
+    }
+
     /** Lower-cases using the root locale (kept for callers needing stable case folding). */
     public static String lower(String input) {
         return input == null ? "" : input.toLowerCase(Locale.ROOT);

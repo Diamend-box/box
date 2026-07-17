@@ -30,6 +30,8 @@ still **locked** (with live progress bars).
   *and* MiniMessage, mixed freely.
 - 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
   skill-level achievements; the plugin runs fine without either.
+- 🪧 **PlaceholderAPI** – optional expansion exposing per-player completion and
+  progress placeholders for holograms, scoreboards and signs.
 - 🕵️ **Secret achievements** – hidden entries show as `???` until unlocked.
 - 🗂️ **Optional categories** – group achievements into tabs (only shown once you
   actually use categories).
@@ -193,6 +195,29 @@ dependency wired up via reflection — the plugin loads and runs fine without
 MythicMobs, and both MythicMobs **5.x** and **4.x** are supported. Regular
 `ENTITY_KILL` achievements still count MythicMobs kills by their base entity
 type.
+
+### PlaceholderAPI
+
+If [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) is
+installed, the plugin registers an expansion so you can show live, per-player
+achievement info on holograms, scoreboards, signs and in chat. It's a soft
+dependency — the plugin runs fine without it.
+
+| Placeholder | Shows |
+|---|---|
+| `%customachievements_completed%` | how many the player has unlocked |
+| `%customachievements_total%` | number of achievements |
+| `%customachievements_remaining%` | not-yet-unlocked count |
+| `%customachievements_percent%` | overall completion (0–100) |
+| `%customachievements_status_<id>%` | `Unlocked`, `Locked`, or `???` (secret) |
+| `%customachievements_progress_<id>%` | e.g. `7/10`, or `Complete` |
+| `%customachievements_percent_<id>%` | that achievement's progress (0–100) |
+| `%customachievements_name_<id>%` | its display name (coloured; `???` while secret) |
+
+Replace `<id>` with an achievement's identifier, e.g.
+`%customachievements_progress_getting_wood%`. This pairs well with a hologram at
+spawn: the placeholders update per viewer automatically, so each player sees
+their own progress. (Ids may contain underscores — that's fine.)
 
 ---
 

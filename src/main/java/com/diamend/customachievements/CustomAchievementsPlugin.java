@@ -29,6 +29,9 @@ public class CustomAchievementsPlugin extends JavaPlugin {
     // Non-null only when AuraSkills is installed.
     private com.diamend.customachievements.listener.AuraSkillsListener auraSkills;
 
+    // Non-null only when PlaceholderAPI is installed and the expansion registered.
+    private com.diamend.customachievements.integration.AchievementsPlaceholders placeholders;
+
     private BukkitTask playtimeTask;
     private BukkitTask autosaveTask;
 
@@ -45,6 +48,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
         registerListeners();
         registerCommand();
+        registerPlaceholders();
         startTasks();
 
         // Load data for anyone already online (e.g. after a /reload).
@@ -57,6 +61,13 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (placeholders != null) {
+            try {
+                placeholders.unregister();
+            } catch (Throwable ignored) {
+                // PlaceholderAPI may already be gone during shutdown.
+            }
+        }
         if (playtimeTask != null) {
             playtimeTask.cancel();
         }
@@ -88,6 +99,26 @@ public class CustomAchievementsPlugin extends JavaPlugin {
                 this.auraSkills = null;
                 getLogger().warning("AuraSkills is present but the hook failed to load: " + ex.getMessage());
             }
+        }
+    }
+
+    /**
+     * Registers the PlaceholderAPI expansion when PlaceholderAPI is present. The
+     * expansion class imports PlaceholderAPI types, so it is only touched behind
+     * the plugin-enabled check (soft dependency), guarded like the AuraSkills hook.
+     */
+    private void registerPlaceholders() {
+        if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            return;
+        }
+        try {
+            this.placeholders = new com.diamend.customachievements.integration.AchievementsPlaceholders(this);
+            if (placeholders.register()) {
+                getLogger().info("Registered PlaceholderAPI expansion (%customachievements_...%).");
+            }
+        } catch (Throwable ex) {
+            this.placeholders = null;
+            getLogger().warning("PlaceholderAPI is present but the expansion failed to register: " + ex.getMessage());
         }
     }
 
