@@ -1,0 +1,30 @@
+name: DarkSea
+version: '${project.version}'
+main: com.diamend.darksea.DarkSeaPlugin
+api-version: '1.21'
+description: An Arcane Odyssey-inspired Dark Sea — hostile ocean rings, sea armor, Mythic islands, tiered loot and boat upgrades.
+author: diamend
+# FAWE declares `provides: [WorldEdit]`, so depending on WorldEdit works with
+# FastAsyncWorldEdit installed and tolerates a swap to vanilla WorldEdit later
+# (pasting is only async-safe with FAWE, which is what the server runs).
+depend: [WorldEdit, MythicMobs]
+
+commands:
+  darksea:
+    description: Dark Sea command.
+    aliases: [ds]
+    usage: /ds help
+
+permissions:
+  darksea.use:
+    description: Player commands (/ds status, /ds boat upgrade).
+    default: true
+  darksea.tp:
+    description: Teleport to the Dark Sea home island.
+    default: op
+  darksea.admin:
+    description: Generate/reset the sea, give items, manage boats & islands.
+    default: op
+  darksea.bypass:
+    description: Immunity to sea exposure effects.
+    default: false

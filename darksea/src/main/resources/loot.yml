@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# DarkSea — loot tables per island tier
+#
+# Each registered island chest refills 'rolls' random entries when opened, if
+# 'refill-cooldown-minutes' has passed since its last refill (timestamps
+# persist in islands.yml).
+#
+# Entry types:
+#   item  — material + amount range (min..max)
+#   armor — a random sea-armor piece of the given tier (the progression
+#           engine: ring N chests drop tier N, with a small chance of N+1)
+#   token — a boat upgrade token for the given level
+# Reloads with /ds reload.
+# ---------------------------------------------------------------------------
+
+tiers:
+  1:
+    rolls: 4
+    refill-cooldown-minutes: 45
+    entries:
+      - { type: item,  material: IRON_INGOT,       min: 2, max: 6, weight: 20 }
+      - { type: item,  material: EMERALD,          min: 1, max: 3, weight: 10 }
+      - { type: item,  material: COOKED_COD,       min: 3, max: 8, weight: 15 }
+      - { type: item,  material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 10 }
+      - { type: armor, tier: 1, weight: 8 }
+      - { type: armor, tier: 2, weight: 1 }
+      - { type: token, level: 1, weight: 3 }
+  2:
+    rolls: 4
+    refill-cooldown-minutes: 60
+    entries:
+      - { type: item,  material: GOLD_INGOT,       min: 2, max: 6, weight: 18 }
+      - { type: item,  material: DIAMOND,          min: 1, max: 2, weight: 8 }
+      - { type: item,  material: GOLDEN_APPLE,     min: 1, max: 2, weight: 8 }
+      - { type: item,  material: EXPERIENCE_BOTTLE, min: 4, max: 8, weight: 10 }
+      - { type: armor, tier: 2, weight: 8 }
+      - { type: armor, tier: 3, weight: 1 }
+      - { type: token, level: 1, weight: 3 }
+      - { type: token, level: 2, weight: 2 }
+  3:
+    rolls: 5
+    refill-cooldown-minutes: 90
+    entries:
+      - { type: item,  material: DIAMOND,          min: 2, max: 4, weight: 15 }
+      - { type: item,  material: AMETHYST_SHARD,   min: 4, max: 10, weight: 12 }
+      - { type: item,  material: GOLDEN_APPLE,     min: 1, max: 3, weight: 10 }
+      - { type: item,  material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 2 }
+      - { type: armor, tier: 3, weight: 8 }
+      - { type: armor, tier: 4, weight: 1 }
+      - { type: token, level: 2, weight: 3 }
+      - { type: token, level: 3, weight: 1 }
+  4:
+    rolls: 5
+    refill-cooldown-minutes: 120
+    entries:
+      - { type: item,  material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 10 }
+      - { type: item,  material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 8 }
+      - { type: item,  material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1, weight: 4 }
+      - { type: item,  material: TOTEM_OF_UNDYING,    min: 1, max: 1, weight: 4 }
+      - { type: item,  material: HEART_OF_THE_SEA,    min: 1, max: 1, weight: 5 }
+      - { type: armor, tier: 4, weight: 8 }
+      - { type: token, level: 3, weight: 3 }

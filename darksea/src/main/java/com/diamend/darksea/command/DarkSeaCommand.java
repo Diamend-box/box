@@ -1,0 +1,428 @@
+package com.diamend.darksea.command;
+
+import com.diamend.darksea.DarkSeaPlugin;
+import com.diamend.darksea.armor.SeaArmor;
+import com.diamend.darksea.config.DarkSeaSettings;
+import com.diamend.darksea.config.Messages;
+import com.diamend.darksea.island.IslandInstance;
+import com.diamend.darksea.zone.Zone;
+import com.diamend.darksea.zone.ZoneManager;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/** /darksea (alias /ds) — every player and admin entry point. */
+public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
+
+    private final DarkSeaPlugin plugin;
+
+    public DarkSeaCommand(DarkSeaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        Messages msg = plugin.messages();
+        String sub = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "help";
+        switch (sub) {
+            case "help" -> help(sender);
+            case "status" -> status(sender);
+            case "tp" -> tp(sender);
+            case "boat" -> boat(sender, args);
+            case "generate" -> {
+                if (requireAdmin(sender)) {
+                    plugin.placer().generate(sender);
+                }
+            }
+            case "reset" -> reset(sender, args);
+            case "island" -> island(sender, args);
+            case "give" -> give(sender, args);
+            case "reload" -> {
+                if (requireAdmin(sender)) {
+                    plugin.reloadAll();
+                    msg.send(sender, "reload-done");
+                }
+            }
+            default -> msg.send(sender, "unknown-command");
+        }
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    // Player commands
+    // ------------------------------------------------------------------
+
+    private void help(CommandSender sender) {
+        Messages msg = plugin.messages();
+        msg.sendBare(sender, "help-header");
+        helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
+        helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
+        helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
+        helpLine(sender, "/ds generate", "place islands for all unfilled rings", "darksea.admin");
+        helpLine(sender, "/ds reset <soft|full>", "re-paste islands / regenerate the sea", "darksea.admin");
+        helpLine(sender, "/ds island list [tier] | tp <id>", "inspect placed islands", "darksea.admin");
+        helpLine(sender, "/ds give <armor|token> <n> [player]", "grant sea armor or tokens", "darksea.admin");
+        helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
+        helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
+    }
+
+    private void helpLine(CommandSender sender, String usage, String description, String permission) {
+        if (sender.hasPermission(permission)) {
+            plugin.messages().sendBare(sender, "help-line", "usage", usage, "description", description);
+        }
+    }
+
+    private void status(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "players-only");
+            return;
+        }
+        Messages msg = plugin.messages();
+        DarkSeaSettings settings = plugin.settings();
+        msg.sendBare(player, "status-header");
+
+        DarkSeaSettings.BoatLevel boatStats = plugin.boat().stats(plugin.boat().levelOf(player));
+        int protection = plugin.protection().tierOf(player);
+        msg.sendBare(player, "status-protection", "tier", String.valueOf(protection));
+        msg.sendBare(player, "status-boat",
+                "name", boatStats.name(),
+                "level", String.valueOf(plugin.boat().levelOf(player)),
+                "shield", String.valueOf(boatStats.shield()));
+
+        if (!player.getWorld().getName().equals(settings.worldName())) {
+            msg.sendBare(player, "status-not-in-world");
+            return;
+        }
+        double dx = player.getLocation().getX() - settings.centerX();
+        double dz = player.getLocation().getZ() - settings.centerZ();
+        double distSq = dx * dx + dz * dz;
+        Zone zone = plugin.zoneManager().zoneAt(distSq);
+        msg.sendBare(player, "status-zone",
+                "zone", zone.displayName(),
+                "distance", String.valueOf(Math.round(Math.sqrt(distSq))));
+
+        int shield = plugin.boat().shieldFor(player);
+        int exposure = ZoneManager.exposure(zone.requiredTier(), protection, shield);
+        if (exposure <= 0 || player.hasPermission("darksea.bypass")) {
+            msg.sendBare(player, "status-safe");
+        } else {
+            msg.sendBare(player, "status-danger", "exposure", String.valueOf(exposure));
+        }
+    }
+
+    private void tp(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "players-only");
+            return;
+        }
+        if (!player.hasPermission("darksea.tp")) {
+            plugin.messages().send(sender, "no-permission");
+            return;
+        }
+        World world = plugin.worldService().world();
+        if (world == null) {
+            plugin.messages().send(sender, "world-missing");
+            return;
+        }
+        player.teleport(world.getSpawnLocation());
+        plugin.messages().send(player, "tp-done");
+    }
+
+    private void boat(CommandSender sender, String[] args) {
+        Messages msg = plugin.messages();
+        String action = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (action.equals("upgrade")) {
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            plugin.boat().upgrade(player);
+            return;
+        }
+        if (action.equals("set")) {
+            if (!requireAdmin(sender)) {
+                return;
+            }
+            if (args.length < 4) {
+                msg.send(sender, "unknown-command");
+                return;
+            }
+            Player target = Bukkit.getPlayerExact(args[2]);
+            if (target == null) {
+                msg.send(sender, "player-not-found", "player", args[2]);
+                return;
+            }
+            Integer level = parseInt(sender, args[3]);
+            if (level == null) {
+                return;
+            }
+            if (!plugin.settings().boat().levels().containsKey(level)) {
+                msg.send(sender, "invalid-level", "level", String.valueOf(level));
+                return;
+            }
+            plugin.boat().setLevel(target, level);
+            msg.send(sender, "boat-set",
+                    "player", target.getName(),
+                    "level", String.valueOf(level),
+                    "name", plugin.boat().stats(level).name());
+            return;
+        }
+        msg.send(sender, "unknown-command");
+    }
+
+    // ------------------------------------------------------------------
+    // Admin commands
+    // ------------------------------------------------------------------
+
+    private void reset(CommandSender sender, String[] args) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        Messages msg = plugin.messages();
+        String mode = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        switch (mode) {
+            case "soft" -> plugin.worldService().resetSoft(sender);
+            case "full" -> {
+                boolean confirmed = args.length > 2 && args[2].equalsIgnoreCase("confirm");
+                if (!confirmed) {
+                    msg.send(sender, "reset-full-warning");
+                    return;
+                }
+                plugin.worldService().resetFull(sender);
+            }
+            default -> msg.send(sender, "unknown-command");
+        }
+    }
+
+    private void island(CommandSender sender, String[] args) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        Messages msg = plugin.messages();
+        String action = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        if (action.equals("list")) {
+            List<IslandInstance> islands;
+            if (args.length > 2) {
+                Integer tier = parseInt(sender, args[2]);
+                if (tier == null) {
+                    return;
+                }
+                islands = plugin.registry().byTier(tier);
+            } else {
+                islands = plugin.registry().all();
+            }
+            msg.sendBare(sender, "island-list-header", "count", String.valueOf(islands.size()));
+            for (IslandInstance island : islands) {
+                msg.sendBare(sender, "island-list-entry",
+                        "id", island.id(),
+                        "template", island.template(),
+                        "tier", String.valueOf(island.tier()),
+                        "x", String.valueOf(island.origin().x()),
+                        "z", String.valueOf(island.origin().z()));
+            }
+            return;
+        }
+        if (action.equals("tp")) {
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            if (args.length < 3) {
+                msg.send(sender, "unknown-command");
+                return;
+            }
+            IslandInstance island = plugin.registry().get(args[2]);
+            if (island == null) {
+                msg.send(sender, "island-not-found", "id", args[2]);
+                return;
+            }
+            World world = plugin.worldService().world();
+            if (world == null) {
+                msg.send(sender, "world-missing");
+                return;
+            }
+            int y = world.getHighestBlockYAt(island.origin().x(), island.origin().z()) + 1;
+            player.teleport(new Location(world, island.origin().x() + 0.5, y, island.origin().z() + 0.5));
+            msg.send(player, "island-tp", "id", island.id());
+            return;
+        }
+        msg.send(sender, "unknown-command");
+    }
+
+    private void give(CommandSender sender, String[] args) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        Messages msg = plugin.messages();
+        if (args.length < 3) {
+            msg.send(sender, "unknown-command");
+            return;
+        }
+        String kind = args[1].toLowerCase(Locale.ROOT);
+        Integer number = parseInt(sender, args[2]);
+        if (number == null) {
+            return;
+        }
+        Player target;
+        if (args.length > 3) {
+            target = Bukkit.getPlayerExact(args[3]);
+            if (target == null) {
+                msg.send(sender, "player-not-found", "player", args[3]);
+                return;
+            }
+        } else if (sender instanceof Player player) {
+            target = player;
+        } else {
+            msg.send(sender, "players-only");
+            return;
+        }
+
+        switch (kind) {
+            case "armor" -> {
+                DarkSeaSettings.ArmorStyle style = plugin.settings().armor().tiers().get(number);
+                if (style == null) {
+                    msg.send(sender, "invalid-tier", "tier", String.valueOf(number));
+                    return;
+                }
+                List<ItemStack> set = SeaArmor.createSet(plugin.settings().armor(), number);
+                giveItems(target, set);
+                msg.send(sender, "give-armor",
+                        "player", target.getName(),
+                        "tier", String.valueOf(number),
+                        "name", style.displayName());
+            }
+            case "token" -> {
+                if (!plugin.settings().boat().levels().containsKey(number)) {
+                    msg.send(sender, "invalid-level", "level", String.valueOf(number));
+                    return;
+                }
+                giveItems(target, List.of(SeaArmor.createToken(number)));
+                msg.send(sender, "give-token",
+                        "player", target.getName(),
+                        "level", String.valueOf(number));
+            }
+            default -> msg.send(sender, "unknown-command");
+        }
+    }
+
+    private void giveItems(Player target, List<ItemStack> items) {
+        Map<Integer, ItemStack> overflow = target.getInventory().addItem(items.toArray(new ItemStack[0]));
+        for (ItemStack item : overflow.values()) {
+            target.getWorld().dropItemNaturally(target.getLocation(), item);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private boolean requireAdmin(CommandSender sender) {
+        if (!sender.hasPermission("darksea.admin")) {
+            plugin.messages().send(sender, "no-permission");
+            return false;
+        }
+        return true;
+    }
+
+    private Integer parseInt(CommandSender sender, String raw) {
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException ex) {
+            plugin.messages().send(sender, "invalid-number", "value", raw);
+            return null;
+        }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> options = new ArrayList<>();
+        boolean admin = sender.hasPermission("darksea.admin");
+        if (args.length == 1) {
+            options.add("help");
+            options.add("status");
+            options.add("boat");
+            if (sender.hasPermission("darksea.tp")) {
+                options.add("tp");
+            }
+            if (admin) {
+                options.add("generate");
+                options.add("reset");
+                options.add("island");
+                options.add("give");
+                options.add("reload");
+            }
+        } else if (args.length == 2) {
+            switch (args[0].toLowerCase(Locale.ROOT)) {
+                case "boat" -> {
+                    options.add("upgrade");
+                    if (admin) {
+                        options.add("set");
+                    }
+                }
+                case "reset" -> {
+                    if (admin) {
+                        options.add("soft");
+                        options.add("full");
+                    }
+                }
+                case "island" -> {
+                    if (admin) {
+                        options.add("list");
+                        options.add("tp");
+                    }
+                }
+                case "give" -> {
+                    if (admin) {
+                        options.add("armor");
+                        options.add("token");
+                    }
+                }
+                default -> {
+                }
+            }
+        } else if (args.length == 3) {
+            switch (args[0].toLowerCase(Locale.ROOT)) {
+                case "reset" -> {
+                    if (admin && args[1].equalsIgnoreCase("full")) {
+                        options.add("confirm");
+                    }
+                }
+                case "island" -> {
+                    if (admin && args[1].equalsIgnoreCase("tp")) {
+                        for (IslandInstance island : plugin.registry().all()) {
+                            options.add(island.id());
+                        }
+                    }
+                }
+                case "give" -> {
+                    if (admin && args[1].equalsIgnoreCase("armor")) {
+                        for (Integer tier : plugin.settings().armor().tiers().keySet()) {
+                            options.add(String.valueOf(tier));
+                        }
+                    } else if (admin && args[1].equalsIgnoreCase("token")) {
+                        for (Integer level : plugin.settings().boat().levels().keySet()) {
+                            if (level > 0) {
+                                options.add(String.valueOf(level));
+                            }
+                        }
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+        String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
+        return options.stream().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(prefix)).toList();
+    }
+}

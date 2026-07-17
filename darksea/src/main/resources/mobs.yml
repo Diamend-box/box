@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------
+# DarkSea — MythicMobs sets per island tier
+#
+# 'type' must be the INTERNAL name of a mob from your MythicMobs Mobs/*.yml
+# configs (the same id you'd use with /mm mobs spawn). The entries below are
+# PLACEHOLDERS — replace them with mobs that exist on your server, or nothing
+# will spawn (a warning is logged once per unknown type).
+#
+# 'weight' picks between entries; 'level' is passed to MythicMobs so one mob
+# family can scale across rings.
+# Reloads with /ds reload.
+# ---------------------------------------------------------------------------
+
+tiers:
+  1:
+    - { type: DrownedCorsair,  weight: 10, level: 1 }
+    - { type: PirateDeckhand,  weight: 5,  level: 1 }
+  2:
+    - { type: DrownedCorsair,  weight: 8,  level: 5 }
+    - { type: StormCaller,     weight: 4,  level: 3 }
+  3:
+    - { type: StormCaller,     weight: 8,  level: 8 }
+    - { type: AbyssalHorror,   weight: 3,  level: 5 }
+  4:
+    - { type: AbyssalHorror,   weight: 8,  level: 10 }
+    - { type: LeviathanSpawn,  weight: 2,  level: 8 }

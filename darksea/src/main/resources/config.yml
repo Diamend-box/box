@@ -1,0 +1,182 @@
+# ---------------------------------------------------------------------------
+# DarkSea — main configuration
+#
+# World shape (world.*) and task intervals are read once at startup; everything
+# else (zones, armor names, generation counts, boat stats, messages) reloads
+# with /ds reload.
+# ---------------------------------------------------------------------------
+
+world:
+  name: dark_sea
+  sea-level: 62
+  seabed:
+    base-y: 45        # average ocean-floor height
+    variation: 5      # +/- noise variation around base-y
+
+# The point every distance is measured from (the home island).
+center:
+  x: 0
+  z: 0
+
+exposure:
+  check-interval-ticks: 20     # one exposure pass per second
+  effect-duration-ticks: 60    # effects re-applied each pass; lapse ~2s after leaving
+  grace-on-login-seconds: 10   # no effects right after logging in
+
+# Concentric danger rings, measured from center. Order them by max-radius,
+# with the outermost ring using max-radius -1 (unbounded).
+# required-tier is the sea-armor tier that fully negates the ring.
+# Effect types are Minecraft potion-effect keys (poison, wither, darkness...).
+zones:
+  - id: safe
+    name: "<green>Calm Waters</green>"
+    max-radius: 500
+    required-tier: 0
+    effects: []
+  - id: zone1
+    name: "<yellow>The Wild Sea</yellow>"
+    max-radius: 1500
+    required-tier: 1
+    effects:
+      - type: poison
+        amplifier: 0
+  - id: zone2
+    name: "<gold>The Raging Deep</gold>"
+    max-radius: 3000
+    required-tier: 2
+    effects:
+      - type: poison
+        amplifier: 1
+      - type: weakness
+        amplifier: 0
+  - id: zone3
+    name: "<red>The Midnight Waters</red>"
+    max-radius: 5000
+    required-tier: 3
+    effects:
+      - type: wither
+        amplifier: 0
+      - type: darkness
+        amplifier: 0
+  - id: zone4
+    name: "<dark_purple>The Abyssal Reaches</dark_purple>"
+    max-radius: -1
+    required-tier: 4
+    effects:
+      - type: wither
+        amplifier: 1
+      - type: slowness
+        amplifier: 1
+
+# Sea armor sets. Tier = the ring it fully protects against. Wearing a full
+# set of tier N counts as protection N; the LOWEST tier among the four worn
+# pieces is what counts (an untagged or missing piece counts as 0).
+armor:
+  unbreakable: true
+  tiers:
+    1:
+      name: "<color:#6ecff6>Tidewalker</color>"
+      material: CHAINMAIL
+    2:
+      name: "<color:#a8b6c0>Stormplate</color>"
+      material: IRON
+    3:
+      name: "<color:#7e57c2>Abyssal</color>"
+      material: DIAMOND
+    4:
+      name: "<color:#26c6da>Leviathan</color>"
+      material: NETHERITE
+
+# Island scattering (/ds generate and /ds reset full).
+generation:
+  paste-y: 58                # clipboard origin lands at this Y (sidecars can override)
+  min-island-gap: 400        # minimum distance between any two islands
+  ring-border-margin: 200    # keep islands this far inside their ring's borders
+  outer-radius: 8000         # practical outer limit for the unbounded outermost ring
+  islands-per-ring:
+    1: 12
+    2: 16
+    3: 16
+    4: 20
+
+# Marker blocks scanned inside pasted schematics (then replaced):
+#   chest      -> becomes a registered, refilling loot chest
+#   mob-spawn  -> removed; becomes a MythicMobs spawn point
+markers:
+  chest: LODESTONE
+  mob-spawn: GOLD_BLOCK
+
+mob-spawning:
+  scan-interval-ticks: 100      # how often islands are checked for nearby players
+  activation-radius: 64         # a player within this range activates an island
+  per-island-cap: 6
+  global-cap: 120
+  abandon-cooldown-minutes: 5   # despawn island mobs after this long with nobody near
+
+boat:
+  # Hard ceiling on boat speed: cap = speed-cap-base * level speed multiplier
+  # (blocks per tick of horizontal velocity). Tune in playtesting.
+  speed-cap-base: 0.45
+  levels:
+    0: { name: "Rowboat",     speed: 1.00, shield: 0 }
+    1: { name: "Sloop",       speed: 1.15, shield: 0 }
+    2: { name: "Cutter",      speed: 1.30, shield: 1 }
+    3: { name: "Stormrunner", speed: 1.45, shield: 1 }
+
+# All messages use MiniMessage. {placeholders} are filled in by the plugin.
+messages:
+  prefix: "<dark_aqua>[DarkSea]</dark_aqua> "
+  no-permission: "<red>You don't have permission to do that."
+  players-only: "<red>That subcommand is for players."
+  unknown-command: "<red>Unknown subcommand. Try <white>/ds help</white>."
+  world-missing: "<red>The Dark Sea world is not loaded."
+  player-not-found: "<red>Player {player} is not online."
+  invalid-number: "<red>{value} is not a valid number."
+
+  zone-crossed-protected: "<gray>Entering {zone}<gray> — your armor holds."
+  zone-crossed-exposed: "<red>Entering {zone}<red> — you are not protected here!"
+
+  status-header: "<dark_aqua><bold>Dark Sea status</bold>"
+  status-zone: "<gray>Zone: {zone} <gray>({distance}m from center)"
+  status-protection: "<gray>Sea armor tier: <aqua>{tier}</aqua>"
+  status-boat: "<gray>Boat: <aqua>{name}</aqua> (level {level}, shield {shield})"
+  status-safe: "<green>You are fully protected here."
+  status-danger: "<red>Exposed! You suffer tier-{exposure} effects here."
+  status-not-in-world: "<gray>You are not in the Dark Sea."
+
+  tp-done: "<green>Teleported to the home island."
+
+  generate-started: "<green>Queued {count} island paste(s). Progress is reported as they land."
+  generate-none: "<yellow>Nothing to generate — every ring is already at its configured island count."
+  generate-busy: "<red>Island generation or a reset is already running — wait for it to finish."
+  generate-no-templates: "<yellow>No schematics found for tier {tier} (schematics/tier{tier}/*.schem) — ring skipped."
+  generate-shortfall: "<yellow>Ring {tier}: only found room for {placed} of {wanted} islands (spacing too tight?)."
+  generate-progress: "<gray>Pasted <white>{id}</white> ({template}) at {x}, {z} — {remaining} to go."
+  generate-done: "<green>Paste queue finished."
+  paste-failed: "<red>Failed to paste {template}: {error} (see console)."
+  spawn-schem-missing: "<yellow>No home-island schematic in schematics/spawn/ — drop a .schem there and run /ds generate."
+
+  reset-soft-started: "<green>Soft reset started — re-pasting the home island and {count} island(s) in place."
+  reset-full-warning: "<red>This will <bold>DELETE</bold> the Dark Sea world and generate a brand-new layout. Everything built there will be lost. Run <white>/ds reset full confirm</white> to proceed."
+  reset-full-started: "<green>Full reset started — players evacuated, world removed, regenerating a new sea..."
+  reset-unload-failed: "<red>Could not unload the Dark Sea world — is it the server's main world?"
+
+  give-armor: "<green>Gave {player} the full tier-{tier} set ({name}<green>)."
+  give-token: "<green>Gave {player} a level-{level} boat upgrade token."
+  invalid-tier: "<red>Unknown armor tier {tier}."
+  invalid-level: "<red>Unknown boat level {level}."
+
+  boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
+  boat-max: "<yellow>Your boat is already fully upgraded."
+  boat-need-token: "<red>Hold a level-{level} Boat Upgrade Token in your main hand to upgrade."
+  boat-set: "<green>Set {player}'s boat level to {level} ({name}<green>)."
+
+  island-list-header: "<dark_aqua>Islands ({count}):"
+  island-list-entry: "<gray>{id} <white>{template}</white> tier {tier} @ {x}, {z}"
+  island-not-found: "<red>No island with id {id}."
+  island-tp: "<green>Teleported to island {id}."
+
+  reload-done: "<green>Configuration reloaded. (World shape and task intervals need a restart.)"
+
+  help-header: "<dark_aqua><bold>DarkSea commands</bold>"
+  help-line: "<gray>{usage} <dark_gray>— {description}"
