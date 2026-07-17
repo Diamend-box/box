@@ -1,7 +1,11 @@
 package com.diamend.customachievements.data;
 
+import org.bukkit.inventory.ItemStack;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -15,6 +19,9 @@ public class PlayerData {
     private final UUID uuid;
     private final Set<String> completed = new HashSet<>();
     private final Map<String, Integer> progress = new HashMap<>();
+    // Reward items that couldn't fit in the player's inventory when unlocked,
+    // held here until they claim them (so they're never dropped/lost).
+    private final List<ItemStack> pendingRewards = new ArrayList<>();
     private boolean dirty;
 
     public PlayerData(UUID uuid) {
@@ -79,6 +86,42 @@ public class PlayerData {
     public void reset() {
         completed.clear();
         progress.clear();
+        pendingRewards.clear();
+        dirty = true;
+    }
+
+    // ------------------------------------------------------------------
+    // Unclaimed reward items (inventory-full overflow storage)
+    // ------------------------------------------------------------------
+
+    /** The live list of reward items waiting to be claimed. */
+    public List<ItemStack> getPendingRewards() {
+        return pendingRewards;
+    }
+
+    public boolean hasPendingRewards() {
+        return !pendingRewards.isEmpty();
+    }
+
+    /** Queues a reward item for later claiming. */
+    public void addPendingReward(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return;
+        }
+        pendingRewards.add(item.clone());
+        dirty = true;
+    }
+
+    /** Replaces the pending-reward list wholesale (used by the claim menu). */
+    public void setPendingRewards(List<ItemStack> items) {
+        pendingRewards.clear();
+        if (items != null) {
+            for (ItemStack item : items) {
+                if (item != null && !item.getType().isAir()) {
+                    pendingRewards.add(item.clone());
+                }
+            }
+        }
         dirty = true;
     }
 

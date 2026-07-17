@@ -87,6 +87,14 @@ public class PlayerDataManager {
                 data.getProgressMap().put(key, config.getInt("progress." + key));
             }
         }
+        List<?> pending = config.getList("pending-rewards");
+        if (pending != null) {
+            for (Object object : pending) {
+                if (object instanceof org.bukkit.inventory.ItemStack item) {
+                    data.getPendingRewards().add(item);
+                }
+            }
+        }
         data.markClean();
         return data;
     }
@@ -96,6 +104,9 @@ public class PlayerDataManager {
         config.set("completed", new ArrayList<>(data.getCompleted()));
         for (Map.Entry<String, Integer> entry : data.getProgressMap().entrySet()) {
             config.set("progress." + entry.getKey(), entry.getValue());
+        }
+        if (!data.getPendingRewards().isEmpty()) {
+            config.set("pending-rewards", new ArrayList<>(data.getPendingRewards()));
         }
         return config;
     }
@@ -165,8 +176,13 @@ public class PlayerDataManager {
      * Reads every stored player's completed-achievement count (for a leaderboard).
      * Intended to be called off the main thread; cached (online) players override
      * the on-disk figures.
+     *
+     * <p>Only completions for achievements that still exist are counted: the
+     * {@code validIds} set (lower-cased achievement ids, snapshotted on the main
+     * thread) is intersected with each player's completed set, so achievements
+     * that were deleted since a player earned them no longer inflate the totals.
      */
-    public Map<UUID, Integer> completedCounts() {
+    public Map<UUID, Integer> completedCounts(java.util.Set<String> validIds) {
         Map<UUID, Integer> counts = new java.util.HashMap<>();
         File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files != null) {
@@ -174,15 +190,29 @@ public class PlayerDataManager {
                 try {
                     UUID uuid = UUID.fromString(file.getName().substring(0, file.getName().length() - 4));
                     YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-                    counts.put(uuid, config.getStringList("completed").size());
+                    counts.put(uuid, countExisting(config.getStringList("completed"), validIds));
                 } catch (RuntimeException ignored) {
                     // Skip non-UUID / unreadable files.
                 }
             }
         }
         for (PlayerData data : cache.values()) {
-            counts.put(data.getUuid(), data.getCompleted().size());
+            counts.put(data.getUuid(), countExisting(data.getCompleted(), validIds));
         }
         return counts;
+    }
+
+    /** Counts how many of the given completed ids still exist (case-insensitive). */
+    private int countExisting(java.util.Collection<String> completed, java.util.Set<String> validIds) {
+        if (validIds == null) {
+            return completed.size();
+        }
+        int count = 0;
+        for (String id : completed) {
+            if (id != null && validIds.contains(id.toLowerCase(java.util.Locale.ROOT))) {
+                count++;
+            }
+        }
+        return count;
     }
 }

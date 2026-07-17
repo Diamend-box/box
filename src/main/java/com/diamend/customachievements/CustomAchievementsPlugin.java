@@ -6,6 +6,7 @@ import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.command.AchievementsCommand;
 import com.diamend.customachievements.data.PlayerDataManager;
 import com.diamend.customachievements.gui.ChatInputManager;
+import com.diamend.customachievements.gui.Menu;
 import com.diamend.customachievements.listener.AchievementTriggerListener;
 import com.diamend.customachievements.listener.ConnectionListener;
 import com.diamend.customachievements.listener.GuiListener;
@@ -15,6 +16,10 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Entry point for the CustomAchievements plugin.
@@ -34,6 +39,10 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     private BukkitTask playtimeTask;
     private BukkitTask autosaveTask;
+
+    // The last CustomAchievements menu each player had open, so /reopen can
+    // restore it (e.g. an editor closed by accident) without losing state.
+    private final Map<UUID, Menu> lastMenu = new ConcurrentHashMap<>();
 
     @Override
     public void onEnable() {
@@ -154,6 +163,11 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         } else {
             getLogger().warning("Command 'achievements' is missing from plugin.yml!");
         }
+        // Standalone /reopen command shares the same handler.
+        PluginCommand reopen = getCommand("careopen");
+        if (reopen != null) {
+            reopen.setExecutor(handler);
+        }
     }
 
     private void startTasks() {
@@ -202,5 +216,31 @@ public class CustomAchievementsPlugin extends JavaPlugin {
      */
     public boolean isAnvilInputEnabled() {
         return getConfig().getBoolean("use-anvil-input", true);
+    }
+
+    /**
+     * Whether secret (hidden) achievements reveal their name and a one-line hint
+     * in the menu before they're unlocked. When false they show as a bare {@code ???}.
+     */
+    public boolean isSecretHintsEnabled() {
+        return getConfig().getBoolean("secret-show-hints", true);
+    }
+
+    // ------------------------------------------------------------------
+    // Last-opened menu tracking (for /reopen).
+    // ------------------------------------------------------------------
+
+    /** Records the menu a player just opened so {@code /reopen} can restore it. */
+    public void setLastMenu(UUID uuid, Menu menu) {
+        lastMenu.put(uuid, menu);
+    }
+
+    /** The last CustomAchievements menu a player had open, or null. */
+    public Menu getLastMenu(UUID uuid) {
+        return lastMenu.get(uuid);
+    }
+
+    public void clearLastMenu(UUID uuid) {
+        lastMenu.remove(uuid);
     }
 }

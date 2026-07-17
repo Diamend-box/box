@@ -36,6 +36,17 @@ playtime-tracking: true
 # Show an action-bar progress update as players make progress (throttled).
 progress-feedback: true
 
+# Secret (hidden) achievements: when true, players see the achievement's name
+# and its first description line as a hint before unlocking it (the objectives
+# stay concealed). Set to false to fully hide them as an obfuscated "???".
+secret-show-hints: true
+
+# When a player's inventory is full as they unlock an achievement, keep the
+# reward items in a claimable storage (accessed with /ca claim or /reopen) so
+# they can't be lost, instead of dropping them on the ground. Set to false to
+# use the old behaviour (drop overflow items at the player's feet).
+store-overflow-rewards: true
+
 # When false, breaking a block you placed yourself won't count toward
 # BLOCK_BREAK achievements (prevents place-and-break farming).
 count-player-placed-blocks: true

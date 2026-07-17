@@ -4,6 +4,27 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.8.0]
+### Added
+- **`/reopen` command** (also `/ca reopen`) — reopens the last CustomAchievements
+  menu you had open, so an editor closed by accident can be restored with the
+  in-progress draft intact.
+- **Rearrange achievements in the GUI** — in the admin manage menu, **Shift-Left**
+  moves an achievement up and **Shift-Right** moves it down. The order is saved to
+  `achievements.yml` and drives the player menu and `/ca list`.
+- **Unclaimed-reward storage** — if a player's inventory is full when they unlock
+  an achievement, item rewards are kept in a per-player storage instead of being
+  dropped. Collect them with **`/ca claim`** (or `/reopen`); returning players are
+  reminded on join. Toggle with `store-overflow-rewards` (defaults to `true`).
+- **Secret achievement hints** — hidden achievements now show their name and a
+  one-line hint (their first description line) before being unlocked, so players
+  have a clue how to earn them. The objectives stay concealed. Toggle with
+  `secret-show-hints` (defaults to `true`; set `false` for the old bare `???`).
+### Changed
+- The `/ca top` leaderboard now **cross-references each player's completions
+  against the achievements that still exist**, so achievements deleted since a
+  player earned them no longer inflate their total.
+
 ## [1.7.0]
 ### Fixed
 - **Off-chat anvil editor input now actually works.** The previous version built

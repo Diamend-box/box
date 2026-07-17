@@ -47,6 +47,14 @@ public class GuiListener implements Listener {
     }
 
     @EventHandler
+    public void onOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        // Remember the plugin menu a player opens so /reopen can restore it.
+        if (event.getInventory().getHolder() instanceof Menu menu) {
+            plugin.setLastMenu(event.getPlayer().getUniqueId(), menu);
+        }
+    }
+
+    @EventHandler
     public void onClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof Menu menu) {
             menu.onClose();

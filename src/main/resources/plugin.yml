@@ -13,6 +13,7 @@ commands:
     usage: |
       /achievements                - Open your achievements menu
       /achievements list           - List achievements in chat
+      /achievements claim          - Collect unclaimed reward items
       /achievements admin          - Open the admin management menu
       /achievements create         - Open the achievement editor to create one
       /achievements grant <p> <id> - Grant an achievement to a player
@@ -20,6 +21,10 @@ commands:
       /achievements reset <player>  - Reset all of a player's achievements
       /achievements reload         - Reload configuration from disk
     aliases: [ca, ach, customachievements]
+  careopen:
+    description: Reopen the last CustomAchievements menu you had open.
+    usage: /reopen
+    aliases: [reopen]
 
 permissions:
   customachievements.use:
