@@ -261,7 +261,33 @@ reliable, good-looking, and marker-friendly).
     `refill-cooldown-minutes` (per tier, longer inward) has elapsed since the
     last refill; timestamps persist in `islands.yml`.
 
-### 4.6 Boat upgrades — simple stats (Phase 4)
+### 4.6 Manual reset (Phase 3)
+
+The Dark Sea is meant to be re-rolled. Because the ocean is fully procedural
+and islands are schematics + a registry, a reset is cheap — and every full
+reset produces a brand-new island layout, true to the ever-shifting Dark Sea.
+
+Two flavors, both admin-only (`darksea.admin`):
+
+- **`/ds reset soft`** — keeps the map. Re-pastes every registered island
+  (and the home island) over itself from its schematic: heals griefing and
+  mining damage, restores stolen chests, and clears all chest-refill
+  timestamps so loot restocks immediately. Tracked Mythic mobs are despawned
+  so encounters respawn fresh. Island positions do not change.
+- **`/ds reset full`** — new sea entirely. Players in `dark_sea` are
+  teleported to the main world spawn; the world is unloaded, its folder and
+  `islands.yml` are deleted; the world is recreated with a **fresh seed**,
+  the home island is re-pasted, and island generation re-runs automatically —
+  same templates, brand-new random layout. Anything players built out there
+  is wiped (by design: the Dark Sea is not a place to settle).
+
+Safety: `full` is destructive, so it requires the literal confirmation
+argument — `/ds reset full confirm` — and warns without it. Pastes run
+through the same async FAWE queue as `/ds generate`, with progress reported
+to the invoking admin. Scheduled automatic resets are deferred to v2; any
+command scheduler can drive `/ds reset` in the meantime.
+
+### 4.7 Boat upgrades — simple stats (Phase 4)
 
 - Per-player **boat level 0–3**, stored in `playerdata/<uuid>.yml`:
 
@@ -299,6 +325,8 @@ Base `/darksea` (alias `/ds`).
 | `/ds boat upgrade` | Consume a token to raise boat level | `darksea.use` |
 | `/ds tp` | Teleport to the home island | `darksea.tp` (default: op) |
 | `/ds generate` | Place islands for all unfilled rings | `darksea.admin` |
+| `/ds reset soft` | Re-paste all islands in place (heal damage, restock loot) | `darksea.admin` |
+| `/ds reset full confirm` | Delete & regenerate the world with a new island layout | `darksea.admin` |
 | `/ds island list [tier]` / `/ds island tp <id>` | Inspect placed islands | `darksea.admin` |
 | `/ds give armor <tier> [player]` / `/ds give token <level> [player]` | Grant items | `darksea.admin` |
 | `/ds boat set <player> <level>` | Set a player's boat level | `darksea.admin` |
@@ -368,11 +396,12 @@ without armor crosses zones with escalating effects and action-bar warnings;
 Zone 1 effects in Zone 3; removing one piece in danger re-exposes within one
 check interval.
 
-**Phase 3 — Islands, mobs, loot**
+**Phase 3 — Islands, mobs, loot, reset**
 ✔ `/ds generate` fills every ring per config with correct spacing;
 approaching an island spawns its Mythic set (respecting caps, despawning on
 abandonment); chests refill tier-appropriate loot including armor
-progression drops.
+progression drops. `/ds reset soft` re-pastes islands in place;
+`/ds reset full confirm` rebuilds the world with a brand-new layout.
 
 **Phase 4 — Boats**
 ✔ Token drops in loot; `/ds boat upgrade` consumes it; upgraded boat is
@@ -390,6 +419,8 @@ Explicitly deferred (good v2 candidates, kept out to ship a playable loop):
 - True procedural island terrain (noise-generated landmasses)
 - Full custom ships (display-entity vessels, HP, cargo, cannons)
 - Lazy/endless island placement during exploration
+- Scheduled automatic resets with countdown broadcasts (v1 ships manual
+  `/ds reset` only — drive it with any command scheduler if desired)
 - Weather/insanity layers (Dark Sea "clouds", screen effects beyond Darkness)
 - Economy (Vault) pricing for upgrades; GUIs for boat/armor management
 - Per-island respawnable bosses with unique drops
