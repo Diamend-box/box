@@ -23,6 +23,14 @@ public final class PlayerData {
     private final UUID uuid;
     private final ViolationTracker violations;
 
+    // Movement / world sub-states, each self-synchronized. Kept separate so the
+    // combat state below stays readable and the movement checks get their own
+    // small, focused holders.
+    private final MovementState movement = new MovementState();
+    private final TimerState timer = new TimerState();
+    private final VehicleState vehicle = new VehicleState();
+    private final PlaceState place = new PlaceState();
+
     private final Deque<Long> clickTimes = new ArrayDeque<>(CLICK_HISTORY);
 
     private final long joinTime;
@@ -55,6 +63,22 @@ public final class PlayerData {
 
     public long joinTime() {
         return joinTime;
+    }
+
+    public MovementState movement() {
+        return movement;
+    }
+
+    public TimerState timer() {
+        return timer;
+    }
+
+    public VehicleState vehicle() {
+        return vehicle;
+    }
+
+    public PlaceState place() {
+        return place;
     }
 
     public synchronized void markTeleport(long now) {

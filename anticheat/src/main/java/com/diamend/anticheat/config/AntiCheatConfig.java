@@ -31,10 +31,21 @@ public final class AntiCheatConfig {
     private final boolean verboseByDefault;
     private final Map<CheckType, CheckConfig> checks;
 
+    // --- Passive protections ---------------------------------------------
+    private final boolean healthSpoofEnabled;
+    private final double healthSpoofValue;
+    private final boolean cullingEnabled;
+    private final double cullingMaxDistance;
+    private final double cullingMinDistance;
+    private final long cullingIntervalTicks;
+
     private AntiCheatConfig(PunishmentMode mode, double decayPerSecond,
                             long loginGraceMillis, long teleportGraceMillis,
                             int maxPing, double minTps, boolean verboseByDefault,
-                            Map<CheckType, CheckConfig> checks) {
+                            Map<CheckType, CheckConfig> checks,
+                            boolean healthSpoofEnabled, double healthSpoofValue,
+                            boolean cullingEnabled, double cullingMaxDistance,
+                            double cullingMinDistance, long cullingIntervalTicks) {
         this.mode = mode;
         this.decayPerSecond = decayPerSecond;
         this.loginGraceMillis = loginGraceMillis;
@@ -43,6 +54,12 @@ public final class AntiCheatConfig {
         this.minTps = minTps;
         this.verboseByDefault = verboseByDefault;
         this.checks = checks;
+        this.healthSpoofEnabled = healthSpoofEnabled;
+        this.healthSpoofValue = healthSpoofValue;
+        this.cullingEnabled = cullingEnabled;
+        this.cullingMaxDistance = cullingMaxDistance;
+        this.cullingMinDistance = cullingMinDistance;
+        this.cullingIntervalTicks = cullingIntervalTicks;
     }
 
     public PunishmentMode mode() {
@@ -79,6 +96,38 @@ public final class AntiCheatConfig {
         return checks.get(type);
     }
 
+    // --- Passive protection accessors ------------------------------------
+
+    /** Mask other players' health to full in outgoing EntityMetadata. */
+    public boolean healthSpoofEnabled() {
+        return healthSpoofEnabled;
+    }
+
+    /** The health value shown to other clients (default 20.0 = full). */
+    public double healthSpoofValue() {
+        return healthSpoofValue;
+    }
+
+    /** Hide out-of-line-of-sight players so ESP has nothing to draw. */
+    public boolean cullingEnabled() {
+        return cullingEnabled;
+    }
+
+    /** Only cull targets within this many blocks (beyond it, always visible). */
+    public double cullingMaxDistance() {
+        return cullingMaxDistance;
+    }
+
+    /** Never cull targets closer than this (avoids pop-in when turning). */
+    public double cullingMinDistance() {
+        return cullingMinDistance;
+    }
+
+    /** How often the culling sweep runs, in server ticks. */
+    public long cullingIntervalTicks() {
+        return cullingIntervalTicks;
+    }
+
     /** Build a snapshot from a loaded {@link FileConfiguration}. */
     public static AntiCheatConfig load(FileConfiguration cfg) {
         PunishmentMode mode = PunishmentMode.fromConfig(cfg.getString("mode", "alert-only"));
@@ -94,8 +143,17 @@ public final class AntiCheatConfig {
         for (CheckType type : CheckType.values()) {
             checks.put(type, loadCheck(checksSection, type));
         }
+
+        boolean healthSpoof = cfg.getBoolean("protections.health-indicators.enabled", true);
+        double healthValue = cfg.getDouble("protections.health-indicators.shown-health", 20.0D);
+        boolean culling = cfg.getBoolean("protections.anti-esp.enabled", false);
+        double cullMax = cfg.getDouble("protections.anti-esp.max-distance", 64.0D);
+        double cullMin = cfg.getDouble("protections.anti-esp.min-distance", 6.0D);
+        long cullInterval = cfg.getLong("protections.anti-esp.interval-ticks", 4L);
+
         return new AntiCheatConfig(mode, decay, loginGrace, teleportGrace,
-                maxPing, minTps, verboseDefault, checks);
+                maxPing, minTps, verboseDefault, checks,
+                healthSpoof, healthValue, culling, cullMax, cullMin, cullInterval);
     }
 
     private static CheckConfig loadCheck(ConfigurationSection checksSection, CheckType type) {

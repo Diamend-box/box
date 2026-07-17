@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 
 import com.diamend.anticheat.AntiCheatPlugin;
 import com.diamend.anticheat.alert.AlertManager;
+import com.diamend.anticheat.gui.AntiCheatGui;
 import com.diamend.anticheat.check.CheckType;
 import com.diamend.anticheat.config.AntiCheatConfig;
 import com.diamend.anticheat.player.PlayerData;
@@ -36,10 +37,12 @@ public final class AntiCheatCommand implements TabExecutor {
 
     private final AntiCheatPlugin plugin;
     private final AlertManager alerts;
+    private final AntiCheatGui gui;
 
-    public AntiCheatCommand(AntiCheatPlugin plugin, AlertManager alerts) {
+    public AntiCheatCommand(AntiCheatPlugin plugin, AlertManager alerts, AntiCheatGui gui) {
         this.plugin = plugin;
         this.alerts = alerts;
+        this.gui = gui;
     }
 
     @Override
@@ -49,10 +52,17 @@ public final class AntiCheatCommand implements TabExecutor {
             return true;
         }
         if (args.length == 0) {
-            sendHelp(sender);
+            // Bare /ac opens the GUI for players (the "ease of use" front door),
+            // and prints help for the console.
+            if (sender instanceof Player player) {
+                gui.openMain(player);
+            } else {
+                sendHelp(sender);
+            }
             return true;
         }
         switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "gui", "menu", "panel" -> handleGui(sender);
             case "verbose" -> handleVerbose(sender);
             case "info" -> handleInfo(sender, args);
             case "reset" -> handleReset(sender, args);
@@ -62,6 +72,14 @@ public final class AntiCheatCommand implements TabExecutor {
             default -> sendHelp(sender);
         }
         return true;
+    }
+
+    private void handleGui(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Only players can open the GUI.", NamedTextColor.RED));
+            return;
+        }
+        gui.openMain(player);
     }
 
     private void handleVerbose(CommandSender sender) {
@@ -161,6 +179,7 @@ public final class AntiCheatCommand implements TabExecutor {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(prefix().append(Component.text("Commands:", NamedTextColor.YELLOW)));
+        sender.sendMessage(Component.text("  /ac gui", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /ac verbose", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /ac info <player>", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /ac reset <player>", NamedTextColor.GRAY));
@@ -180,7 +199,7 @@ public final class AntiCheatCommand implements TabExecutor {
             return out;
         }
         if (args.length == 1) {
-            for (String sub : List.of("verbose", "info", "reset", "mode", "checks", "reload")) {
+            for (String sub : List.of("gui", "verbose", "info", "reset", "mode", "checks", "reload")) {
                 if (sub.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     out.add(sub);
                 }
