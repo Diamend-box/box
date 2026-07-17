@@ -1,0 +1,48 @@
+name: Build DarkSea
+
+# Builds the DarkSea plugin and publishes the finished jar as a downloadable
+# artifact: repository page -> Actions tab -> pick a run -> "Artifacts".
+on:
+  push:
+    paths:
+      - "darksea/**"
+      - ".github/workflows/build-darksea.yml"
+  pull_request:
+    paths:
+      - "darksea/**"
+      - ".github/workflows/build-darksea.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: darksea/pom.xml
+
+      - name: Compile, test and package
+        run: mvn -B clean package
+        working-directory: darksea
+
+      - name: Upload the plugin jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkSea
+          path: darksea/target/DarkSea-*.jar
+          if-no-files-found: error
+
+      - name: Upload test reports (only when the build fails)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: darksea/target/surefire-reports/
+          if-no-files-found: ignore
