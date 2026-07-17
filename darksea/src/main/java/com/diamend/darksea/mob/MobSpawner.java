@@ -13,6 +13,8 @@ import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -22,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -126,7 +129,7 @@ public final class MobSpawner extends BukkitRunnable {
                 }
                 MobEntry entry = weightedPick(set);
                 Pos point = island.spawnPoints().get(rng.nextInt(island.spawnPoints().size()));
-                UUID spawned = spawnMythic(entry, point.toLocation(world));
+                UUID spawned = spawnMob(entry, point.toLocation(world));
                 if (spawned != null) {
                     mobs.add(spawned);
                 }
@@ -139,16 +142,50 @@ public final class MobSpawner extends BukkitRunnable {
         }
     }
 
-    private UUID spawnMythic(MobEntry entry, Location location) {
+    /**
+     * Spawns a MythicMobs mob by internal name, falling back to a vanilla
+     * entity of the same name (e.g. {@code DROWNED}, {@code GUARDIAN}) when
+     * MythicMobs doesn't know it. Lets a fresh server test encounters with
+     * vanilla mobs before any custom Mythic mobs exist.
+     */
+    private UUID spawnMob(MobEntry entry, Location location) {
         try {
             Entity entity = MythicBukkit.inst().getAPIHelper()
                     .spawnMythicMob(entry.type(), location, entry.level());
-            return entity != null ? entity.getUniqueId() : null;
-        } catch (InvalidMobTypeException ex) {
-            if (warnedTypes.add(entry.type())) {
-                plugin.getLogger().warning("mobs.yml references unknown MythicMobs type '"
-                        + entry.type() + "' — it will never spawn (check your Mobs/*.yml internal names)");
+            if (entity != null) {
+                return entity.getUniqueId();
             }
+        } catch (InvalidMobTypeException ex) {
+            UUID vanilla = spawnVanilla(entry, location);
+            if (vanilla != null) {
+                return vanilla;
+            }
+            if (warnedTypes.add(entry.type())) {
+                plugin.getLogger().warning("mobs.yml type '" + entry.type() + "' is neither a "
+                        + "MythicMobs mob nor a vanilla entity — it will never spawn");
+            }
+        }
+        return null;
+    }
+
+    private UUID spawnVanilla(MobEntry entry, Location location) {
+        World world = location.getWorld();
+        if (world == null) {
+            return null;
+        }
+        EntityType type;
+        try {
+            type = EntityType.valueOf(entry.type().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        Class<? extends Entity> clazz = type.getEntityClass();
+        if (clazz == null || !LivingEntity.class.isAssignableFrom(clazz)) {
+            return null;  // not a spawnable living mob (item frames, projectiles, ...)
+        }
+        try {
+            return world.spawnEntity(location, type).getUniqueId();
+        } catch (IllegalArgumentException ex) {
             return null;
         }
     }

@@ -49,8 +49,12 @@ import java.util.Random;
 public final class IslandPlacer {
 
     private record PasteJob(IslandTemplate template, int x, int y, int z,
-                            boolean isSpawn, IslandInstance existing, Runnable afterFinalize) {
+                            boolean isSpawn, IslandInstance existing, Runnable afterFinalize,
+                            boolean demo) {
     }
+
+    /** Template name used for built-in demo islands (no schematic on disk). */
+    private static final String DEMO_TEMPLATE = "demo";
 
     /** Marker positions found in a clipboard, relative to its origin. */
     private record ScanResult(List<Pos> chests, List<Pos> spawnPoints, Pos relMin, Pos relMax) {
@@ -104,7 +108,8 @@ public final class IslandPlacer {
                 continue;
             }
             List<IslandTemplate> pool = templates.get(tier);
-            if (pool == null || pool.isEmpty()) {
+            boolean demo = (pool == null || pool.isEmpty());
+            if (demo && !gen.demoIslands()) {
                 plugin.messages().send(sender, "generate-no-templates", "tier", String.valueOf(tier));
                 continue;
             }
@@ -124,10 +129,15 @@ public final class IslandPlacer {
                         "wanted", String.valueOf(need));
             }
             for (PlacementSampler.Point point : points) {
-                IslandTemplate template = weightedPick(pool);
-                int y = template.pasteY() != null ? template.pasteY() : gen.pasteY();
-                queue.add(new PasteJob(template, (int) Math.round(point.x()), y,
-                        (int) Math.round(point.z()), false, null, null));
+                int px = (int) Math.round(point.x());
+                int pz = (int) Math.round(point.z());
+                if (demo) {
+                    queue.add(demoJob(tier, px, pz, false, null, null));
+                } else {
+                    IslandTemplate template = weightedPick(pool);
+                    int y = template.pasteY() != null ? template.pasteY() : gen.pasteY();
+                    queue.add(new PasteJob(template, px, y, pz, false, null, null, false));
+                }
                 existing.add(point);
                 queued++;
             }
@@ -155,17 +165,22 @@ public final class IslandPlacer {
             }
             return false;
         }
+        DarkSeaSettings settings = plugin.settings();
         IslandTemplate spawn = findSpawnTemplate();
         if (spawn == null) {
-            plugin.messages().send(sender, "spawn-schem-missing");
-            if (afterDone != null) {
-                afterDone.run();
+            if (!settings.generation().demoIslands()) {
+                plugin.messages().send(sender, "spawn-schem-missing");
+                if (afterDone != null) {
+                    afterDone.run();
+                }
+                return false;
             }
-            return false;
+            queue.add(demoJob(0, settings.centerX(), settings.centerZ(), true, null, afterDone));
+            pump(sender);
+            return true;
         }
-        DarkSeaSettings settings = plugin.settings();
         int y = spawn.pasteY() != null ? spawn.pasteY() : settings.generation().pasteY();
-        queue.add(new PasteJob(spawn, settings.centerX(), y, settings.centerZ(), true, null, afterDone));
+        queue.add(new PasteJob(spawn, settings.centerX(), y, settings.centerZ(), true, null, afterDone, false));
         pump(sender);
         return true;
     }
@@ -184,21 +199,30 @@ public final class IslandPlacer {
                 new File(plugin.getDataFolder(), "schematics"), plugin.zoneManager().maxTier(), plugin.getLogger());
 
         IslandTemplate spawn = findSpawnTemplate();
-        if (spawn != null && registry.spawnPasted()) {
-            int y = spawn.pasteY() != null ? spawn.pasteY() : settings.generation().pasteY();
-            queue.add(new PasteJob(spawn, settings.centerX(), y, settings.centerZ(), true, null, null));
+        if (registry.spawnPasted()) {
+            if (spawn != null) {
+                int y = spawn.pasteY() != null ? spawn.pasteY() : settings.generation().pasteY();
+                queue.add(new PasteJob(spawn, settings.centerX(), y, settings.centerZ(), true, null, null, false));
+            } else if (settings.generation().demoIslands()) {
+                queue.add(demoJob(0, settings.centerX(), settings.centerZ(), true, null, null));
+            }
         }
 
         int count = 0;
         for (IslandInstance island : registry.all()) {
+            Pos origin = island.origin();
+            if (DEMO_TEMPLATE.equals(island.template())) {
+                queue.add(demoJob(island.tier(), origin.x(), origin.z(), false, island, null));
+                count++;
+                continue;
+            }
             IslandTemplate template = findTemplate(templates, island.tier(), island.template());
             if (template == null) {
                 plugin.getLogger().warning("Soft reset: no schematic named '" + island.template()
                         + "' for tier " + island.tier() + " — island " + island.id() + " skipped");
                 continue;
             }
-            Pos origin = island.origin();
-            queue.add(new PasteJob(template, origin.x(), origin.y(), origin.z(), false, island, null));
+            queue.add(new PasteJob(template, origin.x(), origin.y(), origin.z(), false, island, null, false));
             count++;
         }
         plugin.messages().send(sender, "reset-soft-started", "count", String.valueOf(count));
@@ -222,6 +246,54 @@ public final class IslandPlacer {
             }
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // Built-in demo islands (no schematic required)
+    // ------------------------------------------------------------------
+
+    /** A synthetic paste job that builds a plain sand-platform island in code. */
+    private PasteJob demoJob(int tier, int x, int z, boolean isSpawn,
+                             IslandInstance existing, Runnable afterFinalize) {
+        IslandTemplate synthetic = new IslandTemplate(DEMO_TEMPLATE, tier, null, 1, null);
+        return new PasteJob(synthetic, x, plugin.settings().seaLevel(), z,
+                isSpawn, existing, afterFinalize, true);
+    }
+
+    /**
+     * Builds a small sand platform poking above the waterline, directly with
+     * the block API (no schematic, no WorldEdit). Returns marker positions
+     * relative to the job origin (y == sea level) so the normal finalize step
+     * can place the chest and register the island. Home islands get a larger,
+     * loot-free platform; tier islands get one chest and one spawn point.
+     */
+    private ScanResult buildDemoIsland(World world, PasteJob job) {
+        int seaLevel = plugin.settings().seaLevel();
+        int radius = job.isSpawn() ? 6 : 4;
+        int topY = seaLevel + 2;   // sand surface, two blocks proud of the water
+        int baseY = seaLevel - 2;  // solid footing sunk into the sea
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                int wx = job.x() + dx;
+                int wz = job.z() + dz;
+                for (int y = baseY; y < topY; y++) {
+                    world.getBlockAt(wx, y, wz).setType(Material.STONE, false);
+                }
+                world.getBlockAt(wx, topY, wz).setType(Material.SAND, false);
+                for (int y = topY + 1; y <= topY + 3; y++) {  // open headroom
+                    world.getBlockAt(wx, y, wz).setType(Material.AIR, false);
+                }
+            }
+        }
+        Pos relMin = new Pos(-radius, baseY - seaLevel, -radius);
+        Pos relMax = new Pos(radius, topY - seaLevel, radius);
+        if (job.isSpawn()) {
+            return new ScanResult(List.of(), List.of(), relMin, relMax);
+        }
+        int relSurface = topY - seaLevel + 1;  // one above the sand
+        List<Pos> chests = List.of(new Pos(2, relSurface, 2));
+        List<Pos> spawnPoints = List.of(new Pos(-2, relSurface, -2));
+        return new ScanResult(chests, spawnPoints, relMin, relMax);
     }
 
     private IslandTemplate weightedPick(List<IslandTemplate> pool) {
@@ -267,6 +339,20 @@ public final class IslandPlacer {
             feedback(sender, "world-missing");
             return;
         }
+        if (job.demo()) {
+            try {
+                ScanResult scan = buildDemoIsland(world, job);
+                finalizeJob(sender, world, job, scan);
+            } catch (RuntimeException ex) {
+                plugin.getLogger().severe("Building demo island failed: " + ex);
+                feedback(sender, "paste-failed", "template", DEMO_TEMPLATE,
+                        "error", String.valueOf(ex.getMessage()));
+            }
+            // Spread builds one-per-tick: no lag spike, no deep recursion.
+            Bukkit.getScheduler().runTask(plugin, () -> next(sender));
+            return;
+        }
+
         Material chestMarker = settings.generation().chestMarker();
         Material mobMarker = settings.generation().mobMarker();
 

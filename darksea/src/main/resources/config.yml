@@ -89,6 +89,12 @@ armor:
 
 # Island scattering (/ds generate and /ds reset full).
 generation:
+  # No schematics yet? Leave this true and any tier without a .schem pool gets a
+  # simple built-in sand-platform island (one loot chest + one mob spawn point)
+  # so you can test generation, loot, mobs and resets with zero building. Real
+  # schematics always take precedence per tier. Set false once you've added your
+  # own builds (see schematics/ in the docs).
+  demo-islands: true
   paste-y: 58                # clipboard origin lands at this Y (sidecars can override)
   min-island-gap: 400        # minimum distance between any two islands
   ring-border-margin: 200    # keep islands this far inside their ring's borders

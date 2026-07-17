@@ -1,26 +1,32 @@
 # ---------------------------------------------------------------------------
-# DarkSea — MythicMobs sets per island tier
+# DarkSea — mob sets per island tier
 #
-# 'type' must be the INTERNAL name of a mob from your MythicMobs Mobs/*.yml
-# configs (the same id you'd use with /mm mobs spawn). The entries below are
-# PLACEHOLDERS — replace them with mobs that exist on your server, or nothing
-# will spawn (a warning is logged once per unknown type).
+# 'type' is tried as a MythicMobs INTERNAL name first (the id you'd use with
+# /mm mobs spawn). If MythicMobs doesn't know it, it falls back to a VANILLA
+# entity of the same name (e.g. DROWNED, GUARDIAN) — so this file works on a
+# fresh server before you've built any custom Mythic mobs.
 #
-# 'weight' picks between entries; 'level' is passed to MythicMobs so one mob
-# family can scale across rings.
-# Reloads with /ds reload.
+# The entries below are VANILLA mobs on purpose, so encounters work out of the
+# box. Swap each 'type' for your MythicMobs internal names as you build them
+# (mixing vanilla and Mythic across tiers is fine).
+#
+# 'weight' picks between entries; 'level' is passed to MythicMobs (ignored by
+# vanilla mobs). Reloads with /ds reload.
 # ---------------------------------------------------------------------------
 
+# Vanilla mobs chosen so they don't burn in daylight or drown on the sand demo
+# platforms — they simply appear and stay, which is what you want to see while
+# testing. (DROWNED/GUARDIAN are more thematic but burn/suffocate out of water.)
 tiers:
   1:
-    - { type: DrownedCorsair,  weight: 10, level: 1 }
-    - { type: PirateDeckhand,  weight: 5,  level: 1 }
+    - { type: HUSK,       weight: 10, level: 1 }
+    - { type: PILLAGER,   weight: 5,  level: 1 }
   2:
-    - { type: DrownedCorsair,  weight: 8,  level: 5 }
-    - { type: StormCaller,     weight: 4,  level: 3 }
+    - { type: HUSK,       weight: 8,  level: 5 }
+    - { type: VINDICATOR, weight: 4,  level: 3 }
   3:
-    - { type: StormCaller,     weight: 8,  level: 8 }
-    - { type: AbyssalHorror,   weight: 3,  level: 5 }
+    - { type: WITCH,      weight: 8,  level: 8 }
+    - { type: PILLAGER,   weight: 3,  level: 5 }
   4:
-    - { type: AbyssalHorror,   weight: 8,  level: 10 }
-    - { type: LeviathanSpawn,  weight: 2,  level: 8 }
+    - { type: RAVAGER,    weight: 8,  level: 10 }
+    - { type: VINDICATOR, weight: 2,  level: 8 }

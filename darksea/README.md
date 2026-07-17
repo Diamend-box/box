@@ -78,14 +78,22 @@ and restart.
 
 1. Start the server once with the plugin installed. It creates the
    `dark_sea` world (pure ocean) and the folder layout below.
-2. Drop your **home island** schematic into
-   `plugins/DarkSea/schematics/spawn/` and island builds into
-   `schematics/tier1/` … `tier4/` (any `.schem` you've made with WorldEdit —
-   see [Building island schematics](#building-island-schematics)).
-3. Run `/ds generate`. The home island lands at the center (world spawn moves
-   on top of it), then every ring fills with randomly placed islands.
-   Progress is reported as pastes complete.
-4. Sail out. Zone effects, armor, mobs, loot and boats all work from here.
+2. Run `/ds generate`. With no schematics yet, **demo mode** (on by default —
+   `generation.demo-islands`) builds simple sand-platform islands in code: a
+   plain home platform at the center and, in every ring, small islands each
+   with one loot chest and one mob spawn point. The shipped `mobs.yml` uses
+   vanilla mobs, so encounters and loot work immediately — no building
+   required.
+3. Sail out. Zone effects, armor, mobs, loot, boats and both resets all work.
+
+**When you're ready for real content:** drop your **home island** schematic
+into `plugins/DarkSea/schematics/spawn/` and island builds into
+`schematics/tier1/` … `tier4/` (see
+[Building island schematics](#building-island-schematics)), replace the mobs in
+`mobs.yml` with your **MythicMobs** internal names, set
+`generation.demo-islands: false`, then `/ds reset full confirm` to regenerate
+with your builds. Real schematics take precedence over demo islands per tier,
+so you can migrate one ring at a time.
 
 ---
 

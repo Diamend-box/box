@@ -47,7 +47,7 @@ public record DarkSeaSettings(
 
     public record GenerationSettings(int pasteY, double minIslandGap, double ringBorderMargin,
                                      double outerRadius, Map<Integer, Integer> islandsPerRing,
-                                     Material chestMarker, Material mobMarker) {
+                                     Material chestMarker, Material mobMarker, boolean demoIslands) {
     }
 
     public record MobSpawnSettings(int scanIntervalTicks, double activationRadius, int perIslandCap,
@@ -206,7 +206,8 @@ public record DarkSeaSettings(
                 Math.max(0, cfg.getDouble("generation.min-island-gap", 400)),
                 Math.max(0, cfg.getDouble("generation.ring-border-margin", 200)),
                 Math.max(500, cfg.getDouble("generation.outer-radius", 8000)),
-                Map.copyOf(perRing), chestMarker, mobMarker);
+                Map.copyOf(perRing), chestMarker, mobMarker,
+                cfg.getBoolean("generation.demo-islands", false));
     }
 
     private static BoatSettings loadBoat(FileConfiguration cfg, Logger log) {
