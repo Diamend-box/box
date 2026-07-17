@@ -1,0 +1,79 @@
+# ============================================================================
+#  AntiCheat - packet-level combat checks for Paper 1.21.4
+# ============================================================================
+
+# How the anticheat reacts when a check crosses a punishment threshold:
+#   alert-only : only ever notify staff and write to the log (the safe default)
+#   enforce    : also carry out the per-check `actions` below (cancel/kick/ban)
+# You can flip this live with: /ac mode enforce
+mode: alert-only
+
+violations:
+  # Violation points bled off per second, so an occasional flag never
+  # accumulates into a punishment. 0.05 = one point roughly every 20 seconds.
+  decay-per-second: 0.05
+
+# Situations where checks are skipped entirely to avoid false positives.
+exemptions:
+  login-grace-ms: 3000      # ignore the first N ms after a player joins
+  teleport-grace-ms: 1500   # ignore N ms after a teleport / respawn
+  max-ping: 400             # skip players with a ping above this (ms); 0 disables
+  min-tps: 16.0             # skip all checks while server TPS is below this
+
+alerts:
+  verbose-by-default: false # (reserved) whether staff start with verbose on
+
+# ----------------------------------------------------------------------------
+#  Checks
+#
+#  alert-threshold : violation level at which staff start getting alerts
+#  settings        : per-check numeric knobs (see comments)
+#  actions         : "<threshold> <type> [argument]" lines, only run in
+#                    `enforce` mode. Types: cancel, command, kick, ban.
+#                    %player% is replaced with the player's name.
+# ----------------------------------------------------------------------------
+checks:
+
+  reach:
+    enabled: true
+    alert-threshold: 5
+    settings:
+      max-distance: 3.05    # blocks; vanilla survival reach is 3.0
+    actions:
+      - "10 cancel"
+      - "25 kick Reaching too far"
+
+  autoclicker:
+    enabled: true
+    alert-threshold: 6
+    settings:
+      max-cps: 16           # sustained clicks/second ceiling
+      min-cov: 0.08         # min coefficient of variation of click intervals;
+                            # below this the clicking is unnaturally regular
+      min-samples: 10       # clicks needed before judging
+    actions:
+      - "20 kick Autoclicker"
+
+  aim:
+    enabled: true
+    alert-threshold: 8
+    settings:
+      impossible-pitch-vl: 5  # VL added for an out-of-range pitch (near-certain)
+      min-yaw-delta: 0.6      # ignore turns smaller than this (degrees)
+      min-gcd-units: 20000    # GCD (in 1e-6 deg units) above which aim looks synthetic
+      gcd-vl: 0.5             # small VL per suspicious sample; needs repetition
+    actions:
+      - "25 kick Aim assistance"
+
+  killaura:
+    enabled: true
+    alert-threshold: 6
+    settings:
+      max-hit-angle: 80       # degrees off-target a landed hit may be
+      angle-vl: 1
+      no-swing-ms: 1000       # hitting with no swing within this window is suspicious
+      no-swing-vl: 1
+      multi-target-ms: 150    # hitting a 2nd distinct entity within this = suspicious
+      multi-target-vl: 1
+    actions:
+      - "20 kick Killaura"
