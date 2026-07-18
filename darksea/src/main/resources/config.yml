@@ -95,15 +95,21 @@ generation:
   # schematics always take precedence per tier. Set false once you've added your
   # own builds (see schematics/ in the docs).
   demo-islands: true
+  # Ticks between demo-island builds. Each island forces new ocean chunks to
+  # generate, and that is what strains a small host — raise this on 1-2GB
+  # servers if /ds generate causes lag (20 = one island per second).
+  demo-pace-ticks: 10
   paste-y: 58                # clipboard origin lands at this Y (sidecars can override)
   min-island-gap: 400        # minimum distance between any two islands
   ring-border-margin: 200    # keep islands this far inside their ring's borders
-  outer-radius: 8000         # practical outer limit for the unbounded outermost ring
+  outer-radius: 6000         # practical outer limit for the unbounded outermost ring
+  # Defaults sized for small shared hosts (1-2GB). On a beefier server the
+  # sea carries more: try 12/16/16/20 with outer-radius 8000.
   islands-per-ring:
-    1: 12
-    2: 16
-    3: 16
-    4: 20
+    1: 6
+    2: 8
+    3: 8
+    4: 10
 
 # Marker blocks scanned inside pasted schematics (then replaced):
 #   chest      -> becomes a registered, refilling loot chest
@@ -156,6 +162,7 @@ messages:
   generate-started: "<green>Queued {count} island paste(s). Progress is reported as they land."
   generate-none: "<yellow>Nothing to generate — every ring is already at its configured island count."
   generate-busy: "<red>Island generation or a reset is already running — wait for it to finish."
+  generate-bad-count: "<red>'{value}' is not a number — use /ds generate [count]."
   generate-no-templates: "<yellow>No schematics found for tier {tier} (schematics/tier{tier}/*.schem) — ring skipped."
   generate-shortfall: "<yellow>Ring {tier}: only found room for {placed} of {wanted} islands (spacing too tight?)."
   generate-progress: "<gray>Pasted <white>{id}</white> ({template}) at {x}, {z} — {remaining} to go."

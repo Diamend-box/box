@@ -72,10 +72,12 @@ class ConfigParsingTest {
         assertEquals("NETHERITE", settings.armor().tiers().get(4).materialPrefix());
 
         assertEquals(4, settings.generation().islandsPerRing().size());
-        assertEquals(12, settings.generation().islandsPerRing().get(1));
+        assertEquals(6, settings.generation().islandsPerRing().get(1));
         assertEquals(Material.LODESTONE, settings.generation().chestMarker());
         assertEquals(Material.GOLD_BLOCK, settings.generation().mobMarker());
         assertTrue(settings.generation().outerRadius() > 5000);
+        assertTrue(settings.generation().demoIslands());
+        assertTrue(settings.generation().demoPaceTicks() >= 1);
 
         assertEquals(4, settings.boat().levels().size());
         assertEquals(0, settings.boat().levels().get(0).shield());

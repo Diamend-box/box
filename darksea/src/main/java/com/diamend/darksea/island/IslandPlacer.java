@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Queued schematic pasting. Clipboards are loaded and scanned for marker
@@ -82,6 +83,15 @@ public final class IslandPlacer {
      * spacing, nothing is ever double-pasted.
      */
     public void generate(CommandSender sender) {
+        generate(sender, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Like {@link #generate(CommandSender)} but places at most {@code limit}
+     * islands this run (inner rings first). Lets small hosts fill the sea a
+     * few islands at a time: {@code /ds generate 1} until done.
+     */
+    public void generate(CommandSender sender, int limit) {
         if (running) {
             plugin.messages().send(sender, "generate-busy");
             return;
@@ -101,9 +111,9 @@ public final class IslandPlacer {
         }
 
         int queued = 0;
-        for (int tier = 1; tier <= zones.maxTier(); tier++) {
+        for (int tier = 1; tier <= zones.maxTier() && queued < limit; tier++) {
             int want = gen.islandsPerRing().getOrDefault(tier, 0);
-            int need = want - registry.byTier(tier).size();
+            int need = Math.min(want - registry.byTier(tier).size(), limit - queued);
             if (need <= 0) {
                 continue;
             }
@@ -261,6 +271,54 @@ public final class IslandPlacer {
     }
 
     /**
+     * Demo builds gutted a 1GB live server in first testing: every island
+     * force-generated its chunks synchronously on the main thread, and the
+     * crash that followed threw away the un-saved chunks (leaving registry
+     * entries pointing at open water). So: pre-generate the island's chunks
+     * ASYNC first, build only once they're ready, save-and-unload the far
+     * chunks immediately (crash-proofing + memory back), and wait
+     * {@code generation.demo-pace-ticks} before the next island.
+     */
+    private void buildDemoPaced(CommandSender sender, World world, PasteJob job) {
+        int radius = demoRadius(job.isSpawn());
+        int minCx = (job.x() - radius) >> 4, maxCx = (job.x() + radius) >> 4;
+        int minCz = (job.z() - radius) >> 4, maxCz = (job.z() + radius) >> 4;
+        List<CompletableFuture<?>> loads = new ArrayList<>();
+        for (int cx = minCx; cx <= maxCx; cx++) {
+            for (int cz = minCz; cz <= maxCz; cz++) {
+                loads.add(world.getChunkAtAsync(cx, cz, true));
+            }
+        }
+        CompletableFuture.allOf(loads.toArray(new CompletableFuture[0]))
+                .whenComplete((done, err) -> Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        if (err != null) {
+                            throw new IllegalStateException("chunk load failed: " + err.getMessage(), err);
+                        }
+                        ScanResult scan = buildDemoIsland(world, job);
+                        finalizeJob(sender, world, job, scan);
+                        if (!job.isSpawn()) {
+                            for (int cx = minCx; cx <= maxCx; cx++) {
+                                for (int cz = minCz; cz <= maxCz; cz++) {
+                                    world.getChunkAt(cx, cz).unload(true);
+                                }
+                            }
+                        }
+                    } catch (RuntimeException ex) {
+                        plugin.getLogger().severe("Building demo island failed: " + ex);
+                        feedback(sender, "paste-failed", "template", DEMO_TEMPLATE,
+                                "error", String.valueOf(ex.getMessage()));
+                    }
+                    int pace = Math.max(1, plugin.settings().generation().demoPaceTicks());
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> next(sender), pace);
+                }));
+    }
+
+    private static int demoRadius(boolean isSpawn) {
+        return isSpawn ? 6 : 4;
+    }
+
+    /**
      * Builds a small sand platform poking above the waterline, directly with
      * the block API (no schematic, no WorldEdit). Returns marker positions
      * relative to the job origin (y == sea level) so the normal finalize step
@@ -269,7 +327,7 @@ public final class IslandPlacer {
      */
     private ScanResult buildDemoIsland(World world, PasteJob job) {
         int seaLevel = plugin.settings().seaLevel();
-        int radius = job.isSpawn() ? 6 : 4;
+        int radius = demoRadius(job.isSpawn());
         int topY = seaLevel + 2;   // sand surface, two blocks proud of the water
         int baseY = seaLevel - 2;  // solid footing sunk into the sea
         for (int dx = -radius; dx <= radius; dx++) {
@@ -340,16 +398,7 @@ public final class IslandPlacer {
             return;
         }
         if (job.demo()) {
-            try {
-                ScanResult scan = buildDemoIsland(world, job);
-                finalizeJob(sender, world, job, scan);
-            } catch (RuntimeException ex) {
-                plugin.getLogger().severe("Building demo island failed: " + ex);
-                feedback(sender, "paste-failed", "template", DEMO_TEMPLATE,
-                        "error", String.valueOf(ex.getMessage()));
-            }
-            // Spread builds one-per-tick: no lag spike, no deep recursion.
-            Bukkit.getScheduler().runTask(plugin, () -> next(sender));
+            buildDemoPaced(sender, world, job);
             return;
         }
 

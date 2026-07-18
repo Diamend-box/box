@@ -42,7 +42,16 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "boat" -> boat(sender, args);
             case "generate" -> {
                 if (requireAdmin(sender)) {
-                    plugin.placer().generate(sender);
+                    int limit = Integer.MAX_VALUE;
+                    if (args.length >= 2) {
+                        try {
+                            limit = Math.max(1, Integer.parseInt(args[1]));
+                        } catch (NumberFormatException ex) {
+                            plugin.messages().send(sender, "generate-bad-count", "value", args[1]);
+                            return true;
+                        }
+                    }
+                    plugin.placer().generate(sender, limit);
                 }
             }
             case "reset" -> reset(sender, args);
@@ -69,7 +78,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
         helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
-        helpLine(sender, "/ds generate", "place islands for all unfilled rings", "darksea.admin");
+        helpLine(sender, "/ds generate [count]", "place islands (all rings, or just <count> at a time)", "darksea.admin");
         helpLine(sender, "/ds reset <soft|full>", "re-paste islands / regenerate the sea", "darksea.admin");
         helpLine(sender, "/ds island list [tier] | tp <id>", "inspect placed islands", "darksea.admin");
         helpLine(sender, "/ds give <armor|token> <n> [player]", "grant sea armor or tokens", "darksea.admin");

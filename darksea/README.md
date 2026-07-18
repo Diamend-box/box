@@ -106,7 +106,7 @@ Base command: `/darksea` (alias: `/ds`)
 | `/ds status` | Your zone, protection tier, boat level, exposure verdict | `darksea.use` (default: all) |
 | `/ds boat upgrade` | Consume a held token to raise your boat level | `darksea.use` |
 | `/ds tp` | Teleport to the home island | `darksea.tp` (default: op) |
-| `/ds generate` | Place islands for all unfilled rings (re-runnable) | `darksea.admin` |
+| `/ds generate [count]` | Place islands for all unfilled rings, or only `count` at a time (re-runnable) | `darksea.admin` |
 | `/ds reset soft` | Re-paste all islands in place: heal damage, restock loot | `darksea.admin` |
 | `/ds reset full confirm` | Delete & regenerate the world with a new layout | `darksea.admin` |
 | `/ds island list [tier]` | List placed islands | `darksea.admin` |
