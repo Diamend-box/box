@@ -14,13 +14,27 @@ for. The README now has a paste-ready **6 GB profile** for that day.
 
 ## Workstreams (biggest payoff first)
 
-### 1. Demo island variety — code
-Today every demo island is the same sand pad. Add a handful of built-in
-shapes — rocky spire, broken ship deck, twin atoll, ruined watchtower —
-picked randomly per island and scaling a little with tier. The shape math
-lives in pure functions so JUnit can verify sizes and marker placement
-without a server. *Effect: the sea stops looking copy-pasted, even before
-real schematics exist.*
+### 1. Demo island variety — code — IN PROGRESS
+Today every demo island is the same sand pad. Add built-in shapes, picked
+randomly per island, with the shape math in pure functions so JUnit can
+verify sizes and marker placement without a server. *Effect: the sea stops
+looking copy-pasted, even before real schematics exist.*
+
+**Decisions (Jul 18, by Wyatt):** roster is rocky spire (z1–4), twin atoll
+(z1–2), ruined watchtower (z2–4), sea-beast bones (z2–4), volcanic cone
+(z3–4), abyssal monolith (z4). Full escalation: darker palettes AND bigger
+islands farther out. Islands must be big enough to *explore* — every chest
+is hidden inside something (grotto, tower floor, crater, vault, skull), never
+visible from the water. The home island stays hand-built by Wyatt (the
+generator never touches it), and any shape can be overridden later by real
+schematics per tier.
+
+**Status:** six generators live in `island/shape/` with structural tests
+(footing/headroom/bounds/determinism, 200-seed sweep clean) — not yet wired
+into `IslandPlacer`. Interactive 3D preview shared for approval. Next:
+shape verdicts by phone → wire into the placer (persist each island's shape
+in the registry, chunk preload from the shape's real radius, config flag so
+soft reset never re-pastes the hand-built spawn).
 
 ### 2. MythicMobs content pack — content + small code
 A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone (e.g.
