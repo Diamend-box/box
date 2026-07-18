@@ -40,16 +40,34 @@ heart-tree hiding the chest. Abyssal monolith gets cult remains — candle
 ring, skull altar, toppled glyph steles, roofless dwellings, graves — "a
 group of people used to live here but left or died."
 
-**Status:** seven generators live in `island/shape/`; tests now also
-enforce the 30x30 minimum footprint, tier-monotonic sizing, and chest
-concealment (roofed + enclosed on 3+ sides); 200-seed sweep clean across
-all 18 tier combos. Preview artifact regenerated with tier/seed/key
-controls (two seeds per combo prove per-island variation). Still not wired
+**Decisions round 3 (Jul 18, by Wyatt):** viewer needed a zoom (added:
+wheel/pinch/buttons + drag pan). Higher-tier islands get more loot:
+**tier 3 hides two chests, tier 4 three** — every one still concealed, and
+the tests enforce count, concealment, and a 6-block minimum spread.
+Corrupted forest got bigger and deader (Arcane Odyssey energy: mycelium
+blotches, wither roses, more snags, thinner canopies). "Block vomit" fixed:
+material mixes are now position-hashed **patches** (3x4x3 cells) instead of
+per-block static, and the volcano's magma veins run as sector rivulets. The
+volcano got real lava: a nine-block crater well with a walkable rim,
+molten seeps on the flanks (containment forced block-by-block), and a
+molten seam in the chest chamber. The abyssal monolith got a true high
+altar — stepped dais, gilded table, wither skull, corner pillars,
+cauldron — plus a grave crypt and an under-altar reliquary for chests two
+and three; and every other island now carries a trace of the cult (grotto
+offering niche, mound stone circle, garrison crypt shrine, bone totem,
+crater-rim fire shrine, forest shrine clearing).
+
+**Status:** seven generators live in `island/shape/`; tests enforce the
+30x30 minimum footprint, tier-monotonic sizing, per-tier chest counts
+(1/1/2/3), concealment for every chest, and chest spacing; 200-seed sweep
+clean across all 18 tier combos. Preview artifact regenerated with
+zoom/pan, tier/seed/key controls and all chest markers. Still not wired
 into `IslandPlacer` — waiting on Wyatt's per-shape verdicts. Wiring notes
 when approved: persist shape id in the registry, chunk preload from the
 shape's real radius, paste bottom-up with physics off, leaves need
 `persistent=true`, config flag so soft reset never re-pastes the
-hand-built spawn.
+hand-built spawn, and the placer's finalize step now iterates
+`ShapeBuild.chests()` (loot table per chest can differ later).
 
 ### 2. MythicMobs content pack — content + small code
 A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone (e.g.

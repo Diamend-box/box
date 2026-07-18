@@ -125,7 +125,50 @@ final class SeaBeastBones implements DemoShape {
         s.put(skullX, 3, skullZ - 2, p.glow());                             // eyes glow at night
         s.put(skullX, 3, skullZ + 2, p.glow());
         s.carveBox(skullX - 2, 1, skullZ, skullX - 1, 2, skullZ);           // chest nook
-        Rel chest = new Rel(skullX - 2, 1, skullZ);
+        List<Rel> chests = new ArrayList<>();
+        chests.add(new Rel(skullX - 2, 1, skullZ));
+
+        // Bone-cutters worked this carcass once: a vertebra totem stands
+        // near the skull, candles burned down at its feet.
+        int totX = skullX - 4, totZ = skullZ + 4;
+        int totBase = Math.max(0, s.topY(totX, totZ, 0));
+        for (int y = 1; y <= 3; y++) {
+            s.put(totX, totBase + y, totZ, "BONE_BLOCK");
+        }
+        s.put(totX, totBase + 4, totZ, "SKELETON_SKULL");
+        s.put(totX + 1, totBase, totZ, p.groundMix(rng));
+        s.put(totX + 1, totBase + 1, totZ, "BLACK_CANDLE");
+        s.put(totX, totBase, totZ - 1, p.groundMix(rng));
+        s.put(totX, totBase + 1, totZ - 1, "BLACK_CANDLE");
+
+        // Tier 3+: whatever the beast swallowed is still in its gut — a
+        // bone-walled cache under the mid-ribs, dug into from the south.
+        java.util.function.Function<Random, String> gut =
+                r -> r.nextInt(100) < 30 ? "BONE_BLOCK" : p.groundMix(r);
+        int midX = (firstRib + lastRib) / 2;
+        int zcMid = (int) Math.round(zc(midX, rx, bend));
+        if (tier >= 3) {
+            s.fillBox(midX - 2, -2, zcMid - 2, midX + 2, 1, zcMid + 2, gut);
+            s.carveBox(midX - 1, -1, zcMid - 1, midX + 1, 0, zcMid + 1);
+            s.put(midX, -1, zcMid + 3, gut.apply(rng));
+            s.carveBox(midX, 0, zcMid + 3, midX, 2, zcMid + 3);
+            s.carveBox(midX, -1, zcMid + 2, midX, 1, zcMid + 2);
+            chests.add(new Rel(midX, -1, zcMid - 1));
+            s.put(midX + 1, -1, zcMid + 1, p.glow());
+        }
+
+        // Tier 4: a third cache sinking with the tail, entered the same way.
+        if (tier >= 4) {
+            int tailX = spineStart + 3;
+            int zcT = (int) Math.round(zc(tailX, rx, bend));
+            s.fillBox(tailX - 2, -3, zcT - 2, tailX + 2, 0, zcT + 2, gut);
+            s.carveBox(tailX - 1, -2, zcT - 1, tailX + 1, -1, zcT + 1);
+            s.put(tailX, -2, zcT + 3, gut.apply(rng));
+            s.carveBox(tailX, -1, zcT + 3, tailX, 1, zcT + 3);
+            s.carveBox(tailX, -2, zcT + 2, tailX, 0, zcT + 2);
+            chests.add(new Rel(tailX, -2, zcT - 1));
+            s.put(tailX + 1, -2, zcT + 1, p.glow());
+        }
 
         // Scattered bone fragments half-buried in the bar.
         for (int i = 0; i < 6; i++) {
@@ -139,13 +182,12 @@ final class SeaBeastBones implements DemoShape {
 
         // Mobs: one beneath the mid-ribs, one by the tail, one past the jaw.
         List<Rel> mobs = new ArrayList<>();
-        int midX = (firstRib + lastRib) / 2;
-        mobs.add(s.stand(midX, (int) Math.round(zc(midX, rx, bend)), p::groundMix));
+        mobs.add(s.stand(midX, zcMid, p::groundMix));
         mobs.add(s.stand(spineStart + 2, (int) Math.round(zc(spineStart + 2, rx, bend)) + 2,
                 p::groundMix));
         mobs.add(s.stand(skullX + 7, skullZ, p::groundMix));
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, chests, mobs);
     }
 
     /** Carcass centerline: a banana curve, ends bending toward +z. */

@@ -38,11 +38,14 @@ final class RuinedWatchtower implements DemoShape {
         int moundR = 12 + tier + rng.nextInt(2);  // t2 14-15 .. t4 16-17
         int height = 9 + 3 * tier;                // wall top: exactly 15 / 18 / 21
 
-        // Rubble motte: mixed ground and broken stone, rock root below.
-        s.blob(0, -3, 0, moundR - 1, 2.8, moundR - 1, p::rockMix, 0.2);
-        s.disc(0, -1, 0, moundR + 1, r -> r.nextInt(100) < 55 ? p.groundMix(r) : p.rockMix(r), 0.22);
-        s.disc(0, 0, 0, moundR - 2, r -> r.nextInt(100) < 50 ? p.groundMix(r) : p.rockMix(r), 0.2);
-        s.disc(0, 1, 0, moundR - 5, p::rockMix, 0.18);
+        // Rubble motte: ground and broken stone in weathered patches.
+        ShapeSketch.Shader rubble = (x, y, z, r) ->
+                ShapeSketch.cellNoise(Math.floorDiv(x, 3), 1, Math.floorDiv(z, 3)) < 55
+                        ? p.groundPatch(x, y, z, r) : p.rockPatch(x, y, z, r);
+        s.blob(0, -3, 0, moundR - 1, 2.8, moundR - 1, p::rockPatch, 0.2);
+        s.disc(0, -1, 0, moundR + 1, rubble, 0.22);
+        s.disc(0, 0, 0, moundR - 2, rubble, 0.2);
+        s.disc(0, 1, 0, moundR - 5, p::rockPatch, 0.18);
 
         // Bailey: a ruined curtain wall around the yard, height rotting away
         // column by column, with a clean gate gap aligned to the keep door.
@@ -65,10 +68,16 @@ final class RuinedWatchtower implements DemoShape {
         }
 
         // Two roofless outbuildings against the yard, one either side.
+        int hutX = 0, hutZ = 0, hutFloor = 1;
         for (int b = 0; b < 2; b++) {
             int cx = (b == 0 ? -1 : 1) * (wallR - 4);
             int cz = b == 0 ? -2 : 2;
             int floorY = Math.max(1, s.topY(cx, cz, 0));
+            if (b == 1) {
+                hutX = cx;
+                hutZ = cz;
+                hutFloor = floorY;
+            }
             for (int x = cx - 2; x <= cx + 2; x++) {
                 for (int z = cz - 2; z <= cz + 1; z++) {
                     s.put(x, floorY, z, p.rockDetail());
@@ -187,11 +196,47 @@ final class RuinedWatchtower implements DemoShape {
         }
 
         // Chest on the first floor against the north wall, lantern beside it.
+        List<Rel> chests = new ArrayList<>();
         s.carve(0, floor1 + 1, -2);
         s.carve(0, floor1 + 2, -2);
-        Rel chest = new Rel(0, floor1 + 1, -2);
+        chests.add(new Rel(0, floor1 + 1, -2));
         s.carve(1, floor1 + 1, -2);
         s.put(1, floor1 + 1, -2, p.glow());
+
+        // Tier 3+: a crypt under the north yard — the garrison buried its
+        // dead with their pay, and someone left a shrine down there too. A
+        // stepped trench in the yard leads down.
+        if (tier >= 3) {
+            s.fillBox(-2, -4, -9, 2, 0, -5, p::rockMix);
+            s.carveBox(-1, -3, -8, 1, -2, -6);
+            s.put(0, 0, -4, p.rockMix(rng));
+            s.carveBox(0, 1, -4, 0, 3, -4);
+            s.put(0, -1, -5, p.rockMix(rng));
+            s.carveBox(0, 0, -5, 0, 2, -5);
+            s.put(0, -2, -6, p.rockMix(rng));
+            s.carveBox(0, -1, -6, 0, 1, -6);
+            s.put(0, -3, -7, p.rockMix(rng));
+            chests.add(new Rel(0, -3, -8));
+            s.put(1, -3, -8, p.glow());
+            s.put(-1, -3, -6, "SKELETON_SKULL");
+            s.put(1, -3, -6, "BLACK_CANDLE");
+        }
+
+        // Tier 4: a rubble cache dug in under the second outbuilding,
+        // entered by two rough steps outside its south wall.
+        if (tier >= 4) {
+            int cx = hutX, cz = hutZ, floorY = hutFloor;
+            s.fillBox(cx - 2, floorY - 3, cz - 2, cx + 2, floorY - 1, cz + 2, p::rockMix);
+            s.carveBox(cx - 1, floorY - 2, cz - 1, cx + 1, floorY - 1, cz + 1);
+            s.put(cx, floorY - 1, cz + 4, p.rockMix(rng));
+            s.carveBox(cx, floorY, cz + 4, cx, floorY + 2, cz + 4);
+            s.put(cx, floorY - 2, cz + 3, p.rockMix(rng));
+            s.carveBox(cx, floorY - 1, cz + 3, cx, floorY + 1, cz + 3);
+            s.carveBox(cx, floorY - 2, cz + 2, cx, floorY, cz + 2);
+            chests.add(new Rel(cx, floorY - 2, cz - 1));
+            s.put(cx + 1, floorY - 2, cz + 1, p.glow());
+            s.put(cx - 1, floorY - 2, cz + 1, "SKELETON_SKULL");
+        }
 
         // Mobs: one prowling the yard, one at the gate, one on the ground
         // floor between the door and the way up.
@@ -203,6 +248,6 @@ final class RuinedWatchtower implements DemoShape {
         mobs.add(s.stand(0, wallR, p::groundMix));
         mobs.add(new Rel(0, 3, 1));
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, chests, mobs);
     }
 }

@@ -73,18 +73,57 @@ final class AbyssalMonolith implements DemoShape {
         s.put(2, 2, -6, "COBWEB");
         s.put(-2, 2, -5, "COBWEB");
 
-        // Ritual circle east of the way: unlit black candles and skulls
-        // around a gilded altar. Nobody has lit these in a long time.
+        // The high altar east of the way: a two-step dais ringed by unlit
+        // candles and skulls, corner pillars with soul lanterns, a cauldron
+        // gone dry, a bone heap — the place they actually practiced. One
+        // deck slab south of the dais is missing: the way down to the
+        // reliquary, chest three.
         int cx = 7, cz = 0;
         for (int i = 0; i < 10; i++) {
             double a = i * Math.PI * 2 / 10;
-            int kx = cx + (int) Math.round(Math.cos(a) * 3.5);
-            int kz = cz + (int) Math.round(Math.sin(a) * 3.5);
+            int kx = cx + (int) Math.round(Math.cos(a) * 4.5);
+            int kz = cz + (int) Math.round(Math.sin(a) * 4.5);
             s.put(kx, 2, kz, i % 4 == 3 ? "SKELETON_SKULL" : "BLACK_CANDLE");
         }
-        s.put(cx, 2, cz, "CHISELED_POLISHED_BLACKSTONE");
-        s.put(cx, 3, cz, "GILDED_BLACKSTONE");
-        s.put(cx, 4, cz, "SKELETON_SKULL");
+        for (int x = cx - 2; x <= cx + 2; x++) {      // dais, first step
+            for (int z = cz - 2; z <= cz + 2; z++) {
+                boolean corner = Math.abs(x - cx) == 2 && Math.abs(z - cz) == 2;
+                s.put(x, 2, z, corner ? "CHISELED_POLISHED_BLACKSTONE" : "POLISHED_BLACKSTONE");
+            }
+        }
+        for (int x = cx - 1; x <= cx + 1; x++) {      // dais, second step
+            for (int z = cz - 1; z <= cz + 1; z++) {
+                s.put(x, 3, z, "POLISHED_BLACKSTONE_BRICKS");
+            }
+        }
+        s.put(cx, 4, cz, "CHISELED_POLISHED_BLACKSTONE");  // the altar table
+        s.put(cx, 5, cz, "GILDED_BLACKSTONE");
+        s.put(cx, 6, cz, "WITHER_SKELETON_SKULL");
+        for (int c = 0; c < 4; c++) {                 // corner pillars
+            int px2 = cx + (c % 2 == 0 ? -2 : 2), pz2 = cz + (c < 2 ? -2 : 2);
+            s.put(px2, 3, pz2, "POLISHED_BASALT");
+            s.put(px2, 4, pz2, "POLISHED_BASALT");
+            if (c % 2 == 0) {
+                s.put(px2, 5, pz2, "SOUL_LANTERN");
+            }
+        }
+        s.put(cx + 1, 4, cz - 1, "CAULDRON");
+        s.put(cx - 3, 2, cz + 3, "BONE_BLOCK");
+        s.put(cx - 3, 2, cz + 4, "BONE_BLOCK");
+
+        // The reliquary beneath the altar: casing, chamber, and a stepped
+        // way in through the missing slab south of the dais.
+        s.fillBox(cx - 2, -3, cz - 2, cx + 2, 0, cz + 2, ShapeSketch.solid("BLACKSTONE"));
+        s.carveBox(cx - 1, -2, cz - 1, cx + 1, -1, cz + 1);
+        s.carveBox(cx, 1, cz + 3, cx, 3, cz + 3);
+        s.put(cx, 0, cz + 3, "BLACKSTONE");
+        s.carveBox(cx, 0, cz + 2, cx, 2, cz + 2);
+        s.put(cx, -1, cz + 2, "BLACKSTONE");
+        s.carveBox(cx, -1, cz + 1, cx, 1, cz + 1);
+        s.put(cx, -2, cz + 1, "BLACKSTONE");
+        Rel reliquary = new Rel(cx, -2, cz - 1);
+        s.put(cx - 1, -2, cz + 1, "SOUL_LANTERN");
+        s.put(cx + 1, -2, cz, "BONE_BLOCK");
 
         // Glyph steles around the deck; the years have pushed half of them
         // over, so their capstones lie where they fell.
@@ -158,6 +197,24 @@ final class AbyssalMonolith implements DemoShape {
             }
         }
 
+        // One grave is more than a grave: a crypt under the first headstone,
+        // reached by rough steps cut down from the deck at its foot.
+        int gx0 = (int) Math.round(Math.cos(-Math.PI * 0.42) * (platR - 3));
+        int gz0 = (int) Math.round(Math.sin(-Math.PI * 0.42) * (platR - 3));
+        s.fillBox(gx0 - 2, -3, gz0 - 1, gx0 + 2, 0, gz0 + 3, ShapeSketch.solid("BLACKSTONE"));
+        s.put(gx0, 1, gz0, "SOUL_SAND");        // re-lay the disturbed grave bed
+        s.put(gx0, 1, gz0 + 1, "SOUL_SAND");
+        s.carveBox(gx0 - 1, -2, gz0, gx0 + 1, -1, gz0 + 2);
+        s.carveBox(gx0, 1, gz0 + 4, gx0, 3, gz0 + 4);
+        s.put(gx0, 0, gz0 + 4, "BLACKSTONE");
+        s.carveBox(gx0, 0, gz0 + 3, gx0, 2, gz0 + 3);
+        s.put(gx0, -1, gz0 + 3, "BLACKSTONE");
+        s.carveBox(gx0, -1, gz0 + 2, gx0, 1, gz0 + 2);
+        s.put(gx0, -2, gz0 + 2, "BLACKSTONE");
+        Rel crypt = new Rel(gx0, -2, gz0);
+        s.put(gx0 + 1, -2, gz0 + 1, "SOUL_LANTERN");
+        s.put(gx0 - 1, -2, gz0 + 1, "BONE_BLOCK");
+
         // Obsidian shards along the rim, clear of everything man-made.
         int shards = 5 + rng.nextInt(3);
         for (int i = 0; i < shards; i++) {
@@ -194,29 +251,34 @@ final class AbyssalMonolith implements DemoShape {
         s.carveBox(0, -1, 3, 0, 1, 3);
 
         // Chest at the vault's back wall, watched by sculk.
-        Rel chest = new Rel(0, -2, 4);
+        List<Rel> chests = new ArrayList<>();
+        chests.add(new Rel(0, -2, 4));
         s.put(-1, -2, 4, "SOUL_LANTERN");
         s.put(-1, -2, 3, "SCULK_SENSOR");
         s.put(1, -2, 3, "SCULK_CATALYST");
+        chests.add(crypt);
+        chests.add(reliquary);
 
         // Mobs pace the deck: one by the graves, one on the west deck near
-        // the dwellings, one keeping the old vigil at the circle.
+        // the dwellings, one keeping the old vigil at the altar.
         List<Rel> mobs = new ArrayList<>();
-        mobs.add(s.stand(platR - 5, -3, AbyssalMonolith::deck));
-        mobs.add(s.stand(-(platR - 5), 0, AbyssalMonolith::deck));
-        mobs.add(s.stand(10, 4, AbyssalMonolith::deck));
+        mobs.add(s.stand(platR - 5, -3, ShapeSketch.solid("POLISHED_BLACKSTONE")));
+        mobs.add(s.stand(-(platR - 5), 0, ShapeSketch.solid("POLISHED_BLACKSTONE")));
+        mobs.add(s.stand(10, 4, ShapeSketch.solid("POLISHED_BLACKSTONE")));
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, chests, mobs);
     }
 
-    private static String deck(Random rng) {
-        int roll = rng.nextInt(100);
-        if (roll < 62) {
-            return "POLISHED_BLACKSTONE";
+    /** Patch-shaded deck: worn brickwork drifts across the polished floor. */
+    private static String deck(int x, int y, int z, Random rng) {
+        int cell = ShapeSketch.cellNoise(Math.floorDiv(x, 3), y, Math.floorDiv(z, 3));
+        if (cell < 22) {
+            int roll = rng.nextInt(100);
+            if (roll < 55) {
+                return "POLISHED_BLACKSTONE_BRICKS";
+            }
+            return roll < 85 ? "CRACKED_POLISHED_BLACKSTONE_BRICKS" : "BLACKSTONE";
         }
-        if (roll < 82) {
-            return "BLACKSTONE";
-        }
-        return roll < 93 ? "POLISHED_BLACKSTONE_BRICKS" : "CRACKED_POLISHED_BLACKSTONE_BRICKS";
+        return rng.nextInt(100) < 85 ? "POLISHED_BLACKSTONE" : "BLACKSTONE";
     }
 }

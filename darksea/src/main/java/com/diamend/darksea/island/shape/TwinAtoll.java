@@ -113,6 +113,22 @@ final class TwinAtoll implements DemoShape {
         Rel chest = new Rel(capX + 1, capBase + 1, capZ);
         s.put(capX - 1, capBase + 1, capZ - 1, p.glow());
 
+        // A weathered stone circle crowns the east mound — whoever raised it
+        // is long gone; one skull still watches from a fallen stone.
+        for (int i = 0; i < 4; i++) {
+            int ox = i == 0 ? 3 : i == 1 ? -3 : 0;
+            int oz = i == 2 ? 3 : i == 3 ? -3 : 0;
+            int gx = bx + ox, gz = bz + oz;
+            int base = s.topY(gx, gz, 0);
+            int h = 1 + (ShapeSketch.cellNoise(gx, 0, gz) % 2);
+            for (int y = 1; y <= h; y++) {
+                s.put(gx, base + y, gz, "MOSSY_COBBLESTONE");
+            }
+            if (i == 3) {
+                s.put(gx, base + h + 1, gz, "SKELETON_SKULL");
+            }
+        }
+
         // Driftwood runs and dead scrub on both beaches.
         for (int run = 0; run < 3; run++) {
             int cx = (run == 0 ? ax : run == 1 ? bx : 0);
@@ -148,6 +164,6 @@ final class TwinAtoll implements DemoShape {
             mobs.add(s.stand(0, ringR, p::groundMix));
         }
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, List.of(chest), mobs);
     }
 }

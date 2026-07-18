@@ -40,6 +40,33 @@ public record Palette(int tier,
         return rng.nextInt(100) < 88 ? ground : groundAccent;
     }
 
+    /**
+     * Position-shaded cliff texture: 3x4x3 cells each roll one dominant
+     * material, so weathering reads as patches and streaks instead of
+     * per-block static.
+     */
+    public String rockPatch(int x, int y, int z, Random rng) {
+        int cell = ShapeSketch.cellNoise(Math.floorDiv(x, 3), Math.floorDiv(y, 4),
+                Math.floorDiv(z, 3));
+        int roll = rng.nextInt(100);
+        if (cell < 25) {
+            return roll < 78 ? rockAccent : rock;
+        }
+        if (roll < 90) {
+            return rock;
+        }
+        return roll < 98 ? rockAccent : rockDetail;
+    }
+
+    /** Position-shaded beach texture — accent drifts, not speckle. */
+    public String groundPatch(int x, int y, int z, Random rng) {
+        int cell = ShapeSketch.cellNoise(Math.floorDiv(x, 4), y, Math.floorDiv(z, 4));
+        if (cell < 18) {
+            return rng.nextInt(100) < 75 ? groundAccent : ground;
+        }
+        return rng.nextInt(100) < 94 ? ground : groundAccent;
+    }
+
     /** Size multiplier for "islands grow with the tier" escalation. */
     public double scale() {
         return 1.0 + 0.15 * (tier - 1);

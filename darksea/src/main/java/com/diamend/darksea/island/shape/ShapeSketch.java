@@ -16,6 +16,25 @@ final class ShapeSketch {
 
     static final String AIR = "AIR";
 
+    /** A material chosen by position — lets textures form patches, not static. */
+    interface Shader {
+        String at(int x, int y, int z, Random rng);
+    }
+
+    /**
+     * Deterministic 0..99 hash per texture cell. Feeding block coordinates
+     * divided down (e.g. {@code floorDiv(x,3)}) gives every 3x4x3 region one
+     * roll, so material variation reads as weathered patches instead of
+     * per-block noise.
+     */
+    static int cellNoise(int cx, int cy, int cz) {
+        long h = cx * 341873128712L + cy * 914534023L + cz * 132897987541L;
+        h ^= h >>> 13;
+        h *= 0x5DEECE66DL;
+        h ^= h >>> 15;
+        return (int) ((h & 0x7FFFFFFFL) % 100);
+    }
+
     private final Map<Rel, String> blocks = new LinkedHashMap<>();
     private final Random rng;
     private int maxY = Integer.MIN_VALUE;
@@ -88,6 +107,12 @@ final class ShapeSketch {
     /** An irregular ellipsoid of material — the basic rock mass. */
     void blob(double cx, double cy, double cz, double rx, double ry, double rz,
               Function<Random, String> material, double jitter) {
+        blob(cx, cy, cz, rx, ry, rz, shader(material), jitter);
+    }
+
+    /** The blob, shaded by position — patchy rock faces instead of static. */
+    void blob(double cx, double cy, double cz, double rx, double ry, double rz,
+              Shader material, double jitter) {
         int x0 = (int) Math.floor(cx - rx - 1), x1 = (int) Math.ceil(cx + rx + 1);
         int y0 = (int) Math.floor(cy - ry), y1 = (int) Math.ceil(cy + ry);
         int z0 = (int) Math.floor(cz - rz - 1), z1 = (int) Math.ceil(cz + rz + 1);
@@ -99,7 +124,7 @@ final class ShapeSketch {
                     double dy = (y - cy) / ry;
                     double dz = (z - cz) / (rz * reach);
                     if (dx * dx + dy * dy + dz * dz <= 1.0) {
-                        put(x, y, z, material.apply(rng));
+                        put(x, y, z, material.at(x, y, z, rng));
                     }
                 }
             }
@@ -126,6 +151,11 @@ final class ShapeSketch {
     /** One irregular horizontal layer. */
     void disc(double cx, int y, double cz, double radius,
               Function<Random, String> material, double jitter) {
+        disc(cx, y, cz, radius, shader(material), jitter);
+    }
+
+    /** The disc, shaded by position. */
+    void disc(double cx, int y, double cz, double radius, Shader material, double jitter) {
         int x0 = (int) Math.floor(cx - radius - 1), x1 = (int) Math.ceil(cx + radius + 1);
         int z0 = (int) Math.floor(cz - radius - 1), z1 = (int) Math.ceil(cz + radius + 1);
         for (int x = x0; x <= x1; x++) {
@@ -133,7 +163,7 @@ final class ShapeSketch {
                 double reach = radius * columnNoise(x, z, jitter);
                 double dx = x - cx, dz = z - cz;
                 if (dx * dx + dz * dz <= reach * reach) {
-                    put(x, y, z, material.apply(rng));
+                    put(x, y, z, material.at(x, y, z, rng));
                 }
             }
         }
@@ -152,12 +182,30 @@ final class ShapeSketch {
         }
     }
 
+    /** The dome, shaded by position. */
+    void dome(double cx, int baseY, double cz, double radius, int height,
+              Shader material, double jitter) {
+        for (int dy = 0; dy <= height; dy++) {
+            double t = dy / (double) (height + 1);
+            double r = radius * Math.sqrt(1.0 - t * t);
+            if (r < 0.6) {
+                break;
+            }
+            disc(cx, baseY + dy, cz, r, material, jitter);
+        }
+    }
+
     void fillBox(int x0, int y0, int z0, int x1, int y1, int z1,
                  Function<Random, String> material) {
+        fillBox(x0, y0, z0, x1, y1, z1, shader(material));
+    }
+
+    /** The box, shaded by position. */
+    void fillBox(int x0, int y0, int z0, int x1, int y1, int z1, Shader material) {
         for (int x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
             for (int y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
                 for (int z = Math.min(z0, z1); z <= Math.max(z0, z1); z++) {
-                    put(x, y, z, material.apply(rng));
+                    put(x, y, z, material.at(x, y, z, rng));
                 }
             }
         }
@@ -209,13 +257,18 @@ final class ShapeSketch {
         return rng -> material;
     }
 
+    private static Shader shader(Function<Random, String> material) {
+        return (x, y, z, rng) -> material.apply(rng);
+    }
+
     /** Blocks nothing should stand on (decor, damage sources, liquids). */
     private static final java.util.Set<String> BAD_FOOTING = java.util.Set.of(
             "LAVA", "WATER", "MAGMA_BLOCK", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",
             "SOUL_SOIL", "LANTERN", "SOUL_LANTERN", "SCULK_SENSOR", "SCULK_SHRIEKER",
             "COBWEB", "MOSS_CARPET", "LILY_PAD", "BROWN_MUSHROOM", "RED_MUSHROOM",
             "HANGING_ROOTS", "SEAGRASS", "BLACK_CANDLE", "CANDLE", "SKELETON_SKULL",
-            "SOUL_CAMPFIRE");
+            "SOUL_CAMPFIRE", "WITHER_SKELETON_SKULL", "WITHER_ROSE", "CAULDRON",
+            "CHAIN");
 
     /**
      * A guaranteed-safe standing cell in the column: on top of whatever is

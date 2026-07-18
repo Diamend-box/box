@@ -36,17 +36,20 @@ final class CorruptedForest implements DemoShape {
         ShapeSketch s = new ShapeSketch(seed);
         Random rng = s.rng();
 
-        int islandR = 14 + 2 * tier + rng.nextInt(2);  // t2 18-19 .. t4 22-23
+        int islandR = 16 + 2 * tier + rng.nextInt(2);  // t2 20-21 .. t4 24-25
+        ShapeSketch.Shader duff = (x, y, z, r) -> floorAt(x, z, r, tier);
 
-        // Beach ring, forest floor terraces, underwater root.
+        // Beach ring, forest floor terraces, underwater root. The floor is
+        // patch-shaded: mycelium and bare dirt spread in blotches, the way
+        // a blight actually creeps.
         s.blob(0, -3, 0, islandR - 1, 3.2, islandR - 1, p::groundMix, 0.18);
-        s.disc(0, -1, 0, islandR, p::groundMix, 0.15);
-        s.disc(0, 0, 0, islandR - 2, r -> floor(r, tier), 0.15);
-        s.disc(0, 1, 0, islandR - 6, r -> floor(r, tier), 0.12);
+        s.disc(0, -1, 0, islandR, p::groundPatch, 0.15);
+        s.disc(0, 0, 0, islandR - 2, duff, 0.15);
+        s.disc(0, 1, 0, islandR - 6, duff, 0.12);
         double moundAngle = rng.nextDouble() * Math.PI * 2;
-        s.dome((int) Math.round(Math.cos(moundAngle) * islandR * 0.45), 1,
-                (int) Math.round(Math.sin(moundAngle) * islandR * 0.45), 5.5, 3,
-                r -> floor(r, tier), 0.12);
+        int mcx = (int) Math.round(Math.cos(moundAngle) * islandR * 0.45);
+        int mcz = (int) Math.round(Math.sin(moundAngle) * islandR * 0.45);
+        s.dome(mcx, 1, mcz, 5.5, 3, duff, 0.12);
 
         // A stagnant pool sunk into the upper terrace, mud-bottomed,
         // hard-rimmed so it can't drain, one lily pad going nowhere.
@@ -69,7 +72,7 @@ final class CorruptedForest implements DemoShape {
 
         // Floor decor before the trees so it never lands on a canopy:
         // mushrooms, moss carpet, and the odd half-buried bone.
-        for (int i = 0; i < 8 + 2 * tier; i++) {
+        for (int i = 0; i < 12 + 3 * tier; i++) {
             double a = rng.nextDouble() * Math.PI * 2;
             double r = 5 + rng.nextDouble() * (islandR - 9);
             int dx = (int) Math.round(Math.cos(a) * r);
@@ -83,14 +86,19 @@ final class CorruptedForest implements DemoShape {
                 continue;
             }
             int roll = rng.nextInt(100);
-            if (roll < 40) {
+            if (roll < 30) {
                 s.put(dx, top + 1, dz, "BROWN_MUSHROOM");
-            } else if (roll < 55) {
+            } else if (roll < 40) {
                 s.put(dx, top + 1, dz, "RED_MUSHROOM");
-            } else if (roll < 90 && tier <= 3) {
+            } else if (roll < 58) {
+                s.put(dx, top + 1, dz, "WITHER_ROSE");  // the blight in flower
+            } else if (roll < 74 && tier <= 3) {
                 s.put(dx, top + 1, dz, "MOSS_CARPET");
-            } else if (roll >= 90) {
+            } else if (roll < 86) {
                 s.put(dx, top, dz, "BONE_BLOCK");
+            } else {
+                s.put(dx, top, dz, "COARSE_DIRT");
+                s.put(dx, top + 1, dz, "DEAD_BUSH");
             }
         }
         for (int i = 0; i < 6; i++) {  // dead scrub on the beach ring
@@ -164,7 +172,8 @@ final class CorruptedForest implements DemoShape {
 
         // Inside the heart: the chest, the glow, and — at tier 4 — the
         // things the blight put there to listen.
-        Rel chest = new Rel(-1, 1, -1);
+        List<Rel> chests = new ArrayList<>();
+        chests.add(new Rel(-1, 1, -1));
         s.put(1, 1, 1, "SHROOMLIGHT");
         s.put(0, 4, 0, "SHROOMLIGHT");  // heartglow above the chamber
         if (tier >= 4) {
@@ -173,17 +182,88 @@ final class CorruptedForest implements DemoShape {
             s.disc(0, 1, 3, 2.2, r -> r.nextInt(100) < 55 ? "SCULK" : floor(r, tier), 0.2);
         }
 
+        // A moss-eaten shrine in its own clearing, opposite the pool: the
+        // forest's people made offerings here before the blight took them.
+        double shrineAngle = poolAngle + Math.PI;
+        int shx = (int) Math.round(Math.cos(shrineAngle) * (islandR * 0.62));
+        int shz = (int) Math.round(Math.sin(shrineAngle) * (islandR * 0.62));
+        int shBase = Math.max(0, s.topY(shx, shz, 0));
+        for (int x = shx - 1; x <= shx + 1; x++) {
+            for (int z = shz - 1; z <= shz + 1; z++) {
+                s.put(x, shBase, z, rng.nextInt(100) < 55 ? "MOSSY_STONE_BRICKS"
+                        : "CRACKED_STONE_BRICKS");
+            }
+        }
+        s.put(shx, shBase + 1, shz, "CHISELED_STONE_BRICKS");
+        s.put(shx, shBase + 2, shz, "SKELETON_SKULL");
+        s.put(shx - 1, shBase + 1, shz + 1, "BLACK_CANDLE");
+        s.put(shx + 1, shBase + 1, shz - 1, "BLACK_CANDLE");
+        s.put(shx + 1, shBase + 1, shz + 1, "COBWEB");
+
+        // Tier 3+: a root cellar dug under the mound, its doorway facing
+        // the heart-tree. Chest two waits behind a shroomlight.
+        int cex = 0, cez = 0;
+        if (tier >= 3) {
+            cex = Math.abs(mcx) >= Math.abs(mcz) ? (mcx > 0 ? -1 : 1) : 0;
+            cez = cex == 0 ? (mcz > 0 ? -1 : 1) : 0;
+            java.util.function.Function<Random, String> cellarWall =
+                    r -> r.nextInt(100) < 55 ? "ROOTED_DIRT"
+                            : r.nextInt(100) < 60 ? "COARSE_DIRT" : "MUD";
+            s.fillBox(mcx - 2, -2, mcz - 2, mcx + 2, 1, mcz + 2, cellarWall);
+            s.carveBox(mcx - 1, -1, mcz - 1, mcx + 1, 0, mcz + 1);
+            s.carveBox(mcx + cex * 4, 1, mcz + cez * 4, mcx + cex * 4, 3, mcz + cez * 4);
+            s.carveBox(mcx + cex * 3, 0, mcz + cez * 3, mcx + cex * 3, 2, mcz + cez * 3);
+            s.carveBox(mcx + cex * 2, -1, mcz + cez * 2, mcx + cex * 2, 1, mcz + cez * 2);
+            chests.add(new Rel(mcx - cex, -1, mcz - cez));
+            s.put(mcx + cez, -1, mcz + cex, "SHROOMLIGHT");
+        }
+
+        // Tier 4: a fallen giant, hollow all the way down its trunk — the
+        // third chest is at the sealed end of the crawl.
+        int lgx = 0, lgz = 0;
+        if (tier >= 4) {
+            double logAngle = moundAngle + Math.PI * 0.33;
+            lgx = (int) Math.round(Math.cos(logAngle) * (islandR - 9));
+            lgz = (int) Math.round(Math.sin(logAngle) * (islandR - 9));
+            int ldx = Math.abs(Math.cos(logAngle)) < 0.5 ? 1 : 0;  // lie tangentially
+            int ldz = 1 - ldx;
+            int pxd = ldz, pzd = ldx;                              // cross-axis
+            for (int i = 0; i <= 6; i++) {
+                int ci = lgx + ldx * i, cj = lgz + ldz * i;
+                boolean cap = i == 6;
+                for (int w = -1; w <= 1; w++) {
+                    s.put(ci + pxd * w, 1, cj + pzd * w, trunk(rng));
+                    s.put(ci + pxd * w, 4, cj + pzd * w, trunk(rng));
+                    if (cap || w != 0) {
+                        s.put(ci + pxd * w, 2, cj + pzd * w, trunk(rng));
+                        s.put(ci + pxd * w, 3, cj + pzd * w, trunk(rng));
+                    } else {
+                        s.carve(ci, 2, cj);
+                        s.carve(ci, 3, cj);
+                    }
+                }
+            }
+            chests.add(new Rel(lgx + ldx * 5, 2, lgz + ldz * 5));
+            s.put(lgx + ldx * 4 + pxd, 2, lgz + ldz * 4 + pzd, "SHROOMLIGHT");
+            s.put(lgx + pxd, 5, lgz + pzd, "BROWN_MUSHROOM");
+            s.put(lgx + ldx * 3 - pxd, 5, lgz + ldz * 3 - pzd, "RED_MUSHROOM");
+        }
+
         // The dying wood around it: trees on a golden-angle spiral, each in
-        // its own stage of decay.
-        int trees = 10 + 2 * tier;
+        // its own stage of decay. Clearings stay clear: the pool, the
+        // shrine, the cellar mound, the fallen giant.
+        int trees = 12 + 2 * tier;
         double phase = rng.nextDouble() * Math.PI * 2;
         for (int i = 0; i < trees; i++) {
             double r = 6.5 + (islandR - 10) * Math.sqrt((i + 1) / (double) trees);
             double a = phase + i * 2.39996;
             int tx = (int) Math.round(Math.cos(a) * r);
             int tz = (int) Math.round(Math.sin(a) * r);
-            if (Math.hypot(tx - px, tz - pz) < 3.5) {
-                continue;  // not in the pool
+            if (Math.hypot(tx - px, tz - pz) < 3.5
+                    || Math.hypot(tx - shx, tz - shz) < 3.0
+                    || (tier >= 3 && Math.hypot(tx - mcx, tz - mcz) < 5.5)
+                    || (tier >= 4 && Math.hypot(tx - lgx, tz - lgz) < 4.5)) {
+                continue;
             }
             int ground = s.topY(tx, tz, -9);
             if (ground < 0 || ground > 4) {
@@ -210,13 +290,13 @@ final class CorruptedForest implements DemoShape {
             mobs.add(s.stand(mx, mz, r -> floor(r, tier)));
         }
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, chests, mobs);
     }
 
     /** One dying tree: bare snag, broken stump, or shedding canopy. */
     private void tree(ShapeSketch s, Random rng, int tier, int x, int ground, int z) {
         int kind = rng.nextInt(100);
-        if (kind < 20) {  // broken stump with its fallen trunk beside it
+        if (kind < 25) {  // broken stump with its fallen trunk beside it
             int h = 2 + rng.nextInt(2);
             for (int y = 1; y <= h; y++) {
                 s.put(x, ground + y, z, trunk(rng));
@@ -252,7 +332,7 @@ final class CorruptedForest implements DemoShape {
         }
 
         int topY = ground + h;
-        if (kind < 55) {  // bare snag: stub branches, webs, no leaves left
+        if (kind < 65) {  // bare snag: stub branches, webs, no leaves left
             for (int b = 0; b < 2; b++) {
                 double a = rng.nextDouble() * Math.PI * 2;
                 int bx = (int) Math.round(Math.cos(a) * 2);
@@ -260,7 +340,7 @@ final class CorruptedForest implements DemoShape {
                 s.line(x, topY - 1 - b, z, x + bx, topY - b, z + bz,
                         ShapeSketch.solid("DARK_OAK_LOG"));
             }
-            if (rng.nextInt(100) < 35) {
+            if (rng.nextInt(100) < 45) {
                 s.put(x + 1, topY - 1, z, "COBWEB");
             }
         } else {  // still shedding: ragged canopy tufts on branch arms
@@ -287,29 +367,46 @@ final class CorruptedForest implements DemoShape {
     }
 
     private static String rottenLeaves(Random rng) {
-        return rng.nextInt(100) < 16 ? ShapeSketch.AIR : "DARK_OAK_LEAVES";
+        return rng.nextInt(100) < 28 ? ShapeSketch.AIR : "DARK_OAK_LEAVES";
     }
 
     /** Forest floor mix — the blight escalates with the tier. */
     private static String floor(Random rng, int tier) {
         int roll = rng.nextInt(100);
         if (tier <= 2) {
-            if (roll < 50) {
+            if (roll < 45) {
                 return "PODZOL";
             }
-            return roll < 75 ? "COARSE_DIRT" : roll < 90 ? "MOSS_BLOCK" : "GRASS_BLOCK";
+            return roll < 70 ? "COARSE_DIRT" : roll < 85 ? "MYCELIUM"
+                    : roll < 95 ? "MOSS_BLOCK" : "ROOTED_DIRT";
         }
         if (tier == 3) {
-            if (roll < 40) {
+            if (roll < 32) {
                 return "PODZOL";
             }
-            return roll < 65 ? "COARSE_DIRT" : roll < 82 ? "ROOTED_DIRT"
-                    : roll < 94 ? "MOSS_BLOCK" : "MUD";
+            return roll < 55 ? "COARSE_DIRT" : roll < 72 ? "MYCELIUM"
+                    : roll < 84 ? "ROOTED_DIRT" : roll < 92 ? "SOUL_SOIL" : "MUD";
         }
-        if (roll < 30) {
+        if (roll < 28) {
             return "COARSE_DIRT";
         }
-        return roll < 55 ? "SOUL_SOIL" : roll < 75 ? "ROOTED_DIRT"
-                : roll < 90 ? "MUD" : "SCULK";
+        return roll < 52 ? "SOUL_SOIL" : roll < 68 ? "MYCELIUM"
+                : roll < 80 ? "ROOTED_DIRT" : roll < 90 ? "MUD" : "SCULK";
+    }
+
+    /**
+     * The floor, patch-shaded: the same per-tier mix, but each 4x4 cell
+     * leans hard into one material so the blight spreads in blotches.
+     */
+    private static String floorAt(int x, int z, Random rng, int tier) {
+        int cell = ShapeSketch.cellNoise(Math.floorDiv(x, 4), tier, Math.floorDiv(z, 4));
+        if (cell < 30) {  // a blighted blotch: bare and gray
+            int roll = rng.nextInt(100);
+            if (tier >= 4) {
+                return roll < 55 ? "SOUL_SOIL" : roll < 85 ? "MYCELIUM" : "SCULK";
+            }
+            return roll < 60 ? "MYCELIUM" : "COARSE_DIRT";
+        }
+        return floor(rng, tier);
     }
 }

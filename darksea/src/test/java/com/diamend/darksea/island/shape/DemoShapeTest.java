@@ -29,7 +29,8 @@ class DemoShapeTest {
             "AIR", "LAVA", "WATER", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",
             "SCULK_SENSOR", "SCULK_SHRIEKER", "COBWEB", "MOSS_CARPET", "LILY_PAD",
             "BROWN_MUSHROOM", "RED_MUSHROOM", "HANGING_ROOTS", "SEAGRASS",
-            "BLACK_CANDLE", "CANDLE", "SKELETON_SKULL", "SOUL_CAMPFIRE");
+            "BLACK_CANDLE", "CANDLE", "SKELETON_SKULL", "SOUL_CAMPFIRE",
+            "WITHER_SKELETON_SKULL", "WITHER_ROSE", "CAULDRON", "CHAIN");
 
     private static final long[] SEEDS = {1L, 424242L, -777L};
 
@@ -49,8 +50,22 @@ class DemoShapeTest {
                     assertTrue(spanX(build) >= 30 && spanZ(build) >= 30, where
                             + ": footprint " + spanX(build) + "x" + spanZ(build) + " under 30x30");
 
-                    assertClearWithFooting(build, build.chest(), where + " chest");
-                    assertConcealed(build, where);
+                    int expectedChests = tier >= 4 ? 3 : tier == 3 ? 2 : 1;
+                    assertEquals(expectedChests, build.chests().size(),
+                            where + ": wrong chest count");
+                    for (int c = 0; c < build.chests().size(); c++) {
+                        Rel chest = build.chests().get(c);
+                        assertClearWithFooting(build, chest, where + " chest#" + c);
+                        assertConcealed(build, chest, where + " chest#" + c);
+                        for (int o = 0; o < c; o++) {
+                            Rel other = build.chests().get(o);
+                            double gap = Math.sqrt(Math.pow(chest.x() - other.x(), 2)
+                                    + Math.pow(chest.y() - other.y(), 2)
+                                    + Math.pow(chest.z() - other.z(), 2));
+                            assertTrue(gap >= 6.0, where + ": chests #" + o + " and #" + c
+                                    + " only " + gap + " apart");
+                        }
+                    }
                     assertFalse(build.mobSpawns().isEmpty(), where + ": no mob spawns");
                     for (Rel mob : build.mobSpawns()) {
                         assertClearWithFooting(build, mob, where + " mob " + mob);
@@ -107,7 +122,7 @@ class DemoShapeTest {
             ShapeBuild a = shape.build(tier, 1234L);
             ShapeBuild b = shape.build(tier, 1234L);
             assertEquals(a.blocks(), b.blocks(), shape.id() + ": same seed, different blocks");
-            assertEquals(a.chest(), b.chest(), shape.id() + ": same seed, different chest");
+            assertEquals(a.chests(), b.chests(), shape.id() + ": same seed, different chests");
             assertEquals(a.mobSpawns(), b.mobSpawns(), shape.id() + ": same seed, different mobs");
         }
     }
@@ -153,8 +168,7 @@ class DemoShapeTest {
      * blocks straight up) and enclosed at its own height on at least three
      * of four sides — one side may be the way in.
      */
-    private static void assertConcealed(ShapeBuild build, String where) {
-        Rel chest = build.chest();
+    private static void assertConcealed(ShapeBuild build, Rel chest, String where) {
         boolean roofed = false;
         for (int dy = 1; dy <= 12 && !roofed; dy++) {
             roofed = isSolid(build, new Rel(chest.x(), chest.y() + dy, chest.z()));

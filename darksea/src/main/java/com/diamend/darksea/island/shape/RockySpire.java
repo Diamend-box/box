@@ -41,32 +41,33 @@ final class RockySpire implements DemoShape {
         int height = 14 + 4 * tier + rng.nextInt(3);    // t1 18-20 .. t4 30-32
 
         // Beach skirt, wet rim, and the underwater root the stack grows from.
-        s.disc(0, -1, 0, baseR + 6, p::groundMix, 0.2);
-        s.disc(0, 0, 0, baseR + 5, p::groundMix, 0.2);
-        s.blob(0, -3, 0, baseR + 3, 3.5, baseR + 3, p::rockMix, 0.2);
+        s.disc(0, -1, 0, baseR + 6, p::groundPatch, 0.2);
+        s.disc(0, 0, 0, baseR + 5, p::groundPatch, 0.2);
+        s.blob(0, -3, 0, baseR + 3, 3.5, baseR + 3, p::rockPatch, 0.2);
 
         // Main mass: stacked, offset blobs tapering hard to a tip — tall and
-        // narrow reads "spire", low jitter keeps the faces solid.
+        // narrow reads "spire"; patch shading keeps the faces from turning
+        // into per-block static.
         int lean1x = rng.nextInt(3) - 1, lean1z = rng.nextInt(3) - 1;
         int lean2x = lean1x + rng.nextInt(3) - 1, lean2z = lean1z + rng.nextInt(3) - 1;
-        s.blob(0, 1, 0, baseR, 5.0, baseR, p::rockMix, 0.2);
+        s.blob(0, 1, 0, baseR, 5.0, baseR, p::rockPatch, 0.2);
         s.blob(lean1x, height * 0.36, lean1z, baseR * 0.64, height * 0.26, baseR * 0.64,
-                p::rockMix, 0.18);
+                p::rockPatch, 0.18);
         s.blob(lean2x, height * 0.66, lean2z, baseR * 0.42, height * 0.2, baseR * 0.42,
-                p::rockMix, 0.16);
+                p::rockPatch, 0.16);
         s.blob(lean2x, height * 0.88, lean2z, Math.max(2.4, baseR * 0.18), height * 0.14,
-                Math.max(2.4, baseR * 0.18), p::rockMix, 0.14);
+                Math.max(2.4, baseR * 0.18), p::rockPatch, 0.14);
 
         // Two companion stacks offshore: one tall sibling, one stub.
         double sideAngle = rng.nextDouble() * Math.PI * 2;
         int sx = (int) Math.round(Math.cos(sideAngle) * (baseR + 3));
         int sz = (int) Math.round(Math.sin(sideAngle) * (baseR + 3));
-        s.blob(sx, -2, sz, 4.2, 3.0, 4.2, p::rockMix, 0.2);
-        s.blob(sx, height * 0.2, sz, 2.6, height * 0.26, 2.6, p::rockMix, 0.2);
+        s.blob(sx, -2, sz, 4.2, 3.0, 4.2, p::rockPatch, 0.2);
+        s.blob(sx, height * 0.2, sz, 2.6, height * 0.26, 2.6, p::rockPatch, 0.2);
         int s2x = (int) Math.round(Math.cos(sideAngle + 2.5) * (baseR + 2));
         int s2z = (int) Math.round(Math.sin(sideAngle + 2.5) * (baseR + 2));
-        s.blob(s2x, -1, s2z, 2.6, 2.4, 2.6, p::rockMix, 0.2);
-        s.blob(s2x, 2.4, s2z, 1.6, 2.2, 1.6, p::rockMix, 0.2);
+        s.blob(s2x, -1, s2z, 2.6, 2.4, 2.6, p::rockPatch, 0.2);
+        s.blob(s2x, 2.4, s2z, 1.6, 2.2, 1.6, p::rockPatch, 0.2);
 
         // Grotto network. A mouth tunnel bores in from a random side to a
         // first pocket; a side passage doglegs off it to the chest chamber,
@@ -112,15 +113,65 @@ final class RockySpire implements DemoShape {
             }
         }
 
+        List<Rel> chests = new ArrayList<>();
         int chestX = c2x + qx * side, chestZ = c2z + qz * side;
         s.put(chestX, 0, chestZ, p.rockDetail());
         s.carve(chestX, 1, chestZ);
         s.carve(chestX, 2, chestZ);
-        Rel chest = new Rel(chestX, 1, chestZ);
+        chests.add(new Rel(chestX, 1, chestZ));
         int glowX = c2x - mx, glowZ = c2z - mz;
         s.put(glowX, 0, glowZ, p.rockDetail());
         s.carve(glowX, 1, glowZ);
         s.put(glowX, 1, glowZ, p.glow());
+
+        // Whoever found this grotto first left an offering niche in the
+        // first pocket: a plinth, a skull, and a candle that burned out.
+        int nx = c1x - qx * side, nz = c1z - qz * side;
+        s.put(nx, 0, nz, p.rockDetail());
+        s.carve(nx, 1, nz);
+        s.put(nx, 1, nz, "SKELETON_SKULL");
+        s.put(nx + mx, 0, nz + mz, p.rock());
+        s.carve(nx + mx, 1, nz + mz);
+        s.put(nx + mx, 1, nz + mz, "BLACK_CANDLE");
+
+        // Tier 3+: a second cache in the first pocket, behind the offering.
+        if (tier >= 3) {
+            int c2ax = c1x - mx, c2az = c1z - mz;
+            s.put(c2ax, 0, c2az, p.rockDetail());
+            s.carve(c2ax, 1, c2az);
+            s.carve(c2ax, 2, c2az);
+            chests.add(new Rel(c2ax, 1, c2az));
+        }
+
+        // Tier 4: a wind-hollow near the shoulder of the spire — a carved
+        // cell inside the upper mass, reached by a short tunnel off the
+        // spiral ledges. Floor, ceiling and back wall are all guaranteed.
+        if (tier >= 4) {
+            int hy = (int) Math.round(height * 0.66);
+            int hollowLen = (int) Math.round(baseR * 0.42) + 3;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    s.put(lean2x + dx, hy, lean2z + dz, p.rockPatch(lean2x + dx, hy,
+                            lean2z + dz, rng));
+                    s.carve(lean2x + dx, hy + 1, lean2z + dz);
+                    s.carve(lean2x + dx, hy + 2, lean2z + dz);
+                    for (int y = hy + 3; y <= hy + 4; y++) {
+                        if (!s.solidAt(lean2x + dx, y, lean2z + dz)) {
+                            s.put(lean2x + dx, y, lean2z + dz, p.rockMix(rng));
+                        }
+                    }
+                }
+            }
+            for (int d = 2; d <= hollowLen; d++) {  // the way in, off the ledges
+                int cx = lean2x + mx * d, cz = lean2z + mz * d;
+                s.put(cx, hy, cz, p.rockMix(rng));
+                s.carve(cx, hy + 1, cz);
+                s.carve(cx, hy + 2, cz);
+            }
+            int hcx = lean2x - mx, hcz = lean2z - mz;
+            chests.add(new Rel(hcx, hy + 1, hcz));
+            s.put(lean2x + qx, hy + 1, lean2z + qz, p.glow());
+        }
 
         // Spiral parkour ledges: walk a ray out from the axis at each height
         // and hang a two-wide step off the outermost rock face, so ledges
@@ -171,6 +222,6 @@ final class RockySpire implements DemoShape {
             mobs.add(s.stand(sx, sz, p::rockMix));
         }
 
-        return ShapeBuild.of(s, chest, mobs);
+        return ShapeBuild.of(s, chests, mobs);
     }
 }
