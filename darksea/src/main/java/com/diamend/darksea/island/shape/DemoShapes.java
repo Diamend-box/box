@@ -11,6 +11,7 @@ public final class DemoShapes {
             new TwinAtoll(),
             new RuinedWatchtower(),
             new SeaBeastBones(),
+            new CorruptedForest(),
             new VolcanicCone(),
             new AbyssalMonolith());
 

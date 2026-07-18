@@ -16,35 +16,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Structural guarantees for the built-in island shapes: every emitted
  * material is a real placeable block, chests and mob spawns always have a
- * solid floor and clear headroom, footprints stay inside the placer's
- * chunk-preload budget, and builds are deterministic per (tier, seed) so a
- * soft reset reconstructs the identical island.
+ * solid floor and clear headroom, every island meets the 30x30 minimum
+ * footprint and stays inside the placer's chunk-preload budget, higher
+ * tiers are never smaller than lower ones, the chest is never in plain
+ * sight, and builds are deterministic per (tier, seed) so a soft reset
+ * reconstructs the identical island.
  */
 class DemoShapeTest {
 
     /** Blocks a chest or mob can't stand on. */
     private static final Set<String> NOT_FOOTING = Set.of(
-            "AIR", "LAVA", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE", "SCULK_SENSOR");
+            "AIR", "LAVA", "WATER", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",
+            "SCULK_SENSOR", "SCULK_SHRIEKER", "COBWEB", "MOSS_CARPET", "LILY_PAD",
+            "BROWN_MUSHROOM", "RED_MUSHROOM", "HANGING_ROOTS", "SEAGRASS",
+            "BLACK_CANDLE", "CANDLE", "SKELETON_SKULL", "SOUL_CAMPFIRE");
+
+    private static final long[] SEEDS = {1L, 424242L, -777L};
 
     @Test
     void everyShapeAtEveryTierIsWellFormed() {
         for (DemoShape shape : DemoShapes.ALL) {
             for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
-                for (long seed : new long[]{1L, 424242L, -777L}) {
+                for (long seed : SEEDS) {
                     ShapeBuild build = shape.build(tier, seed);
                     String where = shape.id() + " t" + tier + " seed " + seed;
 
-                    assertTrue(build.blocks().size() > 600, where + ": suspiciously small");
-                    assertTrue(build.radius() <= 20, where + ": radius " + build.radius());
-                    assertTrue(build.max().y() <= 26 && build.min().y() >= -8,
+                    assertTrue(build.blocks().size() > 1500, where + ": suspiciously small ("
+                            + build.blocks().size() + " blocks)");
+                    assertTrue(build.radius() <= 30, where + ": radius " + build.radius());
+                    assertTrue(build.max().y() <= 40 && build.min().y() >= -10,
                             where + ": vertical bounds " + build.min().y() + ".." + build.max().y());
+                    assertTrue(spanX(build) >= 30 && spanZ(build) >= 30, where
+                            + ": footprint " + spanX(build) + "x" + spanZ(build) + " under 30x30");
 
                     assertClearWithFooting(build, build.chest(), where + " chest");
+                    assertConcealed(build, where);
                     assertFalse(build.mobSpawns().isEmpty(), where + ": no mob spawns");
                     for (Rel mob : build.mobSpawns()) {
                         assertClearWithFooting(build, mob, where + " mob " + mob);
                     }
                 }
+            }
+        }
+    }
+
+    @Test
+    void higherTiersAreNeverSmaller() {
+        long[] seeds = {11L, 22L, 33L, 44L};
+        for (DemoShape shape : DemoShapes.ALL) {
+            for (int tier = shape.minTier(); tier < shape.maxTier(); tier++) {
+                int maxLow = 0, minHigh = Integer.MAX_VALUE;
+                long sumLow = 0, sumHigh = 0;
+                for (long seed : seeds) {
+                    int low = area(shape.build(tier, seed));
+                    int high = area(shape.build(tier + 1, seed));
+                    maxLow = Math.max(maxLow, low);
+                    minHigh = Math.min(minHigh, high);
+                    sumLow += low;
+                    sumHigh += high;
+                }
+                assertTrue(sumHigh > sumLow, shape.id() + ": t" + (tier + 1)
+                        + " not bigger than t" + tier + " on average");
+                assertTrue(minHigh * 10 >= maxLow * 9, shape.id() + ": a t" + (tier + 1)
+                        + " (" + minHigh + ") can roll far smaller than a t" + tier
+                        + " (" + maxLow + ")");
             }
         }
     }
@@ -93,12 +128,57 @@ class DemoShapeTest {
                 "position seed must be stable");
     }
 
+    private static int spanX(ShapeBuild build) {
+        return build.max().x() - build.min().x() + 1;
+    }
+
+    private static int spanZ(ShapeBuild build) {
+        return build.max().z() - build.min().z() + 1;
+    }
+
+    private static int area(ShapeBuild build) {
+        return spanX(build) * spanZ(build);
+    }
+
     private static void assertClearWithFooting(ShapeBuild build, Rel pos, String where) {
         String below = build.blocks().get(pos.below());
         assertNotNull(below, where + ": nothing under " + pos);
         assertFalse(NOT_FOOTING.contains(below), where + ": bad footing " + below);
         assertTrue(isClear(build, pos), where + ": cell blocked at " + pos);
         assertTrue(isClear(build, pos.above()), where + ": no headroom at " + pos);
+    }
+
+    /**
+     * "You have to explore to find it": the chest is roofed (solid within 12
+     * blocks straight up) and enclosed at its own height on at least three
+     * of four sides — one side may be the way in.
+     */
+    private static void assertConcealed(ShapeBuild build, String where) {
+        Rel chest = build.chest();
+        boolean roofed = false;
+        for (int dy = 1; dy <= 12 && !roofed; dy++) {
+            roofed = isSolid(build, new Rel(chest.x(), chest.y() + dy, chest.z()));
+        }
+        assertTrue(roofed, where + ": chest is open to the sky at " + chest);
+
+        int enclosed = 0;
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] dir : dirs) {
+            for (int d = 1; d <= 24; d++) {
+                if (isSolid(build, new Rel(chest.x() + dir[0] * d, chest.y(),
+                        chest.z() + dir[1] * d))) {
+                    enclosed++;
+                    break;
+                }
+            }
+        }
+        assertTrue(enclosed >= 3, where + ": chest visible from " + (4 - enclosed)
+                + " open sides at " + chest);
+    }
+
+    private static boolean isSolid(ShapeBuild build, Rel pos) {
+        String material = build.blocks().get(pos);
+        return material != null && !"AIR".equals(material);
     }
 
     private static boolean isClear(ShapeBuild build, Rel pos) {

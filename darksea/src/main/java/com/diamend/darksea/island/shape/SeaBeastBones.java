@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Whatever this was, something bigger killed it. A bleached ribcage arcs
- * over a long sandbar, vertebrae trail off into the water, and the skull
- * lies at the head end — lantern-light glowing through its eye sockets at
- * night. The chest sits inside the skull, entered through the jaw.
+ * Whatever this was, something bigger killed it. The carcass lies curled in
+ * a death-arc across a long sandbar: a bleached ribcage marches toward a
+ * hollow skull big enough to walk into (lantern-light glows through its eye
+ * sockets at night), and vertebrae sink into the sea off the tail. The
+ * chest sits deep in the cranium, entered through the jaw.
  */
 final class SeaBeastBones implements DemoShape {
 
@@ -33,39 +34,48 @@ final class SeaBeastBones implements DemoShape {
         ShapeSketch s = new ShapeSketch(seed);
         Random rng = s.rng();
 
-        int rx = 10 + tier + rng.nextInt(2);   // half-length of the bar
-        int rz = 4 + rng.nextInt(2);
+        int rx = 16 + 2 * tier + rng.nextInt(2);   // half-length: t2 20-21 .. t4 24-25
+        int rz = 6 + rng.nextInt(2);               // bar half-width
+        int bend = 16 + 2 * tier + rng.nextInt(2); // how hard the carcass curls
 
-        // The bar: a long domed spit, wet skirt at the waterline.
-        s.blob(0, -3, 0, rx * 0.8, 2.5, rz + 2, p::groundMix, 0.3);
+        // The bar: a long domed spit curling in z, wet skirt at the waterline.
+        // zc(x) is the carcass centerline the spine and ribs follow.
+        for (int i = -2; i <= 2; i++) {
+            double t = i / 2.0;
+            s.blob(t * rx * 0.7, -3, zc(t * rx * 0.7, rx, bend), rx * 0.28, 2.5, rz + 3,
+                    p::groundMix, 0.25);
+        }
         for (int x = -rx; x <= rx; x++) {
             double w = rz * Math.sqrt(Math.max(0.0, 1.0 - (double) (x * x) / (rx * rx)));
-            for (int z = (int) -w - 2; z <= w + 2; z++) {
-                double u = Math.abs(z) / Math.max(w, 0.001);
-                if (u <= 1.3) {
+            double center = zc(x, rx, bend);
+            for (int dz = (int) -w - 3; dz <= w + 3; dz++) {
+                int z = (int) Math.round(center) + dz;
+                double u = Math.abs(dz) / Math.max(w, 0.001);
+                if (u <= 1.4) {
                     s.put(x, -1, z, p.groundMix(rng));
                 }
-                if (u <= 0.9) {
+                if (u <= 1.0) {
                     s.put(x, 0, z, p.groundMix(rng));
                 }
-                if (u <= 0.45) {
+                if (u <= 0.5) {
                     s.put(x, 1, z, p.groundMix(rng));
                 }
             }
         }
 
-        // Ribs: bone arches marching toward the head (+x), taller as they go.
-        int ribs = tier >= 3 ? 5 : 4;
-        int firstRib = (int) (-rx * 0.6);
-        int lastRib = (int) (rx * 0.32);
+        // Ribs: bone arches over the centerline, taller toward the head (+x).
+        int ribs = 4 + (tier + 1) / 2 + (tier == 4 ? 1 : 0);   // t2 5, t3 6, t4 7
+        int firstRib = (int) (-rx * 0.62);
+        int lastRib = (int) (rx * 0.34);
         for (int i = 0; i < ribs; i++) {
             int x = firstRib + (lastRib - firstRib) * i / (ribs - 1);
-            double w = Math.max(3.0,
-                    rz * Math.sqrt(Math.max(0.0, 1.0 - (double) (x * x) / (rx * rx))) + 1);
-            int h = 5 + Math.round(2.0f * i / (ribs - 1)) + rng.nextInt(2);
+            double w = Math.max(3.5,
+                    rz * Math.sqrt(Math.max(0.0, 1.0 - (double) (x * x) / (rx * rx))) + 1.5);
+            int h = 6 + tier / 2 + Math.round(3.0f * i / (ribs - 1)) + rng.nextInt(2);
+            int center = (int) Math.round(zc(x, rx, bend));
             int prevY = 0;
-            for (double t = 0; t <= Math.PI + 0.01; t += Math.PI / 28) {
-                int z = (int) Math.round(Math.cos(t) * w);
+            for (double t = 0; t <= Math.PI + 0.01; t += Math.PI / 32) {
+                int z = center + (int) Math.round(Math.cos(t) * w);
                 int y = (int) Math.round(Math.sin(t) * h);
                 s.put(x, y, z, "BONE_BLOCK");
                 for (int fy = Math.min(prevY, y) + 1; fy < Math.max(prevY, y); fy++) {
@@ -75,55 +85,72 @@ final class SeaBeastBones implements DemoShape {
             }
         }
 
-        // Spine along the ridge, wavering, dipping toward the tail.
-        int spineStart = (int) (-rx * 0.75);
-        for (int x = spineStart; x <= lastRib + 2; x++) {
-            double progress = (x - spineStart) / (double) (lastRib + 2 - spineStart);
-            int y = (int) Math.round(2 + progress * 5.2);
-            int z = (int) Math.round(Math.sin(x * 0.45) * 1.2);
+        // Spine along the ridge, riding the curl, rising toward the skull.
+        int spineStart = (int) (-rx * 0.8);
+        int spineEnd = lastRib + 3;
+        for (int x = spineStart; x <= spineEnd; x++) {
+            double progress = (x - spineStart) / (double) (spineEnd - spineStart);
+            int y = (int) Math.round(2 + progress * 5.5);
+            int z = (int) Math.round(zc(x, rx, bend) + Math.sin(x * 0.45) * 1.2);
             s.put(x, y, z, "BONE_BLOCK");
-        }
-
-        // Tail vertebrae sinking into the sea.
-        for (int i = 1; i <= 6; i++) {
-            int x = spineStart - i;
-            int y = Math.max(-2, 2 - (i + 1) / 2);
-            if (i % 2 == 1) {
-                s.put(x, y, (int) Math.round(Math.sin(x * 0.45) * 1.2), "BONE_BLOCK");
+            if (rng.nextInt(100) < 30) {
+                s.put(x, y - 1, z, "BONE_BLOCK");  // thicker vertebrae here and there
             }
         }
 
-        // The skull: hollow bone mass past the last rib, jaw gaping seaward.
-        int skullX = lastRib + 5;
-        s.blob(skullX, 2.0, 0, 2.9, 2.4, 2.7, ShapeSketch.solid("BONE_BLOCK"), 0.12);
-        s.carveBlob(skullX, 1.8, 0, 1.8, 1.6, 1.6);
-        s.fillBox(skullX - 1, 0, -1, skullX + 1, 0, 1, ShapeSketch.solid("BONE_BLOCK"));
-        s.carveBox(skullX + 1, 1, -1, skullX + 3, 2, 1);              // mouth
-        s.fillBox(skullX + 1, 0, -1, skullX + 3, 0, 1, ShapeSketch.solid("BONE_BLOCK"));
-        s.put(skullX + 3, 1, -1, "BONE_BLOCK");                       // fangs
-        s.put(skullX + 3, 1, 1, "BONE_BLOCK");
-        s.carveBox(skullX + 1, 3, -2, skullX + 2, 3, -2);             // eye sockets
-        s.carveBox(skullX + 1, 3, 2, skullX + 2, 3, 2);
-        s.put(skullX, 3, -1, p.glow());                               // eyes glow at night
-        s.put(skullX, 3, 1, p.glow());
-        s.carveBox(skullX - 1, 1, 0, skullX, 2, 0);                   // room for the chest
-        Rel chest = new Rel(skullX - 1, 1, 0);
+        // Tail vertebrae sinking into the sea past the bar's end.
+        for (int i = 1; i <= 8; i++) {
+            int x = spineStart - i;
+            int y = Math.max(-2, 2 - (i + 1) / 2);
+            if (i % 2 == 1) {
+                s.put(x, y, (int) Math.round(zc(x, rx, bend)), "BONE_BLOCK");
+            }
+        }
+
+        // The skull: a hollow bone cave at the head end, jaw gaping seaward.
+        int skullX = rx - 7;
+        int skullZ = (int) Math.round(zc(skullX, rx, bend));
+        s.fillBox(skullX - 4, 0, skullZ - 3, skullX + 3, 0, skullZ + 3,
+                ShapeSketch.solid("BONE_BLOCK"));
+        s.blob(skullX, 2.6, skullZ, 4.2, 3.2, 3.6, ShapeSketch.solid("BONE_BLOCK"), 0.1);
+        s.carveBlob(skullX - 0.5, 2.2, skullZ, 2.9, 2.2, 2.2);
+        s.carveBox(skullX + 2, 1, skullZ - 1, skullX + 5, 2, skullZ + 1);   // mouth
+        s.fillBox(skullX + 2, 0, skullZ - 1, skullX + 5, 0, skullZ + 1,
+                ShapeSketch.solid("BONE_BLOCK"));
+        s.put(skullX + 5, 1, skullZ - 1, "BONE_BLOCK");                     // fangs
+        s.put(skullX + 5, 1, skullZ + 1, "BONE_BLOCK");
+        s.put(skullX + 4, 1, skullZ, "BONE_BLOCK");
+        s.carveBox(skullX, 4, skullZ - 4, skullX + 1, 4, skullZ - 4);       // eye sockets
+        s.carveBox(skullX, 4, skullZ + 4, skullX + 1, 4, skullZ + 4);
+        s.put(skullX, 3, skullZ - 2, p.glow());                             // eyes glow at night
+        s.put(skullX, 3, skullZ + 2, p.glow());
+        s.carveBox(skullX - 2, 1, skullZ, skullX - 1, 2, skullZ);           // chest nook
+        Rel chest = new Rel(skullX - 2, 1, skullZ);
 
         // Scattered bone fragments half-buried in the bar.
-        for (int i = 0; i < 4; i++) {
-            int fx = rng.nextInt(rx) - rx / 2;
-            int fz = rng.nextInt(2 * rz + 1) - rz;
+        for (int i = 0; i < 6; i++) {
+            int fx = rng.nextInt(2 * rx) - rx;
+            int fz = (int) Math.round(zc(fx, rx, bend)) + rng.nextInt(2 * rz + 1) - rz;
             int top = s.topY(fx, fz, -2);
             if (top >= 0 && !"BONE_BLOCK".equals(s.get(fx, top, fz))) {
                 s.put(fx, top, fz, "BONE_BLOCK");
             }
         }
 
-        // Mobs: one beneath the ribs, one out by the tail.
+        // Mobs: one beneath the mid-ribs, one by the tail, one past the jaw.
         List<Rel> mobs = new ArrayList<>();
-        mobs.add(s.stand((firstRib + lastRib) / 2, 0, p::groundMix));
-        mobs.add(s.stand(spineStart + 2, 2, p::groundMix));
+        int midX = (firstRib + lastRib) / 2;
+        mobs.add(s.stand(midX, (int) Math.round(zc(midX, rx, bend)), p::groundMix));
+        mobs.add(s.stand(spineStart + 2, (int) Math.round(zc(spineStart + 2, rx, bend)) + 2,
+                p::groundMix));
+        mobs.add(s.stand(skullX + 7, skullZ, p::groundMix));
 
         return ShapeBuild.of(s, chest, mobs);
+    }
+
+    /** Carcass centerline: a banana curve, ends bending toward +z. */
+    private static double zc(double x, int rx, int bend) {
+        double t = x / rx;
+        return bend * (t * t - 0.5);
     }
 }

@@ -29,12 +29,27 @@ visible from the water. The home island stays hand-built by Wyatt (the
 generator never touches it), and any shape can be overridden later by real
 schematics per tier.
 
-**Status:** six generators live in `island/shape/` with structural tests
-(footing/headroom/bounds/determinism, 200-seed sweep clean) — not yet wired
-into `IslandPlacer`. Interactive 3D preview shared for approval. Next:
-shape verdicts by phone → wire into the placer (persist each island's shape
-in the registry, chunk preload from the shape's real radius, config flag so
-soft reset never re-pastes the hand-built spawn).
+**Decisions round 2 (Jul 18, by Wyatt):** every island at least 30x30, the
+big ones pushing 50x50+; islands should take real time to cover. Tier sizes
+must scale cleanly — a farther-ring island never rolls smaller (spire was
+the offender; the viewer's auto-zoom also hid true sizes, now fixed with a
+per-shape true-to-scale zoom + a size readout + a block key). Watchtower
+keeps get taller: exactly 15/18/21 by tier. New seventh shape by request:
+**corrupted forest** (z2–4) — decaying/infected woods with a hollow
+heart-tree hiding the chest. Abyssal monolith gets cult remains — candle
+ring, skull altar, toppled glyph steles, roofless dwellings, graves — "a
+group of people used to live here but left or died."
+
+**Status:** seven generators live in `island/shape/`; tests now also
+enforce the 30x30 minimum footprint, tier-monotonic sizing, and chest
+concealment (roofed + enclosed on 3+ sides); 200-seed sweep clean across
+all 18 tier combos. Preview artifact regenerated with tier/seed/key
+controls (two seeds per combo prove per-island variation). Still not wired
+into `IslandPlacer` — waiting on Wyatt's per-shape verdicts. Wiring notes
+when approved: persist shape id in the registry, chunk preload from the
+shape's real radius, paste bottom-up with physics off, leaves need
+`persistent=true`, config flag so soft reset never re-pastes the
+hand-built spawn.
 
 ### 2. MythicMobs content pack — content + small code
 A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone (e.g.

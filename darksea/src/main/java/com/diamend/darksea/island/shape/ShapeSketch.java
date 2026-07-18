@@ -179,6 +179,20 @@ final class ShapeSketch {
         }
     }
 
+    /** A voxel line between two points — branches, fallen pillars, rib spokes. */
+    void line(int x0, int y0, int z0, int x1, int y1, int z1,
+              Function<Random, String> material) {
+        int steps = Math.max(1, Math.max(Math.abs(x1 - x0),
+                Math.max(Math.abs(y1 - y0), Math.abs(z1 - z0))));
+        for (int i = 0; i <= steps; i++) {
+            double t = i / (double) steps;
+            put((int) Math.round(x0 + (x1 - x0) * t),
+                    (int) Math.round(y0 + (y1 - y0) * t),
+                    (int) Math.round(z0 + (z1 - z0) * t),
+                    material.apply(rng));
+        }
+    }
+
     /** One ring of a circular wall (radius measured to block centers). */
     void wallRing(double cx, int y, double cz, int radius, Function<Random, String> material) {
         for (int x = (int) cx - radius; x <= cx + radius; x++) {
@@ -195,10 +209,13 @@ final class ShapeSketch {
         return rng -> material;
     }
 
-    /** Blocks nothing should stand on (decor, damage sources). */
+    /** Blocks nothing should stand on (decor, damage sources, liquids). */
     private static final java.util.Set<String> BAD_FOOTING = java.util.Set.of(
-            "LAVA", "MAGMA_BLOCK", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",
-            "SOUL_SOIL", "LANTERN", "SOUL_LANTERN", "SCULK_SENSOR");
+            "LAVA", "WATER", "MAGMA_BLOCK", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",
+            "SOUL_SOIL", "LANTERN", "SOUL_LANTERN", "SCULK_SENSOR", "SCULK_SHRIEKER",
+            "COBWEB", "MOSS_CARPET", "LILY_PAD", "BROWN_MUSHROOM", "RED_MUSHROOM",
+            "HANGING_ROOTS", "SEAGRASS", "BLACK_CANDLE", "CANDLE", "SKELETON_SKULL",
+            "SOUL_CAMPFIRE");
 
     /**
      * A guaranteed-safe standing cell in the column: on top of whatever is
