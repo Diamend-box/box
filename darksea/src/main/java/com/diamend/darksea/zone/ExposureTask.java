@@ -64,10 +64,11 @@ public final class ExposureTask extends BukkitRunnable implements Listener {
             // Zone-crossing feedback (also for exempt players — it's navigation info).
             String previous = lastZone.put(player.getUniqueId(), zone.id());
             if (previous != null && !previous.equals(zone.id())) {
-                boolean safeHere = exempt || exposure <= 0;
-                plugin.messages().actionBar(player,
-                        safeHere ? "zone-crossed-protected" : "zone-crossed-exposed",
-                        "zone", zone.displayName());
+                // Exempt (creative/spectator/bypass) gets its own message: telling a
+                // creative-mode tester "your armor holds" reads like a broken check.
+                String key = exempt ? "zone-crossed-exempt"
+                        : exposure <= 0 ? "zone-crossed-protected" : "zone-crossed-exposed";
+                plugin.messages().actionBar(player, key, "zone", zone.displayName());
                 player.playSound(player.getLocation(), Sound.AMBIENT_UNDERWATER_ENTER, 0.6f, 0.7f);
             }
 

@@ -240,6 +240,18 @@ intervals need a restart. All user-facing text is
 
 ---
 
+## Low-RAM hosts (Minehut and friends)
+
+The Dark Sea is an extra world: exploring it generates new chunks, and chunk
+generation is the most memory-hungry thing a server does. On a small shared
+heap with many plugins, flying fast through fresh ocean can run the server out
+of memory (`OutOfMemoryError` → watchdog stall → crash). If that happens:
+travel by boat instead of creative-flying at speed, lower `view-distance` in
+`server.properties`, and explore gradually so chunks generate at a survivable
+pace. The plugin itself is light; it's the chunk generation that costs.
+
+---
+
 ## Manual test script (per phase)
 
 Things that can't be unit-tested (FAWE pasting, Mythic spawning, boat feel):

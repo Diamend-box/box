@@ -141,6 +141,7 @@ messages:
 
   zone-crossed-protected: "<gray>Entering {zone}<gray> — your armor holds."
   zone-crossed-exposed: "<red>Entering {zone}<red> — you are not protected here!"
+  zone-crossed-exempt: "<gray>Entering {zone}<gray> — <yellow>exempt<yellow> (creative/spectator/bypass)."
 
   status-header: "<dark_aqua><bold>Dark Sea status</bold>"
   status-zone: "<gray>Zone: {zone} <gray>({distance}m from center)"
