@@ -250,6 +250,38 @@ travel by boat instead of creative-flying at speed, lower `view-distance` in
 `server.properties`, and explore gradually so chunks generate at a survivable
 pace. The plugin itself is light; it's the chunk generation that costs.
 
+## Scaling up (2–6 GB hosts)
+
+The shipped defaults are deliberately small-host safe. With real headroom
+(e.g. a 6 GB plan) these values are comfortable and make the sea feel much
+denser:
+
+```yaml
+# config.yml — 6 GB profile
+generation:
+  outer-radius: 8000
+  islands-per-ring:
+    1: 12
+    2: 16
+    3: 16
+    4: 20
+  demo-pace-ticks: 5
+mob-spawning:
+  activation-radius: 80
+  per-island-cap: 8
+  global-cap: 250
+```
+
+Also consider raising `view-distance` to 7–8 in `server.properties`. Zone
+radii don't need to change — the extra 2000 blocks of `outer-radius` just
+push more islands deep into the final zone. After raising the per-ring
+counts, run `/ds generate` to top rings up to the new totals (it only adds
+what's missing), or `/ds reset full confirm` for a clean re-roll at the new
+radius. More RAM is also what makes an updated FastAsyncWorldEdit and
+MythicMobs viable alongside the rest of your plugin stack — see
+[Getting started](#getting-started-first-run) for the migration path off
+demo mode.
+
 ---
 
 ## Manual test script (per phase)
