@@ -29,13 +29,18 @@ public record LootTable(int tier, int rolls, long refillCooldownMinutes, List<Lo
     }
 
     public List<ItemStack> rollLoot(Random rng, ArmorSettings armor) {
+        return rollLoot(rng, armor, 1.0);
+    }
+
+    /** {@code chrononScale}: the island's wealth multiplier, applied to Chronon piles only. */
+    public List<ItemStack> rollLoot(Random rng, ArmorSettings armor, double chrononScale) {
         List<ItemStack> items = new ArrayList<>(rolls);
         for (int i = 0; i < rolls; i++) {
             LootEntry entry = pick(rng);
             if (entry == null) {
                 continue;
             }
-            ItemStack item = entry.roll(rng, armor);
+            ItemStack item = entry.roll(rng, armor, chrononScale);
             if (item != null) {
                 items.add(item);
             }

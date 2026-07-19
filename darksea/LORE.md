@@ -57,23 +57,59 @@ fragments of the plague that hunt for hosts and wither away on their own.
 The primordial power the Order serves stays beneath the sea, unfought and
 unnamed — cause, not creature.
 
+## The refugees and the Chronon (decided Jul 19)
+
+Not every Naxian drowned. The ones who read the water right fled inward
+ahead of the plague, and they hold the calm center now — the home island
+is **theirs**, the last working harbor of a dead nation. They are why the
+center is calm at all.
+
+Their money survived with them. The **Chronon** — "the Naxome minted time
+itself" — turns up in every wreck and ruin, and the refugees still honor
+it: today they charge it to wake relics, and a proper goods trader on the
+home island is planned on the same coin. Some islands hoard more than
+others; a rich district drowns rich.
+
 ## What the dead left behind (Loot 2.0 relics)
 
-The treasure of a dead civilization isn't gold — it's the things that meant
-something. Island chests carry named **relics** alongside plain salvage
-(names are a first draft, all renameable):
+The treasure of a dead civilization isn't gold — it's the things that
+meant something. Chests carry named **relics** alongside plain salvage.
+A relic comes out of the water **dormant** — a keepsake, nothing more.
+Carried home to the refugees and paid for in Chronons, it **wakes**, and
+works from your pack (the plague-touched can only channel a couple at
+once — `relics.max-active`).
 
-| Ring | Relic | What it was |
-|---|---|---|
-| 1 | **Rotted Rigging** | Sailcloth of ships nobody sails home |
-| 1 | **Naxian Trade Coin** | Currency of a market that drowned with everyone in it |
-| 2 | **Unclaimed Remains** | The Naxome buried their dead; nobody buried these |
-| 2 | **Harbor Bell of the Naxome** | It rang when ships came home. Quiet a long time now |
-| 3 | **Drained Plague Vial** | Whatever it held is in the water |
-| 3 | **Sealed Mariphage Sample** | Templar's stock, still stoppered — the Order wants it back |
-| 4 | **Vigil Candle** | Lit for the primordial. Still warm |
-| 4 | **Monolith Splinter** | It hums when held — not a sound, a word, almost |
-| 4 | **Heart of the Naxome** | Everything they were, pressed into one cold stone |
+| Ring | Relic | What it was | Awake |
+|---|---|---|---|
+| 1 | **Naxian Trade Coin** | Currency of a market that drowned with everyone in it | Merchant's Stride — +10% speed |
+| 2 | **Harbor Bell of the Naxome** | It rang when ships came home. Quiet a long time now | Homeward Wind — +15% boat speed |
+| 3 | **Sealed Mariphage Sample** | Templar's stock, still stoppered — the Order wants it back | Plaguebearer's Edge — +1 damage |
+| 4 | **Monolith Splinter** | It hums when held — not a sound, a word, almost | Stone's Patience — +3 armor |
+| 4 | **Heart of the Naxome** | Everything they were, pressed into one cold stone | Naxome's Mercy — slow regeneration |
+| — | **Vector of the Mariphage** | Cut from a slain Core; it still wants to spread | Carrier — your strikes infect (Poison II, Slowness) |
 
-Relics are collectibles and lore carriers for now; a trader or crafting
-sink for them is future work.
+The junk-band named salvage (Rotted Rigging, Unclaimed Remains, Drained
+Plague Vial, Vigil Candle) stays what it is — flavor, not power.
+
+## Arms of the drowned and the damned (decided Jul 19)
+
+The cursed drop what their bodies became; the Order wears its rank; the
+chests hold what the Naxome actually used — honest tools, a band below
+the living nightmares, with the odd ceremonial exception. Nothing out
+here is enchanted; the sea doesn't work that way.
+
+- **Sailor's Cutlass** — crazed sailors. Fast, familiar, sad.
+- **Naxian Claw / Enhanced Naxian Claw** — the change, at two stages.
+  Quick over heavy; the enhanced claw cuts deeper.
+- **Abomination Bone** — a rib swung like a verdict. Slow, brutal, and
+  dead even with the enhanced claw over a long fight.
+- **Vironic sets** (Initiate → Lord) — cultist cloth, dyed deeper purple
+  with rank. Keeps the Mariphage out exactly as well as sea armor of the
+  rank's ring — the plague knows its keepers — and a full set blesses the
+  wearer's strikes (+2 damage per set tier, Dark Sea only). It is still
+  cloth; teeth don't care about rank.
+- **Mariphage Stinger** — the Core's needle: two hearts, straight through
+  any defense, no matter what the target wears. Never guaranteed — the
+  Core keeps its treasures more often than not.
+- Chest finds: **Naxian Boarding Axe**, **Harborguard Pike**, and the
+  **Ceremonial Blade of the Order** — meant for altars, works in a fight.

@@ -47,3 +47,52 @@ tiers:
     - { type: NaxianAbomination, fallback: RAVAGER,         weight: 8,  level: 10 }
     - { type: VironicLord,       fallback: EVOKER,          weight: 6,  level: 10 }
     - { type: MariphageCore,     fallback: WARDEN,          weight: 1,  level: 10 }
+
+# ---------------------------------------------------------------------------
+# Plugin-side signature drops, rolled on top of any MythicMobs pack drops.
+# These work identically with or without MythicMobs, because the spawner
+# tags every mob it spawns and the drop service reads the tag at death.
+#
+# Line shapes:
+#   { id: <registry item id>, chance: 0..1, min: n, max: n }
+#   { set: vironic, tier: 1-4, chance: 0..1 }   -> one random piece of that
+#                                                  rank's cultist set
+#
+# The Cursed carry the weapons their bodies became; the Order wears its
+# rank. Everyone out here looted Chronons from somewhere.
+#
+# The Mariphage Core's signature drops are deliberately NOT guaranteed —
+# the Stinger and the Vector are chase items across repeat kills; only its
+# Chronon hoard always drops. Reloads with /ds reload.
+# ---------------------------------------------------------------------------
+
+drops:
+  CrazedSailor:
+    - { id: sailors_cutlass, chance: 0.10 }
+    - { id: chronon, min: 1, max: 3, chance: 0.35 }
+  MutatedNaxian:
+    - { id: naxian_claw, chance: 0.08 }
+    - { id: chronon, min: 2, max: 4, chance: 0.35 }
+  TransmutedNaxian:
+    - { id: enhanced_naxian_claw, chance: 0.08 }
+    - { id: chronon, min: 2, max: 5, chance: 0.35 }
+  NaxianAbomination:
+    - { id: abomination_bone, chance: 0.08 }
+    - { id: chronon, min: 3, max: 6, chance: 0.35 }
+  VironicInitiate:
+    - { set: vironic, tier: 1, chance: 0.18 }
+    - { id: chronon, min: 1, max: 3, chance: 0.40 }
+  VironicAcolyte:
+    - { set: vironic, tier: 2, chance: 0.18 }
+    - { id: chronon, min: 2, max: 4, chance: 0.40 }
+  VironicTemplar:
+    - { set: vironic, tier: 3, chance: 0.18 }
+    - { id: chronon, min: 2, max: 5, chance: 0.40 }
+  VironicLord:
+    - { set: vironic, tier: 4, chance: 0.18 }
+    - { id: chronon, min: 3, max: 6, chance: 0.40 }
+  MariphageCore:
+    - { id: mariphage_stinger, chance: 0.30 }
+    - { id: relic_mariphage_vector, chance: 0.25 }
+    - { id: chronon, min: 24, max: 48, chance: 1.0 }
+    - { id: relic_mariphage_sample, chance: 0.35 }

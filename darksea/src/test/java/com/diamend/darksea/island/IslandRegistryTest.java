@@ -95,4 +95,38 @@ class IslandRegistryTest {
         island.clearRefills();
         assertEquals(0L, island.lastRefill(chest));
     }
+
+    @Test
+    void multiChestIslandsElectExactlyOneStableVault(@TempDir Path tmp) {
+        IslandInstance island = sample("t2-1");
+        Pos vault = island.vaultChest();
+        assertNotNull(vault, "a two-chest island must have a vault");
+        assertTrue(island.chests().contains(vault), "the vault must be a registered chest");
+
+        int vaults = 0;
+        for (Pos chest : island.chests()) {
+            if (island.isVaultChest(chest)) {
+                vaults++;
+            }
+        }
+        assertEquals(1, vaults, "exactly one chest is the vault");
+
+        // The election survives a disk round-trip (it derives from the origin).
+        File file = tmp.resolve("islands.yml").toFile();
+        IslandRegistry registry = new IslandRegistry(file, LOG);
+        registry.load();
+        registry.add(island);
+        IslandRegistry reloaded = new IslandRegistry(file, LOG);
+        reloaded.load();
+        assertEquals(vault, reloaded.get("t2-1").vaultChest());
+    }
+
+    @Test
+    void singleChestIslandsNeverHaveAVault() {
+        IslandInstance lone = new IslandInstance("t1-1", "demo", 1,
+                new Pos(700, 62, 900), new Pos(696, 58, 896), new Pos(704, 66, 904),
+                List.of(new Pos(702, 65, 902)), List.of(new Pos(698, 65, 898)));
+        assertNull(lone.vaultChest());
+        assertFalse(lone.isVaultChest(lone.chests().get(0)));
+    }
 }

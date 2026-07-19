@@ -125,6 +125,12 @@ mob-spawning:
   global-cap: 120
   abandon-cooldown-minutes: 5   # despawn island mobs after this long with nobody near
 
+# Naxome relics: dormant when looted, revived by the refugees at the calm
+# center (/ds relic revive, paid in Chronons). A revived relic works from
+# anywhere in your inventory; this caps how many work at once.
+relics:
+  max-active: 2
+
 boat:
   # Hard ceiling on boat speed: cap = speed-cap-base * level speed multiplier
   # (blocks per tick of horizontal velocity). Tune in playtesting.
@@ -177,8 +183,18 @@ messages:
 
   give-armor: "<green>Gave {player} the full tier-{tier} set ({name}<green>)."
   give-token: "<green>Gave {player} a level-{level} boat upgrade token."
+  give-item: "<green>Gave {player} {count}x {id}."
   invalid-tier: "<red>Unknown armor tier {tier}."
   invalid-level: "<red>Unknown boat level {level}."
+  invalid-item: "<red>Unknown item id {id}. Tab-complete /ds give item for the list."
+
+  relic-not-relic: "<red>Hold a Naxome relic in your main hand to revive it."
+  relic-already-awake: "<yellow>That relic is already awake."
+  relic-only-home: "<red>Only the refugees at the calm center can wake a relic. Sail home first."
+  relic-need-chronons: "<red>The refugees ask <aqua>{cost} Chronons</aqua> to wake this — you carry {have}."
+  relic-revived: "<green>The refugees gather around {name}<green>... it stirs. <aqua>-{cost} Chronons</aqua>"
+
+  draught-drunk: "<aqua>The tide takes your side — faster sailing for {seconds}s."
 
   boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
   boat-max: "<yellow>Your boat is already fully upgraded."

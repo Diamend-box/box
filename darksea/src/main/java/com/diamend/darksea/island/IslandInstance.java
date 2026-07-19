@@ -1,5 +1,6 @@
 package com.diamend.darksea.island;
 
+import com.diamend.darksea.loot.LootMath;
 import com.diamend.darksea.util.Pos;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -63,6 +64,23 @@ public final class IslandInstance {
 
     public List<Pos> chests() {
         return chests;
+    }
+
+    /**
+     * The island's vault chest — the one richer cache a multi-chest island
+     * hides — or null for islands with fewer than two chests. Derived
+     * deterministically from the origin, so it never needs storing and a
+     * soft reset always re-elects the same chest.
+     */
+    public Pos vaultChest() {
+        int index = LootMath.vaultChestIndex(origin.x(), origin.z(), chests.size());
+        return index < 0 ? null : chests.get(index);
+    }
+
+    /** Whether the given registered chest position is this island's vault. */
+    public boolean isVaultChest(Pos pos) {
+        Pos vault = vaultChest();
+        return vault != null && vault.equals(pos);
     }
 
     public List<Pos> spawnPoints() {

@@ -111,23 +111,99 @@ rhythm: an inhale that drags players in every ~12s, a Poison II plague
 burst punishing melee, Darkness blows, Vessel sheds, and a lurch (Speed II)
 when wounded — sprint out, trade hits, back off, repeat.
 
-### 3. Loot 2.0 — content — IN PROGRESS
+### 3. Loot 2.0 — content + code — IN PROGRESS
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned
 boat-token rarity, small next-tier teases. CI gets a parse test so a typo
 can never brick loot loading.
 
-**Status:** `LootEntry` item lines now take optional MiniMessage `name` +
-`lore`; `loot.yml` rewritten as junk/goods/treasure bands with one-plus
-named **Naxome relic** per ring (Rotted Rigging → Naxian Trade Coin →
-Unclaimed Remains / Harbor Bell of the Naxome → Drained Plague Vial /
-Sealed Mariphage Sample → Vigil Candle / Monolith Splinter / Heart of the
-Naxome). Token weights tuned so each ring favors its own boat level; T4's
-plain heart-of-the-sea drop became the named relic. New
-`LootShippedConfigTest` locks: file parses with zero dropped entries,
-every ring has a relic, relics roll named + non-italic, token levels 1–3
-all reachable, cooldowns strictly increase, armor teases next tier.
-Relic names are a first draft — awaiting Wyatt's verdicts; relics are
-cosmetic collectibles for now (trader/crafting sink is future work).
+**Status (round 1):** `LootEntry` item lines now take optional MiniMessage
+`name` + `lore`; `loot.yml` rewritten as junk/goods/treasure bands with
+one-plus named **Naxome relic** per ring. Token weights tuned so each ring
+favors its own boat level. `LootShippedConfigTest` locks the file in CI.
+
+**Decisions round 2 (Jul 19, by Wyatt) — the deep pass:**
+- **Chronons** — the Naxome's currency, decently common in every ring,
+  richer on some islands than others; spent with the refugees at the main
+  island (they fled in time; the calm center is theirs now).
+- **Vault chests** — yes: one chest per multi-chest island is elevated.
+- **Cultist sets** — each Vironic rank wears its own armor set, protecting
+  against the Mariphage at the rank's first ring (Initiate 1 → Lord 4),
+  slots named hood / bodice / robes / boots, with a set bonus: +2 damage
+  in the Dark Sea per set tier.
+- **Mob weapons** — crazed sailors drop a cutlass; mutated Naxians a fast
+  mid-damage claw; transmuted Naxians an enhanced claw (more damage);
+  abominations a slow heavy bone with DPS ≈ the enhanced claw. Exact
+  numbers delegated (post-End: useful, never overpowered).
+- **Chest gear** — normal Naxian weapons in chests, on average worse than
+  enemy drops but with some genuinely good finds; **no enchantments** on
+  any custom gear. Utility loot too: temporary boat-speed drink, other
+  single-use items, long potions; keep some of it deliberately mediocre.
+- **Relics** — useless (dormant) as found; the refugees revive them for
+  permanent inventory-carried boosts, max 2–3 active (damage, resistance,
+  speed, boat speed, regen, crit were the candidate pool).
+- **Mariphage Core** — drops a relic that spreads Mariphage effects onto
+  your targets, and the **Mariphage Stinger**: 2 hearts of true damage
+  through defense, a bit slower than a sword. Explicitly NOT guaranteed.
+
+**Status (round 2, built):** all of the above is in.
+- `DarkSeaItems` registry (PDC ids, attribute-modifier stats, zero
+  enchants, unbreakable): Sailor's Cutlass 6.0@2.0, Naxian Claw 4.5@2.8,
+  Enhanced Claw 6.0@2.4, Abomination Bone 13.0@1.1 (DPS-matched to the
+  claw), Mariphage Stinger 4.0 TRUE @1.4, plus chest finds Boarding Axe
+  8.0@1.15, Harborguard Pike 8.0@1.2, Ceremonial Blade 6.5@1.8 — balance
+  band (post-End: above bare netherite at the top, everything below
+  Sharpness-V netherite) locked by `WeaponBalanceTest`.
+- **Chronons** (prismarine crystals, PDC-tagged) in every ring, amounts
+  scaling 3–6 → 10–16 by tier; per-island wealth multiplier 0.6x–1.8x
+  derived from the island's position (some islands were rich once).
+- **Vault tables** per tier in loot.yml; multi-chest islands elect one
+  deterministic vault chest (survives resets, no storage) that rolls more
+  and better; single-chest islands never do.
+- **Vironic sets** (leather, dyed deeper purple by rank, Initiate/Acolyte/
+  Templar/Lord = tiers 1–4 locked to mobs.yml by test): protect exactly
+  like sea armor of their tier through the same PDC path, full set adds
+  2x tier damage in the Dark Sea. Cloth armor points are the trade.
+  Slot names shipped as Hood / **Vestments** / Robes / Boots (bodice →
+  vestments; one-string revert if Wyatt prefers the original).
+- **Mob drops** plugin-side (`drops:` in mobs.yml): spawner PDC-stamps
+  every spawn, works with and without MythicMobs. Cultists drop their
+  rank's set at 18%, cursed drop their weapons at 8–10%, everyone carries
+  a few Chronons. Core: Stinger 30%, Vector 25% (chase drops, not
+  guaranteed — as decided), 24–48 Chronons always, spare Sealed Sample 35%.
+- **Relic revival**: relics drop dormant; `/ds relic revive` at the calm
+  center (the refugees' ring) pays Chronons — 50/100/150/200 by tier,
+  Vector 250 — and wakes the held relic. Awake relics work from the
+  inventory, capped by `relics.max-active` (**2** shipped; says 2–3 in
+  the decision — bump the config if 3 feels better). Mapping: Trade Coin
+  +10% speed, Harbor Bell +15% boat speed, Sealed Sample +1 damage,
+  Monolith Splinter +3 armor, Heart of the Naxome slow regen, Vector
+  infects your melee targets (Poison II + Slowness). Crit was left out of
+  v1 (no clean vanilla hook) — candidate for a seventh relic later.
+- **Consumables**: Tidal Draught (+25% boat speed, 90s), Naxian Sea-Salve
+  (regen + absorption), Deepsight Tonic (8 min night vision), Gillwater
+  Philter (8 min water breathing).
+- CI: `DarkSeaItemsTest`, `WeaponBalanceTest`, `VironicArmorTest`,
+  `MobDropsTest`, `RelicTest`, `LootMathTest`, expanded
+  `LootShippedConfigTest` (base+vault parse clean, Chronons everywhere
+  and growing, relics real, mob-only weapons never in chests, nothing
+  enchanted, tokens/cooldown/armor-tease invariants kept).
+
+**Open for Wyatt:** vestments-vs-bodice; max-active 2 vs 3; drop-rate
+feel (18% set pieces ≈ a few dozen kills for a full set). The refugees'
+trader (Chronon goods shop) is the natural next loot workstream once the
+main island build exists to host it.
+
+### 3b. Ruined Castle island — QUEUED (Wyatt's idea, Jul 19)
+A rarer island class, bigger than everything else (~75x75), with much
+better loot but more and higher-tier enemies. Design sketch agreed so
+far: it slots cleanly onto what's now built — multiple chests with a
+vault (or two) rolling vault tables, richer wealth multiplier, denser
+`spawnPoints`. Needs from the shape/placer side: an eighth `DemoShape`
+(the generators are pure code, so a castle is buildable without
+schematics), rarity weighting in the per-tier shape pick (today's pick is
+uniform), and a mob-tier bump field so a castle in ring N spawns ring
+N+1's roster. Parked until Loot 2.0 settles and the shape wiring
+(workstream 1) lands in the placer.
 
 ### 4. Boat phase hardening — code
 Phase 4 (tokens and upgrades) is the one phase never live-tested. Add unit

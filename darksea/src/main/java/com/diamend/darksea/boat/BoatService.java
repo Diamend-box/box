@@ -5,6 +5,8 @@ import com.diamend.darksea.armor.SeaArmor;
 import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.config.DarkSeaSettings.BoatLevel;
 import com.diamend.darksea.data.PlayerDataStore;
+import com.diamend.darksea.item.DarkSeaItems;
+import com.diamend.darksea.relic.Relic;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -15,6 +17,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Per-player boat level: speed scaling while sailing the Dark Sea and a
@@ -30,10 +35,47 @@ public final class BoatService implements Listener {
 
     private final DarkSeaPlugin plugin;
     private final PlayerDataStore data;
+    /** Tidal Draught expiry timestamps; stale entries lapse on their own. */
+    private final Map<UUID, Long> draughts = new ConcurrentHashMap<>();
 
     public BoatService(DarkSeaPlugin plugin, PlayerDataStore data) {
         this.plugin = plugin;
         this.data = data;
+    }
+
+    /** A drunk Tidal Draught: temporary extra boat speed. */
+    public void addDraught(Player player) {
+        draughts.put(player.getUniqueId(),
+                System.currentTimeMillis() + DarkSeaItems.DRAUGHT_SECONDS * 1000L);
+    }
+
+    private boolean draughtActive(Player player) {
+        Long until = draughts.get(player.getUniqueId());
+        if (until == null) {
+            return false;
+        }
+        if (until < System.currentTimeMillis()) {
+            draughts.remove(player.getUniqueId());
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * The rider's total speed multiplier: boat level, times the Harbor
+     * Bell's Homeward Wind if that relic is awake and active, times a
+     * running Tidal Draught. The velocity cap scales with the same number,
+     * so boosts never break the anti-runaway clamp.
+     */
+    public double effectiveMultiplier(Player rider) {
+        double multiplier = stats(levelOf(rider)).speed();
+        if (plugin.relics() != null && plugin.relics().isActive(rider, Relic.Boost.BOAT)) {
+            multiplier *= Relic.BOAT_BOOST_MULTIPLIER;
+        }
+        if (draughtActive(rider)) {
+            multiplier *= DarkSeaItems.DRAUGHT_MULTIPLIER;
+        }
+        return multiplier;
     }
 
     public int levelOf(Player player) {
@@ -93,11 +135,7 @@ public final class BoatService implements Listener {
         if (passengers.isEmpty() || !(passengers.get(0) instanceof Player rider)) {
             return;
         }
-        int level = levelOf(rider);
-        if (level <= 0) {
-            return;
-        }
-        double multiplier = stats(level).speed();
+        double multiplier = effectiveMultiplier(rider);
         if (multiplier <= 1.0) {
             return;
         }

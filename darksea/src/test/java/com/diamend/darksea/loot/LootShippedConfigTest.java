@@ -1,9 +1,10 @@
 package com.diamend.darksea.loot;
 
 import com.diamend.darksea.config.DarkSeaSettings.ArmorSettings;
-import com.diamend.darksea.config.DarkSeaSettings.ArmorStyle;
+import com.diamend.darksea.item.DarkSeaItems;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -15,6 +16,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -26,17 +28,32 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The SHIPPED loot.yml must always parse cleanly: a typo'd material or a
- * malformed relic entry would otherwise surface as silently thinner chests
- * on the server. Also locks the Loot 2.0 shape — every ring has tables,
- * every ring carries at least one named relic, and boat tokens for every
- * level exist somewhere in the progression.
+ * The SHIPPED loot.yml must always parse cleanly: a typo'd material or
+ * custom id would otherwise surface as silently thinner chests on the
+ * server. Also locks the Loot 2.0 shape — every ring has a base AND a
+ * richer vault table, Chronons flow everywhere and grow with depth, every
+ * ring carries a real (PDC-tagged) relic, chest weapons stay a band below
+ * mob drops, and nothing in a chest is enchanted.
  */
 class LootShippedConfigTest {
 
     private static final Logger LOG = Logger.getLogger("LootShippedConfigTest");
 
-    private Map<Integer, LootTable> tables;
+    /** Weapons only the cursed themselves drop — never chest loot. */
+    private static final Set<String> MOB_ONLY_WEAPONS = Set.of(
+            DarkSeaItems.SAILORS_CUTLASS, DarkSeaItems.NAXIAN_CLAW,
+            DarkSeaItems.ENHANCED_NAXIAN_CLAW, DarkSeaItems.ABOMINATION_BONE,
+            DarkSeaItems.MARIPHAGE_STINGER);
+
+    private static final Set<String> CHEST_WEAPONS = Set.of(
+            DarkSeaItems.NAXIAN_BOARDING_AXE, DarkSeaItems.HARBORGUARD_PIKE,
+            DarkSeaItems.ORDER_CEREMONIAL_BLADE);
+
+    private static final Set<String> CONSUMABLES = Set.of(
+            DarkSeaItems.TIDAL_DRAUGHT, DarkSeaItems.SEA_SALVE,
+            DarkSeaItems.DEEPSIGHT_TONIC, DarkSeaItems.GILLWATER_PHILTER);
+
+    private LootTables tables;
     private int declaredEntries;
 
     @BeforeEach
@@ -51,7 +68,12 @@ class LootShippedConfigTest {
         config.loadFromString(yaml);
         declaredEntries = 0;
         for (String key : config.getConfigurationSection("tiers").getKeys(false)) {
-            declaredEntries += config.getConfigurationSection("tiers." + key).getMapList("entries").size();
+            ConfigurationSection tier = config.getConfigurationSection("tiers." + key);
+            declaredEntries += tier.getMapList("entries").size();
+            ConfigurationSection vault = tier.getConfigurationSection("vault");
+            if (vault != null) {
+                declaredEntries += vault.getMapList("entries").size();
+            }
         }
         tables = LootConfig.load(config, LOG);
     }
@@ -61,15 +83,30 @@ class LootShippedConfigTest {
         MockBukkit.unmock();
     }
 
+    private List<LootEntry> allEntries(int tier) {
+        List<LootEntry> entries = new java.util.ArrayList<>(tables.base().get(tier).entries());
+        entries.addAll(tables.vault().get(tier).entries());
+        return entries;
+    }
+
+    private static boolean isCustom(LootEntry entry, String id) {
+        return entry.type() == LootEntry.Type.CUSTOM && id.equals(entry.customId());
+    }
+
     @Test
-    void everyRingHasATableAndNoEntryWasDroppedAsMalformed() {
+    void everyRingHasBaseAndVaultAndNoEntryWasDroppedAsMalformed() {
         int parsed = 0;
         for (int tier = 1; tier <= 4; tier++) {
-            LootTable table = tables.get(tier);
-            assertNotNull(table, "tier " + tier + " has no loot table");
-            assertTrue(table.rolls() >= 4, "tier " + tier + " rolls");
-            assertTrue(table.refillCooldownMinutes() > 0, "tier " + tier + " cooldown");
-            parsed += table.entries().size();
+            LootTable base = tables.base().get(tier);
+            LootTable vault = tables.vault().get(tier);
+            assertNotNull(base, "tier " + tier + " has no base table");
+            assertNotNull(vault, "tier " + tier + " has no vault table");
+            assertTrue(base.rolls() >= 4, "tier " + tier + " base rolls");
+            assertTrue(vault.rolls() > base.rolls(),
+                    "tier " + tier + " vault must roll more than its base chests");
+            assertEquals(base.refillCooldownMinutes(), vault.refillCooldownMinutes(),
+                    "tier " + tier + " vault should inherit the tier cooldown");
+            parsed += base.entries().size() + vault.entries().size();
         }
         // LootConfig skips malformed entries with only a warning; the shipped
         // file must never lose one that way.
@@ -77,23 +114,89 @@ class LootShippedConfigTest {
     }
 
     @Test
-    void everyRingCarriesAtLeastOneNamedRelic() {
+    void chrononsFlowInEveryRingAndGrowWithDepthAndVaults() {
+        int previousMax = 0;
         for (int tier = 1; tier <= 4; tier++) {
-            boolean relic = tables.get(tier).entries().stream()
-                    .anyMatch(e -> e.type() == LootEntry.Type.ITEM && e.name() != null);
-            assertTrue(relic, "tier " + tier + " has no named relic");
+            LootEntry base = tables.base().get(tier).entries().stream()
+                    .filter(e -> isCustom(e, DarkSeaItems.CHRONON)).findFirst().orElse(null);
+            LootEntry vault = tables.vault().get(tier).entries().stream()
+                    .filter(e -> isCustom(e, DarkSeaItems.CHRONON)).findFirst().orElse(null);
+            assertNotNull(base, "tier " + tier + " base drops no Chronons");
+            assertNotNull(vault, "tier " + tier + " vault drops no Chronons");
+            assertTrue(base.max() >= previousMax, "tier " + tier + " Chronon piles shrank");
+            assertTrue(vault.max() > base.max(),
+                    "tier " + tier + " vault Chronon piles should beat base chests");
+            previousMax = base.max();
         }
     }
 
     @Test
-    void namedRelicsRollWithDisplayNameAndNonItalicLore() {
+    void everyRingCarriesARealRelicAndTheVectorStaysWithTheCore() {
+        for (int tier = 1; tier <= 4; tier++) {
+            boolean baseRelic = tables.base().get(tier).entries().stream()
+                    .anyMatch(e -> e.type() == LootEntry.Type.CUSTOM
+                            && e.customId().startsWith("relic_"));
+            assertTrue(baseRelic, "tier " + tier + " has no relic in its base table");
+        }
+        for (int tier = 1; tier <= 4; tier++) {
+            assertTrue(allEntries(tier).stream()
+                            .noneMatch(e -> isCustom(e, "relic_mariphage_vector")),
+                    "the Vector must only ever come from the Core");
+        }
+    }
+
+    @Test
+    void chestWeaponsEverywhereButMobSignatureWeaponsNever() {
+        for (int tier = 1; tier <= 4; tier++) {
+            assertTrue(allEntries(tier).stream().anyMatch(e ->
+                            e.type() == LootEntry.Type.CUSTOM && CHEST_WEAPONS.contains(e.customId())),
+                    "tier " + tier + " offers no chest weapon at all");
+            assertTrue(allEntries(tier).stream().noneMatch(e ->
+                            e.type() == LootEntry.Type.CUSTOM && MOB_ONLY_WEAPONS.contains(e.customId())),
+                    "tier " + tier + " leaks a mob-only weapon into chests");
+        }
+    }
+
+    @Test
+    void everyRingOffersSomethingToDrink() {
+        for (int tier = 1; tier <= 4; tier++) {
+            assertTrue(allEntries(tier).stream().anyMatch(e ->
+                            e.type() == LootEntry.Type.CUSTOM && CONSUMABLES.contains(e.customId())),
+                    "tier " + tier + " has no consumable");
+        }
+    }
+
+    @Test
+    void everyCustomEntryRollsTaggedNamedAndUnenchanted() {
         Random rng = new Random(42);
         ArmorSettings armor = new ArmorSettings(true, Map.of());
-        for (LootTable table : tables.values()) {
-            for (LootEntry entry : table.entries()) {
+        for (int tier = 1; tier <= 4; tier++) {
+            for (LootEntry entry : allEntries(tier)) {
+                if (entry.type() != LootEntry.Type.CUSTOM) {
+                    continue;
+                }
+                ItemStack item = entry.roll(rng, armor);
+                assertNotNull(item, entry.customId() + " rolled null");
+                assertEquals(entry.customId(), DarkSeaItems.idOf(item),
+                        entry.customId() + " rolled without its PDC identity");
+                assertTrue(item.getItemMeta().hasDisplayName());
+                assertTrue(item.getEnchantments().isEmpty(),
+                        entry.customId() + " rolled enchanted — chest gear must stay clean");
+            }
+        }
+    }
+
+    @Test
+    void namedSalvageStillRollsWithDisplayNameAndNonItalicLore() {
+        Random rng = new Random(42);
+        ArmorSettings armor = new ArmorSettings(true, Map.of());
+        int named = 0;
+        for (int tier = 1; tier <= 4; tier++) {
+            for (LootEntry entry : allEntries(tier)) {
                 if (entry.type() != LootEntry.Type.ITEM || entry.name() == null) {
                     continue;
                 }
+                named++;
                 ItemStack item = entry.roll(rng, armor);
                 ItemMeta meta = item.getItemMeta();
                 assertTrue(meta.hasDisplayName(), entry.name() + " lost its display name");
@@ -105,13 +208,14 @@ class LootShippedConfigTest {
                 }
             }
         }
+        assertTrue(named >= 4, "the junk band lost its flavor salvage");
     }
 
     @Test
     void boatTokensForEveryLevelExistSomewhereInTheProgression() {
         Set<Integer> levels = new HashSet<>();
-        for (LootTable table : tables.values()) {
-            for (LootEntry entry : table.entries()) {
+        for (int tier = 1; tier <= 4; tier++) {
+            for (LootEntry entry : allEntries(tier)) {
                 if (entry.type() == LootEntry.Type.TOKEN) {
                     levels.add(entry.tokenLevel());
                 }
@@ -124,24 +228,29 @@ class LootShippedConfigTest {
     void deeperRingsRefillSlower() {
         long previous = 0;
         for (int tier = 1; tier <= 4; tier++) {
-            long cooldown = tables.get(tier).refillCooldownMinutes();
+            long cooldown = tables.base().get(tier).refillCooldownMinutes();
             assertTrue(cooldown > previous, "tier " + tier + " cooldown should exceed tier " + (tier - 1));
             previous = cooldown;
         }
     }
 
     @Test
-    void armorProgressionTeasesTheNextTier() {
+    void armorProgressionTeasesTheNextTierInBaseAndVaultAlike() {
         for (int tier = 1; tier <= 3; tier++) {
             final int t = tier;
-            boolean own = tables.get(tier).entries().stream()
-                    .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == t);
-            boolean tease = tables.get(tier).entries().stream()
-                    .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == t + 1);
-            assertTrue(own, "tier " + tier + " should drop its own armor");
-            assertTrue(tease, "tier " + tier + " should tease tier " + (t + 1) + " armor");
+            for (Map.Entry<String, LootTable> side : Map.of(
+                    "base", tables.base().get(tier), "vault", tables.vault().get(tier)).entrySet()) {
+                boolean own = side.getValue().entries().stream()
+                        .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == t);
+                boolean tease = side.getValue().entries().stream()
+                        .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == t + 1);
+                assertTrue(own, "tier " + tier + " " + side.getKey() + " should drop its own armor");
+                assertTrue(tease, "tier " + tier + " " + side.getKey() + " should tease tier " + (t + 1));
+            }
         }
-        assertTrue(tables.get(4).entries().stream()
+        assertTrue(tables.base().get(4).entries().stream()
+                .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4));
+        assertTrue(tables.vault().get(4).entries().stream()
                 .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4));
     }
 }

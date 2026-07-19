@@ -49,7 +49,8 @@ public final class ChestRefillService implements Listener {
         if (ref == null) {
             return;
         }
-        LootTable table = plugin.lootTables().get(ref.island().tier());
+        boolean vault = ref.island().isVaultChest(ref.pos());
+        LootTable table = plugin.lootTables().forChest(ref.island().tier(), vault);
         if (table == null) {
             return;
         }
@@ -62,7 +63,8 @@ public final class ChestRefillService implements Listener {
         }
         Inventory inventory = chest.getBlockInventory();
         inventory.clear();
-        List<ItemStack> loot = table.rollLoot(rng, plugin.settings().armor());
+        double wealth = LootMath.wealthMultiplier(ref.island().origin().x(), ref.island().origin().z());
+        List<ItemStack> loot = table.rollLoot(rng, plugin.settings().armor(), wealth);
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < inventory.getSize(); i++) {
             slots.add(i);

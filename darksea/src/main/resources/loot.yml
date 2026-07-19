@@ -6,17 +6,34 @@
 # persist in islands.yml).
 #
 # Entry types:
-#   item  — material + amount range (min..max). Optional 'name' and 'lore'
-#           (MiniMessage strings) turn it into a named relic — the treasure
-#           of the Naxome, the dead civilization whose ruins these are.
-#   armor — a random sea-armor piece of the given tier (the progression
-#           engine: ring N chests drop tier N, with a small chance of N+1)
-#   token — a boat upgrade token for the given level
+#   item   — vanilla material + amount range (min..max). Optional 'name' and
+#            'lore' (MiniMessage) make it flavor salvage — junk with a story.
+#   armor  — a random sea-armor piece of the given tier (the progression
+#            engine: ring N chests drop tier N, with a small chance of N+1)
+#   token  — a boat upgrade token for the given level
+#   custom — a registry item by id (Chronons, relics, weapons, consumables).
+#            Identity is PDC-tagged, so relics can't be faked and a typo'd id
+#            fails CI instead of shipping. Ids live in DarkSeaItems.
 #
-# Every tier is banded: JUNK (flavor salvage, common), GOODS (useful
-# materials, the bread and butter), TREASURE (named relics, armor, tokens —
-# rare). Relics have no mechanical use yet; they're collectibles and lore
-# carriers, and headroom for a future trader/crafting sink.
+# CHRONONS — the Naxome's currency — drop in every ring, growing with depth.
+# Some islands were rich once: each island carries a hidden wealth multiplier
+# (0.6x–1.8x, derived from its position) applied to its Chronon piles only.
+# The refugees at the calm center take Chronons to wake relics (/ds relic
+# revive), and a proper goods trader is planned on top of the same coin.
+#
+# RELICS drop dormant (collectibles). Revived at the calm center they grant
+# a passive boost from your inventory — at most 'relics.max-active' at once.
+# The junk-band named items (Rotted Rigging...) are salvage, not relics.
+#
+# VAULT — islands with two or more chests (tier 3 hides two, tier 4 three)
+# elect ONE deterministic vault chest that rolls the tier's 'vault' table
+# instead: more rolls, fatter Chronon piles, better odds on relics, armor
+# and weapons. Single-chest islands never have a vault.
+#
+# Every tier is banded: JUNK (flavor salvage, common), GOODS (materials and
+# consumables, the bread and butter), TREASURE (relics, armor, tokens,
+# weapons — rare). Chest weapons are deliberately a notch under what the
+# cursed themselves drop; the good stuff walks and fights back.
 # Reloads with /ds reload.
 # ---------------------------------------------------------------------------
 
@@ -32,17 +49,30 @@ tiers:
           lore: ['<dark_gray>Cut from a sail nobody trims anymore.</dark_gray>'] }
       - { type: item, material: COOKED_COD,       min: 3, max: 8, weight: 12 }
       # goods
-      - { type: item, material: IRON_INGOT,       min: 2, max: 6, weight: 18 }
-      - { type: item, material: EMERALD,          min: 1, max: 3, weight: 10 }
-      - { type: item, material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 10 }
+      - { type: custom, id: chronon,              min: 3, max: 6, weight: 14 }
+      - { type: item, material: IRON_INGOT,       min: 2, max: 6, weight: 16 }
+      - { type: item, material: EMERALD,          min: 1, max: 3, weight: 9 }
+      - { type: item, material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 9 }
+      - { type: custom, id: sea_salve,            weight: 6 }
       # treasure
-      - { type: item, material: GOLD_NUGGET,      min: 2, max: 6, weight: 5,
-          name: '<gold>Naxian Trade Coin</gold>',
-          lore: ['<gray>Struck for a market that drowned</gray>',
-                 '<gray>with everyone in it.</gray>'] }
+      - { type: custom, id: relic_trade_coin,     weight: 5 }
+      - { type: custom, id: naxian_boarding_axe,  weight: 2 }
       - { type: armor, tier: 1, weight: 8 }
       - { type: armor, tier: 2, weight: 1 }
       - { type: token, level: 1, weight: 3 }
+    vault:
+      rolls: 6
+      entries:
+        - { type: custom, id: chronon,             min: 10, max: 18, weight: 12 }
+        - { type: item, material: IRON_BLOCK,      min: 1, max: 2, weight: 8 }
+        - { type: item, material: GOLDEN_APPLE,    min: 1, max: 2, weight: 6 }
+        - { type: custom, id: sea_salve,           weight: 6 }
+        - { type: custom, id: tidal_draught,       weight: 5 }
+        - { type: custom, id: relic_trade_coin,    weight: 9 }
+        - { type: custom, id: naxian_boarding_axe, weight: 5 }
+        - { type: armor, tier: 1, weight: 10 }
+        - { type: armor, tier: 2, weight: 2 }
+        - { type: token, level: 1, weight: 6 }
   # ── The Raging Deep — the Naxome's drowned towns ──
   2:
     rolls: 4
@@ -54,19 +84,33 @@ tiers:
           lore: ['<dark_gray>The Naxome buried their dead.</dark_gray>',
                  '<dark_gray>Nobody buried these.</dark_gray>'] }
       # goods
-      - { type: item, material: GOLD_INGOT,       min: 2, max: 6, weight: 16 }
+      - { type: custom, id: chronon,              min: 5, max: 9, weight: 14 }
+      - { type: item, material: GOLD_INGOT,       min: 2, max: 6, weight: 14 }
       - { type: item, material: DIAMOND,          min: 1, max: 2, weight: 8 }
-      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 2, weight: 8 }
-      - { type: item, material: EXPERIENCE_BOTTLE, min: 4, max: 8, weight: 10 }
+      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 2, weight: 7 }
+      - { type: item, material: EXPERIENCE_BOTTLE, min: 4, max: 8, weight: 9 }
+      - { type: custom, id: sea_salve,            weight: 5 }
+      - { type: custom, id: tidal_draught,        weight: 5 }
       # treasure
-      - { type: item, material: NAUTILUS_SHELL,   min: 1, max: 1, weight: 4,
-          name: '<aqua>Harbor Bell of the Naxome</aqua>',
-          lore: ['<gray>It rang when ships came home.</gray>',
-                 '<gray>It has been quiet a long time.</gray>'] }
+      - { type: custom, id: relic_harbor_bell,    weight: 4 }
+      - { type: custom, id: naxian_boarding_axe,  weight: 2 }
+      - { type: custom, id: harborguard_pike,     weight: 2 }
       - { type: armor, tier: 2, weight: 8 }
       - { type: armor, tier: 3, weight: 1 }
       - { type: token, level: 1, weight: 2 }
       - { type: token, level: 2, weight: 3 }
+    vault:
+      rolls: 6
+      entries:
+        - { type: custom, id: chronon,            min: 14, max: 24, weight: 12 }
+        - { type: item, material: DIAMOND,        min: 2, max: 4, weight: 8 }
+        - { type: item, material: GOLDEN_APPLE,   min: 2, max: 3, weight: 6 }
+        - { type: custom, id: tidal_draught,      weight: 6 }
+        - { type: custom, id: relic_harbor_bell,  weight: 8 }
+        - { type: custom, id: harborguard_pike,   weight: 5 }
+        - { type: armor, tier: 2, weight: 10 }
+        - { type: armor, tier: 3, weight: 2 }
+        - { type: token, level: 2, weight: 6 }
   # ── The Midnight Waters — where the Order works openly ──
   3:
     rolls: 5
@@ -77,19 +121,35 @@ tiers:
           name: '<dark_purple>Drained Plague Vial</dark_purple>',
           lore: ['<dark_gray>Whatever it held is in the water now.</dark_gray>'] }
       # goods
-      - { type: item, material: DIAMOND,          min: 2, max: 4, weight: 15 }
-      - { type: item, material: AMETHYST_SHARD,   min: 4, max: 10, weight: 12 }
-      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 3, weight: 10 }
+      - { type: custom, id: chronon,              min: 7, max: 12, weight: 14 }
+      - { type: item, material: DIAMOND,          min: 2, max: 4, weight: 13 }
+      - { type: item, material: AMETHYST_SHARD,   min: 4, max: 10, weight: 10 }
+      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 3, weight: 8 }
+      - { type: custom, id: deepsight_tonic,      weight: 4 }
+      - { type: custom, id: gillwater_philter,    weight: 4 }
+      - { type: custom, id: tidal_draught,        weight: 4 }
       # treasure
-      - { type: item, material: POTION,           min: 1, max: 1, weight: 4,
-          name: '<dark_purple>Sealed Mariphage Sample</dark_purple>',
-          lore: ['<gray>Templar''s stock, still stoppered.</gray>',
-                 '<gray>The Order will want it back.</gray>'] }
+      - { type: custom, id: relic_mariphage_sample, weight: 4 }
       - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 2 }
+      - { type: custom, id: harborguard_pike,     weight: 2 }
+      - { type: custom, id: order_ceremonial_blade, weight: 1 }
       - { type: armor, tier: 3, weight: 8 }
       - { type: armor, tier: 4, weight: 1 }
       - { type: token, level: 2, weight: 2 }
       - { type: token, level: 3, weight: 2 }
+    vault:
+      rolls: 7
+      entries:
+        - { type: custom, id: chronon,            min: 20, max: 32, weight: 12 }
+        - { type: item, material: DIAMOND_BLOCK,  min: 1, max: 1, weight: 6 }
+        - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 4 }
+        - { type: custom, id: deepsight_tonic,    weight: 5 }
+        - { type: custom, id: gillwater_philter,  weight: 5 }
+        - { type: custom, id: relic_mariphage_sample, weight: 8 }
+        - { type: custom, id: order_ceremonial_blade, weight: 4 }
+        - { type: armor, tier: 3, weight: 10 }
+        - { type: armor, tier: 4, weight: 2 }
+        - { type: token, level: 3, weight: 5 }
   # ── The Abyssal Reaches — the monolith's own hoard ──
   4:
     rolls: 5
@@ -100,18 +160,28 @@ tiers:
           name: '<dark_purple>Vigil Candle</dark_purple>',
           lore: ['<dark_gray>Lit for the primordial. Still warm.</dark_gray>'] }
       # goods
-      - { type: item, material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 10 }
-      - { type: item, material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 8 }
+      - { type: custom, id: chronon,              min: 10, max: 16, weight: 14 }
+      - { type: item, material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 9 }
+      - { type: item, material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 7 }
       - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1, weight: 4 }
       - { type: item, material: TOTEM_OF_UNDYING,    min: 1, max: 1, weight: 4 }
+      - { type: custom, id: gillwater_philter,    weight: 4 }
+      - { type: custom, id: tidal_draught,        weight: 4 }
       # treasure
-      - { type: item, material: ECHO_SHARD,       min: 1, max: 2, weight: 4,
-          name: '<dark_purple>Monolith Splinter</dark_purple>',
-          lore: ['<gray>It hums when held. Not a sound —</gray>',
-                 '<gray>a word, almost.</gray>'] }
-      - { type: item, material: HEART_OF_THE_SEA, min: 1, max: 1, weight: 4,
-          name: '<aqua>Heart of the Naxome</aqua>',
-          lore: ['<gray>Everything they were,</gray>',
-                 '<gray>pressed into one cold stone.</gray>'] }
+      - { type: custom, id: relic_monolith_splinter, weight: 4 }
+      - { type: custom, id: relic_naxome_heart,   weight: 4 }
+      - { type: custom, id: order_ceremonial_blade, weight: 2 }
       - { type: armor, tier: 4, weight: 8 }
       - { type: token, level: 3, weight: 3 }
+    vault:
+      rolls: 7
+      entries:
+        - { type: custom, id: chronon,            min: 26, max: 44, weight: 12 }
+        - { type: item, material: NETHERITE_INGOT, min: 1, max: 1, weight: 4 }
+        - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2, weight: 5 }
+        - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 5 }
+        - { type: custom, id: relic_monolith_splinter, weight: 7 }
+        - { type: custom, id: relic_naxome_heart, weight: 7 }
+        - { type: custom, id: order_ceremonial_blade, weight: 4 }
+        - { type: armor, tier: 4, weight: 10 }
+        - { type: token, level: 3, weight: 6 }

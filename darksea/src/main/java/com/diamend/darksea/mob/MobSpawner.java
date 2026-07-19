@@ -16,6 +16,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
@@ -158,12 +159,12 @@ public final class MobSpawner extends BukkitRunnable {
         if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
             UUID mythic = MythicHook.spawn(entry.type(), location, entry.level());
             if (mythic != null) {
-                return mythic;
+                return tagSpawn(mythic, entry.type());
             }
         }
         UUID vanilla = spawnVanilla(entry.vanillaName(), location);
         if (vanilla != null) {
-            return vanilla;
+            return tagSpawn(vanilla, entry.type());
         }
         if (warnedTypes.add(entry.type())) {
             plugin.getLogger().warning("mobs.yml type '" + entry.type() + "' (vanilla fallback '"
@@ -171,6 +172,21 @@ public final class MobSpawner extends BukkitRunnable {
                     + " — it will never spawn");
         }
         return null;
+    }
+
+    /**
+     * Stamps the spawned entity with its mobs.yml type so the drop service
+     * recognizes it at death — identically for Mythic mobs and vanilla
+     * fallbacks, which is what keeps signature drops working on servers
+     * without MythicMobs.
+     */
+    private UUID tagSpawn(UUID id, String type) {
+        Entity entity = Bukkit.getEntity(id);
+        if (entity != null) {
+            entity.getPersistentDataContainer().set(MobDrops.MOB_ID_KEY,
+                    PersistentDataType.STRING, type);
+        }
+        return id;
     }
 
     private UUID spawnVanilla(String name, Location location) {

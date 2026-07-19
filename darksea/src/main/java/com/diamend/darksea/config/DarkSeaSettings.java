@@ -34,6 +34,7 @@ public record DarkSeaSettings(
         GenerationSettings generation,
         MobSpawnSettings mobSpawning,
         BoatSettings boat,
+        RelicSettings relics,
         Map<String, String> messages) {
 
     public record ExposureSettings(int checkIntervalTicks, int effectDurationTicks, int graceOnLoginSeconds) {
@@ -59,6 +60,10 @@ public record DarkSeaSettings(
     }
 
     public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels) {
+    }
+
+    /** How many awake relics may work from a player's inventory at once. */
+    public record RelicSettings(int maxActive) {
     }
 
     /**
@@ -101,6 +106,9 @@ public record DarkSeaSettings(
 
         BoatSettings boat = loadBoat(cfg, log);
 
+        RelicSettings relics = new RelicSettings(
+                Math.min(9, Math.max(1, cfg.getInt("relics.max-active", 2))));
+
         Map<String, String> messages = new HashMap<>();
         ConfigurationSection msgSec = cfg.getConfigurationSection("messages");
         if (msgSec != null) {
@@ -113,7 +121,7 @@ public record DarkSeaSettings(
         }
 
         return new DarkSeaSettings(worldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
-                exposure, zones, armor, generation, mobSpawning, boat, Map.copyOf(messages));
+                exposure, zones, armor, generation, mobSpawning, boat, relics, Map.copyOf(messages));
     }
 
     private static List<Zone> loadZones(FileConfiguration cfg, Logger log) {

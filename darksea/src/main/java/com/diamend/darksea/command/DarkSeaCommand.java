@@ -3,6 +3,7 @@ package com.diamend.darksea.command;
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.armor.SeaArmor;
 import com.diamend.darksea.config.DarkSeaSettings;
+import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.config.Messages;
 import com.diamend.darksea.island.IslandInstance;
 import com.diamend.darksea.zone.Zone;
@@ -40,6 +41,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "status" -> status(sender);
             case "tp" -> tp(sender);
             case "boat" -> boat(sender, args);
+            case "relic" -> relic(sender, args);
             case "generate" -> {
                 if (requireAdmin(sender)) {
                     int limit = Integer.MAX_VALUE;
@@ -77,11 +79,13 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         msg.sendBare(sender, "help-header");
         helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
         helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
+        helpLine(sender, "/ds relic revive", "wake the held relic at the calm center (costs Chronons)", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
         helpLine(sender, "/ds generate [count]", "place islands (all rings, or just <count> at a time)", "darksea.admin");
         helpLine(sender, "/ds reset <soft|full>", "re-paste islands / regenerate the sea", "darksea.admin");
         helpLine(sender, "/ds island list [tier] | tp <id>", "inspect placed islands", "darksea.admin");
         helpLine(sender, "/ds give <armor|token> <n> [player]", "grant sea armor or tokens", "darksea.admin");
+        helpLine(sender, "/ds give item <id> [count] [player]", "grant any registry item (weapons, relics, chronons...)", "darksea.admin");
         helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
         helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
     }
@@ -190,6 +194,20 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         msg.send(sender, "unknown-command");
     }
 
+    private void relic(CommandSender sender, String[] args) {
+        Messages msg = plugin.messages();
+        String action = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (action.equals("revive")) {
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            plugin.relics().revive(player);
+            return;
+        }
+        msg.send(sender, "unknown-command");
+    }
+
     // ------------------------------------------------------------------
     // Admin commands
     // ------------------------------------------------------------------
@@ -279,6 +297,10 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String kind = args[1].toLowerCase(Locale.ROOT);
+        if (kind.equals("item")) {
+            giveItem(sender, args);
+            return;
+        }
         Integer number = parseInt(sender, args[2]);
         if (number == null) {
             return;
@@ -325,6 +347,53 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /** /ds give item <id> [count] [player] — any DarkSeaItems registry id. */
+    private void giveItem(CommandSender sender, String[] args) {
+        Messages msg = plugin.messages();
+        String id = args[2].toLowerCase(Locale.ROOT);
+        if (!DarkSeaItems.allIds().contains(id)) {
+            msg.send(sender, "invalid-item", "id", id);
+            return;
+        }
+        int count = 1;
+        int playerArg = 3;
+        if (args.length > 3) {
+            try {
+                count = Math.max(1, Integer.parseInt(args[3]));
+                playerArg = 4;
+            } catch (NumberFormatException ex) {
+                // args[3] is the player name, count stays 1.
+            }
+        }
+        Player target;
+        if (args.length > playerArg) {
+            target = Bukkit.getPlayerExact(args[playerArg]);
+            if (target == null) {
+                msg.send(sender, "player-not-found", "player", args[playerArg]);
+                return;
+            }
+        } else if (sender instanceof Player player) {
+            target = player;
+        } else {
+            msg.send(sender, "players-only");
+            return;
+        }
+        // Stackables (Chronons) go out as one stack of `count`; everything
+        // else as `count` single items.
+        ItemStack sample = DarkSeaItems.create(id, count);
+        if (sample.getMaxStackSize() > 1) {
+            giveItems(target, List.of(sample));
+        } else {
+            List<ItemStack> items = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                items.add(DarkSeaItems.create(id, 1));
+            }
+            giveItems(target, items);
+        }
+        msg.send(sender, "give-item", "player", target.getName(),
+                "id", id, "count", String.valueOf(count));
+    }
+
     private void giveItems(Player target, List<ItemStack> items) {
         Map<Integer, ItemStack> overflow = target.getInventory().addItem(items.toArray(new ItemStack[0]));
         for (ItemStack item : overflow.values()) {
@@ -361,6 +430,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             options.add("help");
             options.add("status");
             options.add("boat");
+            options.add("relic");
             if (sender.hasPermission("darksea.tp")) {
                 options.add("tp");
             }
@@ -379,6 +449,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                         options.add("set");
                     }
                 }
+                case "relic" -> options.add("revive");
                 case "reset" -> {
                     if (admin) {
                         options.add("soft");
@@ -395,6 +466,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     if (admin) {
                         options.add("armor");
                         options.add("token");
+                        options.add("item");
                     }
                 }
                 default -> {
@@ -425,6 +497,8 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                                 options.add(String.valueOf(level));
                             }
                         }
+                    } else if (admin && args[1].equalsIgnoreCase("item")) {
+                        options.addAll(DarkSeaItems.allIds());
                     }
                 }
                 default -> {
