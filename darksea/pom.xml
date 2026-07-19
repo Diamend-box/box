@@ -51,8 +51,9 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Hard dependency: island mob encounters. Compiled directly against
-             the MythicMobs 5.x API (no reflection bridge — it's a hard dep). -->
+        <!-- Optional at runtime (softdepend): compiled against the MythicMobs
+             5.x API, but only MobSpawner.MythicHook touches it and that class
+             is never loaded unless the plugin is installed. -->
         <dependency>
             <groupId>io.lumine</groupId>
             <artifactId>Mythic-Dist</artifactId>

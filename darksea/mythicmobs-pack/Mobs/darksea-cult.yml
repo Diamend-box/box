@@ -1,0 +1,84 @@
+# ---------------------------------------------------------------------------
+# DarkSea — The Order of the Soul
+#
+# The cult of the abyssal monolith, reseeding the Mariphage to wake a
+# primordial power. Rank climbs with the rings: Initiate → Acolyte →
+# Templar → Lord. Their share of island spawns grows the further out you
+# sail — the deep sea is theirs.
+#
+# Internal names here must match `type:` in the plugin's mobs.yml exactly
+# (case-sensitive). Tune Health/Damage freely; `LevelModifiers` add the shown
+# amount per level above 1 (mobs.yml passes level 1/3/6/10 by ring).
+# ---------------------------------------------------------------------------
+
+# Ring 1 — The Wild Sea. A fresh recruit posted to the Order's outermost
+# watch, sweeping the shallows for trespassers.
+VironicInitiate:
+  Type: PILLAGER
+  Display: '&5Vironic Initiate'
+  Health: 24
+  Damage: 4
+  Options:
+    Despawn: true
+    PreventOtherDrops: true
+  Equipment:
+    - CROSSBOW HAND
+  LevelModifiers:
+    Health: 2
+    Damage: 0.25
+  Drops:
+    - arrow 1to3 0.6
+    - emerald 1 0.2
+
+# Ring 2 — The Raging Deep. A zealot proven in the drowned towns. Its
+# strikes sap the soul (chance of Weakness on hit).
+VironicAcolyte:
+  Type: VINDICATOR
+  Display: '&5Vironic Acolyte'
+  Health: 28
+  Damage: 6
+  Options:
+    MovementSpeed: 0.3
+    Despawn: true
+    PreventOtherDrops: true
+  Equipment:
+    - STONE_AXE HAND
+  Skills:
+    - potion{type=WEAKNESS;duration=100;level=1} @trigger ~onAttack 0.3
+  LevelModifiers:
+    Health: 2.5
+    Damage: 0.3
+  Drops:
+    - emerald 1 0.35
+
+# Ring 3 — The Midnight Waters. A war-priest of the Order: brews the
+# Mariphage into bottles and throws it (native witch potion arsenal).
+VironicTemplar:
+  Type: WITCH
+  Display: '&5Vironic Templar'
+  Health: 34
+  Options:
+    Despawn: true
+    PreventOtherDrops: true
+  LevelModifiers:
+    Health: 3
+  Drops:
+    - emerald 1to2 0.4
+    - glass_bottle 1 0.3
+
+# Ring 4 — The Abyssal Reaches. A high priest of the monolith. Tears the
+# ground open with fang rows and calls lesser spirits (native evoker fangs +
+# vexes — vexes fade on their own after ~1–2 minutes). The totem drop is
+# deliberately rare: totems would blunt the whole sea.
+VironicLord:
+  Type: EVOKER
+  Display: '&5Vironic Lord'
+  Health: 60
+  Options:
+    Despawn: true
+    PreventOtherDrops: true
+  LevelModifiers:
+    Health: 4
+  Drops:
+    - emerald 2to4 0.6
+    - totem_of_undying 1 0.15

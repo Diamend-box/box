@@ -69,12 +69,31 @@ shape's real radius, paste bottom-up with physics off, leaves need
 hand-built spawn, and the placer's finalize step now iterates
 `ShapeBuild.chests()` (loot table per chest can differ later).
 
-### 2. MythicMobs content pack — content + small code
-A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone (e.g.
-tide-husks near shore → storm callers → abyssal horrors), plus a `fallback:`
-field per entry in `mobs.yml` so the config can name Mythic mobs and still
-degrade gracefully to vanilla mobs when MythicMobs isn't installed.
-**Needs your input: the vibe and names you want per zone — phone is fine.**
+### 2. MythicMobs content pack — content + small code — IN PROGRESS
+A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone, plus a
+`fallback:` field per entry in `mobs.yml` so the config can name Mythic mobs
+and still degrade gracefully to vanilla mobs when MythicMobs isn't installed.
+
+**Decisions (Jul 18, by Wyatt):** the story is the **Naxome** — a kinder
+civilization that lived on these islands — versus the **Order of the Soul**,
+the monolith cult reseeding the **Mariphage** (an ancient curse that plagues
+the sea like a virus) to revive a primordial power; infection deepens with
+distance because the Order's influence is strongest out there. Two families,
+two mobs per ring, all named by Wyatt: Crazed Sailor / Vironic Initiate
+(ring 1), Mutated Naxian / Vironic Acolyte (2), Transmuted Naxian / Vironic
+Templar (3), Naxian Abomination / Vironic Lord (4). Only the Abyssal Reaches
+gets a boss. New spawn rule by request: a mob's tier is its **minimum** ring
+— lower-tier mobs also appear farther out, made rarer per ring
+(`lower-tier-decay`).
+
+**Status:** pack shipped (`mythicmobs-pack/Mobs/`, one file per family) and
+`mobs.yml` re-rostered with `fallback:` per entry; MythicMobs demoted to a
+true softdepend (vanilla-only servers now work); minimum-tier pools live in
+pure `MobPool` with JUnit coverage, plus a CI test that locks mobs.yml and
+the pack together (typo-proof). Canon written down in `LORE.md`. Open with
+Wyatt: the tier-4 **boss** (name + design round of its own), the "Vironic"
+rank prefix (pending his final call), and an optional infection-swarm third
+line.
 
 ### 3. Loot 2.0 — content
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned

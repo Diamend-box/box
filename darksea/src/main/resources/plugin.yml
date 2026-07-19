@@ -7,7 +7,10 @@ author: diamend
 # FAWE declares `provides: [WorldEdit]`, so depending on WorldEdit works with
 # FastAsyncWorldEdit installed and tolerates a swap to vanilla WorldEdit later
 # (pasting is only async-safe with FAWE, which is what the server runs).
-depend: [WorldEdit, MythicMobs]
+depend: [WorldEdit]
+# MythicMobs is optional: every mobs.yml entry carries a vanilla `fallback`
+# that spawns instead when the plugin (or the named mob) is missing.
+softdepend: [MythicMobs]
 
 commands:
   darksea:

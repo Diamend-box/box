@@ -51,7 +51,8 @@ survivable only with the right **sea armor** and, eventually, a better
 - A **Paper** (or Paper-compatible) server running **1.21.4**
 - **FastAsyncWorldEdit** 2.15.x (hard dependency — provides WorldEdit; pasting
   runs off the main thread, which vanilla WorldEdit does not support)
-- **MythicMobs** 5.x (hard dependency)
+- **MythicMobs** 5.x (optional — without it, every mob entry spawns its
+  vanilla `fallback` instead)
 
 ---
 
@@ -63,8 +64,8 @@ mvn clean package
 ```
 
 The finished plugin is written to `target/DarkSea-1.0.0.jar`. Drop it into
-your server's `plugins/` folder (next to FastAsyncWorldEdit and MythicMobs)
-and restart.
+your server's `plugins/` folder (next to FastAsyncWorldEdit and, if you run
+it, MythicMobs) and restart.
 
 > The build downloads the Paper API from `repo.papermc.io`, the WorldEdit API
 > from `maven.enginehub.org` and the MythicMobs API from `mvn.lumine.io` — the
@@ -81,18 +82,19 @@ and restart.
 2. Run `/ds generate`. With no schematics yet, **demo mode** (on by default —
    `generation.demo-islands`) builds simple sand-platform islands in code: a
    plain home platform at the center and, in every ring, small islands each
-   with one loot chest and one mob spawn point. The shipped `mobs.yml` uses
-   vanilla mobs, so encounters and loot work immediately — no building
-   required.
+   with one loot chest and one mob spawn point. The shipped `mobs.yml` names
+   the Naxome-storyline mobs from `mythicmobs-pack/` (see `LORE.md`); without
+   MythicMobs each entry spawns its vanilla `fallback` instead, so encounters
+   and loot work immediately — no building required.
 3. Sail out. Zone effects, armor, mobs, loot, boats and both resets all work.
 
 **When you're ready for real content:** drop your **home island** schematic
 into `plugins/DarkSea/schematics/spawn/` and island builds into
 `schematics/tier1/` … `tier4/` (see
-[Building island schematics](#building-island-schematics)), replace the mobs in
-`mobs.yml` with your **MythicMobs** internal names, set
-`generation.demo-islands: false`, then `/ds reset full confirm` to regenerate
-with your builds. Real schematics take precedence over demo islands per tier,
+[Building island schematics](#building-island-schematics)), copy
+`mythicmobs-pack/Mobs/` into `plugins/MythicMobs/` for the real enemy roster,
+set `generation.demo-islands: false`, then `/ds reset full confirm` to
+regenerate with your builds. Real schematics take precedence over demo islands per tier,
 so you can migrate one ring at a time.
 
 ---
@@ -173,10 +175,16 @@ Put templates in `schematics/tier1/` … `tier4/`; the home island goes in
 
 ## MythicMobs & loot
 
-- `mobs.yml` maps each tier to a weighted list of Mythic **internal names**
-  (the ids from your `Mobs/*.yml`) with per-tier levels. The shipped file
-  contains **placeholder names** — replace them with mobs that exist on your
-  server, or nothing will spawn (an unknown type logs one warning).
+- `mobs.yml` maps each tier to a weighted list of entries: `type` is tried
+  as a Mythic **internal name** first; `fallback` is the vanilla mob spawned
+  when MythicMobs (or that name) is missing. The shipped roster is the
+  Naxome storyline (see `LORE.md`), wired to `mythicmobs-pack/` — it works
+  with or without MythicMobs out of the box. A name that is neither Mythic
+  nor vanilla logs one warning and never spawns.
+- A mob's tier is its **minimum ring**: lower-tier mobs also appear on
+  deeper islands, their weight multiplied by `lower-tier-decay` (default
+  0.35) per ring below the island — rare strays, not regulars. Set `0` for
+  strict per-tier sets.
 - Islands activate when a player is within `activation-radius` (default 64).
   One mob spawns per scan pass until the per-island cap is reached; mobs
   despawn after `abandon-cooldown-minutes` with nobody near.
@@ -223,7 +231,7 @@ with any command scheduler if you want a cadence.
 plugins/DarkSea/
 ├── config.yml        # world shape, center, zones, exposure, armor, generation,
 │                     # markers, mob-spawning caps, boat stats, messages
-├── mobs.yml          # per-tier MythicMobs sets (internal names + weights + levels)
+├── mobs.yml          # per-tier mob sets (Mythic name + vanilla fallback + weight + level)
 ├── loot.yml          # per-tier weighted loot tables
 ├── islands.yml       # placed-island registry — plugin-managed, don't hand-edit
 ├── schematics/

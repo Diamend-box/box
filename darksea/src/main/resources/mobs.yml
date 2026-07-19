@@ -2,31 +2,43 @@
 # DarkSea — mob sets per island tier
 #
 # 'type' is tried as a MythicMobs INTERNAL name first (the id you'd use with
-# /mm mobs spawn). If MythicMobs doesn't know it, it falls back to a VANILLA
-# entity of the same name (e.g. DROWNED, GUARDIAN) — so this file works on a
-# fresh server before you've built any custom Mythic mobs.
+# /mm mobs spawn). The names below match the ready-to-copy pack in
+# mythicmobs-pack/ — see its README. If MythicMobs isn't installed (or doesn't
+# know the name), the entry's 'fallback' spawns as a VANILLA entity instead,
+# so encounters work out of the box. Fallbacks were picked to survive
+# daylight and dry land (which is why MutatedNaxian falls back to HUSK, not a
+# burning zombie).
 #
-# The entries below are VANILLA mobs on purpose, so encounters work out of the
-# box. Swap each 'type' for your MythicMobs internal names as you build them
-# (mixing vanilla and Mythic across tiers is fine).
+# A mob's tier is its MINIMUM ring. Lower-tier mobs also appear on deeper
+# islands, with their weight multiplied by 'lower-tier-decay' once per ring
+# below the island's tier: at 0.35, one ring down keeps ~35% of its weight,
+# two rings ~12%, three rings ~4% — so a Crazed Sailor in the Abyssal Reaches
+# is a rare stray, not a regular. Set 0 to restore strict per-tier sets.
 #
-# 'weight' picks between entries; 'level' is passed to MythicMobs (ignored by
-# vanilla mobs). Reloads with /ds reload.
+# 'weight' picks between entries; 'level' feeds the pack's LevelModifiers
+# (ignored by vanilla fallbacks). Reloads with /ds reload.
 # ---------------------------------------------------------------------------
 
-# Vanilla mobs chosen so they don't burn in daylight or drown on the sand demo
-# platforms — they simply appear and stay, which is what you want to see while
-# testing. (DROWNED/GUARDIAN are more thematic but burn/suffocate out of water.)
+lower-tier-decay: 0.35
+
+# The story out here: the Naxome — the civilization whose ruins dot these
+# islands — fell to the Mariphage, the curse-plague the Order of the Soul is
+# reseeding from the abyssal monolith. The Cursed are its victims; the Order's
+# ranks are its keepers, and their share of spawns grows ring by ring.
 tiers:
+  # ── The Wild Sea — the infection's outermost edge ──
   1:
-    - { type: HUSK,       weight: 10, level: 1 }
-    - { type: PILLAGER,   weight: 5,  level: 1 }
+    - { type: CrazedSailor,      fallback: HUSK,            weight: 10, level: 1 }
+    - { type: VironicInitiate,   fallback: PILLAGER,        weight: 4,  level: 1 }
+  # ── The Raging Deep — old Naxian towns, half-claimed ──
   2:
-    - { type: HUSK,       weight: 8,  level: 5 }
-    - { type: VINDICATOR, weight: 4,  level: 3 }
+    - { type: MutatedNaxian,     fallback: HUSK,            weight: 9,  level: 3 }
+    - { type: VironicAcolyte,    fallback: VINDICATOR,      weight: 5,  level: 3 }
+  # ── The Midnight Waters — the curse runs bone-deep ──
   3:
-    - { type: WITCH,      weight: 8,  level: 8 }
-    - { type: PILLAGER,   weight: 3,  level: 5 }
+    - { type: TransmutedNaxian,  fallback: WITHER_SKELETON, weight: 8,  level: 6 }
+    - { type: VironicTemplar,    fallback: WITCH,           weight: 6,  level: 6 }
+  # ── The Abyssal Reaches — the Order's seat of power ──
   4:
-    - { type: RAVAGER,    weight: 8,  level: 10 }
-    - { type: VINDICATOR, weight: 2,  level: 8 }
+    - { type: NaxianAbomination, fallback: RAVAGER,         weight: 8,  level: 10 }
+    - { type: VironicLord,       fallback: EVOKER,          weight: 6,  level: 10 }

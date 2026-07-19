@@ -37,13 +37,12 @@ import java.util.UUID;
  * and global caps. Islands abandoned for the configured cooldown despawn
  * their remaining tracked mobs.
  *
- * This class is the only place MythicMobs is touched, via the stable
- * {@code BukkitAPIHelper} entry point.
+ * MythicMobs is optional (a softdepend): the nested {@link MythicHook} is
+ * the only code that references its classes, and it is never loaded unless
+ * the plugin is actually present — every entry then spawns its vanilla
+ * fallback instead.
  */
 public final class MobSpawner extends BukkitRunnable {
-
-    public record MobEntry(String type, int weight, int level) {
-    }
 
     private final DarkSeaPlugin plugin;
     private final IslandRegistry registry;
@@ -51,7 +50,7 @@ public final class MobSpawner extends BukkitRunnable {
     private final Map<String, Set<UUID>> tracked = new HashMap<>();
     private final Map<String, Long> lastNear = new HashMap<>();
     private final Set<String> warnedTypes = new HashSet<>();
-    private volatile Map<Integer, List<MobEntry>> sets = Map.of();
+    private volatile Map<Integer, List<MobPool.Slot>> pools = Map.of();
 
     public MobSpawner(DarkSeaPlugin plugin, IslandRegistry registry) {
         this.plugin = plugin;
@@ -59,10 +58,15 @@ public final class MobSpawner extends BukkitRunnable {
         reloadSets();
     }
 
+    /**
+     * Re-reads mobs.yml. Each entry's tier is its minimum ring; the parsed
+     * sets are expanded by {@link MobPool#build} so lower-tier mobs also roam
+     * deeper rings, decayed by {@code lower-tier-decay} per ring of distance.
+     */
     public void reloadSets() {
         File file = new File(plugin.getDataFolder(), "mobs.yml");
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        Map<Integer, List<MobEntry>> loaded = new HashMap<>();
+        Map<Integer, List<MobPool.MobEntry>> loaded = new HashMap<>();
         ConfigurationSection tiers = yaml.getConfigurationSection("tiers");
         if (tiers != null) {
             for (String key : tiers.getKeys(false)) {
@@ -73,13 +77,15 @@ public final class MobSpawner extends BukkitRunnable {
                     plugin.getLogger().warning("mobs.yml tier '" + key + "' is not a number — skipped");
                     continue;
                 }
-                List<MobEntry> entries = new ArrayList<>();
+                List<MobPool.MobEntry> entries = new ArrayList<>();
                 for (Map<?, ?> map : tiers.getMapList(key)) {
                     Object type = map.get("type");
                     if (type == null) {
                         continue;
                     }
-                    entries.add(new MobEntry(String.valueOf(type),
+                    Object fallback = map.get("fallback");
+                    entries.add(new MobPool.MobEntry(String.valueOf(type),
+                            fallback != null ? String.valueOf(fallback) : null,
                             Math.max(1, toInt(map.get("weight"), 1)),
                             Math.max(0, toInt(map.get("level"), 1))));
                 }
@@ -88,7 +94,7 @@ public final class MobSpawner extends BukkitRunnable {
                 }
             }
         }
-        this.sets = Map.copyOf(loaded);
+        this.pools = MobPool.build(loaded, yaml.getDouble("lower-tier-decay", MobPool.DEFAULT_DECAY));
     }
 
     @Override
@@ -123,11 +129,11 @@ public final class MobSpawner extends BukkitRunnable {
                         || totalTracked() >= cfg.globalCap()) {
                     continue;
                 }
-                List<MobEntry> set = sets.get(island.tier());
-                if (set == null || set.isEmpty()) {
+                List<MobPool.Slot> pool = pools.get(island.tier());
+                if (pool == null || pool.isEmpty()) {
                     continue;
                 }
-                MobEntry entry = weightedPick(set);
+                MobPool.MobEntry entry = MobPool.pick(pool, rng);
                 Pos point = island.spawnPoints().get(rng.nextInt(island.spawnPoints().size()));
                 UUID spawned = spawnMob(entry, point.toLocation(world));
                 if (spawned != null) {
@@ -143,39 +149,38 @@ public final class MobSpawner extends BukkitRunnable {
     }
 
     /**
-     * Spawns a MythicMobs mob by internal name, falling back to a vanilla
-     * entity of the same name (e.g. {@code DROWNED}, {@code GUARDIAN}) when
-     * MythicMobs doesn't know it. Lets a fresh server test encounters with
-     * vanilla mobs before any custom Mythic mobs exist.
+     * Tries the entry's {@code type} as a MythicMobs internal name (only when
+     * that plugin is present), then spawns the vanilla fallback: {@code
+     * fallback} if set, otherwise {@code type} itself read as a vanilla
+     * entity. A server without MythicMobs still gets working encounters.
      */
-    private UUID spawnMob(MobEntry entry, Location location) {
-        try {
-            Entity entity = MythicBukkit.inst().getAPIHelper()
-                    .spawnMythicMob(entry.type(), location, entry.level());
-            if (entity != null) {
-                return entity.getUniqueId();
+    private UUID spawnMob(MobPool.MobEntry entry, Location location) {
+        if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
+            UUID mythic = MythicHook.spawn(entry.type(), location, entry.level());
+            if (mythic != null) {
+                return mythic;
             }
-        } catch (InvalidMobTypeException ex) {
-            UUID vanilla = spawnVanilla(entry, location);
-            if (vanilla != null) {
-                return vanilla;
-            }
-            if (warnedTypes.add(entry.type())) {
-                plugin.getLogger().warning("mobs.yml type '" + entry.type() + "' is neither a "
-                        + "MythicMobs mob nor a vanilla entity — it will never spawn");
-            }
+        }
+        UUID vanilla = spawnVanilla(entry.vanillaName(), location);
+        if (vanilla != null) {
+            return vanilla;
+        }
+        if (warnedTypes.add(entry.type())) {
+            plugin.getLogger().warning("mobs.yml type '" + entry.type() + "' (vanilla fallback '"
+                    + entry.vanillaName() + "') is neither a MythicMobs mob nor a vanilla entity"
+                    + " — it will never spawn");
         }
         return null;
     }
 
-    private UUID spawnVanilla(MobEntry entry, Location location) {
+    private UUID spawnVanilla(String name, Location location) {
         World world = location.getWorld();
         if (world == null) {
             return null;
         }
         EntityType type;
         try {
-            type = EntityType.valueOf(entry.type().toUpperCase(Locale.ROOT));
+            type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return null;
         }
@@ -190,19 +195,26 @@ public final class MobSpawner extends BukkitRunnable {
         }
     }
 
-    private MobEntry weightedPick(List<MobEntry> set) {
-        int total = 0;
-        for (MobEntry entry : set) {
-            total += entry.weight();
+    /**
+     * The only code that references MythicMobs classes. Nested so the JVM
+     * never links it when the plugin isn't installed — callers must check
+     * {@code isPluginEnabled("MythicMobs")} first.
+     */
+    private static final class MythicHook {
+
+        private MythicHook() {
         }
-        int roll = rng.nextInt(total);
-        for (MobEntry entry : set) {
-            roll -= entry.weight();
-            if (roll < 0) {
-                return entry;
+
+        /** Returns the spawned mob's id, or null when Mythic can't provide it. */
+        static UUID spawn(String type, Location location, int level) {
+            try {
+                Entity entity = MythicBukkit.inst().getAPIHelper()
+                        .spawnMythicMob(type, location, level);
+                return entity != null ? entity.getUniqueId() : null;
+            } catch (InvalidMobTypeException ex) {
+                return null;
             }
         }
-        return set.get(set.size() - 1);
     }
 
     private void prune(Set<UUID> mobs) {
