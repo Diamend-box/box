@@ -16,12 +16,13 @@
 # with nobody around to anger it, it eventually digs back into the island.
 MariphageCore:
   Type: WARDEN
-  Display: '&5The Mariphage Core'
+  Display: '&5Mariphage Core'
   Health: 300
   Damage: 15
   BossBar:
     Enabled: true
-    Title: '&5The Mariphage Core'
+    # No "The" — a Core, not the only one: the Order can always grow another.
+    Title: '&5Mariphage Core'
     Range: 40
     Color: PURPLE
     Style: SOLID
