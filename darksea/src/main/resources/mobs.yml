@@ -39,6 +39,10 @@ tiers:
     - { type: TransmutedNaxian,  fallback: WITHER_SKELETON, weight: 8,  level: 6 }
     - { type: VironicTemplar,    fallback: WITCH,           weight: 6,  level: 6 }
   # ── The Abyssal Reaches — the Order's seat of power ──
+  # The Mariphage Core is the sea's only boss: weight 1 keeps it a rare
+  # roaming terror (~6% of native tier-4 picks) rather than an every-island
+  # regular. It summons its own Vessels; those never appear in this file.
   4:
     - { type: NaxianAbomination, fallback: RAVAGER,         weight: 8,  level: 10 }
     - { type: VironicLord,       fallback: EVOKER,          weight: 6,  level: 10 }
+    - { type: MariphageCore,     fallback: WARDEN,          weight: 1,  level: 10 }

@@ -26,9 +26,9 @@ The cult of the abyssal monolith. They are reseeding the Mariphage
 deliberately, ring by ring, to revive a primordial power sleeping beneath
 the Abyssal Reaches. The cult remains found on every island — candle rings,
 skull altars, offering niches, glyph steles — are their work-sites. Ranks
-climb with the rings, styled **"Vironic"** (name pending Wyatt's final
-call): Initiate, Acolyte, Templar, Lord. The Order walks unharmed among the
-Cursed; the plague knows its keepers.
+climb with the rings, styled **"Vironic"** (confirmed Jul 18): Initiate,
+Acolyte, Templar, Lord. The Order walks unharmed among the Cursed; the
+plague knows its keepers.
 
 ## The enemies
 
@@ -44,9 +44,15 @@ with depth. Lower-ring enemies stray into deeper rings as rare leftovers
 (the spawner's minimum-tier rule), so the deep sea still shows you what the
 plague's early stages looked like.
 
-## The boss (unnamed)
+## The Mariphage Core
 
-Only the Abyssal Reaches has a boss: the **half-revived primordial** the
-Order serves — awake enough to kill, not yet awake enough to win. Name,
-design and mechanics are their own round; one slot is reserved in the
-Mythic pack and in `mobs.yml` tier 4.
+Only the Abyssal Reaches has a boss: the **Mariphage Core** — a core of the
+plague, big, imposing and otherworldly, grown by the Order around the
+monolith. It is what *spreads* the curse, not what causes it: a creature
+powerful enough to infect a whole ocean alone would be too big to fight at
+all, and killing a Core only quiets the sea until the Order grows another —
+which is why it can be fought again and again. In battle it sheds
+**Mariphage Vessels** (name provisional — Wyatt may still rename), skittering
+fragments of the plague that hunt for hosts and wither away on their own.
+The primordial power the Order serves stays beneath the sea, unfought and
+unnamed — cause, not creature.

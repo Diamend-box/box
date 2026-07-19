@@ -90,10 +90,17 @@ gets a boss. New spawn rule by request: a mob's tier is its **minimum** ring
 `mobs.yml` re-rostered with `fallback:` per entry; MythicMobs demoted to a
 true softdepend (vanilla-only servers now work); minimum-tier pools live in
 pure `MobPool` with JUnit coverage, plus a CI test that locks mobs.yml and
-the pack together (typo-proof). Canon written down in `LORE.md`. Open with
-Wyatt: the tier-4 **boss** (name + design round of its own), the "Vironic"
-rank prefix (pending his final call), and an optional infection-swarm third
-line.
+the pack together (typo-proof). Canon written down in `LORE.md`.
+
+**Decisions round 2 (Jul 18, by Wyatt):** "Vironic" stays. The boss is the
+**Mariphage Core** — a core of the virus, the spreader rather than the
+cause (so it stays refightable: anything that could infect a whole ocean
+alone would be too big to fight). Big, imposing, otherworldly → warden,
+summoning **Mariphage Vessels** (endermites; name provisional). Shipped in
+`Mobs/darksea-boss.yml`, wired into tier 4 at weight 1 (~6% of native
+picks). Boss loot stays modest until Loot 2.0. Open: Vessel rename if
+Wyatt wants one; one-boss-per-island logic if the rare double-Core ever
+annoys in play.
 
 ### 3. Loot 2.0 — content
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned

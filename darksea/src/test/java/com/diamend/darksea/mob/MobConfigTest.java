@@ -93,7 +93,9 @@ class MobConfigTest {
         for (int tier = 1; tier <= 4; tier++) {
             int finalTier = tier;
             long natives = entries.stream().filter(e -> e.tier() == finalTier).count();
-            assertEquals(2, natives, "tier " + tier + " should ship two natives");
+            // Two commons per ring; the Abyssal Reaches also carries the boss.
+            assertEquals(tier == 4 ? 3 : 2, natives,
+                    "tier " + tier + " ships the wrong number of natives");
         }
 
         double decay = yaml.getDouble("lower-tier-decay", -1);

@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+# DarkSea — the boss of the Abyssal Reaches
+#
+# The Mariphage Core: a core of the plague, not its cause — the thing that
+# SPREADS the curse, grown around the monolith. Kill it and the sea grows
+# quieter for a while; the Order simply grows another. (That's why it can
+# be refought: a creature that could infect a whole ocean by itself would
+# be too big to fight at all.)
+#
+# Internal names must match `type:` in the plugin's mobs.yml (the Vessel is
+# summon-only and deliberately absent from mobs.yml).
+# ---------------------------------------------------------------------------
+
+# Big, imposing, otherworldly. Every ~15 seconds it sheds Mariphage Vessels;
+# its blows blind you with the abyss (Darkness). Vanilla warden habits apply:
+# with nobody around to anger it, it eventually digs back into the island.
+MariphageCore:
+  Type: WARDEN
+  Display: '&5The Mariphage Core'
+  Health: 300
+  Damage: 15
+  BossBar:
+    Enabled: true
+    Title: '&5The Mariphage Core'
+    Range: 40
+    Color: PURPLE
+    Style: SOLID
+  Options:
+    Despawn: true
+    PreventOtherDrops: true
+    KnockbackResistance: 1
+  Skills:
+    - summon{type=MariphageVessel;amount=3;radius=5} @self ~onTimer:300 0.9
+    - potion{type=DARKNESS;duration=120;level=1} @trigger ~onAttack 0.5
+  LevelModifiers:
+    Health: 10
+    Damage: 0.5
+  Drops:
+    - echo_shard 2to4 1
+    - diamond 2to4 1
+    - netherite_scrap 1to2 0.5
+
+# Shed by the Core: skittering fragments of the plague looking for a host.
+# Vanilla endermites despawn on their own after ~2 minutes, so a fight never
+# permanently litters the island.
+MariphageVessel:
+  Type: ENDERMITE
+  Display: '&2Mariphage Vessel'
+  Health: 8
+  Damage: 2
+  Options:
+    Despawn: true
+    PreventOtherDrops: true
+  Skills:
+    - potion{type=POISON;duration=60;level=1} @trigger ~onAttack 0.25
+  Drops:
+    - echo_shard 1 0.05

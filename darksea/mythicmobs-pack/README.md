@@ -9,9 +9,14 @@ The sea's enemies, ready to copy onto the server. Two files, two factions:
   spreading the plague to wake a primordial power. Vironic Initiate →
   Acolyte → Templar → Lord.
 
-The full storyline lives in [`../LORE.md`](../LORE.md). The tier-4 **boss**
-(the half-revived primordial) is not in this pack yet — it gets its own file
-and its own design round.
+- **`Mobs/darksea-boss.yml`** — the sea's only boss: the **Mariphage Core**
+  (warden), a rare tier-4 encounter that sheds endermite **Mariphage
+  Vessels** mid-fight. Weight 1 in `mobs.yml` keeps it ~6% of Abyssal
+  Reaches spawns.
+
+The full storyline lives in [`../LORE.md`](../LORE.md). Boss loot is
+placeholder-modest for now — proper rewards (tokens, armor) land with the
+Loot 2.0 round.
 
 ## Install
 
