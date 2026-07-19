@@ -35,10 +35,9 @@ vanilla `fallback` that spawns instead.
 - **Internal names** (`CrazedSailor:` etc.) must keep matching `type:` in the
   plugin's `mobs.yml` — a CI test enforces this in the repo, but hand-edits
   on the server can drift.
-- **`Health` / `Damage`** are the flat base stats. **`LevelModifiers`** add
-  the listed amount per level above 1; `mobs.yml` passes level **1 / 3 / 6 /
-  10** for rings 1–4, so one mob definition scales smoothly if you move it
-  between rings.
+- **`Health` / `Damage`** are flat, round, and exactly what spawns — no
+  hidden level scaling (the `level` in mobs.yml is passed along but unused
+  by this pack; it's headroom for later).
 - **Drops** replace vanilla drops entirely (`PreventOtherDrops`). Notable
   choice: the Vironic Lord drops its **totem of undying only 15%** of the
   time — farmable totems would defuse the whole hostile-sea premise. Raise

@@ -7,18 +7,27 @@
 # be refought: a creature that could infect a whole ocean by itself would
 # be too big to fight at all.)
 #
+# The fight's rhythm: every ~12s the Core INHALES, dragging everyone within
+# 12 blocks toward it — but standing next to it is exactly where you don't
+# want to be, because taking a swing at it risks a plague burst (Poison II
+# to everyone within 5 blocks) and its blows blind you with Darkness. Every
+# ~15s it sheds Vessels that chase you while you try to keep your footing,
+# and if you retreat too far the warden's native sonic boom reaches out
+# anyway. Sometimes a wound makes it lurch (brief Speed II). So: sprint out
+# of the inhale, trade a few hits, back off before the burst — repeat.
+#
 # Internal names must match `type:` in the plugin's mobs.yml (the Vessel is
-# summon-only and deliberately absent from mobs.yml).
+# summon-only and deliberately absent from mobs.yml). Stats are flat and
+# deliberately round — what you read is what spawns.
 # ---------------------------------------------------------------------------
 
-# Big, imposing, otherworldly. Every ~15 seconds it sheds Mariphage Vessels;
-# its blows blind you with the abyss (Darkness). Vanilla warden habits apply:
-# with nobody around to anger it, it eventually digs back into the island.
+# Big, imposing, otherworldly. Vanilla warden habits still apply: with
+# nobody around to anger it, it eventually digs back into the island.
 MariphageCore:
   Type: WARDEN
   Display: '&5Mariphage Core'
-  Health: 300
-  Damage: 15
+  Health: 400
+  Damage: 20
   BossBar:
     Enabled: true
     # No "The" — a Core, not the only one: the Order can always grow another.
@@ -31,23 +40,28 @@ MariphageCore:
     PreventOtherDrops: true
     KnockbackResistance: 1
   Skills:
+    # The inhale — the Core pulls the fight to itself.
+    - pull{velocity=6} @PlayersInRadius{r=12} ~onTimer:240 0.8
+    # Shed Vessels into the scrum.
     - summon{type=MariphageVessel;amount=3;radius=5} @self ~onTimer:300 0.9
+    # Plague burst — wounding it up close can splash Poison II on everyone near.
+    - potion{type=POISON;duration=100;level=2} @PlayersInRadius{r=5} ~onDamaged 0.25
+    # Its blows blind you with the abyss.
     - potion{type=DARKNESS;duration=120;level=1} @trigger ~onAttack 0.5
-  LevelModifiers:
-    Health: 10
-    Damage: 0.5
+    # A wound makes it lurch.
+    - potion{type=SPEED;duration=100;level=2} @self ~onDamaged 0.15
   Drops:
     - echo_shard 2to4 1
     - diamond 2to4 1
     - netherite_scrap 1to2 0.5
 
-# Shed by the Core: skittering fragments of the plague looking for a host.
-# Vanilla endermites despawn on their own after ~2 minutes, so a fight never
-# permanently litters the island.
+# Shed by the Core (and spilled from Templar robes): skittering fragments of
+# the plague looking for a host. Vanilla endermites despawn on their own
+# after ~2 minutes, so a fight never permanently litters the island.
 MariphageVessel:
   Type: ENDERMITE
   Display: '&2Mariphage Vessel'
-  Health: 8
+  Health: 10
   Damage: 2
   Options:
     Despawn: true

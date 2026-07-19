@@ -102,6 +102,15 @@ picks). Boss loot stays modest until Loot 2.0. Open: Vessel rename if
 Wyatt wants one; one-boss-per-island logic if the rare double-Core ever
 annoys in play.
 
+**Decisions round 3 (Jul 18, by Wyatt):** stats must be round numbers —
+LevelModifiers dropped, every stat is now flat and readable (400, not 390).
+Templar and Lord needed to feel like more than fat vanilla mobs: the
+Templar now spills Vessels when struck and hurls attackers away; the Lord
+pulses Wither on everyone within 6 blocks. The Core got a real fight
+rhythm: an inhale that drags players in every ~12s, a Poison II plague
+burst punishing melee, Darkness blows, Vessel sheds, and a lurch (Speed II)
+when wounded — sprint out, trade hits, back off, repeat.
+
 ### 3. Loot 2.0 — content
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned
 boat-token rarity, small next-tier teases. CI gets a parse test so a typo

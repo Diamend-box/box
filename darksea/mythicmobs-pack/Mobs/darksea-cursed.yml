@@ -6,8 +6,8 @@
 # has gone: crazed → mutated → transmuted → no longer recognizably Naxian.
 #
 # Internal names here must match `type:` in the plugin's mobs.yml exactly
-# (case-sensitive). Tune Health/Damage freely; `LevelModifiers` add the shown
-# amount per level above 1 (mobs.yml passes level 1/3/6/10 by ring).
+# (case-sensitive). Stats are flat and deliberately round — what you read is
+# what spawns. Tune Health/Damage freely.
 # ---------------------------------------------------------------------------
 
 # Ring 1 — The Wild Sea. A sailor who moored at the wrong island. The
@@ -15,7 +15,7 @@
 CrazedSailor:
   Type: HUSK
   Display: '&2Crazed Sailor'
-  Health: 22
+  Health: 20
   Damage: 3
   Options:
     MovementSpeed: 0.26
@@ -25,9 +25,6 @@ CrazedSailor:
     PreventTransformation: true
   Equipment:
     - WOODEN_AXE HAND
-  LevelModifiers:
-    Health: 2
-    Damage: 0.25
   Drops:
     - rotten_flesh 1 1
     - copper_ingot 1 0.15
@@ -38,8 +35,8 @@ CrazedSailor:
 MutatedNaxian:
   Type: ZOMBIE_VILLAGER
   Display: '&2Mutated Naxian'
-  Health: 30
-  Damage: 5
+  Health: 40
+  Damage: 6
   Options:
     MovementSpeed: 0.25
     Despawn: true
@@ -52,9 +49,6 @@ MutatedNaxian:
     - TRIDENT HAND
   Skills:
     - potion{type=POISON;duration=80;level=1} @trigger ~onAttack 0.35
-  LevelModifiers:
-    Health: 2.5
-    Damage: 0.3
   Drops:
     - rotten_flesh 1 1
     - prismarine_shard 1to2 0.25
@@ -65,8 +59,8 @@ MutatedNaxian:
 TransmutedNaxian:
   Type: WITHER_SKELETON
   Display: '&2Transmuted Naxian'
-  Health: 40
-  Damage: 7
+  Health: 60
+  Damage: 8
   Options:
     MovementSpeed: 0.28
     Despawn: true
@@ -74,9 +68,6 @@ TransmutedNaxian:
     PreventRandomEquipment: true
   Equipment:
     - STONE_SWORD HAND
-  LevelModifiers:
-    Health: 3
-    Damage: 0.4
   Drops:
     - bone 1to2 1
     - coal 1to3 0.4
@@ -87,17 +78,14 @@ TransmutedNaxian:
 NaxianAbomination:
   Type: RAVAGER
   Display: '&2Naxian Abomination'
-  Health: 110
-  Damage: 12
+  Health: 150
+  Damage: 15
   Options:
     Despawn: true
     PreventOtherDrops: true
     KnockbackResistance: 0.6
   Skills:
     - potion{type=NAUSEA;duration=100;level=1} @trigger ~onAttack 0.4
-  LevelModifiers:
-    Health: 5
-    Damage: 0.5
   Drops:
     - saddle 1 0.1
     - diamond 1 0.2

@@ -15,8 +15,9 @@
 # two rings ~12%, three rings ~4% — so a Crazed Sailor in the Abyssal Reaches
 # is a rare stray, not a regular. Set 0 to restore strict per-tier sets.
 #
-# 'weight' picks between entries; 'level' feeds the pack's LevelModifiers
-# (ignored by vanilla fallbacks). Reloads with /ds reload.
+# 'weight' picks between entries; 'level' is passed to MythicMobs (the
+# shipped pack uses flat stats, so it's future headroom; vanilla fallbacks
+# ignore it). Reloads with /ds reload.
 # ---------------------------------------------------------------------------
 
 lower-tier-decay: 0.35
