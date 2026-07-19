@@ -111,10 +111,23 @@ rhythm: an inhale that drags players in every ~12s, a Poison II plague
 burst punishing melee, Darkness blows, Vessel sheds, and a lurch (Speed II)
 when wounded — sprint out, trade hits, back off, repeat.
 
-### 3. Loot 2.0 — content
+### 3. Loot 2.0 — content — IN PROGRESS
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned
 boat-token rarity, small next-tier teases. CI gets a parse test so a typo
 can never brick loot loading.
+
+**Status:** `LootEntry` item lines now take optional MiniMessage `name` +
+`lore`; `loot.yml` rewritten as junk/goods/treasure bands with one-plus
+named **Naxome relic** per ring (Rotted Rigging → Naxian Trade Coin →
+Unclaimed Remains / Harbor Bell of the Naxome → Drained Plague Vial /
+Sealed Mariphage Sample → Vigil Candle / Monolith Splinter / Heart of the
+Naxome). Token weights tuned so each ring favors its own boat level; T4's
+plain heart-of-the-sea drop became the named relic. New
+`LootShippedConfigTest` locks: file parses with zero dropped entries,
+every ring has a relic, relics roll named + non-italic, token levels 1–3
+all reachable, cooldowns strictly increase, armor teases next tier.
+Relic names are a first draft — awaiting Wyatt's verdicts; relics are
+cosmetic collectibles for now (trader/crafting sink is future work).
 
 ### 4. Boat phase hardening — code
 Phase 4 (tokens and upgrades) is the one phase never live-tested. Add unit

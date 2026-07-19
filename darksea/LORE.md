@@ -56,3 +56,24 @@ which is why it can be fought again and again. In battle it sheds
 fragments of the plague that hunt for hosts and wither away on their own.
 The primordial power the Order serves stays beneath the sea, unfought and
 unnamed — cause, not creature.
+
+## What the dead left behind (Loot 2.0 relics)
+
+The treasure of a dead civilization isn't gold — it's the things that meant
+something. Island chests carry named **relics** alongside plain salvage
+(names are a first draft, all renameable):
+
+| Ring | Relic | What it was |
+|---|---|---|
+| 1 | **Rotted Rigging** | Sailcloth of ships nobody sails home |
+| 1 | **Naxian Trade Coin** | Currency of a market that drowned with everyone in it |
+| 2 | **Unclaimed Remains** | The Naxome buried their dead; nobody buried these |
+| 2 | **Harbor Bell of the Naxome** | It rang when ships came home. Quiet a long time now |
+| 3 | **Drained Plague Vial** | Whatever it held is in the water |
+| 3 | **Sealed Mariphage Sample** | Templar's stock, still stoppered — the Order wants it back |
+| 4 | **Vigil Candle** | Lit for the primordial. Still warm |
+| 4 | **Monolith Splinter** | It hums when held — not a sound, a word, almost |
+| 4 | **Heart of the Naxome** | Everything they were, pressed into one cold stone |
+
+Relics are collectibles and lore carriers for now; a trader or crafting
+sink for them is future work.

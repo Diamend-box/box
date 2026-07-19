@@ -1,62 +1,117 @@
 # ---------------------------------------------------------------------------
-# DarkSea — loot tables per island tier
+# DarkSea — loot tables per island tier (Loot 2.0)
 #
 # Each registered island chest refills 'rolls' random entries when opened, if
 # 'refill-cooldown-minutes' has passed since its last refill (timestamps
 # persist in islands.yml).
 #
 # Entry types:
-#   item  — material + amount range (min..max)
+#   item  — material + amount range (min..max). Optional 'name' and 'lore'
+#           (MiniMessage strings) turn it into a named relic — the treasure
+#           of the Naxome, the dead civilization whose ruins these are.
 #   armor — a random sea-armor piece of the given tier (the progression
 #           engine: ring N chests drop tier N, with a small chance of N+1)
 #   token — a boat upgrade token for the given level
+#
+# Every tier is banded: JUNK (flavor salvage, common), GOODS (useful
+# materials, the bread and butter), TREASURE (named relics, armor, tokens —
+# rare). Relics have no mechanical use yet; they're collectibles and lore
+# carriers, and headroom for a future trader/crafting sink.
 # Reloads with /ds reload.
 # ---------------------------------------------------------------------------
 
 tiers:
+  # ── The Wild Sea — wrecks of those who sailed in and didn't sail out ──
   1:
     rolls: 4
     refill-cooldown-minutes: 45
     entries:
-      - { type: item,  material: IRON_INGOT,       min: 2, max: 6, weight: 20 }
-      - { type: item,  material: EMERALD,          min: 1, max: 3, weight: 10 }
-      - { type: item,  material: COOKED_COD,       min: 3, max: 8, weight: 15 }
-      - { type: item,  material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 10 }
+      # junk
+      - { type: item, material: STRING,           min: 2, max: 5, weight: 10,
+          name: '<gray>Rotted Rigging</gray>',
+          lore: ['<dark_gray>Cut from a sail nobody trims anymore.</dark_gray>'] }
+      - { type: item, material: COOKED_COD,       min: 3, max: 8, weight: 12 }
+      # goods
+      - { type: item, material: IRON_INGOT,       min: 2, max: 6, weight: 18 }
+      - { type: item, material: EMERALD,          min: 1, max: 3, weight: 10 }
+      - { type: item, material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 10 }
+      # treasure
+      - { type: item, material: GOLD_NUGGET,      min: 2, max: 6, weight: 5,
+          name: '<gold>Naxian Trade Coin</gold>',
+          lore: ['<gray>Struck for a market that drowned</gray>',
+                 '<gray>with everyone in it.</gray>'] }
       - { type: armor, tier: 1, weight: 8 }
       - { type: armor, tier: 2, weight: 1 }
       - { type: token, level: 1, weight: 3 }
+  # ── The Raging Deep — the Naxome's drowned towns ──
   2:
     rolls: 4
     refill-cooldown-minutes: 60
     entries:
-      - { type: item,  material: GOLD_INGOT,       min: 2, max: 6, weight: 18 }
-      - { type: item,  material: DIAMOND,          min: 1, max: 2, weight: 8 }
-      - { type: item,  material: GOLDEN_APPLE,     min: 1, max: 2, weight: 8 }
-      - { type: item,  material: EXPERIENCE_BOTTLE, min: 4, max: 8, weight: 10 }
+      # junk
+      - { type: item, material: BONE,             min: 2, max: 6, weight: 8,
+          name: '<gray>Unclaimed Remains</gray>',
+          lore: ['<dark_gray>The Naxome buried their dead.</dark_gray>',
+                 '<dark_gray>Nobody buried these.</dark_gray>'] }
+      # goods
+      - { type: item, material: GOLD_INGOT,       min: 2, max: 6, weight: 16 }
+      - { type: item, material: DIAMOND,          min: 1, max: 2, weight: 8 }
+      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 2, weight: 8 }
+      - { type: item, material: EXPERIENCE_BOTTLE, min: 4, max: 8, weight: 10 }
+      # treasure
+      - { type: item, material: NAUTILUS_SHELL,   min: 1, max: 1, weight: 4,
+          name: '<aqua>Harbor Bell of the Naxome</aqua>',
+          lore: ['<gray>It rang when ships came home.</gray>',
+                 '<gray>It has been quiet a long time.</gray>'] }
       - { type: armor, tier: 2, weight: 8 }
       - { type: armor, tier: 3, weight: 1 }
-      - { type: token, level: 1, weight: 3 }
-      - { type: token, level: 2, weight: 2 }
+      - { type: token, level: 1, weight: 2 }
+      - { type: token, level: 2, weight: 3 }
+  # ── The Midnight Waters — where the Order works openly ──
   3:
     rolls: 5
     refill-cooldown-minutes: 90
     entries:
-      - { type: item,  material: DIAMOND,          min: 2, max: 4, weight: 15 }
-      - { type: item,  material: AMETHYST_SHARD,   min: 4, max: 10, weight: 12 }
-      - { type: item,  material: GOLDEN_APPLE,     min: 1, max: 3, weight: 10 }
-      - { type: item,  material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 2 }
+      # junk
+      - { type: item, material: GLASS_BOTTLE,     min: 1, max: 3, weight: 8,
+          name: '<dark_purple>Drained Plague Vial</dark_purple>',
+          lore: ['<dark_gray>Whatever it held is in the water now.</dark_gray>'] }
+      # goods
+      - { type: item, material: DIAMOND,          min: 2, max: 4, weight: 15 }
+      - { type: item, material: AMETHYST_SHARD,   min: 4, max: 10, weight: 12 }
+      - { type: item, material: GOLDEN_APPLE,     min: 1, max: 3, weight: 10 }
+      # treasure
+      - { type: item, material: POTION,           min: 1, max: 1, weight: 4,
+          name: '<dark_purple>Sealed Mariphage Sample</dark_purple>',
+          lore: ['<gray>Templar''s stock, still stoppered.</gray>',
+                 '<gray>The Order will want it back.</gray>'] }
+      - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 2 }
       - { type: armor, tier: 3, weight: 8 }
       - { type: armor, tier: 4, weight: 1 }
-      - { type: token, level: 2, weight: 3 }
-      - { type: token, level: 3, weight: 1 }
+      - { type: token, level: 2, weight: 2 }
+      - { type: token, level: 3, weight: 2 }
+  # ── The Abyssal Reaches — the monolith's own hoard ──
   4:
     rolls: 5
     refill-cooldown-minutes: 120
     entries:
-      - { type: item,  material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 10 }
-      - { type: item,  material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 8 }
-      - { type: item,  material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1, weight: 4 }
-      - { type: item,  material: TOTEM_OF_UNDYING,    min: 1, max: 1, weight: 4 }
-      - { type: item,  material: HEART_OF_THE_SEA,    min: 1, max: 1, weight: 5 }
+      # junk
+      - { type: item, material: CANDLE,           min: 2, max: 5, weight: 6,
+          name: '<dark_purple>Vigil Candle</dark_purple>',
+          lore: ['<dark_gray>Lit for the primordial. Still warm.</dark_gray>'] }
+      # goods
+      - { type: item, material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 10 }
+      - { type: item, material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 8 }
+      - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1, weight: 4 }
+      - { type: item, material: TOTEM_OF_UNDYING,    min: 1, max: 1, weight: 4 }
+      # treasure
+      - { type: item, material: ECHO_SHARD,       min: 1, max: 2, weight: 4,
+          name: '<dark_purple>Monolith Splinter</dark_purple>',
+          lore: ['<gray>It hums when held. Not a sound —</gray>',
+                 '<gray>a word, almost.</gray>'] }
+      - { type: item, material: HEART_OF_THE_SEA, min: 1, max: 1, weight: 4,
+          name: '<aqua>Heart of the Naxome</aqua>',
+          lore: ['<gray>Everything they were,</gray>',
+                 '<gray>pressed into one cold stone.</gray>'] }
       - { type: armor, tier: 4, weight: 8 }
       - { type: token, level: 3, weight: 3 }

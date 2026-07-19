@@ -191,6 +191,12 @@ Put templates in `schematics/tier1/` … `tier4/`; the home island goes in
 - `loot.yml` defines a weighted table per tier: vanilla items, sea-armor
   pieces and boat tokens. Chests refill on open once their tier's cooldown
   has elapsed; timestamps persist across restarts.
+- Item entries may carry a MiniMessage `name` and `lore` — the shipped
+  tables use this for **Naxome relics** (Naxian Trade Coin, Harbor Bell,
+  Monolith Splinter…): named collectibles that carry the storyline, with
+  a future trader/crafting sink in mind. Each tier is banded junk / goods /
+  treasure; a CI test keeps the shipped file parseable so a typo can never
+  quietly thin out chests.
 
 ## Boats
 
