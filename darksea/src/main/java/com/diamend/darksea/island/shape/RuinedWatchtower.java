@@ -248,6 +248,8 @@ final class RuinedWatchtower implements DemoShape {
         mobs.add(s.stand(0, wallR, p::groundMix));
         mobs.add(new Rel(0, 3, 1));
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 }

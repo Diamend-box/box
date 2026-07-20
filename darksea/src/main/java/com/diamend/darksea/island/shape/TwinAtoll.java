@@ -164,6 +164,8 @@ final class TwinAtoll implements DemoShape {
             mobs.add(s.stand(0, ringR, p::groundMix));
         }
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, List.of(chest), mobs);
     }
 }

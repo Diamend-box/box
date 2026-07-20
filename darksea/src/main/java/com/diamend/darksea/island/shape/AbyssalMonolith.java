@@ -266,6 +266,8 @@ final class AbyssalMonolith implements DemoShape {
         mobs.add(s.stand(-(platR - 5), 0, ShapeSketch.solid("POLISHED_BLACKSTONE")));
         mobs.add(s.stand(10, 4, ShapeSketch.solid("POLISHED_BLACKSTONE")));
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 

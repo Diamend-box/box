@@ -261,6 +261,54 @@ final class ShapeSketch {
         return (x, y, z, rng) -> material.apply(rng);
     }
 
+    /**
+     * Shoreline pass: grows a beach apron out from the land edge, stepping
+     * from the dry waterline down into underwater shallows, so islands wade
+     * into the sea instead of dropping off a cliff. The apron writes only
+     * into empty cells and never past {@code maxRadius}, so it can neither
+     * bury structures nor bust the shape's radius budget — safe to call as
+     * the very last stroke of a build. Per-column width jitter makes the
+     * waterline wander instead of tracing the rock exactly.
+     */
+    void shore(int maxRadius, Shader beach) {
+        java.util.Set<Rel> visited = new java.util.HashSet<>();
+        java.util.List<Rel> frontier = new java.util.ArrayList<>();
+        for (Map.Entry<Rel, String> e : blocks.entrySet()) {
+            Rel r = e.getKey();
+            if (r.y() >= 0 && !AIR.equals(e.getValue())) {
+                Rel col = new Rel(r.x(), 0, r.z());
+                if (visited.add(col)) {
+                    frontier.add(col);
+                }
+            }
+        }
+        // Each BFS ring steps the profile down: waterline, then shallows.
+        int[] profile = {0, 0, -1, -1, -2};
+        for (int d = 1; d <= profile.length; d++) {
+            java.util.List<Rel> next = new java.util.ArrayList<>();
+            for (Rel cell : frontier) {
+                for (int[] step : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    int x = cell.x() + step[0], z = cell.z() + step[1];
+                    Rel col = new Rel(x, 0, z);
+                    if (!visited.add(col)
+                            || Math.max(Math.abs(x), Math.abs(z)) > maxRadius) {
+                        continue;
+                    }
+                    int width = 3 + cellNoise(x, 7, z) % 3;  // 3..5 columns wide
+                    if (d <= width) {
+                        for (int y = -3; y <= profile[d - 1]; y++) {
+                            if (!blocks.containsKey(new Rel(x, y, z))) {
+                                put(x, y, z, beach.at(x, y, z, rng));
+                            }
+                        }
+                    }
+                    next.add(col);
+                }
+            }
+            frontier = next;
+        }
+    }
+
     /** Blocks nothing should stand on (decor, damage sources, liquids). */
     private static final java.util.Set<String> BAD_FOOTING = java.util.Set.of(
             "LAVA", "WATER", "MAGMA_BLOCK", "DEAD_BUSH", "SEA_PICKLE", "SOUL_FIRE",

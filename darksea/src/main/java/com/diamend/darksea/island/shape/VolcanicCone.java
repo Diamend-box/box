@@ -294,6 +294,8 @@ final class VolcanicCone implements DemoShape {
         s.carve(gx, 2, gz);
         mobs.add(new Rel(gx, 1, gz));
 
+        s.shore(radiusBudget(), VolcanicCone::blackSand);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 

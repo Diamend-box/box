@@ -222,6 +222,8 @@ final class RockySpire implements DemoShape {
             mobs.add(s.stand(sx, sz, p::rockMix));
         }
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 }

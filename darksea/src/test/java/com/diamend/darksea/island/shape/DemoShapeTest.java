@@ -213,6 +213,54 @@ class DemoShapeTest {
         }
     }
 
+    @Test
+    void islandsWadeIntoTheSeaInsteadOfDroppingOffACliff() {
+        for (DemoShape shape : DemoShapes.ALL) {
+            for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
+                ShapeBuild build = shape.build(tier, 424242L);
+                int rays = 24, gentle = 0, submergedRim = 0;
+                for (int i = 0; i < rays; i++) {
+                    double angle = i * Math.PI * 2 / rays;
+                    Rel edge = outermostColumn(build, angle, shape.radiusBudget());
+                    assertNotNull(edge, shape.id() + " t" + tier + ": ray " + i
+                            + " never touched land");
+                    // The shoreline: the outermost ground should sit at or
+                    // below the waterline (an offshore stack may buck this
+                    // on a few rays, but never around the whole compass).
+                    if (edge.y() <= 1) {
+                        gentle++;
+                    }
+                    if (edge.y() <= 0) {
+                        submergedRim++;
+                    }
+                }
+                // 2/3, not all: overhanging features (rib arches, offshore
+                // stacks) legitimately poke above the apron on a few rays.
+                assertTrue(gentle >= rays * 2 / 3, shape.id() + " t" + tier
+                        + ": only " + gentle + "/" + rays + " directions reach the water"
+                        + " gently — where are the beaches?");
+                assertTrue(submergedRim >= rays / 2, shape.id() + " t" + tier
+                        + ": the rim rarely dips underwater (" + submergedRim + "/" + rays
+                        + ") — no shallows to wade through");
+            }
+        }
+    }
+
+    /** Marches a ray inward from the budget radius; the first solid column
+     *  found, returned with its topmost solid y. */
+    private static Rel outermostColumn(ShapeBuild build, double angle, int fromRadius) {
+        for (double r = fromRadius; r >= 0; r -= 0.5) {
+            int x = (int) Math.round(Math.cos(angle) * r);
+            int z = (int) Math.round(Math.sin(angle) * r);
+            for (int y = build.max().y(); y >= build.min().y(); y--) {
+                if (isSolid(build, new Rel(x, y, z))) {
+                    return new Rel(x, y, z);
+                }
+            }
+        }
+        return null;
+    }
+
     private static int spanX(ShapeBuild build) {
         return build.max().x() - build.min().x() + 1;
     }

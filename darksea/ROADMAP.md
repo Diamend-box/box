@@ -58,7 +58,11 @@ offering niche, mound stone circle, garrison crypt shrine, bone totem,
 crater-rim fire shrine, forest shrine clearing).
 
 **Status:** eight generators live in `island/shape/` (the ruined castle
-joined Jul 20 — see workstream 3b); tests enforce the
+joined Jul 20 — see workstream 3b). Every shape now ends with a shared
+shoreline pass (`ShapeSketch.shore`, Wyatt's beach note Jul 20): a 3–5
+column sand apron BFS-grown from the land edge, stepping waterline →
+shallows, writing only empty cells so it can't bury rooms or bust radius
+budgets (the castle's budget went 40→44 to make room). Tests enforce the
 30x30 minimum footprint, tier-monotonic sizing, per-tier chest counts
 (1/1/2/3), concealment for every chest, and chest spacing; 200-seed sweep
 clean across all 18 tier combos. Preview artifact regenerated with

@@ -187,6 +187,8 @@ final class SeaBeastBones implements DemoShape {
                 p::groundMix));
         mobs.add(s.stand(skullX + 7, skullZ, p::groundMix));
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 

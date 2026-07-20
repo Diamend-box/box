@@ -290,6 +290,8 @@ final class CorruptedForest implements DemoShape {
             mobs.add(s.stand(mx, mz, r -> floor(r, tier)));
         }
 
+        s.shore(radiusBudget(), p::groundPatch);
+
         return ShapeBuild.of(s, chests, mobs);
     }
 

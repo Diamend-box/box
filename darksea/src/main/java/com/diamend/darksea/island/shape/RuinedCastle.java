@@ -93,7 +93,7 @@ final class RuinedCastle implements DemoShape {
 
     @Override
     public int radiusBudget() {
-        return 40;
+        return 44;  // the plinth reaches ~40; the beach apron needs the rest
     }
 
     @Override
@@ -407,6 +407,8 @@ final class RuinedCastle implements DemoShape {
         mobs.add(s.stand(hx1 + 2, 10, p::groundMix));      // hall corner
         mobs.add(s.stand(cx0 - 2, -10, p::groundMix));     // chapel yard
         mobs.add(s.stand(w - 1, 0, r -> st.brick()));      // the east wall walk
+
+        s.shore(radiusBudget(), p::groundPatch);
 
         return ShapeBuild.of(s, chests, mobs);
     }
