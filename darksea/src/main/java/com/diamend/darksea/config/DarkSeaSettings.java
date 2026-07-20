@@ -69,9 +69,12 @@ public record DarkSeaSettings(
      * island stays hand-editable. {@code islandProtectBuffer} extends the
      * protected footprint this many blocks past each island's edge, so players
      * can't pillar up alongside an island to cheese its mobs from range.
+     * {@code runLootDeath} turns on the extraction loop: dying in the sea drops
+     * only loot gathered on the run (kept gear is safe), banked by reaching the
+     * sanctuary.
      */
     public record CombatSettings(boolean protectIslands, double pvpSafeRadius,
-                                 int islandProtectBuffer) {
+                                 int islandProtectBuffer, boolean runLootDeath) {
     }
 
     /**
@@ -144,7 +147,8 @@ public record DarkSeaSettings(
         CombatSettings combat = new CombatSettings(
                 cfg.getBoolean("combat.protect-islands", true),
                 Math.max(0, cfg.getDouble("combat.pvp-safe-radius", 500)),
-                Math.max(0, cfg.getInt("combat.island-protect-buffer", 5)));
+                Math.max(0, cfg.getInt("combat.island-protect-buffer", 5)),
+                cfg.getBoolean("combat.run-loot-death", true));
 
         ResetSettings reset = loadReset(cfg);
 

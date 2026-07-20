@@ -1,10 +1,12 @@
 package com.diamend.darksea.mob;
 
 import com.diamend.darksea.DarkSeaPlugin;
+import com.diamend.darksea.loot.RunLoot;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.List;
@@ -35,6 +37,12 @@ public final class MobDropService implements Listener {
         if (lines == null || lines.isEmpty()) {
             return;
         }
-        event.getDrops().addAll(MobDrops.roll(lines, rng));
+        List<ItemStack> drops = MobDrops.roll(lines, rng);
+        if (plugin.settings().combat().runLootDeath()) {
+            for (ItemStack drop : drops) {
+                RunLoot.tag(drop);   // gathered this run — lost on death until banked at home
+            }
+        }
+        event.getDrops().addAll(drops);
     }
 }

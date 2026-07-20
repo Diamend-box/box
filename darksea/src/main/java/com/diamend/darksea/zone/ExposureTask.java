@@ -70,6 +70,11 @@ public final class ExposureTask extends BukkitRunnable implements Listener {
                         : exposure <= 0 ? "zone-crossed-protected" : "zone-crossed-exposed";
                 plugin.messages().actionBar(player, key, "zone", zone.displayName());
                 player.playSound(player.getLocation(), Sound.AMBIENT_UNDERWATER_ENTER, 0.6f, 0.7f);
+
+                // Reaching the calm-water sanctuary banks the run's haul.
+                if (zone.requiredTier() == 0 && settings.combat().runLootDeath()) {
+                    plugin.runLoot().bank(player);
+                }
             }
 
             if (exempt || exposure <= 0) {

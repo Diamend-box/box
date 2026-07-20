@@ -305,18 +305,21 @@ it a toggle if farming still feels too easy in play.*
 Camping the sanctuary border: Wyatt's call is **no action** — the safe
 zone is big enough to slip in and out.
 
-### 6. Run-scoped death loss — code (Wyatt, Jul 20 PM)
-An extraction-shooter loop: dying in the Dark Sea (to a player or the sea
-itself) drops **only what you gathered on this run** — chest loot, mob
-drops — never the gear you sailed out with. Returning to the sanctuary
-banks the run (its loot becomes safe), so the tension is *cash out or lose
-it*, and a kill is rewarding without being rage-quitting. Likely
-implementation: tag plugin-granted sea loot with a run marker (PDC),
-partial keep-inventory on `PlayerDeathEvent` (keep untagged, drop tagged),
-clear markers on entering the sanctuary. Balance read (Wyatt asked): sound
-and non-punishing; the one thing it doesn't pressure is a fully-geared
-player's own gear, so top-gear players roam at low personal risk — fine for
-boxpvp, revisit only if ganking gets oppressive.
+### 6. Run-scoped death loss — BUILT (Wyatt, Jul 20 PM)
+The extraction loop. `RunLoot` stamps every item the sea hands out (chest
+loot in `ChestRefillService`, mob drops in `MobDropService`) with a PDC
+mark. `RunLootService` on `PlayerDeathEvent` in the sea forces keep-inv
+off, then drops **only** the stamped items (at the death spot, for the
+killer) and restores the untagged gear on respawn — dupe-safe by
+construction (run loot goes through the normal drop list, kept gear is
+pulled out of drops entirely, no item is ever in two places; a join
+handler is the safety net if someone dies-then-quits). Reaching the
+tier-0 sanctuary banks the haul: `ExposureTask`'s existing zone-crossing
+hook clears the marks. Config `combat.run-loot-death` (default on); XP/
+level kept. `RunLootTest` pins the stamp round-trip. Balance read (Wyatt
+asked): sound and non-punishing; the one thing it doesn't pressure is a
+fully-geared player's own gear, so top-gear players roam at low personal
+risk — fine for boxpvp, revisit only if ganking gets oppressive.
 
 ### 7. Schematic pipeline guide — docs
 Expand the schematic docs into a start-to-finish walkthrough (build →

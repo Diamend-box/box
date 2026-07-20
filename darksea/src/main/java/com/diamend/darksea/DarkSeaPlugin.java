@@ -14,6 +14,7 @@ import com.diamend.darksea.item.ConsumableService;
 import com.diamend.darksea.loot.ChestRefillService;
 import com.diamend.darksea.loot.LootConfig;
 import com.diamend.darksea.loot.LootTables;
+import com.diamend.darksea.loot.RunLootService;
 import com.diamend.darksea.mob.MobDropService;
 import com.diamend.darksea.mob.MobDrops;
 import com.diamend.darksea.mob.MobSpawner;
@@ -50,6 +51,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private BoatService boat;
     private RelicService relics;
     private IslandPlacer placer;
+    private RunLootService runLoot;
     private WorldService worldService;
     private MobSpawner mobSpawner;
     private ExposureTask exposureTask;
@@ -81,6 +83,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         boat = new BoatService(this, dataStore);
         relics = new RelicService(this);
         placer = new IslandPlacer(this, registry);
+        runLoot = new RunLootService(this);
         worldService = new WorldService(this, registry, placer);
         mobSpawner = new MobSpawner(this, registry);
         exposureTask = new ExposureTask(this);
@@ -94,6 +97,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
         getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);
+        getServer().getPluginManager().registerEvents(runLoot, this);
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
 
         PluginCommand command = getCommand("darksea");
@@ -207,6 +211,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public IslandPlacer placer() {
         return placer;
+    }
+
+    public RunLootService runLoot() {
+        return runLoot;
     }
 
     public WorldService worldService() {

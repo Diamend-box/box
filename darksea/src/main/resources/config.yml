@@ -151,6 +151,13 @@ combat:
   # whole column), so players can't pillar up right alongside an island to
   # snipe its mobs from out of reach. 0 = protect only the island's footprint.
   island-protect-buffer: 5
+  # Run-scoped death (the extraction loop). Dying in the Dark Sea drops only
+  # what you gathered this run — chest loot and mob drops — never the gear you
+  # sailed out with (that's kept and handed back on respawn). Returning to the
+  # calm-water sanctuary BANKS your haul: the mark is cleared and it's yours to
+  # keep for good. So killing someone takes their unbanked haul, not their kit —
+  # rewarding without being ruinous. Set false for plain vanilla death.
+  run-loot-death: true
   # PvP is on across the whole Dark Sea EXCEPT within this radius of center —
   # the home island's sanctuary, where nobody can be struck or grief a block.
   # PvP itself rides your server.properties `pvp` flag (leave it true); this
@@ -204,6 +211,9 @@ messages:
   status-not-in-world: "<gray>You are not in the Dark Sea."
 
   tp-done: "<green>Teleported to the home island."
+
+  run-loot-lost: "<red>You went down with {count} unbanked item(s) — your haul spills into the sea."
+  run-loot-banked: "<green>Ashore and safe — {count} item(s) from your run are yours to keep."
 
   generate-started: "<green>Queued {count} island paste(s). Progress is reported as they land."
   generate-none: "<yellow>Nothing to generate — every ring is already at its configured island count."

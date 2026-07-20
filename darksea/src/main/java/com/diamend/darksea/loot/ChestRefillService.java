@@ -70,8 +70,13 @@ public final class ChestRefillService implements Listener {
             slots.add(i);
         }
         Collections.shuffle(slots, rng);
+        boolean markRun = plugin.settings().combat().runLootDeath();
         for (int i = 0; i < loot.size() && i < slots.size(); i++) {
-            inventory.setItem(slots.get(i), loot.get(i));
+            ItemStack item = loot.get(i);
+            if (markRun) {
+                RunLoot.tag(item);   // gathered this run — lost on death until banked at home
+            }
+            inventory.setItem(slots.get(i), item);
         }
         ref.island().setRefilled(ref.pos(), now);
         registry.save();
