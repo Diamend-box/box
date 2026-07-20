@@ -73,7 +73,14 @@ public record DarkSeaSettings(
                                  int islandProtectBuffer) {
     }
 
-    public record BoatLevel(String name, double speed, int shield) {
+    /**
+     * A boat upgrade tier. {@code speed} scales sailing velocity, {@code shield}
+     * folds into the exposure formula (scout one ring farther), and
+     * {@code toughness} divides incoming hull damage in PvP — a higher boat
+     * survives more hits before it's sunk, so the upgrade path buys naval
+     * survivability, not just pace.
+     */
+    public record BoatLevel(String name, double speed, int shield, double toughness) {
     }
 
     public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels) {
@@ -257,11 +264,12 @@ public record DarkSeaSettings(
                 levels.put(level, new BoatLevel(
                         sec.getString(key + ".name", "Level " + level),
                         Math.max(1.0, sec.getDouble(key + ".speed", 1.0)),
-                        Math.max(0, sec.getInt(key + ".shield", 0))));
+                        Math.max(0, sec.getInt(key + ".shield", 0)),
+                        Math.max(1.0, sec.getDouble(key + ".toughness", 1.0))));
             }
         }
         if (!levels.containsKey(0)) {
-            levels.put(0, new BoatLevel("Rowboat", 1.0, 0));
+            levels.put(0, new BoatLevel("Rowboat", 1.0, 0, 1.0));
         }
         return new BoatSettings(Math.max(0.1, cfg.getDouble("boat.speed-cap-base", 0.45)), Map.copyOf(levels));
     }

@@ -155,11 +155,17 @@ boat:
   # Hard ceiling on boat speed: cap = speed-cap-base * level speed multiplier
   # (blocks per tick of horizontal velocity). Tune in playtesting.
   speed-cap-base: 0.45
+  # speed  = velocity multiplier while sailing the Dark Sea
+  # shield = exposure protection (scout one ring farther per point)
+  # toughness = divisor on incoming hull damage in PvP — a higher boat takes
+  #   more hits before it's sunk, so upgrading buys survivability at sea, not
+  #   just pace. A Rowboat (1.0) pops fast; a Stormrunner (3.0) rides out a
+  #   real skirmish. Sinking a boat dumps its rider into the hostile sea.
   levels:
-    0: { name: "Rowboat",     speed: 1.00, shield: 0 }
-    1: { name: "Sloop",       speed: 1.15, shield: 0 }
-    2: { name: "Cutter",      speed: 1.30, shield: 1 }
-    3: { name: "Stormrunner", speed: 1.45, shield: 1 }
+    0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0 }
+    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.5 }
+    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 2.0 }
+    3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 3.0 }
 
 # All messages use MiniMessage. {placeholders} are filled in by the plugin.
 messages:
@@ -218,6 +224,7 @@ messages:
 
   boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
   boat-max: "<yellow>Your boat is already fully upgraded."
+  boat-wrecked: "<red>Your boat is wrecked — you're adrift in the Dark Sea!"
   boat-need-token: "<red>Hold a level-{level} Boat Upgrade Token in your main hand to upgrade."
   boat-set: "<green>Set {player}'s boat level to {level} ({name}<green>)."
 
