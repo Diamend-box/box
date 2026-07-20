@@ -218,12 +218,17 @@ class DemoShapeTest {
         for (DemoShape shape : DemoShapes.ALL) {
             for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
                 ShapeBuild build = shape.build(tier, 424242L);
-                int rays = 24, gentle = 0, submergedRim = 0;
+                int rays = 24, landed = 0, gentle = 0, submergedRim = 0;
                 for (int i = 0; i < rays; i++) {
                     double angle = i * Math.PI * 2 / rays;
                     Rel edge = outermostColumn(build, angle, shape.radiusBudget());
-                    assertNotNull(edge, shape.id() + " t" + tier + ": ray " + i
-                            + " never touched land");
+                    if (edge == null) {
+                        // Open sea the whole way: a crescent island (the
+                        // beast's carcass curls like a banana) leaves a bay
+                        // some rays cross without ever meeting land.
+                        continue;
+                    }
+                    landed++;
                     // The shoreline: the outermost ground should sit at or
                     // below the waterline (an offshore stack may buck this
                     // on a few rays, but never around the whole compass).
@@ -234,13 +239,16 @@ class DemoShapeTest {
                         submergedRim++;
                     }
                 }
+                assertTrue(landed >= rays / 2, shape.id() + " t" + tier
+                        + ": only " + landed + "/" + rays + " rays found land at all"
+                        + " — is the island missing?");
                 // 2/3, not all: overhanging features (rib arches, offshore
                 // stacks) legitimately poke above the apron on a few rays.
-                assertTrue(gentle >= rays * 2 / 3, shape.id() + " t" + tier
-                        + ": only " + gentle + "/" + rays + " directions reach the water"
-                        + " gently — where are the beaches?");
-                assertTrue(submergedRim >= rays / 2, shape.id() + " t" + tier
-                        + ": the rim rarely dips underwater (" + submergedRim + "/" + rays
+                assertTrue(gentle >= landed * 2 / 3, shape.id() + " t" + tier
+                        + ": only " + gentle + "/" + landed + " landing directions reach"
+                        + " the water gently — where are the beaches?");
+                assertTrue(submergedRim >= landed / 2, shape.id() + " t" + tier
+                        + ": the rim rarely dips underwater (" + submergedRim + "/" + landed
                         + ") — no shallows to wade through");
             }
         }
