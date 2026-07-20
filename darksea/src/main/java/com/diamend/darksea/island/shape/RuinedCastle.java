@@ -321,6 +321,101 @@ final class RuinedCastle implements DemoShape {
             s.put(0, y, wellZ, "WATER");
         }
 
+        // --- Courtyard life: what a working castle leaves behind. ---
+        // Worn causeways: gate to keep, with branches to hall and chapel.
+        // Eroded here and there, and detouring nothing — the well ring and
+        // building walls were laid before this and paths only recolor the
+        // slab, but we still skip the well's ring so it keeps its lip.
+        ShapeSketch.Shader paving = (x, y, z, r) ->
+                ShapeSketch.cellNoise(x, 21, z) < 30 ? st.cracked() : st.detail();
+        for (int z = kz1 + 2; z <= w - 2; z++) {
+            for (int x = -1; x <= 1; x++) {
+                if (Math.abs(x) + Math.abs(z - wellZ) > 3
+                        && ShapeSketch.cellNoise(x, 13, z) >= 18) {
+                    s.put(x, 1, z, paving.at(x, 1, z, rng));
+                }
+            }
+        }
+        for (int x = 2; x <= cx0 - 1; x++) {       // east branch, to the chapel door
+            if (ShapeSketch.cellNoise(x, 13, -3) >= 18) {
+                s.put(x, 1, -3, paving.at(x, 1, -3, rng));
+                s.put(x, 1, -2, paving.at(x, 1, -2, rng));
+            }
+        }
+        for (int x = hx1 + 1; x <= -2; x++) {      // west branch, to the hall door
+            if (ShapeSketch.cellNoise(x, 13, 1) >= 18) {
+                s.put(x, 1, 1, paving.at(x, 1, 1, rng));
+            }
+        }
+
+        // The Order's garrison camp, south-east court: a soul-fire, bedrolls,
+        // stores. The keepers sleep where the harbor lord's men once drilled.
+        s.put(14, 2, 8, "SOUL_CAMPFIRE");
+        s.fillBox(12, 2, 6, 12, 2, 7, ShapeSketch.solid("GRAY_WOOL"));
+        s.fillBox(16, 2, 9, 16, 2, 10, ShapeSketch.solid("GRAY_WOOL"));
+        s.fillBox(13, 2, 11, 14, 2, 11, ShapeSketch.solid("GRAY_WOOL"));
+        s.put(17, 2, 6, "BARREL");
+        s.put(17, 2, 7, "HAY_BLOCK");
+        s.put(12, 2, 10, "BLACK_CANDLE");
+
+        // A dead orchard, north-east court: the garrison's garden, plots
+        // gone to coarse earth, trees bare a century.
+        s.fillBox(12, 1, -19, 18, 1, -13, (x, y, z, r) ->
+                ShapeSketch.cellNoise(x, 33, z) < 25 ? p.ground() : "COARSE_DIRT");
+        String log = tier == 2 ? "SPRUCE_LOG" : "DARK_OAK_LOG";
+        int[][] trees = {{14, -18}, {17, -15}, {13, -14}};
+        for (int[] t : trees) {
+            int trunkH = 3 + rng.nextInt(2);
+            s.column(t[0], 2, 1 + trunkH, t[1], ShapeSketch.solid(log));
+            s.line(t[0], 1 + trunkH, t[1], t[0] + 2 - rng.nextInt(5),
+                    2 + trunkH, t[1] + 2 - rng.nextInt(5), ShapeSketch.solid(log));
+            if (rng.nextInt(100) < 60) {
+                s.put(t[0] + 1, 2, t[1], "DEAD_BUSH");
+            }
+        }
+
+        // Market row, south-west court: two stall skeletons — posts, a
+        // counter, whatever stock nobody came back for.
+        int[][] stalls = {{-19, 12}, {-15, 15}};
+        for (int[] st0 : stalls) {
+            int sx = st0[0], sz = st0[1];
+            s.column(sx, 2, 3, sz, ShapeSketch.solid(p.wood()));
+            s.column(sx + 2, 2, 3, sz, ShapeSketch.solid(p.wood()));
+            s.column(sx, 2, 2 + rng.nextInt(2), sz + 2, ShapeSketch.solid(p.wood()));
+            s.column(sx + 2, 2, 2, sz + 2, ShapeSketch.solid(p.wood()));
+            s.put(sx + 1, 2, sz, p.wood());                       // the counter
+            s.put(sx + 1, 2, sz + 1, rng.nextInt(100) < 50 ? "BARREL" : "HAY_BLOCK");
+        }
+
+        // The harbor lord's statue: pedestal still standing, figure face
+        // down in the yard where it was pulled over.
+        s.fillBox(5, 2, -1, 6, 2, 0, ShapeSketch.solid(st.detail()));
+        s.put(5, 3, -1, st.brick());                              // the boots
+        s.line(7, 2, 0, 9, 2, 1, ShapeSketch.solid(st.brick()));  // the rest
+        s.put(9, 2, 2, st.detail());                              // the head
+
+        // Smithy corner against the hall: anvil cold, forge long out.
+        s.put(-6, 2, 4, "ANVIL");
+        s.put(-7, 2, 5, "BARREL");
+        s.put(-5, 2, 5, "CAMPFIRE");
+
+        // Ground litter across the bare slab: pebbles, moss (bone, rarely).
+        for (int x = -(w - 2); x <= w - 2; x++) {
+            for (int z = -(w - 2); z <= w - 2; z++) {
+                if (s.topY(x, z, 0) != 1) {
+                    continue;
+                }
+                int roll = ShapeSketch.cellNoise(x, 27, z);
+                if (roll < 2) {
+                    s.put(x, 2, z, st.cracked());
+                } else if (roll == 5 && tier < 4) {
+                    s.put(x, 2, z, "MOSS_CARPET");
+                } else if (roll == 7 && ((x ^ z) & 7) == 0) {
+                    s.put(x, 2, z, "BONE_BLOCK");
+                }
+            }
+        }
+
         // ------------------------------------------------------------------
         // Chest rooms — drawn last so nothing above can breach them.
         // ------------------------------------------------------------------

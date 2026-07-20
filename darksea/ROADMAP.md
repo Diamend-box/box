@@ -230,8 +230,13 @@ sketch are now in, CI-locked, pure code:
   live the moment shape wiring lands in the placer.
 
 Preview artifact regenerated ("fourth sounding") with the castle tab —
-grid widened to ±40 and the block encoding to 5 base64 chars for the
-bigger footprint. Tests: `DemoShapeTest` (per-shape budgets + castle
+grid widened to ±44 and the block encoding to 5 base64 chars for the
+bigger footprint. Wyatt's Jul 20 phone notes, both fixed same day:
+beaches (see workstream 1's shoreline pass) and a barren bailey — the
+courtyard now carries worn causeways from the gate to keep, hall and
+chapel, the Order's garrison camp (soul-fire, bedrolls, stores), a dead
+orchard on coarse earth, a ruined market row, the harbor lord's toppled
+statue, a cold smithy corner, and hash-scattered ground litter. Tests: `DemoShapeTest` (per-shape budgets + castle
 size/rarity/traits), `LootMathTest` (multi-vault election),
 `CastleIslandTest` (shape-aware island behavior). Still pending like the
 other seven: Wyatt's visual verdict from the viewer, then placer wiring.
