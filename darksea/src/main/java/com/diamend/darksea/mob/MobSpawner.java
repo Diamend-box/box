@@ -126,11 +126,17 @@ public final class MobSpawner extends BukkitRunnable {
 
             if (near) {
                 lastNear.put(island.id(), now);
-                if (island.spawnPoints().isEmpty() || mobs.size() >= cfg.perIslandCap()
+                if (island.spawnPoints().isEmpty()
+                        || mobs.size() >= cfg.perIslandCap() + island.mobCapBonus()
                         || totalTracked() >= cfg.globalCap()) {
                     continue;
                 }
-                List<MobPool.Slot> pool = pools.get(island.tier());
+                // Landmark shapes garrison a deeper ring's roster; fall back
+                // to the island's own ring where no deeper pool exists.
+                List<MobPool.Slot> pool = pools.get(island.mobTier());
+                if (pool == null || pool.isEmpty()) {
+                    pool = pools.get(island.tier());
+                }
                 if (pool == null || pool.isEmpty()) {
                     continue;
                 }

@@ -1,5 +1,7 @@
 package com.diamend.darksea.island;
 
+import com.diamend.darksea.island.shape.DemoShape;
+import com.diamend.darksea.island.shape.DemoShapes;
 import com.diamend.darksea.loot.LootMath;
 import com.diamend.darksea.util.Pos;
 import org.bukkit.configuration.ConfigurationSection;
@@ -67,20 +69,70 @@ public final class IslandInstance {
     }
 
     /**
-     * The island's vault chest — the one richer cache a multi-chest island
-     * hides — or null for islands with fewer than two chests. Derived
-     * deterministically from the origin, so it never needs storing and a
-     * soft reset always re-elects the same chest.
+     * The built-in shape this island was raised from, or null for schematic
+     * templates and the plain "demo" sand pads. Shape-specific behavior
+     * (vault count, mob tier boost, wealth floor) hangs off this — the
+     * registry only ever stores the template/shape id.
      */
-    public Pos vaultChest() {
-        int index = LootMath.vaultChestIndex(origin.x(), origin.z(), chests.size());
-        return index < 0 ? null : chests.get(index);
+    private DemoShape shape() {
+        return DemoShapes.byId(template);
     }
 
-    /** Whether the given registered chest position is this island's vault. */
+    /**
+     * The island's elected vault chests — the richer caches a multi-chest
+     * island hides (landmark shapes elect two). Derived deterministically
+     * from the origin, so the election never needs storing and a soft
+     * reset always re-elects the same chests. Empty for islands with fewer
+     * than two chests.
+     */
+    public List<Pos> vaultChests() {
+        DemoShape shape = shape();
+        int want = shape != null ? shape.vaultChestCount() : 1;
+        int[] indices = LootMath.vaultChestIndices(origin.x(), origin.z(), chests.size(), want);
+        List<Pos> vaults = new ArrayList<>(indices.length);
+        for (int index : indices) {
+            vaults.add(chests.get(index));
+        }
+        return vaults;
+    }
+
+    /** The first elected vault, or null when the island has none. */
+    public Pos vaultChest() {
+        List<Pos> vaults = vaultChests();
+        return vaults.isEmpty() ? null : vaults.get(0);
+    }
+
+    /** Whether the given registered chest position is one of the vaults. */
     public boolean isVaultChest(Pos pos) {
-        Pos vault = vaultChest();
-        return vault != null && vault.equals(pos);
+        return vaultChests().contains(pos);
+    }
+
+    /**
+     * The ring tier this island's mobs are drawn from: the ring itself,
+     * plus the shape's boost — a ruined castle in ring 2 garrisons ring 3's
+     * roster. Callers fall back to {@link #tier()} when no pool exists
+     * this deep.
+     */
+    public int mobTier() {
+        DemoShape shape = shape();
+        return shape != null ? tier + shape.mobTierBoost() : tier;
+    }
+
+    /** Extra concurrent mobs this island holds beyond the configured cap. */
+    public int mobCapBonus() {
+        DemoShape shape = shape();
+        return shape != null ? shape.mobCapBonus() : 0;
+    }
+
+    /**
+     * The island's Chronon wealth multiplier: the deterministic position
+     * roll, floored by the shape's wealth floor (a castle never drowned
+     * poor).
+     */
+    public double wealthMultiplier() {
+        double wealth = LootMath.wealthMultiplier(origin.x(), origin.z());
+        DemoShape shape = shape();
+        return shape != null ? Math.max(wealth, shape.wealthFloor()) : wealth;
     }
 
     public List<Pos> spawnPoints() {

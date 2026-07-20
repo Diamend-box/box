@@ -57,7 +57,8 @@ and three; and every other island now carries a trace of the cult (grotto
 offering niche, mound stone circle, garrison crypt shrine, bone totem,
 crater-rim fire shrine, forest shrine clearing).
 
-**Status:** seven generators live in `island/shape/`; tests enforce the
+**Status:** eight generators live in `island/shape/` (the ruined castle
+joined Jul 20 — see workstream 3b); tests enforce the
 30x30 minimum footprint, tier-monotonic sizing, per-tier chest counts
 (1/1/2/3), concealment for every chest, and chest spacing; 200-seed sweep
 clean across all 18 tier combos. Preview artifact regenerated with
@@ -188,22 +189,48 @@ favors its own boat level. `LootShippedConfigTest` locks the file in CI.
   and growing, relics real, mob-only weapons never in chests, nothing
   enchanted, tokens/cooldown/armor-tease invariants kept).
 
-**Open for Wyatt:** vestments-vs-bodice; max-active 2 vs 3; drop-rate
-feel (18% set pieces ≈ a few dozen kills for a full set). The refugees'
-trader (Chronon goods shop) is the natural next loot workstream once the
-main island build exists to host it.
+**Verdicts (Jul 20, by Wyatt):** **Vestments stays** (better than
+bodice); **max-active stays 2** unless live testing makes relics feel
+underpowered (then bump the config to 3); drop rates approved as shipped.
+The refugees' trader (Chronon goods shop) remains the natural next loot
+workstream once the main island build exists to host it.
 
-### 3b. Ruined Castle island — QUEUED (Wyatt's idea, Jul 19)
+### 3b. Ruined Castle island — BUILT (Wyatt's idea Jul 19, green-lit Jul 20)
 A rarer island class, bigger than everything else (~75x75), with much
-better loot but more and higher-tier enemies. Design sketch agreed so
-far: it slots cleanly onto what's now built — multiple chests with a
-vault (or two) rolling vault tables, richer wealth multiplier, denser
-`spawnPoints`. Needs from the shape/placer side: an eighth `DemoShape`
-(the generators are pure code, so a castle is buildable without
-schematics), rarity weighting in the per-tier shape pick (today's pick is
-uniform), and a mob-tier bump field so a castle in ring N spawns ring
-N+1's roster. Parked until Loot 2.0 settles and the shape wiring
-(workstream 1) lands in the placer.
+better loot but more and higher-tier enemies. All three needs from the
+sketch are now in, CI-locked, pure code:
+
+- **The eighth shape** (`island/shape/RuinedCastle`, rings 2–4): a
+  drowned Naxian fortress spanning **67/72/79** blocks by tier — square
+  curtain wall (two thick, rotting column by column, two breaches), four
+  corner towers each ruined its own amount, a south gatehouse, a
+  roofless keep with a throne dais over a **sunken vault**, a great hall
+  over an **undercroft**, an Order **chapel** with a buried reliquary,
+  plus a **crypt** (t3+) and a **well cistern** (t4). Its own masonry
+  palette per tier (stone brick → deepslate brick → polished blackstone
+  brick, patch-weathered). **4/5/6 chests** by tier, every one in a
+  buried or walled room; a 600-seed sweep holds footing, concealment and
+  spacing.
+- **Rarity weighting**: `DemoShapes.pick` is weighted now; standard
+  shapes sit at 10, the castle at 3 → **~5%** of rolls, so roughly one
+  or two castles per sea (never in ring 1). Locked by a distribution
+  test.
+- **Shape-driven island traits** (`DemoShape` defaults + shape-aware
+  `IslandInstance`): the castle elects **two vault chests**
+  (`LootMath.vaultChestIndices`, deterministic, always leaves a plain
+  chest), floors its Chronon wealth at **1.4x** (a castle never drowned
+  poor), garrisons **one ring deeper** (`mobTier` — ring-2 castle
+  fights ring 3's roster; ring 4 falls back to its own pool), and holds
+  **+4 mobs** over the per-island cap with seven spawn points. Spawner
+  and chest refill both consume the traits already, so all of it goes
+  live the moment shape wiring lands in the placer.
+
+Preview artifact regenerated ("fourth sounding") with the castle tab —
+grid widened to ±40 and the block encoding to 5 base64 chars for the
+bigger footprint. Tests: `DemoShapeTest` (per-shape budgets + castle
+size/rarity/traits), `LootMathTest` (multi-vault election),
+`CastleIslandTest` (shape-aware island behavior). Still pending like the
+other seven: Wyatt's visual verdict from the viewer, then placer wiring.
 
 ### 4. Boat phase hardening — code
 Phase 4 (tokens and upgrades) is the one phase never live-tested. Add unit

@@ -91,6 +91,20 @@ once — `relics.max-active`).
 The junk-band named salvage (Rotted Rigging, Unclaimed Remains, Drained
 Plague Vial, Vigil Candle) stays what it is — flavor, not power.
 
+## The ruined castles (decided Jul 20)
+
+The Naxome were not warlike, but they were not fools: their coasts kept
+**castles** — seats of the harbor lords, granaries and garrisons in one.
+They were the last places to fall. The survivors who couldn't reach the
+calm center ran here instead, behind the curtain walls, and held out the
+longest — which is why a castle's vaults were never emptied, why its
+wealth never drowned poor, and why what finally got in **never left**.
+The Order prizes them: a castle in any ring keeps a garrison drawn from
+one ring deeper, and its chapel has long since been reconsecrated to the
+monolith. Rare to find, worse to walk, worth it: throne vault, undercroft,
+reliquary, crypt, cistern — more hidden caches than any island in the sea,
+two of them true vaults.
+
 ## Arms of the drowned and the damned (decided Jul 19)
 
 The cursed drop what their bodies became; the Order wears its rank; the

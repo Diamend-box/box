@@ -44,14 +44,15 @@ class DemoShapeTest {
 
                     assertTrue(build.blocks().size() > 1500, where + ": suspiciously small ("
                             + build.blocks().size() + " blocks)");
-                    assertTrue(build.radius() <= 30, where + ": radius " + build.radius());
+                    assertTrue(build.radius() <= shape.radiusBudget(),
+                            where + ": radius " + build.radius() + " over the shape's "
+                                    + shape.radiusBudget() + "-block preload budget");
                     assertTrue(build.max().y() <= 40 && build.min().y() >= -10,
                             where + ": vertical bounds " + build.min().y() + ".." + build.max().y());
                     assertTrue(spanX(build) >= 30 && spanZ(build) >= 30, where
                             + ": footprint " + spanX(build) + "x" + spanZ(build) + " under 30x30");
 
-                    int expectedChests = tier >= 4 ? 3 : tier == 3 ? 2 : 1;
-                    assertEquals(expectedChests, build.chests().size(),
+                    assertEquals(shape.chestCount(tier), build.chests().size(),
                             where + ": wrong chest count");
                     for (int c = 0; c < build.chests().size(); c++) {
                         Rel chest = build.chests().get(c);
@@ -141,6 +142,75 @@ class DemoShapeTest {
         }
         assertEquals(DemoShapes.seedFor(100, -200), DemoShapes.seedFor(100, -200),
                 "position seed must be stable");
+    }
+
+    @Test
+    void standardShapesKeepTheClassicBudgetsOnlyTheCastleExceedsThem() {
+        for (DemoShape shape : DemoShapes.ALL) {
+            if (shape.id().equals("ruined-castle")) {
+                continue;
+            }
+            assertEquals(30, shape.radiusBudget(), shape.id() + " changed its preload budget");
+            assertEquals(10, shape.rarityWeight(), shape.id() + " changed its pick weight");
+            assertEquals(0, shape.mobTierBoost(), shape.id() + " boosts its mob tier");
+            assertEquals(1, shape.vaultChestCount(), shape.id() + " elects extra vaults");
+            for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
+                assertEquals(tier >= 4 ? 3 : tier == 3 ? 2 : 1, shape.chestCount(tier),
+                        shape.id() + " changed its chest count at tier " + tier);
+            }
+        }
+    }
+
+    @Test
+    void theCastleDwarfsEveryOtherShapeAndPaysForItInEnemies() {
+        DemoShape castle = DemoShapes.byId("ruined-castle");
+        assertNotNull(castle, "the ruined castle is not registered");
+        assertEquals(2, castle.minTier(), "castles start in ring 2");
+        assertEquals(1, castle.mobTierBoost(), "a castle fights one ring deeper");
+        assertTrue(castle.mobCapBonus() > 0, "a castle must hold a bigger garrison");
+        assertEquals(2, castle.vaultChestCount(), "a castle hides two vaults");
+        assertTrue(castle.wealthFloor() >= 1.0, "a castle never drowned poor");
+        assertTrue(castle.rarityWeight() < 10, "the castle must stay rare");
+
+        for (int tier = castle.minTier(); tier <= castle.maxTier(); tier++) {
+            ShapeBuild build = castle.build(tier, 4242L);
+            // "Bigger than all the rest": ~75x75ish against everyone's ~50 max.
+            assertTrue(spanX(build) >= 60 && spanZ(build) >= 60,
+                    "t" + tier + " castle only " + spanX(build) + "x" + spanZ(build));
+            int area = area(build);
+            for (DemoShape other : DemoShapes.ALL) {
+                if (other == castle || !other.fitsTier(tier)) {
+                    continue;
+                }
+                int otherArea = area(other.build(tier, 4242L));
+                assertTrue(area > otherArea * 3 / 2, "t" + tier + " castle (" + area
+                        + ") not clearly bigger than " + other.id() + " (" + otherArea + ")");
+            }
+            assertTrue(build.chests().size() >= 4,
+                    "t" + tier + " castle must hide at least four chests");
+            assertTrue(build.mobSpawns().size() >= 6,
+                    "t" + tier + " castle garrison too thin");
+        }
+    }
+
+    @Test
+    void weightedPickKeepsTheCastleRareButReachable() {
+        for (int tier = 2; tier <= 4; tier++) {
+            Random rng = new Random(20260720L + tier);
+            int castles = 0, picks = 20_000;
+            for (int i = 0; i < picks; i++) {
+                if (DemoShapes.pick(tier, rng).id().equals("ruined-castle")) {
+                    castles++;
+                }
+            }
+            double share = castles / (double) picks;
+            assertTrue(share > 0.02 && share < 0.10, "tier " + tier
+                    + " castle share " + share + " outside the rare-but-real band");
+        }
+        // Ring 1 never rolls a castle at all.
+        for (DemoShape shape : DemoShapes.forTier(1)) {
+            assertFalse(shape.id().equals("ruined-castle"), "a castle leaked into ring 1");
+        }
     }
 
     private static int spanX(ShapeBuild build) {

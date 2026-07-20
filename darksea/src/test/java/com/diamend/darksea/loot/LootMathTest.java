@@ -2,6 +2,7 @@ package com.diamend.darksea.loot;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,5 +44,44 @@ class LootMathTest {
         }
         // Every chest position should win somewhere in the sea.
         assertTrue(seen[0] && seen[1] && seen[2], "vault election never picks some slots");
+    }
+
+    @Test
+    void multiVaultElectionIsDistinctSortedStableAndLeavesAPlainChest() {
+        assertEquals(0, LootMath.vaultChestIndices(10, 10, 1, 2).length,
+                "a lone chest can never be a vault");
+        assertEquals(0, LootMath.vaultChestIndices(10, 10, 5, 0).length);
+
+        for (int x = -5000; x <= 5000; x += 613) {
+            for (int z = -5000; z <= 5000; z += 617) {
+                for (int chests = 2; chests <= 6; chests++) {
+                    int[] vaults = LootMath.vaultChestIndices(x, z, chests, 2);
+                    assertArrayEquals(vaults, LootMath.vaultChestIndices(x, z, chests, 2),
+                            "election must be stable");
+                    // Never every chest: something plain always remains.
+                    assertEquals(Math.min(2, chests - 1), vaults.length,
+                            chests + " chests at " + x + "," + z);
+                    for (int i = 0; i < vaults.length; i++) {
+                        assertTrue(vaults[i] >= 0 && vaults[i] < chests, "index out of range");
+                        if (i > 0) {
+                            assertTrue(vaults[i] > vaults[i - 1],
+                                    "indices must be distinct and sorted");
+                        }
+                    }
+                }
+            }
+        }
+
+        // The single-vault path is just the k=1 election.
+        assertEquals(LootMath.vaultChestIndices(1200, -300, 3, 1)[0],
+                LootMath.vaultChestIndex(1200, -300, 3));
+
+        // Across the sea, a six-chest castle's pair should land on many
+        // different combinations, not always the same two doors.
+        java.util.Set<String> combos = new java.util.HashSet<>();
+        for (int x = -5000; x <= 5000; x += 613) {
+            combos.add(java.util.Arrays.toString(LootMath.vaultChestIndices(x, 77, 6, 2)));
+        }
+        assertTrue(combos.size() > 5, "vault pairs barely vary: " + combos);
     }
 }

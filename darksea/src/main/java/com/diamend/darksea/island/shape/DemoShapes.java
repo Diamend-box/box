@@ -13,7 +13,8 @@ public final class DemoShapes {
             new SeaBeastBones(),
             new CorruptedForest(),
             new VolcanicCone(),
-            new AbyssalMonolith());
+            new AbyssalMonolith(),
+            new RuinedCastle());
 
     private DemoShapes() {
     }
@@ -31,12 +32,24 @@ public final class DemoShapes {
         return ALL.stream().filter(shape -> shape.fitsTier(tier)).toList();
     }
 
+    /** Weighted pick — rare landmark shapes carry small rarity weights. */
     public static DemoShape pick(int tier, Random rng) {
         List<DemoShape> pool = forTier(tier);
         if (pool.isEmpty()) {
             throw new IllegalStateException("no demo shape fits tier " + tier);
         }
-        return pool.get(rng.nextInt(pool.size()));
+        int total = 0;
+        for (DemoShape shape : pool) {
+            total += shape.rarityWeight();
+        }
+        int roll = rng.nextInt(total);
+        for (DemoShape shape : pool) {
+            roll -= shape.rarityWeight();
+            if (roll < 0) {
+                return shape;
+            }
+        }
+        return pool.get(pool.size() - 1);
     }
 
     /**

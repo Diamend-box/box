@@ -63,7 +63,7 @@ public final class ChestRefillService implements Listener {
         }
         Inventory inventory = chest.getBlockInventory();
         inventory.clear();
-        double wealth = LootMath.wealthMultiplier(ref.island().origin().x(), ref.island().origin().z());
+        double wealth = ref.island().wealthMultiplier();
         List<ItemStack> loot = table.rollLoot(rng, plugin.settings().armor(), wealth);
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < inventory.getSize(); i++) {
