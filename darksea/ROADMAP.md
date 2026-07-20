@@ -287,17 +287,23 @@ Two halves:
   player's boat takes effort (naval progression matters), or fragile so
   being caught afloat is always dangerous?*
 
-### 5. Timed sea reset — code (Wyatt, Jul 20 PM)
-The whole sea resets on a **6–12h cycle** so loot can't be farmed
-indefinitely. Design notes to settle when we build it: soft restock+heal
-each cycle (keep positions/shapes, refresh loot & mobs) vs a full
-re-layout (heavier, new geography each cycle) — leaning soft, with a full
-re-layout as a rarer "season" wipe; likely **drop per-chest refill** in
-favour of the cycle (each chest is one loot per cycle → real competition,
-no camp-farming a single vault); needs a broadcast countdown and must not
-re-paste an island out from under a player looting it (defer/vacate
-occupied islands). Camping the sanctuary border: Wyatt's call is **no
-action** — the safe zone is big enough to slip in and out.
+### 5. Timed sea reset — BUILT (Wyatt, Jul 20 PM)
+`SeaResetScheduler` resets the whole sea on a cycle so loot can't be
+hoarded or camp-farmed forever. Config `reset.auto` (ships **enabled, 6h,
+soft**): every interval a countdown broadcasts at each `warn-minutes` mark
+(30/10/5/1), then everyone in the sea is washed home to the sanctuary
+(so an island healing over them can't bury anyone) and the existing soft
+reset heals + restocks in place. `mode: full` swaps in a whole new layout
+each cycle — a heavier "season" wipe — reusing `WorldService.resetFull`
+(which evacuates to the fallback world itself). Skips the churn when
+nobody's online. Reads live settings each tick, so `/ds reload` re-times
+or disables it. The countdown logic is a pure function pinned by
+`SeaResetSchedulerTest`.
+*Deferred (not needed to ship the cycle): dropping per-chest refill so
+each chest is one loot per cycle — the reset already caps hoarding; make
+it a toggle if farming still feels too easy in play.*
+Camping the sanctuary border: Wyatt's call is **no action** — the safe
+zone is big enough to slip in and out.
 
 ### 6. Run-scoped death loss — code (Wyatt, Jul 20 PM)
 An extraction-shooter loop: dying in the Dark Sea (to a player or the sea
@@ -340,6 +346,9 @@ Redirect any time by phone — nothing here needs the server.
 6. If using the Mythic pack: copy `mythicmobs-pack/` contents into
    `plugins/MythicMobs/`, restart.
 7. `/ds reset full confirm` → brand-new layout with the new shapes and loot.
+8. Note: the **timed sea reset ships enabled** (6h soft cycle,
+   `reset.auto` in config). Turn it off or re-time it there if it gets in
+   the way while you're setting up.
 
 ## Live tests still owed (carry-over from before camp)
 

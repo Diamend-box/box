@@ -125,6 +125,20 @@ mob-spawning:
   global-cap: 120
   abandon-cooldown-minutes: 5   # despawn island mobs after this long with nobody near
 
+# Timed sea reset. The whole Dark Sea resets on a cycle so loot can't be
+# hoarded or camp-farmed forever — a countdown warns players, then the sea
+# heals and restocks. Players out in the sea are washed home to the sanctuary
+# first, so a reset never buries anyone. (You can always reset by hand with
+# /ds reset soft|full.)
+reset:
+  auto:
+    enabled: true
+    interval-hours: 6        # reset every N hours (from server start / last reset)
+    # soft = heal islands and restock chests in place, positions kept (light).
+    # full = brand-new world layout each cycle (heavy — a "season" wipe).
+    mode: soft
+    warn-minutes: [30, 10, 5, 1]   # broadcast a countdown at each of these
+
 # Boxpvp guard rails.
 combat:
   # Generated islands are protected loot-content: players can't break, build on,
@@ -202,6 +216,8 @@ messages:
   paste-failed: "<red>Failed to paste {template}: {error} (see console)."
   spawn-schem-missing: "<yellow>No home-island schematic in schematics/spawn/ — drop a .schem there and run /ds generate."
 
+  reset-cycle-warning: "<gold>The Dark Sea churns — the tides reset in {minutes} minute(s). Bank your haul at home!"
+  reset-cycle-now: "<red><bold>The Dark Sea heaves</bold><red> — the tides reset. You're swept back to shore."
   reset-soft-started: "<green>Soft reset started — re-pasting the home island and {count} island(s) in place."
   reset-full-warning: "<red>This will <bold>DELETE</bold> the Dark Sea world and generate a brand-new layout. Everything built there will be lost. Run <white>/ds reset full confirm</white> to proceed."
   reset-full-started: "<green>Full reset started — players evacuated, world removed, regenerating a new sea..."

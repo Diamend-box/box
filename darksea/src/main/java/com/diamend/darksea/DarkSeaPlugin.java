@@ -18,6 +18,7 @@ import com.diamend.darksea.mob.MobDropService;
 import com.diamend.darksea.mob.MobDrops;
 import com.diamend.darksea.mob.MobSpawner;
 import com.diamend.darksea.relic.RelicService;
+import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
 import com.diamend.darksea.zone.ZoneManager;
@@ -106,6 +107,8 @@ public final class DarkSeaPlugin extends JavaPlugin {
         exposureTask.runTaskTimer(this, interval, interval);
         mobSpawner.runTaskTimer(this, 100L, settings.mobSpawning().scanIntervalTicks());
         relics.runTaskTimer(this, 20L, 20L);
+        new SeaResetScheduler(this).runTaskTimer(this,
+                SeaResetScheduler.TICK_PERIOD, SeaResetScheduler.TICK_PERIOD);
 
         getLogger().info("DarkSea enabled — " + settings.zones().size() + " zones, "
                 + registry.all().size() + " islands registered");

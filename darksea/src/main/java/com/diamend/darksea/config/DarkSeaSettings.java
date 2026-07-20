@@ -34,6 +34,7 @@ public record DarkSeaSettings(
         GenerationSettings generation,
         MobSpawnSettings mobSpawning,
         CombatSettings combat,
+        ResetSettings reset,
         BoatSettings boat,
         RelicSettings relics,
         Map<String, String> messages) {
@@ -71,6 +72,18 @@ public record DarkSeaSettings(
      */
     public record CombatSettings(boolean protectIslands, double pvpSafeRadius,
                                  int islandProtectBuffer) {
+    }
+
+    /**
+     * The timed sea reset. When {@code autoEnabled}, the whole Dark Sea resets
+     * every {@code intervalHours} so loot can't be hoarded or camp-farmed
+     * forever — a broadcast counts down at each {@code warnMinutes} mark, then
+     * the sea heals and restocks. {@code fullMode} false is a soft reset
+     * (islands healed and restocked in place, positions kept); true is a full
+     * re-layout (new world seed each cycle — a heavier "season" wipe).
+     */
+    public record ResetSettings(boolean autoEnabled, int intervalHours, boolean fullMode,
+                                List<Integer> warnMinutes) {
     }
 
     /**
@@ -133,6 +146,8 @@ public record DarkSeaSettings(
                 Math.max(0, cfg.getDouble("combat.pvp-safe-radius", 500)),
                 Math.max(0, cfg.getInt("combat.island-protect-buffer", 5)));
 
+        ResetSettings reset = loadReset(cfg);
+
         BoatSettings boat = loadBoat(cfg, log);
 
         RelicSettings relics = new RelicSettings(
@@ -150,7 +165,8 @@ public record DarkSeaSettings(
         }
 
         return new DarkSeaSettings(worldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
-                exposure, zones, armor, generation, mobSpawning, combat, boat, relics, Map.copyOf(messages));
+                exposure, zones, armor, generation, mobSpawning, combat, reset, boat, relics,
+                Map.copyOf(messages));
     }
 
     private static List<Zone> loadZones(FileConfiguration cfg, Logger log) {
@@ -247,6 +263,23 @@ public record DarkSeaSettings(
                 Map.copyOf(perRing), chestMarker, mobMarker,
                 cfg.getBoolean("generation.demo-islands", false),
                 Math.max(1, cfg.getInt("generation.demo-pace-ticks", 10)));
+    }
+
+    private static ResetSettings loadReset(FileConfiguration cfg) {
+        List<Integer> warns = new ArrayList<>();
+        for (int minutes : cfg.getIntegerList("reset.auto.warn-minutes")) {
+            if (minutes > 0) {
+                warns.add(minutes);
+            }
+        }
+        if (warns.isEmpty()) {
+            warns = List.of(30, 10, 5, 1);
+        }
+        return new ResetSettings(
+                cfg.getBoolean("reset.auto.enabled", true),
+                Math.max(1, cfg.getInt("reset.auto.interval-hours", 6)),
+                "full".equalsIgnoreCase(cfg.getString("reset.auto.mode", "soft")),
+                List.copyOf(warns));
     }
 
     private static BoatSettings loadBoat(FileConfiguration cfg, Logger log) {
