@@ -268,25 +268,63 @@ chapel, the Order's garrison camp (soul-fire, bedrolls, stores), a dead
 orchard on coarse earth, a ruined market row, the harbor lord's toppled
 statue, a cold smithy corner, and hash-scattered ground litter. Tests: `DemoShapeTest` (per-shape budgets + castle
 size/rarity/traits), `LootMathTest` (multi-vault election),
-`CastleIslandTest` (shape-aware island behavior). Still pending like the
-other seven: Wyatt's visual verdict from the viewer, then placer wiring.
+`CastleIslandTest` (shape-aware island behavior). Wyatt green-lit the
+looks Jul 20 and all eight shapes are now wired into the placer (see
+workstream 1) — the castle goes live like the rest on the next reset.
 
-### 4. Boat phase hardening — code
-Phase 4 (tokens and upgrades) is the one phase never live-tested. Add unit
-tests around token matching, consumption and persistence, and review the
-speed clamp — so when you finally test it, it just works.
+### 4. Boats — hardening + PvP — code — NEXT (Wyatt, Jul 20 PM)
+Two halves:
+- **Hardening.** Phase 4 (tokens and upgrades) is the one phase never
+  live-tested. Add MockBukkit tests around token matching, consumption and
+  persistence, and review the speed clamp — so when you finally test it, it
+  just works.
+- **Boat PvP (Wyatt likes the idea).** Boats become real PvP targets: the
+  upgrade level that today only buys speed + an exposure shield also makes
+  the hull tougher, so "sink their boat in the deep and let the wither-zone
+  finish them" is a live tactic that better boats resist. A sunk boat dumps
+  its rider into the hostile sea (natural stranding). *Open call before
+  building: how tough are boats — a real HP curve where sinking a geared
+  player's boat takes effort (naval progression matters), or fragile so
+  being caught afloat is always dangerous?*
 
-### 5. Schematic pipeline guide — docs
+### 5. Timed sea reset — code (Wyatt, Jul 20 PM)
+The whole sea resets on a **6–12h cycle** so loot can't be farmed
+indefinitely. Design notes to settle when we build it: soft restock+heal
+each cycle (keep positions/shapes, refresh loot & mobs) vs a full
+re-layout (heavier, new geography each cycle) — leaning soft, with a full
+re-layout as a rarer "season" wipe; likely **drop per-chest refill** in
+favour of the cycle (each chest is one loot per cycle → real competition,
+no camp-farming a single vault); needs a broadcast countdown and must not
+re-paste an island out from under a player looting it (defer/vacate
+occupied islands). Camping the sanctuary border: Wyatt's call is **no
+action** — the safe zone is big enough to slip in and out.
+
+### 6. Run-scoped death loss — code (Wyatt, Jul 20 PM)
+An extraction-shooter loop: dying in the Dark Sea (to a player or the sea
+itself) drops **only what you gathered on this run** — chest loot, mob
+drops — never the gear you sailed out with. Returning to the sanctuary
+banks the run (its loot becomes safe), so the tension is *cash out or lose
+it*, and a kill is rewarding without being rage-quitting. Likely
+implementation: tag plugin-granted sea loot with a run marker (PDC),
+partial keep-inventory on `PlayerDeathEvent` (keep untagged, drop tagged),
+clear markers on entering the sanctuary. Balance read (Wyatt asked): sound
+and non-punishing; the one thing it doesn't pressure is a fully-geared
+player's own gear, so top-gear players roam at low personal risk — fine for
+boxpvp, revisit only if ganking gets oppressive.
+
+### 7. Schematic pipeline guide — docs
 Expand the schematic docs into a start-to-finish walkthrough (build →
 markers → save → sidecar → pool folders → migrate ring by ring) for when
 FAWE is updated.
 
-### 6. Balance pass — config
-Per-tier effect stacks, message polish, and a sanity check of ring math at
-the larger 8000-block radius.
+### 8. Balance pass — config
+Per-tier effect stacks, message polish, a sanity check of ring math at the
+larger 8000-block radius, and — now that it's a boxpvp server — a
+specifically-PvP look at the armor/boat tiers as the player-vs-player power
+curve, not just the PvE survival gates.
 
-**Default order if you go quiet: 1 → 2 → 3 → 4 → 5 → 6.** Redirect any time
-by phone — nothing here needs the server.
+**Default order if you go quiet: 4 → 5 → 6 → 7 → 8** (1–3 are done).
+Redirect any time by phone — nothing here needs the server.
 
 ---
 
