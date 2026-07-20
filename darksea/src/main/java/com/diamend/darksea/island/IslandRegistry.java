@@ -113,18 +113,21 @@ public final class IslandRegistry {
     }
 
     /**
-     * The registered island whose bounding box contains this block, or null.
-     * Used by the block-protection guard; a linear scan is fine at the handful
-     * of islands a sea holds. The home island is not registered, so it never
-     * matches here — its sanctuary is guarded by radius instead.
+     * The registered island whose footprint — expanded {@code margin} blocks
+     * horizontally — sits under this column, or null. The check ignores height
+     * on purpose: protecting the whole vertical column over (and under) an
+     * island stops players pillaring up alongside it to snipe its mobs, or
+     * digging in from beneath. Used by the block-protection guard; a linear
+     * scan is fine at the handful of islands a sea holds. The home island is
+     * not registered, so it never matches here — its sanctuary is guarded by
+     * radius instead.
      */
-    public IslandInstance islandContaining(int x, int y, int z) {
+    public IslandInstance islandAtColumn(int x, int z, int margin) {
         for (IslandInstance island : islands) {
             Pos min = island.min();
             Pos max = island.max();
-            if (x >= min.x() && x <= max.x()
-                    && y >= min.y() && y <= max.y()
-                    && z >= min.z() && z <= max.z()) {
+            if (x >= min.x() - margin && x <= max.x() + margin
+                    && z >= min.z() - margin && z <= max.z() + margin) {
                 return island;
             }
         }

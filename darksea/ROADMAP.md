@@ -93,7 +93,11 @@ config + `SeaGuardListener`: generated islands are **protected
 loot-content** — no breaking, building, bucket-griefing or blowing up an
 island's blocks (explosions are trimmed, not cancelled, so a creeper still
 downs a careless player), only the chests open; admins (`darksea.admin`)
-bypass so the home island stays editable. **PvP is on across the whole sea
+bypass so the home island stays editable. Protection covers the whole
+vertical column over an island plus a `combat.island-protect-buffer`
+(default 5) ring past its edge, so nobody pillars up alongside to cheese
+the mobs from range (Wyatt's reason for protecting islands in the first
+place) or digs in from beneath. **PvP is on across the whole sea
 except the home sanctuary** — within `combat.pvp-safe-radius` of center
 (defaults to the Calm Waters ring, 500) no player can strike another or
 grief a block. PvP itself still rides `server.properties` `pvp: true`;

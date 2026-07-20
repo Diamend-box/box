@@ -65,9 +65,12 @@ public record DarkSeaSettings(
      * the Dark Sea except within {@code pvpSafeRadius} of center — the home
      * island's sanctuary, where players can neither be struck nor grief.
      * Admins ({@code darksea.admin}) bypass block protection so the home
-     * island stays hand-editable.
+     * island stays hand-editable. {@code islandProtectBuffer} extends the
+     * protected footprint this many blocks past each island's edge, so players
+     * can't pillar up alongside an island to cheese its mobs from range.
      */
-    public record CombatSettings(boolean protectIslands, double pvpSafeRadius) {
+    public record CombatSettings(boolean protectIslands, double pvpSafeRadius,
+                                 int islandProtectBuffer) {
     }
 
     public record BoatLevel(String name, double speed, int shield) {
@@ -120,7 +123,8 @@ public record DarkSeaSettings(
 
         CombatSettings combat = new CombatSettings(
                 cfg.getBoolean("combat.protect-islands", true),
-                Math.max(0, cfg.getDouble("combat.pvp-safe-radius", 500)));
+                Math.max(0, cfg.getDouble("combat.pvp-safe-radius", 500)),
+                Math.max(0, cfg.getInt("combat.island-protect-buffer", 5)));
 
         BoatSettings boat = loadBoat(cfg, log);
 

@@ -133,6 +133,10 @@ combat:
   # hand-built home island stays editable. Set false to let islands be raided
   # block-by-block instead.
   protect-islands: true
+  # Extend that protection this many blocks past each island's edge (and up the
+  # whole column), so players can't pillar up right alongside an island to
+  # snipe its mobs from out of reach. 0 = protect only the island's footprint.
+  island-protect-buffer: 5
   # PvP is on across the whole Dark Sea EXCEPT within this radius of center —
   # the home island's sanctuary, where nobody can be struck or grief a block.
   # PvP itself rides your server.properties `pvp` flag (leave it true); this

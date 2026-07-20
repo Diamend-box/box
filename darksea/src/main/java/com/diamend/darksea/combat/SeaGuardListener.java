@@ -141,7 +141,8 @@ public final class SeaGuardListener implements Listener {
         if (!plugin.settings().combat().protectIslands()) {
             return false;
         }
-        return plugin.registry().islandContaining(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()) != null;
+        int buffer = plugin.settings().combat().islandProtectBuffer();
+        return plugin.registry().islandAtColumn(loc.getBlockX(), loc.getBlockZ(), buffer) != null;
     }
 
     private boolean withinSanctuary(Location loc) {
