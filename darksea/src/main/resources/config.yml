@@ -125,6 +125,22 @@ mob-spawning:
   global-cap: 120
   abandon-cooldown-minutes: 5   # despawn island mobs after this long with nobody near
 
+# Boxpvp guard rails.
+combat:
+  # Generated islands are protected loot-content: players can't break, build on,
+  # bucket-grief or blow up island blocks — only the chests open. The island is
+  # the contested prize, not a mine. Admins (darksea.admin) bypass, so the
+  # hand-built home island stays editable. Set false to let islands be raided
+  # block-by-block instead.
+  protect-islands: true
+  # PvP is on across the whole Dark Sea EXCEPT within this radius of center —
+  # the home island's sanctuary, where nobody can be struck or grief a block.
+  # PvP itself rides your server.properties `pvp` flag (leave it true); this
+  # only carves out the safe home waters. Shrink it to hug just your spawn
+  # island, or set 0 to make the entire sea PvP. (Defaults to the Calm Waters
+  # ring so spawn is safe out of the box.)
+  pvp-safe-radius: 500
+
 # Naxome relics: dormant when looted, revived by the refugees at the calm
 # center (/ds relic revive, paid in Chronons). A revived relic works from
 # anywhere in your inventory; this caps how many work at once.

@@ -3,6 +3,7 @@ package com.diamend.darksea;
 import com.diamend.darksea.armor.ProtectionService;
 import com.diamend.darksea.boat.BoatService;
 import com.diamend.darksea.combat.NaxCombatListener;
+import com.diamend.darksea.combat.SeaGuardListener;
 import com.diamend.darksea.command.DarkSeaCommand;
 import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.config.Messages;
@@ -91,6 +92,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(relics, this);
         getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
         getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
+        getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
 
         PluginCommand command = getCommand("darksea");

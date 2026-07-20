@@ -129,6 +129,34 @@ class DemoShapeTest {
     }
 
     @Test
+    void softResetRebuildsIdenticallyFromThePositionSeed() {
+        // The placer seeds every built-in island from its world position
+        // (DemoShapes.seedFor) and stores only the shape id + tier — never the
+        // block data. A soft reset therefore has to reconstruct the very same
+        // island from (id, tier, position) alone, so seedFor must be stable and
+        // the build a pure function of it.
+        int[][] positions = {{0, 0}, {1200, -800}, {-3333, 2100}, {640, 640}, {-77, 4096}};
+        for (int[] p : positions) {
+            assertEquals(DemoShapes.seedFor(p[0], p[1]), DemoShapes.seedFor(p[0], p[1]),
+                    "seedFor is not stable at " + p[0] + "," + p[1]);
+        }
+        for (DemoShape shape : DemoShapes.ALL) {
+            for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
+                for (int[] p : positions) {
+                    long seed = DemoShapes.seedFor(p[0], p[1]);
+                    ShapeBuild first = shape.build(tier, seed);
+                    ShapeBuild again = shape.build(tier, seed);
+                    String where = shape.id() + " t" + tier + " @ " + p[0] + "," + p[1];
+                    assertEquals(first.blocks(), again.blocks(), where + ": blocks drifted on rebuild");
+                    assertEquals(first.chests(), again.chests(), where + ": chests drifted on rebuild");
+                    assertEquals(first.mobSpawns(), again.mobSpawns(),
+                            where + ": mob spawns drifted on rebuild");
+                }
+            }
+        }
+    }
+
+    @Test
     void everyTierHasAPoolAndPickingWorks() {
         Random rng = new Random(5);
         for (int tier = 1; tier <= 4; tier++) {

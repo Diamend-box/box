@@ -2,6 +2,10 @@ package com.diamend.darksea.island;
 
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.config.DarkSeaSettings;
+import com.diamend.darksea.island.shape.DemoShape;
+import com.diamend.darksea.island.shape.DemoShapes;
+import com.diamend.darksea.island.shape.Rel;
+import com.diamend.darksea.island.shape.ShapeBuild;
 import com.diamend.darksea.util.Pos;
 import com.diamend.darksea.zone.Zone;
 import com.diamend.darksea.zone.ZoneManager;
@@ -65,6 +69,8 @@ public final class IslandPlacer {
     private final IslandRegistry registry;
     private final Deque<PasteJob> queue = new ArrayDeque<>();
     private final Map<String, Clipboard> clipboardCache = new HashMap<>();
+    /** Shape material name → Bukkit Material, cached (null caches an unknown). */
+    private final Map<String, Material> materialCache = new HashMap<>();
     private final Random rng = new Random();
     private boolean running;
 
@@ -123,6 +129,12 @@ public final class IslandPlacer {
                 plugin.messages().send(sender, "generate-no-templates", "tier", String.valueOf(tier));
                 continue;
             }
+            if (demo && DemoShapes.forTier(tier).isEmpty()) {
+                // Demo mode but no built-in shape fits this ring (only happens
+                // if a ring is configured beyond the shape roster's tiers).
+                plugin.messages().send(sender, "generate-no-templates", "tier", String.valueOf(tier));
+                continue;
+            }
             Zone zone = zones.byTier(tier);
             if (zone == null) {
                 continue;
@@ -142,7 +154,11 @@ public final class IslandPlacer {
                 int px = (int) Math.round(point.x());
                 int pz = (int) Math.round(point.z());
                 if (demo) {
-                    queue.add(demoJob(tier, px, pz, false, null, null));
+                    // No schematic pool: raise a built-in shaped island. The
+                    // rolled shape is persisted (it becomes the island's
+                    // template) so a soft reset rebuilds the same design.
+                    DemoShape shape = DemoShapes.pick(tier, rng);
+                    queue.add(builtinJob(shape.id(), tier, px, pz, false, null, null));
                 } else {
                     IslandTemplate template = weightedPick(pool);
                     int y = template.pasteY() != null ? template.pasteY() : gen.pasteY();
@@ -221,6 +237,14 @@ public final class IslandPlacer {
         int count = 0;
         for (IslandInstance island : registry.all()) {
             Pos origin = island.origin();
+            if (DemoShapes.byId(island.template()) != null) {
+                // A built-in shaped island: rebuild it from the same shape and
+                // the position-derived seed, so it heals in place identically.
+                queue.add(builtinJob(island.template(), island.tier(), origin.x(), origin.z(),
+                        false, island, null));
+                count++;
+                continue;
+            }
             if (DEMO_TEMPLATE.equals(island.template())) {
                 queue.add(demoJob(island.tier(), origin.x(), origin.z(), false, island, null));
                 count++;
@@ -271,6 +295,20 @@ public final class IslandPlacer {
     }
 
     /**
+     * A synthetic paste job for a built-in <em>shape</em> (rocky spire, ruined
+     * castle, …). The shape id rides in the template name so it persists as
+     * the island's template and resolves its shape-driven traits (vault count,
+     * mob tier, wealth floor). Like the sand pad it builds in code, so it takes
+     * the same async-preload/paced path.
+     */
+    private PasteJob builtinJob(String shapeId, int tier, int x, int z, boolean isSpawn,
+                                IslandInstance existing, Runnable afterFinalize) {
+        IslandTemplate synthetic = new IslandTemplate(shapeId, tier, null, 1, null);
+        return new PasteJob(synthetic, x, plugin.settings().seaLevel(), z,
+                isSpawn, existing, afterFinalize, true);
+    }
+
+    /**
      * Demo builds gutted a 1GB live server in first testing: every island
      * force-generated its chunks synchronously on the main thread, and the
      * crash that followed threw away the un-saved chunks (leaving registry
@@ -280,7 +318,7 @@ public final class IslandPlacer {
      * {@code generation.demo-pace-ticks} before the next island.
      */
     private void buildDemoPaced(CommandSender sender, World world, PasteJob job) {
-        int radius = demoRadius(job.isSpawn());
+        int radius = builtinRadius(job);
         int minCx = (job.x() - radius) >> 4, maxCx = (job.x() + radius) >> 4;
         int minCz = (job.z() - radius) >> 4, maxCz = (job.z() + radius) >> 4;
         List<CompletableFuture<?>> loads = new ArrayList<>();
@@ -295,7 +333,7 @@ public final class IslandPlacer {
                         if (err != null) {
                             throw new IllegalStateException("chunk load failed: " + err.getMessage(), err);
                         }
-                        ScanResult scan = buildDemoIsland(world, job);
+                        ScanResult scan = buildBuiltinIsland(world, job);
                         finalizeJob(sender, world, job, scan);
                         if (!job.isSpawn()) {
                             for (int cx = minCx; cx <= maxCx; cx++) {
@@ -305,8 +343,9 @@ public final class IslandPlacer {
                             }
                         }
                     } catch (RuntimeException ex) {
-                        plugin.getLogger().severe("Building demo island failed: " + ex);
-                        feedback(sender, "paste-failed", "template", DEMO_TEMPLATE,
+                        plugin.getLogger().severe("Building island '" + job.template().name()
+                                + "' failed: " + ex);
+                        feedback(sender, "paste-failed", "template", job.template().name(),
                                 "error", String.valueOf(ex.getMessage()));
                     }
                     int pace = Math.max(1, plugin.settings().generation().demoPaceTicks());
@@ -314,8 +353,74 @@ public final class IslandPlacer {
                 }));
     }
 
-    private static int demoRadius(boolean isSpawn) {
-        return isSpawn ? 6 : 4;
+    /** Chunk-preload half-extent: a shape's own budget, else the sand pad's. */
+    private int builtinRadius(PasteJob job) {
+        DemoShape shape = DemoShapes.byId(job.template().name());
+        if (shape != null) {
+            return shape.radiusBudget() + 2;  // margin for the shoreline apron
+        }
+        return job.isSpawn() ? 6 : 4;
+    }
+
+    /**
+     * Builds a code island: a rolled {@link DemoShape} if the job's template
+     * names one, otherwise the plain sand platform. Both return marker
+     * positions relative to the origin (y == sea level) for the shared
+     * finalize step.
+     */
+    private ScanResult buildBuiltinIsland(World world, PasteJob job) {
+        DemoShape shape = DemoShapes.byId(job.template().name());
+        return shape != null ? buildShapeIsland(world, job, shape) : buildPlatformIsland(world, job);
+    }
+
+    /**
+     * Raises a built-in shape in the world. The shape is a pure function of
+     * (tier, seed); the seed comes from the island's world position, so a soft
+     * reset rebuilds byte-for-byte the same island. Every cell the shape
+     * declares is written with physics off — including its explicit AIR cells,
+     * which set to air and so drain the ocean back out of the carved interiors
+     * (rooms, vaults, cave mouths). Cells the shape never mentions are left
+     * untouched, so the surrounding sea stays sea. Chest and mob markers come
+     * back as origin-relative positions for the finalize step, exactly like a
+     * schematic's marker blocks.
+     */
+    private ScanResult buildShapeIsland(World world, PasteJob job, DemoShape shape) {
+        long seed = DemoShapes.seedFor(job.x(), job.z());
+        ShapeBuild build = shape.build(job.template().tier(), seed);
+        for (Map.Entry<Rel, String> cell : build.blocks().entrySet()) {
+            Material material = material(cell.getValue());
+            if (material == null) {
+                continue;
+            }
+            Rel rel = cell.getKey();
+            world.getBlockAt(job.x() + rel.x(), job.y() + rel.y(), job.z() + rel.z())
+                    .setType(material, false);
+        }
+        List<Pos> chests = new ArrayList<>(build.chests().size());
+        for (Rel rel : build.chests()) {
+            chests.add(new Pos(rel.x(), rel.y(), rel.z()));
+        }
+        List<Pos> spawnPoints = new ArrayList<>(build.mobSpawns().size());
+        for (Rel rel : build.mobSpawns()) {
+            spawnPoints.add(new Pos(rel.x(), rel.y(), rel.z()));
+        }
+        return new ScanResult(chests, spawnPoints,
+                new Pos(build.min().x(), build.min().y(), build.min().z()),
+                new Pos(build.max().x(), build.max().y(), build.max().z()));
+    }
+
+    /** Resolves a shape's material name to a Bukkit Material, warning once. */
+    private Material material(String name) {
+        if (materialCache.containsKey(name)) {
+            return materialCache.get(name);
+        }
+        Material material = Material.matchMaterial(name);
+        if (material == null) {
+            plugin.getLogger().warning("Island shape emitted unknown material '" + name
+                    + "' — cell skipped");
+        }
+        materialCache.put(name, material);
+        return material;
     }
 
     /**
@@ -325,9 +430,9 @@ public final class IslandPlacer {
      * can place the chest and register the island. Home islands get a larger,
      * loot-free platform; tier islands get one chest and one spawn point.
      */
-    private ScanResult buildDemoIsland(World world, PasteJob job) {
+    private ScanResult buildPlatformIsland(World world, PasteJob job) {
         int seaLevel = plugin.settings().seaLevel();
-        int radius = demoRadius(job.isSpawn());
+        int radius = builtinRadius(job);
         int topY = seaLevel + 2;   // sand surface, two blocks proud of the water
         int baseY = seaLevel - 2;  // solid footing sunk into the sea
         for (int dx = -radius; dx <= radius; dx++) {

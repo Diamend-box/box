@@ -66,13 +66,39 @@ budgets (the castle's budget went 40→44 to make room). Tests enforce the
 30x30 minimum footprint, tier-monotonic sizing, per-tier chest counts
 (1/1/2/3), concealment for every chest, and chest spacing; 200-seed sweep
 clean across all 18 tier combos. Preview artifact regenerated with
-zoom/pan, tier/seed/key controls and all chest markers. Still not wired
-into `IslandPlacer` — waiting on Wyatt's per-shape verdicts. Wiring notes
-when approved: persist shape id in the registry, chunk preload from the
-shape's real radius, paste bottom-up with physics off, leaves need
-`persistent=true`, config flag so soft reset never re-pastes the
-hand-built spawn, and the placer's finalize step now iterates
-`ShapeBuild.chests()` (loot table per chest can differ later).
+zoom/pan, tier/seed/key controls and all chest markers.
+
+**WIRED (Jul 20, Wyatt green-lit the looks).** `IslandPlacer` now raises
+these shapes in-world wherever a ring has no schematic pool (they replace
+the old sand pads): `generate()` rolls a shape via `DemoShapes.pick`,
+persists its id as the island's template, and pastes it through the same
+async chunk-preload + paced-build path the demo pads used. The translate
+step writes every declared cell with physics off — including the shape's
+explicit AIR cells, which set to air and so drain the ocean back out of
+the carved interiors (vaults, undercrofts, cave mouths); cells the shape
+never mentions are left alone, so the surrounding sea stays sea. Chests
+and mob points come back as origin-relative markers for the existing
+finalize step, so vault election, mob-tier boost, wealth floor and refill
+all light up from the shape traits automatically. Soft reset (`/ds reset
+soft`) rebuilds each island byte-for-byte: only the shape id + tier are
+stored, and the build seed is derived from the island's position
+(`DemoShapes.seedFor`), a contract a JUnit test now pins. The hand-built
+home island is never shaped (spawn stays a plain platform / your
+schematic). *Known live-test item for return day: interiors that open
+to the sea through a doorway can slowly re-flood once physics resumes —
+same limitation schematic islands have; a soft reset heals it.*
+
+**Boxpvp guard rails (Jul 20, Wyatt's server is boxpvp).** New `combat`
+config + `SeaGuardListener`: generated islands are **protected
+loot-content** — no breaking, building, bucket-griefing or blowing up an
+island's blocks (explosions are trimmed, not cancelled, so a creeper still
+downs a careless player), only the chests open; admins (`darksea.admin`)
+bypass so the home island stays editable. **PvP is on across the whole sea
+except the home sanctuary** — within `combat.pvp-safe-radius` of center
+(defaults to the Calm Waters ring, 500) no player can strike another or
+grief a block. PvP itself still rides `server.properties` `pvp: true`;
+the listener only carves out spawn. Shrink `pvp-safe-radius` to hug just
+the spawn island if the 500 bubble feels wide.
 
 ### 2. MythicMobs content pack — content + small code — IN PROGRESS
 A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone, plus a

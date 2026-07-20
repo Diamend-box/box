@@ -33,6 +33,7 @@ public record DarkSeaSettings(
         ArmorSettings armor,
         GenerationSettings generation,
         MobSpawnSettings mobSpawning,
+        CombatSettings combat,
         BoatSettings boat,
         RelicSettings relics,
         Map<String, String> messages) {
@@ -54,6 +55,19 @@ public record DarkSeaSettings(
 
     public record MobSpawnSettings(int scanIntervalTicks, double activationRadius, int perIslandCap,
                                    int globalCap, int abandonCooldownMinutes) {
+    }
+
+    /**
+     * Boxpvp guard rails. Generated islands are protected loot-content: with
+     * {@code protectIslands} on, nobody breaks, builds on or blows up an
+     * island's blocks (only its chests open), so the sea's islands are a
+     * contested prize rather than a mine. PvP is otherwise on everywhere in
+     * the Dark Sea except within {@code pvpSafeRadius} of center — the home
+     * island's sanctuary, where players can neither be struck nor grief.
+     * Admins ({@code darksea.admin}) bypass block protection so the home
+     * island stays hand-editable.
+     */
+    public record CombatSettings(boolean protectIslands, double pvpSafeRadius) {
     }
 
     public record BoatLevel(String name, double speed, int shield) {
@@ -104,6 +118,10 @@ public record DarkSeaSettings(
                 Math.max(1, cfg.getInt("mob-spawning.global-cap", 120)),
                 Math.max(1, cfg.getInt("mob-spawning.abandon-cooldown-minutes", 5)));
 
+        CombatSettings combat = new CombatSettings(
+                cfg.getBoolean("combat.protect-islands", true),
+                Math.max(0, cfg.getDouble("combat.pvp-safe-radius", 500)));
+
         BoatSettings boat = loadBoat(cfg, log);
 
         RelicSettings relics = new RelicSettings(
@@ -121,7 +139,7 @@ public record DarkSeaSettings(
         }
 
         return new DarkSeaSettings(worldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
-                exposure, zones, armor, generation, mobSpawning, boat, relics, Map.copyOf(messages));
+                exposure, zones, armor, generation, mobSpawning, combat, boat, relics, Map.copyOf(messages));
     }
 
     private static List<Zone> loadZones(FileConfiguration cfg, Logger log) {
