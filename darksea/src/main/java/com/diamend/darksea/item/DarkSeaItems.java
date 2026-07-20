@@ -141,6 +141,14 @@ public final class DarkSeaItems {
     public static final double DRAUGHT_MULTIPLIER = 1.25;
     public static final int DRAUGHT_SECONDS = 90;
 
+    // ------------------------------------------------------------------
+    // Naval weapons (behavior in com.diamend.darksea.naval)
+    // ------------------------------------------------------------------
+
+    public static final String CHAINSHOT_ARROW = "chainshot_arrow";
+    public static final String HULLPIERCER_ARROW = "hullpiercer_arrow";
+    public static final String HARPOON_GUN = "harpoon_gun";
+
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
@@ -149,6 +157,9 @@ public final class DarkSeaItems {
         ids.add(SEA_SALVE);
         ids.add(DEEPSIGHT_TONIC);
         ids.add(GILLWATER_PHILTER);
+        ids.add(CHAINSHOT_ARROW);
+        ids.add(HULLPIERCER_ARROW);
+        ids.add(HARPOON_GUN);
         for (Relic relic : Relic.values()) {
             ids.add(relic.id());
         }
@@ -195,8 +206,52 @@ public final class DarkSeaItems {
                     "<color:#4db6ac>Gillwater Philter</color>",
                     List.of("<gray>Tastes like drowning politely.</gray>"),
                     List.of(new PotionEffect(PotionEffectType.WATER_BREATHING, 8 * 60 * 20, 0)));
+            case CHAINSHOT_ARROW -> createNavalArrow(id, amount, Color.fromRGB(84, 92, 100),
+                    "<color:#90a4ae>Chainshot Arrow</color>",
+                    List.of("<gray>Doesn't sink ships. Stops them.</gray>",
+                            "<dark_gray>Cripples a hull's speed on hit.</dark_gray>"));
+            case HULLPIERCER_ARROW -> createNavalArrow(id, amount, Color.fromRGB(158, 46, 46),
+                    "<color:#e57373>Hullpiercer Arrow</color>",
+                    List.of("<gray>Forged to open ships,</gray>",
+                            "<gray>not sailors.</gray>",
+                            "<dark_gray>Heavy hull damage, cuts through plating.</dark_gray>"));
+            case HARPOON_GUN -> createHarpoonGun();
             default -> null;
         };
+    }
+
+    private static ItemStack createNavalArrow(String id, int amount, Color color,
+                                              String name, List<String> loreLines) {
+        ItemStack item = new ItemStack(Material.TIPPED_ARROW, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize(name)));
+        List<Component> lore = new ArrayList<>();
+        for (String line : loreLines) {
+            lore.add(noItalic(MM.deserialize(line)));
+        }
+        meta.lore(lore);
+        if (meta instanceof PotionMeta potion) {
+            potion.setColor(color);
+            potion.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+        }
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, id);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack createHarpoonGun() {
+        ItemStack item = new ItemStack(Material.CROSSBOW);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<color:#4dd0e1>Harpoon Gun</color>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>The whalers' answer to a</gray>")),
+                noItalic(MM.deserialize("<gray>ship that won't stop running.</gray>")),
+                noItalic(MM.deserialize("<dark_gray>Hooks a boat and reels it in.</dark_gray>")),
+                noItalic(MM.deserialize("<dark_gray>Surging snaps the line.</dark_gray>"))));
+        meta.setUnbreakable(true);
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, HARPOON_GUN);
+        item.setItemMeta(meta);
+        return item;
     }
 
     private static ItemStack createWeapon(WeaponSpec spec) {

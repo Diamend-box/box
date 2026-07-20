@@ -60,6 +60,7 @@ tiers:
       - { type: armor, tier: 1, weight: 8 }
       - { type: armor, tier: 2, weight: 1 }
       - { type: token, level: 1, weight: 3 }
+      - { type: custom, id: chainshot_arrow,      min: 4, max: 8, weight: 4 }
     vault:
       rolls: 6
       entries:
@@ -99,6 +100,8 @@ tiers:
       - { type: armor, tier: 3, weight: 1 }
       - { type: token, level: 1, weight: 2 }
       - { type: token, level: 2, weight: 3 }
+      - { type: custom, id: chainshot_arrow,      min: 4, max: 8, weight: 4 }
+      - { type: custom, id: hullpiercer_arrow,    min: 2, max: 4, weight: 2 }
     vault:
       rolls: 6
       entries:
@@ -111,6 +114,7 @@ tiers:
         - { type: armor, tier: 2, weight: 10 }
         - { type: armor, tier: 3, weight: 2 }
         - { type: token, level: 2, weight: 6 }
+        - { type: custom, id: hullpiercer_arrow,  min: 3, max: 6, weight: 4 }
   # ── The Midnight Waters — where the Order works openly ──
   3:
     rolls: 5
@@ -137,6 +141,8 @@ tiers:
       - { type: armor, tier: 4, weight: 1 }
       - { type: token, level: 2, weight: 2 }
       - { type: token, level: 3, weight: 2 }
+      - { type: custom, id: chainshot_arrow,      min: 6, max: 10, weight: 3 }
+      - { type: custom, id: hullpiercer_arrow,    min: 3, max: 6, weight: 3 }
     vault:
       rolls: 7
       entries:
@@ -150,6 +156,7 @@ tiers:
         - { type: armor, tier: 3, weight: 10 }
         - { type: armor, tier: 4, weight: 2 }
         - { type: token, level: 3, weight: 5 }
+        - { type: custom, id: harpoon_gun,        weight: 3 }
   # ── The Abyssal Reaches — the monolith's own hoard ──
   4:
     rolls: 5
@@ -173,11 +180,14 @@ tiers:
       - { type: custom, id: order_ceremonial_blade, weight: 2 }
       - { type: armor, tier: 4, weight: 8 }
       - { type: token, level: 3, weight: 3 }
+      - { type: custom, id: hullpiercer_arrow,    min: 4, max: 8, weight: 4 }
+      - { type: custom, id: harpoon_gun,          weight: 2 }
     vault:
       rolls: 7
       entries:
         - { type: custom, id: chronon,            min: 26, max: 44, weight: 12 }
         - { type: item, material: NETHERITE_INGOT, min: 1, max: 1, weight: 4 }
+        - { type: custom, id: harpoon_gun,        weight: 4 }
         - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2, weight: 5 }
         - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 5 }
         - { type: custom, id: relic_monolith_splinter, weight: 7 }

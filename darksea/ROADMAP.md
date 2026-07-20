@@ -272,20 +272,44 @@ size/rarity/traits), `LootMathTest` (multi-vault election),
 looks Jul 20 and all eight shapes are now wired into the placer (see
 workstream 1) — the castle goes live like the rest on the next reset.
 
-### 4. Boats — hardening + PvP — code — NEXT (Wyatt, Jul 20 PM)
-Two halves:
-- **Hardening.** Phase 4 (tokens and upgrades) is the one phase never
-  live-tested. Add MockBukkit tests around token matching, consumption and
-  persistence, and review the speed clamp — so when you finally test it, it
-  just works.
-- **Boat PvP (Wyatt likes the idea).** Boats become real PvP targets: the
-  upgrade level that today only buys speed + an exposure shield also makes
-  the hull tougher, so "sink their boat in the deep and let the wither-zone
-  finish them" is a live tactic that better boats resist. A sunk boat dumps
-  its rider into the hostile sea (natural stranding). *Open call before
-  building: how tough are boats — a real HP curve where sinking a geared
-  player's boat takes effort (naval progression matters), or fragile so
-  being caught afloat is always dangerous?*
+### 4. Boats — hardening + PvP — BUILT (Wyatt, Jul 20 PM)
+Two halves, both done:
+- **Hardening.** MockBukkit tests around token matching, consumption and
+  persistence; speed clamp reviewed and pinned by pure tests.
+- **Boat PvP.** Level-scaled hull toughness (Wyatt: "toughness scales with
+  level"); a sunk boat dumps its rider into the hostile sea.
+
+### 4b. Naval combat — BUILT (Wyatt, Jul 20 PM, designed together in depth)
+Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
+- **Ramming** (closing-speed based, per-pair cooldown): defender's hull
+  takes **75%** of the force, attacker's **25%** (Wyatt's split), each
+  softened only by its own toughness; small **rider bleed** on both; ram
+  **knockback** away from the charger. No rams in the sanctuary.
+- **The chase problem** (Wyatt's worry: "max boat speed = never caught").
+  Fixed two ways, both his pick:
+  - **Wounded hull**: ANY hull damage — plain arrows included — slows the
+    boat to 70% speed for 4s. Chip the runner, close, ram.
+  - **Ram surge**: sprint OR jump key at the tiller (both, because toggle
+    sprint makes the sprint flag latch — jump behaves the same for
+    everyone), burst to 1.8× the cap, 9s cooldown.
+- **Naval arsenal** (Wyatt: "arrows as anti-boat weapons + harpoon gun";
+  all three approved, reel-in pull chosen):
+  - **Chainshot arrow** — tiny damage, 50% slow for 6s. Tier 1+ loot.
+  - **Hullpiercer arrow** — heavy hull damage through half the toughness
+    bonus. Tier 2+ loot.
+  - **Harpoon gun** — crossbow, 24-block line, reels the hooked boat
+    toward the shooter ~2s. **Surging while hooked snaps the line but
+    spends the surge** — the counterplay loop. Tier 3 vault / tier 4 loot.
+  - All naval ammo is island loot → tagged as run-loot → part of the haul.
+- Naval weapons run on their own hull-HP model (10 HP, heals after 15s
+  quiet) because Bukkit can't partially damage a boat entity; vanilla
+  melee keeps vanilla wobble + the toughness divisor.
+- Boxpvp note (flagged to Wyatt): escape-always-wins would break the
+  run-loot kill economy — the richest targets have the best boats. The
+  wounded-hull rule is what keeps them killable.
+- Live-test items for return day: surge feel (PlayerInputEvent key edges,
+  toggle-sprint double-tap quirk), harpoon reel strength, ram frequency in
+  real scrums.
 
 ### 5. Timed sea reset — BUILT (Wyatt, Jul 20 PM)
 `SeaResetScheduler` resets the whole sea on a cycle so loot can't be

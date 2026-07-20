@@ -84,9 +84,21 @@ class ConfigParsingTest {
         assertEquals(1, settings.boat().levels().get(3).shield());
         assertTrue(settings.boat().levels().get(3).speed() > settings.boat().levels().get(1).speed());
 
+        assertEquals(0.75, settings.naval().ram().defenderShare());
+        assertTrue(settings.naval().ram().minClosingSpeed() > 0);
+        assertTrue(settings.naval().hull().maxHp() > 0);
+        assertTrue(settings.naval().hull().woundedSpeedFactor() < 1.0);
+        assertTrue(settings.naval().surge().boostFactor() > 1.0);
+        assertTrue(settings.naval().chainshotSpeedFactor()
+                < settings.naval().hull().woundedSpeedFactor(),
+                "chainshot must slow harder than an ordinary hull hit");
+        assertTrue(settings.naval().harpoon().range() >= 4);
+
         assertFalse(settings.messages().isEmpty());
         assertTrue(settings.messages().containsKey("prefix"));
         assertTrue(settings.messages().containsKey("reset-full-warning"));
+        assertTrue(settings.messages().containsKey("naval-hooked"));
+        assertTrue(settings.messages().containsKey("naval-surge-cooldown"));
     }
 
     @Test

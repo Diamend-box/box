@@ -188,6 +188,48 @@ boat:
     2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 2.0 }
     3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 3.0 }
 
+# Boat-vs-boat combat: rams, wounded hulls, the surge, naval ammo.
+naval:
+  # A collision counts as a ram above this closing speed (blocks/tick of
+  # actual convergence — boats sailing in formation never trigger it).
+  # Force = closing speed * damage-per-speed, capped. The defender's hull
+  # eats defender-share of it, the rammer's hull the rest, each softened by
+  # its own toughness; rider-bleed of each hull share also hits that rider.
+  ram:
+    min-closing-speed: 0.5
+    damage-per-speed: 8.0
+    max-damage: 10.0
+    defender-share: 0.75
+    rider-bleed: 0.3
+    knockback: 0.8
+    pair-cooldown-millis: 1500
+  # Naval weapons run on their own hull HP (vanilla whacking keeps vanilla
+  # wobble + toughness). Any hull hit — including plain arrows — slows the
+  # boat to wounded-speed-factor for wounded-slow-seconds, so a max-speed
+  # runner can always be chipped and caught.
+  hull:
+    max-hp: 10.0
+    regen-seconds: 15
+    wounded-slow-seconds: 4
+    wounded-speed-factor: 0.7
+  # Tap sprint or jump at the tiller: a burst to boost-factor * the speed
+  # cap, then the cooldown. Surging while harpooned snaps the line instead.
+  surge:
+    boost-factor: 1.8
+    cooldown-seconds: 9
+  # Chainshot arrow: barely dents, brutally slows.
+  chainshot:
+    slow-seconds: 6
+    speed-factor: 0.5
+  # Hullpiercer arrow: heavy hull damage through half the toughness bonus.
+  hullpiercer:
+    damage: 6.0
+  # Harpoon gun: hooks a ridden boat in range and reels it toward the shooter.
+  harpoon:
+    range: 24
+    pull-seconds: 2.0
+    pull-strength: 0.35
+
 # All messages use MiniMessage. {placeholders} are filled in by the plugin.
 messages:
   prefix: "<dark_aqua>[DarkSea]</dark_aqua> "
@@ -253,6 +295,15 @@ messages:
   boat-wrecked: "<red>Your boat is wrecked — you're adrift in the Dark Sea!"
   boat-need-token: "<red>Hold a level-{level} Boat Upgrade Token in your main hand to upgrade."
   boat-set: "<green>Set {player}'s boat level to {level} ({name}<green>)."
+
+  naval-surge: "<aqua>Surge!"
+  naval-surge-cooldown: "<gray>Surge ready in {seconds}s."
+  naval-sunk-them: "<green>You sank their boat!"
+  naval-chainshot-hit: "<red>Chainshot! Your hull is crippled."
+  naval-hooked: "<red>You've been harpooned — surge to snap the line!"
+  naval-hooked-them: "<green>Harpoon set — reel them in!"
+  naval-line-snapped: "<yellow>You snap the harpoon line free."
+  naval-line-snapped-them: "<red>They snapped your harpoon line!"
 
   island-list-header: "<dark_aqua>Islands ({count}):"
   island-list-entry: "<gray>{id} <white>{template}</white> tier {tier} @ {x}, {z}"

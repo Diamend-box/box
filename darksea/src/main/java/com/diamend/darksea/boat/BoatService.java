@@ -161,13 +161,31 @@ public final class BoatService implements Listener {
             return;
         }
         double multiplier = effectiveMultiplier(rider);
+        double wounded = plugin.naval() != null ? plugin.naval().slowFactor(boat) : 1.0;
         Vector velocity = boat.getVelocity();
         double horizontal = Math.hypot(velocity.getX(), velocity.getZ());
-        double factor = boostFactor(multiplier, horizontal, plugin.settings().boat().speedCapBase());
-        if (factor <= 1.0) {
+        double factor = speedFactor(multiplier, horizontal,
+                plugin.settings().boat().speedCapBase(), wounded);
+        if (Math.abs(factor - 1.0) < 1e-9) {
             return;
         }
         boat.setVelocity(new Vector(velocity.getX() * factor, velocity.getY(), velocity.getZ() * factor));
+    }
+
+    /**
+     * The full per-tick velocity scale: {@link #boostFactor} toward a cap
+     * shrunk by the wounded-hull factor, plus the one case where a boat is
+     * actively slowed — a wounded hull over its reduced cap gets dragged
+     * down to it. A healthy boat is never braked (vanilla streams and drops
+     * may legitimately exceed the cap).
+     */
+    static double speedFactor(double multiplier, double horizontalSpeed,
+                              double speedCapBase, double woundedFactor) {
+        double cap = speedCapBase * multiplier * woundedFactor;
+        if (woundedFactor < 1.0 && horizontalSpeed > cap && horizontalSpeed >= 1e-3) {
+            return cap / horizontalSpeed;
+        }
+        return boostFactor(multiplier, horizontalSpeed, speedCapBase * woundedFactor);
     }
 
     /**

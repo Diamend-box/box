@@ -64,6 +64,42 @@ class BoatServiceTest {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Wounded hull: the naval slow feeding into the same clamp
+    // ------------------------------------------------------------------
+
+    @Test
+    void aHealthyHullBehavesExactlyLikeBoostFactor() {
+        for (double speed : new double[]{0.0, 0.1, 0.3, 0.5, 0.9}) {
+            assertEquals(BoatService.boostFactor(1.45, speed, CAP_BASE),
+                    BoatService.speedFactor(1.45, speed, CAP_BASE, 1.0), 1e-12);
+        }
+    }
+
+    @Test
+    void aWoundedHullIsDraggedDownToItsReducedCap() {
+        double wounded = 0.7;
+        double cap = CAP_BASE * 1.45 * wounded;
+        double speed = 0.6;  // cruising above the wounded cap
+        double factor = BoatService.speedFactor(1.45, speed, CAP_BASE, wounded);
+        assertTrue(factor < 1.0, "a wounded hull over its cap must slow down");
+        assertEquals(cap, speed * factor, 1e-9, "dragged exactly to the wounded cap");
+    }
+
+    @Test
+    void aWoundedRowboatIsSlowedTooNotJustUpgradedBoats() {
+        // multiplier 1.0 boats never boost, but the wound still drags them.
+        double factor = BoatService.speedFactor(1.0, 0.4, CAP_BASE, 0.5);
+        assertTrue(factor < 1.0);
+        assertEquals(CAP_BASE * 0.5, 0.4 * factor, 1e-9);
+    }
+
+    @Test
+    void aWoundedHullBelowItsCapIsNotTouched() {
+        // Limping along under the reduced ceiling: no extra brake.
+        assertEquals(1.0, BoatService.speedFactor(1.0, 0.1, CAP_BASE, 0.7), 1e-12);
+    }
+
     @Test
     void tokensUpgradeOnlyInSequence() {
         // The exact next level upgrades.

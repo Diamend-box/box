@@ -18,6 +18,8 @@ import com.diamend.darksea.loot.RunLootService;
 import com.diamend.darksea.mob.MobDropService;
 import com.diamend.darksea.mob.MobDrops;
 import com.diamend.darksea.mob.MobSpawner;
+import com.diamend.darksea.naval.NavalCombatService;
+import com.diamend.darksea.naval.NavalWeaponListener;
 import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
@@ -51,6 +53,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private BoatService boat;
     private RelicService relics;
     private IslandPlacer placer;
+    private NavalCombatService naval;
     private RunLootService runLoot;
     private WorldService worldService;
     private MobSpawner mobSpawner;
@@ -83,6 +86,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         boat = new BoatService(this, dataStore);
         relics = new RelicService(this);
         placer = new IslandPlacer(this, registry);
+        naval = new NavalCombatService(this);
         runLoot = new RunLootService(this);
         worldService = new WorldService(this, registry, placer);
         mobSpawner = new MobSpawner(this, registry);
@@ -97,6 +101,8 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
         getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);
+        getServer().getPluginManager().registerEvents(naval, this);
+        getServer().getPluginManager().registerEvents(new NavalWeaponListener(this, naval), this);
         getServer().getPluginManager().registerEvents(runLoot, this);
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
 
@@ -211,6 +217,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public IslandPlacer placer() {
         return placer;
+    }
+
+    public NavalCombatService naval() {
+        return naval;
     }
 
     public RunLootService runLoot() {

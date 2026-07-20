@@ -36,6 +36,7 @@ public record DarkSeaSettings(
         CombatSettings combat,
         ResetSettings reset,
         BoatSettings boat,
+        NavalSettings naval,
         RelicSettings relics,
         Map<String, String> messages) {
 
@@ -102,6 +103,62 @@ public record DarkSeaSettings(
     public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels) {
     }
 
+    /**
+     * Ram tuning. A collision registers only above {@code minClosingSpeed}
+     * (blocks/tick of convergence); its force is closing speed ×
+     * {@code damagePerSpeed}, capped at {@code maxDamage}. The defender's hull
+     * eats {@code defenderShare} of the force, the attacker's the rest — each
+     * softened by its own toughness. {@code riderBleed} of each hull share
+     * also lands on that boat's rider, so a hard ram stings the sailor, not
+     * just the ship. {@code pairCooldownMillis} keeps one scrape from firing
+     * every tick two hulls stay in contact.
+     */
+    public record RamSettings(double minClosingSpeed, double damagePerSpeed, double maxDamage,
+                              double defenderShare, double riderBleed, double knockback,
+                              long pairCooldownMillis) {
+    }
+
+    /**
+     * The hull health model behind naval weapons (rams and anti-ship ammo —
+     * vanilla whacking still uses vanilla boat wobble). A hull has
+     * {@code maxHp}, heals fully after {@code regenSeconds} without a naval
+     * hit, and any hull damage slows the boat to {@code woundedSpeedFactor}
+     * of its speed for {@code woundedSlowSeconds} — the wounded-hull rule
+     * that keeps a max-speed boat catchable: land a shot, close the gap.
+     */
+    public record HullSettings(double maxHp, int regenSeconds,
+                               int woundedSlowSeconds, double woundedSpeedFactor) {
+    }
+
+    /**
+     * The ram surge: tap sprint or jump at the tiller for a burst to
+     * {@code boostFactor} × the normal speed cap, then wait
+     * {@code cooldownSeconds}. Chases are won by timing surges, not raw
+     * stats; surging while harpooned snaps the line instead.
+     */
+    public record SurgeSettings(double boostFactor, int cooldownSeconds) {
+    }
+
+    /**
+     * The harpoon gun: hooks a ridden boat within {@code range} blocks and
+     * reels it toward the shooter for {@code pullSeconds} at
+     * {@code pullStrength} blocks/tick of added pull.
+     */
+    public record HarpoonSettings(double range, double pullSeconds, double pullStrength) {
+    }
+
+    /**
+     * Naval weapons, together. {@code chainshotSlowSeconds} /
+     * {@code chainshotSpeedFactor} are the sail-shredder arrow's harder,
+     * longer wounded-hull slow; {@code hullpiercerDamage} is the boat-killer
+     * arrow's hull damage, applied with only half the target's toughness
+     * counted.
+     */
+    public record NavalSettings(RamSettings ram, HullSettings hull, SurgeSettings surge,
+                                int chainshotSlowSeconds, double chainshotSpeedFactor,
+                                double hullpiercerDamage, HarpoonSettings harpoon) {
+    }
+
     /** How many awake relics may work from a player's inventory at once. */
     public record RelicSettings(int maxActive) {
     }
@@ -154,6 +211,8 @@ public record DarkSeaSettings(
 
         BoatSettings boat = loadBoat(cfg, log);
 
+        NavalSettings naval = loadNaval(cfg);
+
         RelicSettings relics = new RelicSettings(
                 Math.min(9, Math.max(1, cfg.getInt("relics.max-active", 2))));
 
@@ -169,8 +228,8 @@ public record DarkSeaSettings(
         }
 
         return new DarkSeaSettings(worldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
-                exposure, zones, armor, generation, mobSpawning, combat, reset, boat, relics,
-                Map.copyOf(messages));
+                exposure, zones, armor, generation, mobSpawning, combat, reset, boat, naval,
+                relics, Map.copyOf(messages));
     }
 
     private static List<Zone> loadZones(FileConfiguration cfg, Logger log) {
@@ -284,6 +343,34 @@ public record DarkSeaSettings(
                 Math.max(1, cfg.getInt("reset.auto.interval-hours", 6)),
                 "full".equalsIgnoreCase(cfg.getString("reset.auto.mode", "soft")),
                 List.copyOf(warns));
+    }
+
+    private static NavalSettings loadNaval(FileConfiguration cfg) {
+        RamSettings ram = new RamSettings(
+                Math.max(0.05, cfg.getDouble("naval.ram.min-closing-speed", 0.5)),
+                Math.max(0, cfg.getDouble("naval.ram.damage-per-speed", 8.0)),
+                Math.max(0, cfg.getDouble("naval.ram.max-damage", 10.0)),
+                Math.min(1.0, Math.max(0, cfg.getDouble("naval.ram.defender-share", 0.75))),
+                Math.min(1.0, Math.max(0, cfg.getDouble("naval.ram.rider-bleed", 0.3))),
+                Math.max(0, cfg.getDouble("naval.ram.knockback", 0.8)),
+                Math.max(250, cfg.getLong("naval.ram.pair-cooldown-millis", 1500)));
+        HullSettings hull = new HullSettings(
+                Math.max(1.0, cfg.getDouble("naval.hull.max-hp", 10.0)),
+                Math.max(1, cfg.getInt("naval.hull.regen-seconds", 15)),
+                Math.max(1, cfg.getInt("naval.hull.wounded-slow-seconds", 4)),
+                Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.hull.wounded-speed-factor", 0.7))));
+        SurgeSettings surge = new SurgeSettings(
+                Math.max(1.0, cfg.getDouble("naval.surge.boost-factor", 1.8)),
+                Math.max(1, cfg.getInt("naval.surge.cooldown-seconds", 9)));
+        HarpoonSettings harpoon = new HarpoonSettings(
+                Math.max(4, cfg.getDouble("naval.harpoon.range", 24)),
+                Math.max(0.5, cfg.getDouble("naval.harpoon.pull-seconds", 2.0)),
+                Math.max(0.05, cfg.getDouble("naval.harpoon.pull-strength", 0.35)));
+        return new NavalSettings(ram, hull, surge,
+                Math.max(1, cfg.getInt("naval.chainshot.slow-seconds", 6)),
+                Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.chainshot.speed-factor", 0.5))),
+                Math.max(0, cfg.getDouble("naval.hullpiercer.damage", 6.0)),
+                harpoon);
     }
 
     private static BoatSettings loadBoat(FileConfiguration cfg, Logger log) {
