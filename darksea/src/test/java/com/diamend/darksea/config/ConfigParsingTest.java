@@ -93,8 +93,8 @@ class ConfigParsingTest {
                         && settings.naval().hull().regenPerSecond() < settings.naval().hull().maxHp(),
                 "regen is a gradual claw-back, not a same-second snap to full");
         assertTrue(settings.naval().hull().woundedSpeedFactor() < 1.0);
-        assertEquals(0.03, settings.naval().hull().speedPenaltyPerHp(), 1e-9,
-                "the shipped hull loses 3% top speed per missing HP");
+        assertEquals(0.05, settings.naval().hull().speedPenaltyPerHp(), 1e-9,
+                "the shipped hull loses 5% top speed per missing HP");
         assertTrue(settings.naval().surge().boostFactor() > 1.0);
         assertTrue(settings.naval().chainshotSpeedFactor()
                 < settings.naval().hull().woundedSpeedFactor(),
