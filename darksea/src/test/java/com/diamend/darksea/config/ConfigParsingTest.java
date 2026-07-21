@@ -116,6 +116,7 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("boat-pickup-combat"));
         assertTrue(settings.messages().containsKey("boat-wreck-recovered"));
         assertTrue(settings.messages().containsKey("boat-wreck-repaired"));
+        assertTrue(settings.messages().containsKey("boat-debug-damaged"));
     }
 
     @Test

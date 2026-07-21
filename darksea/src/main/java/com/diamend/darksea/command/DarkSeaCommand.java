@@ -89,6 +89,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds give <armor|token> <n> [player]", "grant sea armor or tokens", "darksea.admin");
         helpLine(sender, "/ds give item <id> [count] [player]", "grant any registry item (weapons, relics, chronons...)", "darksea.admin");
         helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
+        helpLine(sender, "/ds boat damage [amount]", "test tool: hull-damage the boat you're in", "darksea.admin");
         helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
     }
 
@@ -178,6 +179,10 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             plugin.boat().upgrade(player);
             return;
         }
+        if (action.equals("damage")) {
+            boatDamage(sender, args);
+            return;
+        }
         if (action.equals("set")) {
             if (!requireAdmin(sender)) {
                 return;
@@ -207,6 +212,54 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             return;
         }
         msg.send(sender, "unknown-command");
+    }
+
+    /**
+     * /ds boat damage [amount] — admin-only test tool: deal naval hull damage
+     * to the boat you're sitting in. Lets a single player watch the per-missing-HP
+     * speed tax, the wounded HUD, regen, and the sink → wreck loop without a
+     * second player charging them. Defaults to 1 HP a tap.
+     */
+    private void boatDamage(CommandSender sender, String[] args) {
+        Messages msg = plugin.messages();
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            msg.send(sender, "players-only");
+            return;
+        }
+        if (plugin.naval() == null || !(player.getVehicle() instanceof Boat boat)
+                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+            msg.send(player, "boat-debug-none");
+            return;
+        }
+        double amount = 1.0;
+        if (args.length > 2) {
+            try {
+                amount = Math.max(0.1, Double.parseDouble(args[2]));
+            } catch (NumberFormatException ex) {
+                msg.send(sender, "invalid-number", "value", args[2]);
+                return;
+            }
+        }
+        plugin.naval().damageHull(boat, amount, null);
+        if (!boat.isValid()) {
+            msg.send(player, "boat-debug-sunk");
+            return;
+        }
+        double hp = plugin.naval().hullHp(boat);
+        msg.send(player, "boat-debug-damaged",
+                "amount", trim(amount),
+                "hp", trim(hp),
+                "max", trim(plugin.settings().naval().hull().maxHp()));
+    }
+
+    /** Formats a double without a trailing ".0" for whole numbers. */
+    private static String trim(double value) {
+        return value == Math.rint(value)
+                ? String.valueOf((long) value)
+                : String.valueOf(Math.round(value * 10.0) / 10.0);
     }
 
     private void relic(CommandSender sender, String[] args) {
@@ -463,6 +516,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     options.add("upgrade");
                     if (admin) {
                         options.add("set");
+                        options.add("damage");
                     }
                 }
                 case "relic" -> options.add("revive");
