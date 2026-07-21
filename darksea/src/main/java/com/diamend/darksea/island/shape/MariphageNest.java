@@ -89,10 +89,15 @@ final class MariphageNest implements DemoShape {
             }
         }
 
-        // --- Coral-and-sculk spires around the rim, clear of the heart's
-        //     sightline and the buried chambers below. ---
-        String[] coral = {"TUBE_CORAL_BLOCK", "BRAIN_CORAL_BLOCK", "HORN_CORAL_BLOCK",
-                "BUBBLE_CORAL_BLOCK", "FIRE_CORAL_BLOCK"};
+        // --- Bleached-coral-and-sculk spires around the rim, clear of the
+        //     heart's sightline and the buried chambers below. The coral is
+        //     DEAD on purpose: these spires stand in open air above the
+        //     waterline, and live coral blocks decay to their dead variant
+        //     within a tick when they aren't touching water — so a live reef
+        //     would rot gray on the server anyway. Dead coral both survives
+        //     and fits the nest: a reef the plague already killed. ---
+        String[] coral = {"DEAD_TUBE_CORAL_BLOCK", "DEAD_BRAIN_CORAL_BLOCK", "DEAD_HORN_CORAL_BLOCK",
+                "DEAD_BUBBLE_CORAL_BLOCK", "DEAD_FIRE_CORAL_BLOCK"};
         int spires = 7 + rng.nextInt(3);
         for (int i = 0; i < spires; i++) {
             double a = rng.nextDouble() * Math.PI * 2;
