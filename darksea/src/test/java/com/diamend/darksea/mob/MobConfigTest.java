@@ -93,10 +93,16 @@ class MobConfigTest {
         for (int tier = 1; tier <= 4; tier++) {
             int finalTier = tier;
             long natives = entries.stream().filter(e -> e.tier() == finalTier).count();
-            // Two commons per ring; the Abyssal Reaches also carries the boss.
-            assertEquals(tier == 4 ? 3 : 2, natives,
+            // Two commons per ring. The Mariphage Core is no longer a native
+            // roaming pick — it is the nest island's resident boss — so the
+            // Abyssal Reaches ships two natives like every other ring.
+            assertEquals(2, natives,
                     "tier " + tier + " ships the wrong number of natives");
         }
+
+        // The Core must NOT roam natively any more: it belongs to its nest.
+        assertTrue(entries.stream().noneMatch(e -> "MariphageCore".equals(e.type())),
+                "the Mariphage Core leaked back into the native roaming pool");
 
         double decay = yaml.getDouble("lower-tier-decay", -1);
         assertTrue(decay > 0 && decay <= 1,

@@ -272,6 +272,40 @@ size/rarity/traits), `LootMathTest` (multi-vault election),
 looks Jul 20 and all eight shapes are now wired into the placer (see
 workstream 1) — the castle goes live like the rest on the next reset.
 
+### 3c. Mariphage nest island — BUILT (Wyatt's ask Jul 21)
+Wyatt: "make a new island where the Mariphage Cores can be found." His
+calls (Jul 21): **nest-only** (the Core is pulled from native roaming and
+found only at nests), spanning **tier 4 rarely and tier 5 commonly**, a
+**rareish landmark with a guaranteed Core**. Built, pure code, CI-locked:
+
+- **The ninth shape** (`island/shape/MariphageNest`, tiers 4–5): a low
+  prismarine reef gone to sculk — a drowned shelf and set-back deck that
+  wades into the sea, an **open sculk-and-sea-light socket** at the heart
+  the Core rises from (ringed by shriekers, left clear to the sky for the
+  warden's headroom), coral-and-sculk rim spires, turtle-egg clutches, and
+  **three buried egg-chambers** (deepslate casing + stepped shaft, mirroring
+  the monolith's crypts) for its three chests. Reef widens by tier so a t5
+  nest always out-sizes a t4 one.
+- **Resident-boss plumbing** (`DemoShape.bossMob`/`bossFallback`,
+  `IslandInstance`, `MobSpawner`): a shape can name a mob the spawner keeps
+  **exactly one of** standing whenever a player is near — re-raised past the
+  ordinary mob cap the moment the reef is empty of one (the Order grows
+  another). Fallback **WARDEN** so nests work without MythicMobs. The Core
+  is removed from the tier-4 native pool; its signature drops still fire
+  wherever it dies.
+- **Per-tier rarity** (`DemoShape.rarityWeight(tier)`, weighted pick): the
+  nest weighs **2** against six shapes at 10 in the Reaches (~3%, a rare
+  stray) but is the **only** shape that fits the Sunless Trench — so every
+  one of the Trench's sparse islands (`islands-per-ring[5] = 3`, ~14.5k–24.5k
+  out) is a Core nest. The Devouring Rim (tier 6) stays island-free.
+
+Boxpvp note: a guaranteed warden per Trench island is a strong endgame
+draw and a strong deterrent — 400 HP, pulls, plague bursts, Darkness — kept
+sparse (3 nests) and gated behind a ~15-min haul into tier-5 waters. Nest
+count and Core drops are the tuning knobs. Tests: `DemoShapeTest` (nest
+rarity/boss/tier + the shared structural sweep at t4 and t5), `MobConfigTest`
+(Core no longer native), `ConfigParsingTest` (tier-5 generation).
+
 ### 4. Boats — hardening + PvP — BUILT (Wyatt, Jul 20 PM)
 Two halves, both done:
 - **Hardening.** MockBukkit tests around token matching, consumption and

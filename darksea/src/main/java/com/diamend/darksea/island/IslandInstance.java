@@ -125,6 +125,27 @@ public final class IslandInstance {
     }
 
     /**
+     * The resident boss this island always keeps standing (a Mariphage nest's
+     * Core), or null for an ordinary island. The spawner re-raises it whenever
+     * the island is empty of one — the Order simply grows another.
+     */
+    public String bossMob() {
+        DemoShape shape = shape();
+        return shape != null ? shape.bossMob() : null;
+    }
+
+    /** Vanilla fallback entity for {@link #bossMob()} where MythicMobs is absent. */
+    public String bossFallback() {
+        DemoShape shape = shape();
+        return shape != null ? shape.bossFallback() : null;
+    }
+
+    /** Where the resident boss rises — the shape's first mob spawn, its heart. */
+    public Pos bossSpawn() {
+        return spawnPoints.isEmpty() ? null : spawnPoints.get(0);
+    }
+
+    /**
      * The island's Chronon wealth multiplier: the deterministic position
      * roll, floored by the shape's wealth floor (a castle never drowned
      * poor).

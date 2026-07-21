@@ -27,6 +27,29 @@ public interface DemoShape {
         return 10;
     }
 
+    /**
+     * Per-tier pick weight. Defaults to the flat {@link #rarityWeight()}, but a
+     * shape can weigh differently by ring — the Mariphage nest is a rare stray
+     * in the Abyssal Reaches yet the norm out in the Sunless Trench.
+     */
+    default int rarityWeight(int tier) {
+        return rarityWeight();
+    }
+
+    /**
+     * A named mob this shape always keeps standing — its resident boss. The
+     * spawner re-raises it whenever the island is empty of one, past the
+     * ordinary mob cap. Null (the default) means no guaranteed occupant.
+     */
+    default String bossMob() {
+        return null;
+    }
+
+    /** Vanilla fallback entity for {@link #bossMob()} where MythicMobs is absent. */
+    default String bossFallback() {
+        return null;
+    }
+
     /** How many loot chests this shape hides at the given tier. */
     default int chestCount(int tier) {
         return tier >= 4 ? 3 : tier == 3 ? 2 : 1;

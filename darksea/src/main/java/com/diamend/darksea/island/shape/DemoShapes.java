@@ -14,6 +14,7 @@ public final class DemoShapes {
             new CorruptedForest(),
             new VolcanicCone(),
             new AbyssalMonolith(),
+            new MariphageNest(),
             new RuinedCastle());
 
     private DemoShapes() {
@@ -40,11 +41,11 @@ public final class DemoShapes {
         }
         int total = 0;
         for (DemoShape shape : pool) {
-            total += shape.rarityWeight();
+            total += shape.rarityWeight(tier);
         }
         int roll = rng.nextInt(total);
         for (DemoShape shape : pool) {
-            roll -= shape.rarityWeight();
+            roll -= shape.rarityWeight(tier);
             if (roll < 0) {
                 return shape;
             }

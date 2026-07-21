@@ -46,12 +46,19 @@ plague's early stages looked like.
 
 ## The Mariphage Core
 
-Only the Abyssal Reaches has a boss: the **Mariphage Core** — a core of the
-plague, big, imposing and otherworldly, grown by the Order around the
-monolith. It is what *spreads* the curse, not what causes it: a creature
-powerful enough to infect a whole ocean alone would be too big to fight at
-all, and killing a Core only quiets the sea until the Order grows another —
-which is why it can be fought again and again. In battle it sheds
+The **Mariphage Core** — a core of the plague, big, imposing and
+otherworldly, grown by the Order around the monolith. It is what *spreads*
+the curse, not what causes it: a creature powerful enough to infect a whole
+ocean alone would be too big to fight at all, and killing a Core only quiets
+the sea until the Order grows another — which is why it can be fought again
+and again.
+
+A Core is not found roaming: it is grown, and it is grown in **nests** — low
+prismarine reefs gone to sculk, with an open socket of sculk and sea-light at
+their heart that a Core always rises from. A nest is a rare stray in the
+Abyssal Reaches, but out in the **Sunless Trench** the reef is all there is:
+every island that far from the calm center is a Core nest, the Order's
+breeding ground where the water pools thickest. In battle a Core sheds
 **Mariphage Vessels** (name provisional — Wyatt may still rename), skittering
 fragments of the plague that hunt for hosts and wither away on their own.
 The primordial power the Order serves stays beneath the sea, unfought and

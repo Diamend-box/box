@@ -82,8 +82,10 @@ class ConfigParsingTest {
         assertEquals("CHAINMAIL", settings.armor().tiers().get(1).materialPrefix());
         assertEquals("NETHERITE", settings.armor().tiers().get(4).materialPrefix());
 
-        assertEquals(4, settings.generation().islandsPerRing().size());
+        assertEquals(5, settings.generation().islandsPerRing().size());
         assertEquals(6, settings.generation().islandsPerRing().get(1));
+        // The Sunless Trench (tier 5) builds a sparse handful of Core nests.
+        assertEquals(3, settings.generation().islandsPerRing().get(5));
         assertEquals(Material.LODESTONE, settings.generation().chestMarker());
         assertEquals(Material.GOLD_BLOCK, settings.generation().mobMarker());
         assertTrue(settings.generation().outerRadius() > 5000);

@@ -148,6 +148,11 @@ generation:
     2: 8
     3: 8
     4: 10
+    # The Sunless Trench (tier 5, ~14,500-24,500 out) builds only a handful of
+    # islands, and the sole shape that fits it is the Mariphage nest — so every
+    # island this far out is a Core nest. Keep this low; each one garrisons a
+    # warden. The Devouring Rim (tier 6) stays island-free by design.
+    5: 3
 
 # Marker blocks scanned inside pasted schematics (then replaced):
 #   chest      -> becomes a registered, refilling loot chest

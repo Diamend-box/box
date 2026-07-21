@@ -45,6 +45,9 @@ import java.util.UUID;
  */
 public final class MobSpawner extends BukkitRunnable {
 
+    /** MythicMobs level for a resident boss; the shipped pack uses flat stats. */
+    private static final int BOSS_LEVEL = 10;
+
     private final DarkSeaPlugin plugin;
     private final IslandRegistry registry;
     private final Random rng = new Random();
@@ -126,6 +129,23 @@ public final class MobSpawner extends BukkitRunnable {
 
             if (near) {
                 lastNear.put(island.id(), now);
+
+                // A nest keeps its boss standing: the Order grows another the
+                // moment the sea is empty of one, even past the ordinary mob
+                // cap. One spawn per pass keeps the same gentle ramp.
+                String boss = island.bossMob();
+                if (boss != null && countLive(mobs, boss) == 0) {
+                    Pos heart = island.bossSpawn();
+                    if (heart != null && totalTracked() < cfg.globalCap()) {
+                        UUID spawned = spawnMob(new MobPool.MobEntry(boss,
+                                island.bossFallback(), 1, BOSS_LEVEL), heart.toLocation(world));
+                        if (spawned != null) {
+                            mobs.add(spawned);
+                        }
+                    }
+                    continue;
+                }
+
                 if (island.spawnPoints().isEmpty()
                         || mobs.size() >= cfg.perIslandCap() + island.mobCapBonus()
                         || totalTracked() >= cfg.globalCap()) {
@@ -237,6 +257,19 @@ public final class MobSpawner extends BukkitRunnable {
                 return null;
             }
         }
+    }
+
+    /** How many still-living tracked mobs carry the given mobs.yml type tag. */
+    private int countLive(Set<UUID> mobs, String type) {
+        int count = 0;
+        for (UUID id : mobs) {
+            Entity entity = Bukkit.getEntity(id);
+            if (entity != null && !entity.isDead() && type.equals(entity
+                    .getPersistentDataContainer().get(MobDrops.MOB_ID_KEY, PersistentDataType.STRING))) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private void prune(Set<UUID> mobs) {

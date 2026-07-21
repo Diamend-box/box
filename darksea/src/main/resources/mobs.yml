@@ -40,13 +40,14 @@ tiers:
     - { type: TransmutedNaxian,  fallback: WITHER_SKELETON, weight: 8,  level: 6 }
     - { type: VironicTemplar,    fallback: WITCH,           weight: 6,  level: 6 }
   # ── The Abyssal Reaches — the Order's seat of power ──
-  # The Mariphage Core is the sea's only boss: weight 1 keeps it a rare
-  # roaming terror (~6% of native tier-4 picks) rather than an every-island
-  # regular. It summons its own Vessels; those never appear in this file.
+  # The Mariphage Core is NOT a native roaming pick: it is the resident boss
+  # of the Mariphage nest island (a rare landmark out here, the norm in the
+  # Sunless Trench), where the spawner keeps exactly one standing. It summons
+  # its own Vessels; those never appear in this file. Its signature drops
+  # (below) still fire wherever it dies, nest or not.
   4:
     - { type: NaxianAbomination, fallback: RAVAGER,         weight: 8,  level: 10 }
     - { type: VironicLord,       fallback: EVOKER,          weight: 6,  level: 10 }
-    - { type: MariphageCore,     fallback: WARDEN,          weight: 1,  level: 10 }
 
 # ---------------------------------------------------------------------------
 # Plugin-side signature drops, rolled on top of any MythicMobs pack drops.

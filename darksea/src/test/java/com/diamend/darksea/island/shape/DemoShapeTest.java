@@ -175,7 +175,9 @@ class DemoShapeTest {
     @Test
     void standardShapesKeepTheClassicBudgetsOnlyTheCastleExceedsThem() {
         for (DemoShape shape : DemoShapes.ALL) {
-            if (shape.id().equals("ruined-castle")) {
+            // The castle and the Mariphage nest are the two special landmarks:
+            // they carry non-standard rarity, boss, or tier traits.
+            if (shape.id().equals("ruined-castle") || shape.id().equals("mariphage-nest")) {
                 continue;
             }
             assertEquals(30, shape.radiusBudget(), shape.id() + " changed its preload budget");
@@ -238,6 +240,51 @@ class DemoShapeTest {
         // Ring 1 never rolls a castle at all.
         for (DemoShape shape : DemoShapes.forTier(1)) {
             assertFalse(shape.id().equals("ruined-castle"), "a castle leaked into ring 1");
+        }
+    }
+
+    @Test
+    void theMariphageNestIsTheCoresHomeRareInTheReachesTheNormInTheTrench() {
+        DemoShape nest = DemoShapes.byId("mariphage-nest");
+        assertNotNull(nest, "the Mariphage nest is not registered");
+        assertEquals(4, nest.minTier(), "the nest starts in the Abyssal Reaches");
+        assertEquals(5, nest.maxTier(), "the nest reaches into the Sunless Trench");
+
+        // Its resident boss is the Core, with a vanilla warden fallback.
+        assertEquals("MariphageCore", nest.bossMob(), "the nest must house the Core");
+        assertEquals("WARDEN", nest.bossFallback(), "the Core needs a vanilla fallback");
+        // No other shape claims a resident boss.
+        for (DemoShape other : DemoShapes.ALL) {
+            if (other != nest) {
+                assertEquals(null, other.bossMob(), other.id() + " grew an unexpected boss");
+            }
+        }
+
+        // Rare among the Reaches' shapes, but the Trench builds nothing else.
+        assertTrue(nest.rarityWeight(4) < 10, "the nest must be a rare stray in tier 4");
+        assertEquals(nest.rarityWeight(5), nest.rarityWeight(5),
+                "tier-5 weight must be stable");
+        List<DemoShape> trench = DemoShapes.forTier(5);
+        assertEquals(List.of(nest), trench, "the Trench builds only the nest");
+
+        // Picking at tier 5 therefore always lands the nest, and it garrisons
+        // a real fight — a heart mob spawn plus flanking spots.
+        Random rng = new Random(99L);
+        for (int i = 0; i < 30; i++) {
+            assertEquals("mariphage-nest", DemoShapes.pick(5, rng).id(),
+                    "tier 5 must always build a nest");
+        }
+        // The nest stays modest — a rare stray, not a castle: at tier 4 the
+        // Reaches' ~7 shapes should each still be pickable around it.
+        Random reaches = new Random(7L);
+        boolean sawSomethingElse = false;
+        for (int i = 0; i < 200 && !sawSomethingElse; i++) {
+            sawSomethingElse = !DemoShapes.pick(4, reaches).id().equals("mariphage-nest");
+        }
+        assertTrue(sawSomethingElse, "the nest crowded out every other tier-4 shape");
+        for (int tier = 4; tier <= 5; tier++) {
+            assertTrue(nest.build(tier, 4242L).mobSpawns().size() >= 2,
+                    "t" + tier + " nest needs the heart plus flanking spawns");
         }
     }
 
