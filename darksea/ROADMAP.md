@@ -491,7 +491,7 @@ Two new danger rings past the Abyssal Reaches, and a new zone concept.
   consumed for good. Once attuned, a killing blow is refused like a Totem of
   Undying — the damage is cancelled, effects cleared, and the captain is left
   at `revive-health` with a totem's Regeneration/Absorption/Fire-Resistance —
-  but only once per `relics.undrowned.cooldown-seconds` (120s). The cooldown
+  but only once per `relics.undrowned.cooldown-seconds` (150s = 2:30). The cooldown
   is stamped into player data (`undrowned.last-save`), so relogging can't
   reset it and chain saves. `UndrownedHeartService` holds the death-save and
   attune listeners; its lethality + cooldown math is pure and unit-tested
@@ -500,11 +500,12 @@ Two new danger rings past the Abyssal Reaches, and a new zone concept.
   - **Boxpvp note:** an auto-totem every 2 min is a strong open-water edge —
     the cooldown and revive-health are both config knobs so it can be dialed,
     and it's currently world-agnostic (fires anywhere, not just the sea).
-- **OPEN — placement in the Rim.** The item + mechanic ship here; where the
-  Heart physically sits past the Rim is the remaining call: a single fixed
-  landmark at known coords (hint-able to an exact spot) vs. a random island
-  in the ring (players scour for it). No loot/generation wired until Wyatt
-  picks; no islands generate in tiers 5–6 today.
+- **Placement — a fixed landmark (Wyatt's call).** The Heart lives at one
+  hand-built landmark past the Rim, placed by Wyatt with the hints on the
+  home island pointing to it. No generation code needed: admins spawn a Heart
+  with `/ds give item undrowned_heart` (tab-completed) and stock the landmark
+  chest by hand. No islands generate in tiers 5–6, so the landmark is the
+  only thing out there.
 
 ### 7. Schematic pipeline guide — docs
 Expand the schematic docs into a start-to-finish walkthrough (build →

@@ -210,7 +210,7 @@ relics:
   # effects and leaving the captain at revive-health with a totem's buffs. The
   # cooldown is stamped into player data, so relogging can't reset it.
   undrowned:
-    cooldown-seconds: 120
+    cooldown-seconds: 150
     revive-health: 1.0
 
 boat:

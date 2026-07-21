@@ -130,7 +130,7 @@ class ConfigParsingTest {
                 "the shipped dry-dock bills 2 Chronons per missing hull HP");
 
         // The Undrowned Heart's cooldown and revive health are configurable.
-        assertEquals(120, settings.relics().undrownedCooldownSeconds());
+        assertEquals(150, settings.relics().undrownedCooldownSeconds());
         assertEquals(1.0, settings.relics().undrownedReviveHealth(), 1e-9);
 
         assertFalse(settings.messages().isEmpty());
