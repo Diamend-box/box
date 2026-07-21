@@ -60,6 +60,10 @@ public final class NavalCombatService implements Listener {
     private record Hook(UUID shooter, long untilMillis) {
     }
 
+    /** A battered hull never freezes: it always keeps at least this fraction of
+     * its top speed, so a captain can always limp home to the dry-dock. */
+    private static final double HULL_SPEED_FLOOR = 0.15;
+
     private final Map<UUID, HullState> hulls = new ConcurrentHashMap<>();
     private final Map<UUID, SlowState> slows = new ConcurrentHashMap<>();
     private final Map<UUID, Hook> hooks = new ConcurrentHashMap<>();
@@ -93,6 +97,27 @@ public final class NavalCombatService implements Listener {
             slows.remove(boat.getUniqueId());
         }
         return factor;
+    }
+
+    /**
+     * The persistent top-speed tax from missing hull HP (1.0 = full hull):
+     * every point of HP the hull is down shaves {@code speed-penalty-per-hp}
+     * off the ceiling, floored so a wreck still crawls. Unlike
+     * {@link #slowFactor}, this doesn't lapse on a timer — it lifts only as the
+     * hull regenerates or is repaired.
+     */
+    public double hullSpeedFactor(Boat boat) {
+        return NavalMath.hullSpeedFactor(hullHp(boat), naval().hull().maxHp(),
+                naval().hull().speedPenaltyPerHp(), HULL_SPEED_FLOOR);
+    }
+
+    /**
+     * The speed ceiling a boat actually sails under: the harsher of the
+     * momentary post-hit wounded slow and the persistent per-missing-HP tax.
+     * Both the cruise cap and the surge ride this one number.
+     */
+    public double speedCeiling(Boat boat) {
+        return Math.min(slowFactor(boat), hullSpeedFactor(boat));
     }
 
     /** Applies a slow, keeping the harsher factor and the later expiry. */
@@ -389,7 +414,7 @@ public final class NavalCombatService implements Listener {
         double burst = plugin.settings().boat().speedCapBase()
                 * plugin.boat().effectiveMultiplier(player)
                 * naval().surge().boostFactor()
-                * slowFactor(boat);  // a wounded hull surges weakly
+                * speedCeiling(boat);  // a wounded, battered hull surges weakly
         boat.setVelocity(heading.normalize().multiply(burst)
                 .setY(boat.getVelocity().getY()));
         plugin.hud().flash(player, "naval-surge");

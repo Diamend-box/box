@@ -110,6 +110,32 @@ class NavalMathTest {
     }
 
     @Test
+    void everyMissingHpShavesThreePercentOffTopSpeed() {
+        // Full hull: no tax.
+        assertEquals(1.0, NavalMath.hullSpeedFactor(10.0, 10.0, 0.03, 0.15), 1e-9);
+        // Down 6 HP (at 4/10) => 1 - 6*0.03 = 0.82.
+        assertEquals(0.82, NavalMath.hullSpeedFactor(4.0, 10.0, 0.03, 0.15), 1e-9);
+        // A single pip down => 97%.
+        assertEquals(0.97, NavalMath.hullSpeedFactor(9.0, 10.0, 0.03, 0.15), 1e-9);
+    }
+
+    @Test
+    void aBatteredHullStillCrawlsHomeNeverFreezes() {
+        // A huge penalty would drive the factor negative; the floor holds it up.
+        assertEquals(0.15, NavalMath.hullSpeedFactor(1.0, 10.0, 0.5, 0.15), 1e-9);
+    }
+
+    @Test
+    void hullSpeedFactorIsClampedAgainstConfigTypos() {
+        // A negative penalty can never make a damaged hull faster than full.
+        assertEquals(1.0, NavalMath.hullSpeedFactor(4.0, 10.0, -0.03, 0.15), 1e-9);
+        // A non-positive maxHp reads as no tax at all.
+        assertEquals(1.0, NavalMath.hullSpeedFactor(4.0, 0.0, 0.03, 0.15), 1e-9);
+        // Over-full (mid-regen rounding) never exceeds 1.0.
+        assertEquals(1.0, NavalMath.hullSpeedFactor(11.0, 10.0, 0.03, 0.15), 1e-9);
+    }
+
+    @Test
     void surgeCooldownGates() {
         assertFalse(NavalMath.surgeReady(1_000, 2_000));
         assertTrue(NavalMath.surgeReady(2_000, 2_000));

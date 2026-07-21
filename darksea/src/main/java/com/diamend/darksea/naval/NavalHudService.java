@@ -66,7 +66,7 @@ public final class NavalHudService {
                     plugin.boat().stats(plugin.boat().levelOf(player)).name(),
                     naval.hullHp(boat),
                     plugin.settings().naval().hull().maxHp(),
-                    naval.slowFactor(boat) < 1.0,
+                    naval.speedCeiling(boat) < 1.0,
                     naval.surgeSecondsLeft(player),
                     naval.isHooked(boat));
             player.sendActionBar(plugin.messages().raw(line));

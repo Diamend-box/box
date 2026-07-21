@@ -216,6 +216,12 @@ naval:
     regen-per-second: 0.5
     wounded-slow-seconds: 4
     wounded-speed-factor: 0.7
+    # On top of that momentary post-hit dip, every point of HP the hull is
+    # missing shaves this fraction off the top speed until it's repaired or
+    # regenerates: 0.03 = 3% per pip, so a 10-HP hull down to 4 HP cruises at
+    # ~82% and a near-wreck really limps. Floored internally at 15% so a battered
+    # hull can always crawl home.
+    speed-penalty-per-hp: 0.03
   # The home dry-dock, reached from the boat wheel (sneak-right-click your
   # boat, or /ds boat). A wounded hull is patched straight back to full for
   # cost-per-hp Chronons per missing HP — but ONLY inside the home sanctuary

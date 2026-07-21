@@ -126,10 +126,14 @@ public record DarkSeaSettings(
      * {@code regenPerSecond} HP/s — a slow claw-back, never a snap to full.
      * Any hull damage also slows the boat to {@code woundedSpeedFactor} of its
      * speed for {@code woundedSlowSeconds} — the wounded-hull rule that keeps
-     * a max-speed boat catchable: land a shot, close the gap.
+     * a max-speed boat catchable: land a shot, close the gap. On top of that
+     * momentary dip, every point of HP the hull is missing shaves
+     * {@code speedPenaltyPerHp} off the top speed until it's repaired — a
+     * persistent limp that grows as a hull is chipped down.
      */
     public record HullSettings(double maxHp, int combatTagSeconds, double regenPerSecond,
-                               int woundedSlowSeconds, double woundedSpeedFactor) {
+                               int woundedSlowSeconds, double woundedSpeedFactor,
+                               double speedPenaltyPerHp) {
     }
 
     /**
@@ -377,7 +381,8 @@ public record DarkSeaSettings(
                 Math.max(0, cfg.getInt("naval.hull.combat-tag-seconds", 60)),
                 Math.max(0.01, cfg.getDouble("naval.hull.regen-per-second", 0.5)),
                 Math.max(1, cfg.getInt("naval.hull.wounded-slow-seconds", 4)),
-                Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.hull.wounded-speed-factor", 0.7))));
+                Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.hull.wounded-speed-factor", 0.7))),
+                Math.max(0, cfg.getDouble("naval.hull.speed-penalty-per-hp", 0.03)));
         SurgeSettings surge = new SurgeSettings(
                 Math.max(1.0, cfg.getDouble("naval.surge.boost-factor", 1.8)),
                 Math.max(1, cfg.getInt("naval.surge.cooldown-seconds", 9)));

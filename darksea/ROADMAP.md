@@ -289,6 +289,13 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
   Fixed two ways, both his pick:
   - **Wounded hull**: ANY hull damage — plain arrows included — slows the
     boat to 70% speed for 4s. Chip the runner, close, ram.
+  - **Battered hull (Wyatt)**: on top of that momentary dip, every point of
+    HP the hull is *missing* shaves 3% off the top speed until it's repaired
+    or regenerates (`naval.hull.speed-penalty-per-hp`). A 10-HP hull chipped
+    to 4 cruises at ~82%; a near-wreck limps. The two stack as the harsher of
+    the momentary slow and the persistent per-HP tax, floored at 15% so a
+    beaten hull can always crawl home to the dry-dock. Return-day knob if the
+    chase feels too swingy.
   - **Ram surge**: sprint OR jump key at the tiller (both, because toggle
     sprint makes the sprint flag latch — jump behaves the same for
     everyone), burst to 1.8× the cap, 9s cooldown.

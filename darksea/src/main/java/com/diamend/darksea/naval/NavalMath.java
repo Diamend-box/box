@@ -82,6 +82,26 @@ public final class NavalMath {
     }
 
     /**
+     * The sustained top-speed factor of a damaged hull: every point of HP the
+     * hull is missing shaves {@code penaltyPerHp} off the ceiling (0.03 = 3% a
+     * pip), so a full hull cruises at 1.0 and a battered one visibly limps.
+     * Unlike {@link #woundedFactor}'s momentary post-hit dip, this tax persists
+     * until the hull is repaired or regenerates. Clamped to
+     * [{@code minFactor}, 1.0] so a near-wreck still crawls home rather than
+     * freezing, and a config typo can't speed a boat up. A non-positive
+     * {@code maxHp} reads as no tax.
+     */
+    public static double hullSpeedFactor(double currentHp, double maxHp,
+                                         double penaltyPerHp, double minFactor) {
+        if (maxHp <= 0) {
+            return 1.0;
+        }
+        double missing = Math.max(0, maxHp - currentHp);
+        double factor = 1.0 - missing * Math.max(0, penaltyPerHp);
+        return Math.min(1.0, Math.max(minFactor, factor));
+    }
+
+    /**
      * The horizontal knockback a rammed boat receives: away from the
      * attacker, scaled by {@code strength}, with a touch of lift so the hull
      * visibly lurches. Zero-distance collisions shove along the attacker's

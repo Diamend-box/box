@@ -189,7 +189,7 @@ public final class BoatService implements Listener {
             return;
         }
         double multiplier = effectiveMultiplier(rider);
-        double wounded = plugin.naval() != null ? plugin.naval().slowFactor(boat) : 1.0;
+        double wounded = plugin.naval() != null ? plugin.naval().speedCeiling(boat) : 1.0;
         Vector velocity = boat.getVelocity();
         double horizontal = Math.hypot(velocity.getX(), velocity.getZ());
         double factor = speedFactor(multiplier, horizontal,
