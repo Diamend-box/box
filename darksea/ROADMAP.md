@@ -486,10 +486,25 @@ Two new danger rings past the Abyssal Reaches, and a new zone concept.
 - Mechanic: `ExposureTask` forces `exposure = requiredTier` for a bypass
   ring (skipping the armor/shield subtraction), so the downgrade rule can
   never soften the rim. `ZoneManagerTest` + `ConfigParsingTest` pin it.
-- **OPEN — the bait itself is undefined.** The rim is a crossable death-
-  gauntlet with nothing at the end yet. Still need: what treasure/structure
-  sits out there, and whether it's visible from afar to tempt players.
-  Wyatt to decide the payoff before it's worth building the destination.
+- **The bait — the Undrowned Heart (Wyatt's payoff).** A consumable relic
+  (`undrowned_heart`, a Heart of the Sea) attuned once by right-click and
+  consumed for good. Once attuned, a killing blow is refused like a Totem of
+  Undying — the damage is cancelled, effects cleared, and the captain is left
+  at `revive-health` with a totem's Regeneration/Absorption/Fire-Resistance —
+  but only once per `relics.undrowned.cooldown-seconds` (120s). The cooldown
+  is stamped into player data (`undrowned.last-save`), so relogging can't
+  reset it and chain saves. `UndrownedHeartService` holds the death-save and
+  attune listeners; its lethality + cooldown math is pure and unit-tested
+  (`UndrownedHeartServiceTest`). Not visible in-world — Wyatt seeds hints of
+  its existence on the home island.
+  - **Boxpvp note:** an auto-totem every 2 min is a strong open-water edge —
+    the cooldown and revive-health are both config knobs so it can be dialed,
+    and it's currently world-agnostic (fires anywhere, not just the sea).
+- **OPEN — placement in the Rim.** The item + mechanic ship here; where the
+  Heart physically sits past the Rim is the remaining call: a single fixed
+  landmark at known coords (hint-able to an exact spot) vs. a random island
+  in the ring (players scour for it). No loot/generation wired until Wyatt
+  picks; no islands generate in tiers 5–6 today.
 
 ### 7. Schematic pipeline guide — docs
 Expand the schematic docs into a start-to-finish walkthrough (build →

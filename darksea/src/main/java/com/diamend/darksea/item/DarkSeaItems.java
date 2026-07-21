@@ -136,6 +136,8 @@ public final class DarkSeaItems {
     public static final String SEA_SALVE = "sea_salve";
     public static final String DEEPSIGHT_TONIC = "deepsight_tonic";
     public static final String GILLWATER_PHILTER = "gillwater_philter";
+    /** The apex relic hidden past the Devouring Rim — consumed once for a permanent, cooldowned death-save. */
+    public static final String UNDROWNED_HEART = "undrowned_heart";
 
     /** Tidal Draught: boat speed bonus multiplier and duration. */
     public static final double DRAUGHT_MULTIPLIER = 1.25;
@@ -163,6 +165,7 @@ public final class DarkSeaItems {
         ids.add(SEA_SALVE);
         ids.add(DEEPSIGHT_TONIC);
         ids.add(GILLWATER_PHILTER);
+        ids.add(UNDROWNED_HEART);
         ids.add(CHAINSHOT_ARROW);
         ids.add(HULLPIERCER_ARROW);
         ids.add(HARPOON_GUN);
@@ -223,6 +226,7 @@ public final class DarkSeaItems {
                     List.of("<gray>Forged to open ships,</gray>",
                             "<gray>not sailors.</gray>",
                             "<dark_gray>Heavy hull damage, cuts through plating.</dark_gray>"));
+            case UNDROWNED_HEART -> createUndrownedHeart();
             case HARPOON_GUN -> createHarpoonGun();
             case DARK_SEA_BOAT -> createDarkSeaBoat();
             case BROKEN_DARK_SEA_BOAT -> createBrokenDarkSeaBoat();
@@ -309,6 +313,26 @@ public final class DarkSeaItems {
                 Objects.requireNonNull(NamespacedKey.fromString("darksea:weapon_speed")),
                 spec.speed() - 4.0, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND));
         meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, spec.id());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * The Undrowned Heart: not drunk but attuned. Right-clicked once (see
+     * {@link com.diamend.darksea.relic.UndrownedHeartService}) it is consumed
+     * for good and the captain can no longer truly drown — the sea spits them
+     * back once every couple of minutes.
+     */
+    private static ItemStack createUndrownedHeart() {
+        ItemStack item = new ItemStack(Material.HEART_OF_THE_SEA);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<gradient:#12d6df:#f0f9ff>The Undrowned Heart</gradient>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>Pulled from beyond the Devouring Rim,</gray>")),
+                noItalic(MM.deserialize("<gray>where the sea forgot how to keep its dead.</gray>")),
+                noItalic(MM.deserialize("<dark_gray>Hold it and the drowning never quite takes.</dark_gray>")),
+                noItalic(MM.deserialize("<dark_aqua>Right-click to attune. Consumed forever.</dark_aqua>"))));
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, UNDROWNED_HEART);
         item.setItemMeta(meta);
         return item;
     }

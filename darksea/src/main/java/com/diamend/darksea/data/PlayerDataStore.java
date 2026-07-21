@@ -33,6 +33,8 @@ public final class PlayerDataStore {
     private final Logger log;
     private final Map<UUID, Integer> boatLevels = new ConcurrentHashMap<>();
     private final Map<UUID, StatPoints> statPoints = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> undrowned = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> undrownedLastSave = new ConcurrentHashMap<>();
 
     public PlayerDataStore(File folder, Logger log) {
         this.folder = folder;
@@ -91,6 +93,53 @@ public final class PlayerDataStore {
         yaml.set("stats.toughness", points.toughness());
         yaml.set("stats.hp", points.hp());
         yaml.set("stats.ram-power", points.ramPower());
+        try {
+            yaml.save(file);
+        } catch (IOException ex) {
+            log.severe("Could not save " + file + ": " + ex.getMessage());
+        }
+    }
+
+    /** Whether the captain has attuned the Undrowned Heart (a permanent, once-only choice). */
+    public boolean isUndrowned(UUID player) {
+        return undrowned.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists() && YamlConfiguration.loadConfiguration(file)
+                    .getBoolean("undrowned.attuned", false);
+        });
+    }
+
+    public void setUndrowned(UUID player, boolean attuned) {
+        undrowned.put(player, attuned);
+        File file = fileFor(player);
+        YamlConfiguration yaml = file.exists()
+                ? YamlConfiguration.loadConfiguration(file)
+                : new YamlConfiguration();
+        yaml.set("undrowned.attuned", attuned);
+        save(yaml, file);
+    }
+
+    /** Epoch millis of the last time the Heart refused a killing blow (0 if never). */
+    public long undrownedLastSave(UUID player) {
+        return undrownedLastSave.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists()
+                    ? YamlConfiguration.loadConfiguration(file).getLong("undrowned.last-save", 0L)
+                    : 0L;
+        });
+    }
+
+    public void setUndrownedLastSave(UUID player, long epochMillis) {
+        undrownedLastSave.put(player, epochMillis);
+        File file = fileFor(player);
+        YamlConfiguration yaml = file.exists()
+                ? YamlConfiguration.loadConfiguration(file)
+                : new YamlConfiguration();
+        yaml.set("undrowned.last-save", epochMillis);
+        save(yaml, file);
+    }
+
+    private void save(YamlConfiguration yaml, File file) {
         try {
             yaml.save(file);
         } catch (IOException ex) {

@@ -129,6 +129,10 @@ class ConfigParsingTest {
         assertEquals(2.0, settings.naval().repair().costPerHp(),
                 "the shipped dry-dock bills 2 Chronons per missing hull HP");
 
+        // The Undrowned Heart's cooldown and revive health are configurable.
+        assertEquals(120, settings.relics().undrownedCooldownSeconds());
+        assertEquals(1.0, settings.relics().undrownedReviveHealth(), 1e-9);
+
         assertFalse(settings.messages().isEmpty());
         assertTrue(settings.messages().containsKey("prefix"));
         assertTrue(settings.messages().containsKey("reset-full-warning"));
@@ -141,6 +145,8 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("boat-wreck-repaired"));
         assertTrue(settings.messages().containsKey("boat-debug-damaged"));
         assertTrue(settings.messages().containsKey("boat-outfit-reset"));
+        assertTrue(settings.messages().containsKey("undrowned-attuned"));
+        assertTrue(settings.messages().containsKey("undrowned-saved"));
     }
 
     @Test

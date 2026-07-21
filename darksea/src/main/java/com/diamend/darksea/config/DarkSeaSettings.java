@@ -198,8 +198,16 @@ public record DarkSeaSettings(
                                 HudSettings hud, RepairSettings repair) {
     }
 
-    /** How many awake relics may work from a player's inventory at once. */
-    public record RelicSettings(int maxActive) {
+    /**
+     * Relic knobs. {@code maxActive} bounds how many awake relics may work from
+     * a player's inventory at once. The Undrowned Heart is a separate,
+     * consumed-once relic: once attuned, a lethal blow is refused like a totem
+     * and the captain is left at {@code undrownedReviveHealth} health, but only
+     * once per {@code undrownedCooldownSeconds} — the cooldown is stored per
+     * player so relogging can't reset it.
+     */
+    public record RelicSettings(int maxActive, int undrownedCooldownSeconds,
+                                double undrownedReviveHealth) {
     }
 
     /**
@@ -253,7 +261,9 @@ public record DarkSeaSettings(
         NavalSettings naval = loadNaval(cfg);
 
         RelicSettings relics = new RelicSettings(
-                Math.min(9, Math.max(1, cfg.getInt("relics.max-active", 2))));
+                Math.min(9, Math.max(1, cfg.getInt("relics.max-active", 2))),
+                Math.max(1, cfg.getInt("relics.undrowned.cooldown-seconds", 120)),
+                Math.max(1.0, cfg.getDouble("relics.undrowned.revive-health", 1.0)));
 
         Map<String, String> messages = new HashMap<>();
         ConfigurationSection msgSec = cfg.getConfigurationSection("messages");

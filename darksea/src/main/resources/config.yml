@@ -204,6 +204,14 @@ combat:
 # anywhere in your inventory; this caps how many work at once.
 relics:
   max-active: 2
+  # The Undrowned Heart: the apex reward hidden past the Devouring Rim. It is
+  # attuned once (right-click, consumed for good) and then, once every
+  # cooldown-seconds, refuses a lethal blow like a Totem of Undying — clearing
+  # effects and leaving the captain at revive-health with a totem's buffs. The
+  # cooldown is stamped into player data, so relogging can't reset it.
+  undrowned:
+    cooldown-seconds: 120
+    revive-health: 1.0
 
 boat:
   # Hard ceiling on boat speed: cap = speed-cap-base * level speed multiplier
@@ -399,6 +407,11 @@ messages:
   boat-outfit-need-chronons: "<red>Respec costs <aqua>{cost}</aqua> Chronons — you have {have}."
   boat-outfit-reset: "<green>Stat points refunded. <aqua>-{cost} Chronons</aqua>"
   boat-outfit-combat: "<red>Can't change your outfit in combat — wait for the tag to fade."
+
+  # The Undrowned Heart.
+  undrowned-attuned: "<gradient:#12d6df:#f0f9ff>The Undrowned Heart dissolves into you. The sea will not keep you now.</gradient>"
+  undrowned-already: "<yellow>You are already undrowned."
+  undrowned-saved: "<aqua>The Heart refuses your death — the sea spits you back."
 
   naval-surge: "<aqua>Surge!"
   naval-surge-cooldown: "<gray>Surge ready in {seconds}s."

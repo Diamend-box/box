@@ -23,6 +23,7 @@ import com.diamend.darksea.naval.NavalCombatService;
 import com.diamend.darksea.naval.NavalHudService;
 import com.diamend.darksea.naval.NavalWeaponListener;
 import com.diamend.darksea.relic.RelicService;
+import com.diamend.darksea.relic.UndrownedHeartService;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
@@ -106,6 +107,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(exposureTask, this);
         getServer().getPluginManager().registerEvents(relics, this);
         getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
+        getServer().getPluginManager().registerEvents(new UndrownedHeartService(this), this);
         getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);
         getServer().getPluginManager().registerEvents(naval, this);
@@ -209,6 +211,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public RelicService relics() {
         return relics;
+    }
+
+    public PlayerDataStore data() {
+        return dataStore;
     }
 
     public IslandRegistry registry() {
