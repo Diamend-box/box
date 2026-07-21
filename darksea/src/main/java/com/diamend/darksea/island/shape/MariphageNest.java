@@ -5,11 +5,16 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * The Order's breeding ground: a low prismarine reef gone to sculk, risen
- * from the deep where the curse pools thickest. Its heart is an open socket
- * of sculk and sea-light that a Mariphage Core always rises from — kill it
- * and the reef simply grows another. Three egg-chambers are buried under the
- * reef floor, each reached by a stepped shaft, holding what the plague hoards.
+ * The Order's breeding ground, dressed as the shrine it is. A low prismarine
+ * reef gone to sculk, risen from the deep where the curse pools thickest — and
+ * worked over by the Order of the Soul until it looms. A ring of skull-crowned
+ * glyph steles rings the whole reef, tall enough to be read across the water;
+ * a candle-lit sanctum of soul-flame and weeping stone fences the socket like
+ * an altar; and the buried chambers below are offering niches, gilded and
+ * skull-lit. Its heart is an open socket of sculk and sea-light that a
+ * Mariphage Core always rises from — kill it and the reef simply grows
+ * another. Three egg-chambers are buried under the reef floor, each reached by
+ * a stepped shaft, holding what the plague hoards.
  *
  * A rare stray in the Abyssal Reaches (tier 4) but the only landmark the
  * Sunless Trench builds at all (tier 5), so past the Trench's edge every
@@ -17,6 +22,12 @@ import java.util.Random;
  * spawner keeps exactly one standing whenever a player is near.
  */
 final class MariphageNest implements DemoShape {
+
+    // The three chamber shafts break the surface here (a chamber centred at
+    // (cx,cz) climbs out on its +z face at (cx, cz+3)). Nothing the Order
+    // strews on the deck may cap a mouth, or the vault below turns un-lootable
+    // — island blocks can't be mined open.
+    private static final int[][] SHAFT_MOUTHS = {{0, 8}, {-8, 1}, {8, 6}};
 
     @Override
     public String id() {
@@ -70,14 +81,17 @@ final class MariphageNest implements DemoShape {
         s.wallRing(0, 1, 0, platR - 1, ShapeSketch.solid("DARK_PRISMARINE"));
 
         // --- The heart: an open socket of sculk and sea-light the Core rises
-        //     from, ringed by shriekers that never stop listening. Left clear
-        //     to the sky so the warden always has headroom. ---
+        //     from, its rim weeping crying obsidian, ringed by shriekers that
+        //     never stop listening. Left clear to the sky so the warden always
+        //     has headroom. ---
         s.put(0, 0, 0, "SEA_LANTERN");            // a glow trapped under the floor
         s.put(0, 1, 0, "SCULK_CATALYST");         // the socket itself
         int[][] ring = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
         for (int i = 0; i < ring.length; i++) {
             int hx = ring[i][0], hz = ring[i][1];
-            s.put(hx, 1, hz, "SCULK");
+            // Crying obsidian weeps purple at the cardinals — the Order's
+            // colour — sculk creeping between.
+            s.put(hx, 1, hz, i % 2 == 0 ? "CRYING_OBSIDIAN" : "SCULK");
             if (i % 2 == 0) {
                 s.put(hx, 2, hz, i % 4 == 0 ? "SCULK_SHRIEKER" : "SCULK_SENSOR");
             }
@@ -89,24 +103,54 @@ final class MariphageNest implements DemoShape {
             }
         }
 
-        // --- Bleached-coral-and-sculk spires around the rim, clear of the
-        //     heart's sightline and the buried chambers below. The coral is
-        //     DEAD on purpose: these spires stand in open air above the
-        //     waterline, and live coral blocks decay to their dead variant
-        //     within a tick when they aren't touching water — so a live reef
-        //     would rot gray on the server anyway. Dead coral both survives
-        //     and fits the nest: a reef the plague already killed. ---
-        String[] coral = {"DEAD_TUBE_CORAL_BLOCK", "DEAD_BRAIN_CORAL_BLOCK", "DEAD_HORN_CORAL_BLOCK",
-                "DEAD_BUBBLE_CORAL_BLOCK", "DEAD_FIRE_CORAL_BLOCK"};
-        int spires = 7 + rng.nextInt(3);
-        for (int i = 0; i < spires; i++) {
-            double a = rng.nextDouble() * Math.PI * 2;
+        // --- The sanctum: a ring of black candles the Order keeps burning
+        //     around the socket, and four skull-crowned glyph steles set at
+        //     the corners to fence the Core's pit like an altar. The centre is
+        //     never touched — the Core needs its column of sky to rise. ---
+        int candles = 12;
+        for (int i = 0; i < candles; i++) {
+            double a = i * (Math.PI * 2 / candles);
+            int cx = (int) Math.round(Math.cos(a) * 4);
+            int cz = (int) Math.round(Math.sin(a) * 4);
+            if (Math.abs(cx) <= 2 && Math.abs(cz) <= 2) {
+                continue;   // keep clear of the shrieker ring
+            }
+            s.put(cx, 2, cz, "BLACK_CANDLE");
+        }
+        int[][] sanctum = {{4, 4}, {-4, 4}, {4, -4}, {-4, -4}};
+        for (int[] c : sanctum) {
+            glyphStele(s, rng, c[0], c[1], 4 + rng.nextInt(2));
+            altarFoot(s, rng, c[0], c[1]);
+        }
+
+        // --- The looming ring: skull-crowned glyph steles the Order raises
+        //     around the whole reef, tall enough to be seen across the water —
+        //     taller out in the Trench. Any that would cap a chamber shaft are
+        //     dropped. Low dead-coral clumps still cluster between them: a reef
+        //     the plague already killed (live coral would rot gray in air). ---
+        int stele = 4 + (tier - 4) * 2;
+        for (int i = 0; i < 8; i++) {
+            double a = i * (Math.PI / 4) + 0.15;
             int sx = (int) Math.round(Math.cos(a) * (platR - 2));
             int sz = (int) Math.round(Math.sin(a) * (platR - 2));
-            int h = 2 + rng.nextInt(3);
-            String c = rng.nextInt(100) < 55 ? "SCULK" : coral[rng.nextInt(coral.length)];
+            if (nearMouth(sx, sz)) {
+                continue;
+            }
+            glyphStele(s, rng, sx, sz, stele + rng.nextInt(3));
+        }
+        String[] coral = {"DEAD_TUBE_CORAL_BLOCK", "DEAD_BRAIN_CORAL_BLOCK", "DEAD_HORN_CORAL_BLOCK",
+                "DEAD_BUBBLE_CORAL_BLOCK", "DEAD_FIRE_CORAL_BLOCK"};
+        int clumps = 6 + rng.nextInt(3);
+        for (int i = 0; i < clumps; i++) {
+            double a = rng.nextDouble() * Math.PI * 2;
+            int sx = (int) Math.round(Math.cos(a) * (platR - 4));
+            int sz = (int) Math.round(Math.sin(a) * (platR - 4));
+            if (nearMouth(sx, sz)) {
+                continue;
+            }
+            int h = 1 + rng.nextInt(2);
+            String c = rng.nextInt(100) < 45 ? "SCULK" : coral[rng.nextInt(coral.length)];
             s.column(sx, 2, 1 + h, sz, ShapeSketch.solid(c));
-            s.put(sx, 2 + h, sz, "SCULK_VEIN");
         }
 
         // Turtle-egg clutches strewn across the floor — the plague's spawn.
@@ -114,18 +158,17 @@ final class MariphageNest implements DemoShape {
             double a = rng.nextDouble() * Math.PI * 2;
             int ex = (int) Math.round(Math.cos(a) * (platR - 5));
             int ez = (int) Math.round(Math.sin(a) * (platR - 5));
-            if (Math.hypot(ex, ez) > 4) {   // never on the heart
+            if (Math.hypot(ex, ez) > 4 && !nearMouth(ex, ez)) {   // never on the heart or a shaft
                 s.put(ex, 2, ez, "TURTLE_EGG");
             }
         }
 
-        // --- Three egg-chambers, buried under the reef and roofed by it,
-        //     each entered by a stepped shaft (mirrors the monolith's crypts).
-        //     Well clear of one another and of the heart. ---
+        // --- Three egg-chambers, buried under the reef and roofed by it, each
+        //     entered by a stepped shaft and dressed as an offering niche. ---
         List<Rel> chests = new ArrayList<>();
-        chests.add(buryChamber(s, 0, 5, p.glow()));
-        chests.add(buryChamber(s, -8, -2, p.glow()));
-        chests.add(buryChamber(s, 8, 3, p.glow()));
+        chests.add(buryChamber(s, rng, 0, 5, p.glow()));
+        chests.add(buryChamber(s, rng, -8, -2, p.glow()));
+        chests.add(buryChamber(s, rng, 8, 3, p.glow()));
 
         // --- Mobs: the Core rises at the heart (spawn 0 — the boss the
         //     spawner keeps standing), Vessels pace the reef beside it. ---
@@ -140,12 +183,55 @@ final class MariphageNest implements DemoShape {
     }
 
     /**
-     * A buried egg-chamber: solid casing, a hollow room, a stepped shaft up
-     * to the reef deck on the +z face. Returns the chest cell at the room's
-     * far wall — roofed by the reef above and walled on every side but the
-     * shaft, exactly like the Abyssal Monolith's reliquary.
+     * A looming glyph stele: a carved black pillar the Order raises to mark a
+     * nest, a soul-flame set glowing in its shaft and a skull crowning it.
      */
-    private static Rel buryChamber(ShapeSketch s, int cx, int cz, String glow) {
+    private static void glyphStele(ShapeSketch s, Random rng, int x, int z, int height) {
+        int base = 2, top = base + height - 1;
+        for (int y = base; y <= top; y++) {
+            String m = rng.nextInt(100) < 28 ? "SCULK"
+                    : rng.nextInt(100) < 50 ? "CHISELED_DEEPSLATE"
+                    : rng.nextInt(100) < 55 ? "POLISHED_BLACKSTONE_BRICKS"
+                    : "POLISHED_BLACKSTONE";
+            s.put(x, y, z, m);
+        }
+        s.put(x, base + Math.max(1, height / 2), z, "SOUL_LANTERN");   // a soul-flame eye
+        s.put(x, top + 1, z, rng.nextInt(100) < 65 ? "WITHER_SKELETON_SKULL" : "SKELETON_SKULL");
+    }
+
+    /**
+     * The offering at a sanctum stele's foot: a gilded slab facing the socket,
+     * a skull upon it and a black candle beside — the Order's altar in
+     * miniature. Placed one step toward the centre so it never blocks the
+     * stele's own footing or a Vessel's pace around the reef.
+     */
+    private static void altarFoot(ShapeSketch s, Random rng, int x, int z) {
+        int fx = x - Integer.signum(x), fz = z - Integer.signum(z);
+        s.put(fx, 2, fz, "GILDED_BLACKSTONE");
+        s.put(fx, 3, fz, rng.nextBoolean() ? "WITHER_SKELETON_SKULL" : "SKELETON_SKULL");
+        s.put(x - Integer.signum(x), 2, z, "BLACK_CANDLE");
+    }
+
+    /** True when a deck cell sits close enough to a shaft mouth to risk
+     *  sealing the chamber below — the Order's clutter keeps its distance. */
+    private static boolean nearMouth(int x, int z) {
+        for (int[] m : SHAFT_MOUTHS) {
+            if (Math.abs(x - m[0]) <= 2 && Math.abs(z - m[1]) <= 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A buried egg-chamber, dressed as an offering niche: solid casing, a
+     * hollow room, a stepped shaft up to the reef deck on the +z face. Soul
+     * light, a skull in the corner, a gilded wall behind the offering and a
+     * chain hung from the roof — the Order's charnel wealth. Returns the chest
+     * cell at the room's far wall, roofed by the reef above and walled on every
+     * side but the shaft, exactly like the Abyssal Monolith's reliquary.
+     */
+    private static Rel buryChamber(ShapeSketch s, Random rng, int cx, int cz, String glow) {
         s.fillBox(cx - 2, -3, cz - 2, cx + 2, 0, cz + 2, ShapeSketch.solid("DEEPSLATE"));
         s.carveBox(cx - 1, -2, cz - 1, cx + 1, -1, cz + 1);
         s.carveBox(cx, 1, cz + 3, cx, 3, cz + 3);
@@ -154,8 +240,17 @@ final class MariphageNest implements DemoShape {
         s.put(cx, -1, cz + 2, "DEEPSLATE");
         s.carveBox(cx, -1, cz + 1, cx, 1, cz + 1);
         s.put(cx, -2, cz + 1, "DEEPSLATE");
-        s.put(cx - 1, -2, cz - 1, glow);
+        // Offering-niche dressing (never touches the chest cell or its
+        // headroom, nor the shaft the player crawls out through).
+        s.put(cx - 1, -2, cz - 1, "SOUL_LANTERN");       // the niche's cold light
         s.put(cx + 1, -2, cz, "SCULK_CATALYST");
+        s.put(cx, -2, cz - 2, "GILDED_BLACKSTONE");      // gilded wall behind the offering
+        s.put(cx - 1, -2, cz + 1, rng.nextInt(100) < 60  // a skull watching the corner
+                ? "WITHER_SKELETON_SKULL" : "SKELETON_SKULL");
+        s.put(cx - 1, -1, cz - 1, "CHAIN");              // hung from the roof over the light
+        if (glow != null) {
+            s.put(cx + 1, -2, cz - 2, glow);             // a tier ember set in the wall
+        }
         return new Rel(cx, -2, cz - 1);
     }
 
