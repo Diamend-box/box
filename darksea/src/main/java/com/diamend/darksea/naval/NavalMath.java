@@ -70,6 +70,19 @@ public final class NavalMath {
     }
 
     /**
+     * A boat's offensive ram multiplier: how much harder its charge lands on
+     * the defender's hull, scaling {@code perLevel} per boat level off a base of
+     * 1.0 (level 0 = 1.0, and at 0.25 a level-3 Stormrunner hits at 1.75×). It
+     * boosts only the damage the attacker DEALS — the 25% that bounces back onto
+     * the rammer's own hull is unaffected, so hitting harder never hurts you
+     * more. Level is floored at zero and a negative {@code perLevel} config typo
+     * reads as no bonus, so the multiplier is never below 1.0.
+     */
+    public static double ramPower(int boatLevel, double perLevel) {
+        return 1.0 + Math.max(0, boatLevel) * Math.max(0, perLevel);
+    }
+
+    /**
      * The speed factor of a wounded hull: {@code woundedFactor} while the
      * slow is live, 1.0 once it lapses. {@code factor} is clamped to
      * [0.05, 1.0] so a config typo can't freeze or speed up boats.

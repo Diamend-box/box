@@ -136,6 +136,21 @@ class NavalMathTest {
     }
 
     @Test
+    void ramPowerClimbsTwentyFivePercentPerBoatLevel() {
+        assertEquals(1.00, NavalMath.ramPower(0, 0.25), 1e-9);  // Rowboat
+        assertEquals(1.25, NavalMath.ramPower(1, 0.25), 1e-9);  // Sloop
+        assertEquals(1.50, NavalMath.ramPower(2, 0.25), 1e-9);  // Cutter
+        assertEquals(1.75, NavalMath.ramPower(3, 0.25), 1e-9);  // Stormrunner
+    }
+
+    @Test
+    void ramPowerNeverDropsBelowOne() {
+        // A negative per-level typo or a nonsense level can't weaken a ram.
+        assertEquals(1.0, NavalMath.ramPower(3, -0.25), 1e-9);
+        assertEquals(1.0, NavalMath.ramPower(-2, 0.25), 1e-9);
+    }
+
+    @Test
     void surgeCooldownGates() {
         assertFalse(NavalMath.surgeReady(1_000, 2_000));
         assertTrue(NavalMath.surgeReady(2_000, 2_000));

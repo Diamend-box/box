@@ -115,7 +115,7 @@ public record DarkSeaSettings(
      */
     public record RamSettings(double minClosingSpeed, double damagePerSpeed, double maxDamage,
                               double defenderShare, double riderBleed, double knockback,
-                              long pairCooldownMillis) {
+                              long pairCooldownMillis, double powerPerLevel) {
     }
 
     /**
@@ -375,7 +375,8 @@ public record DarkSeaSettings(
                 Math.min(1.0, Math.max(0, cfg.getDouble("naval.ram.defender-share", 0.75))),
                 Math.min(1.0, Math.max(0, cfg.getDouble("naval.ram.rider-bleed", 0.3))),
                 Math.max(0, cfg.getDouble("naval.ram.knockback", 0.8)),
-                Math.max(250, cfg.getLong("naval.ram.pair-cooldown-millis", 1500)));
+                Math.max(250, cfg.getLong("naval.ram.pair-cooldown-millis", 1500)),
+                Math.max(0, cfg.getDouble("naval.ram.power-per-level", 0.25)));
         HullSettings hull = new HullSettings(
                 Math.max(1.0, cfg.getDouble("naval.hull.max-hp", 10.0)),
                 Math.max(0, cfg.getInt("naval.hull.combat-tag-seconds", 60)),

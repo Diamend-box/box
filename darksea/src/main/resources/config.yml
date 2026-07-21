@@ -203,6 +203,12 @@ naval:
     rider-bleed: 0.3
     knockback: 0.8
     pair-cooldown-millis: 1500
+    # Ram power: the attacker's charge lands harder per boat level (linear off
+    # 1.0), boosting only the hull damage it DEALS — the share bouncing back onto
+    # the rammer is unaffected. At 0.25: Rowboat 1.00x, Sloop 1.25x, Cutter
+    # 1.50x, Stormrunner 1.75x. A maxed hull is both the tank (toughness 3.0) and
+    # the battering ram, but this only helps one hit, so a low-tier swarm still wins.
+    power-per-level: 0.25
   # Naval weapons run on their own hull HP (vanilla whacking keeps vanilla
   # wobble + toughness). Any hull hit — including plain arrows — slows the
   # boat to wounded-speed-factor for wounded-slow-seconds, so a max-speed
