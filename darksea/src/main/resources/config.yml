@@ -229,6 +229,11 @@ naval:
     range: 24
     pull-seconds: 2.0
     pull-strength: 0.35
+  # The always-on boat action bar: hull pips, wounded flag, surge state.
+  # Repainted every period-ticks while riding a boat in the Dark Sea.
+  hud:
+    enabled: true
+    period-ticks: 10
 
 # All messages use MiniMessage. {placeholders} are filled in by the plugin.
 messages:

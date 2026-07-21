@@ -41,6 +41,11 @@ public final class Messages {
         to.sendActionBar(component(key, placeholders));
     }
 
+    /** Deserializes an already-built MiniMessage string (the naval HUD line). */
+    public Component raw(String miniMessage) {
+        return MM.deserialize(miniMessage);
+    }
+
     public Component component(String key, String... placeholders) {
         return MM.deserialize(fill(key, placeholders));
     }

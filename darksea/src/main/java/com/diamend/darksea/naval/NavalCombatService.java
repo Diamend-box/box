@@ -134,6 +134,31 @@ public final class NavalCombatService implements Listener {
         sink(boat, attacker);
     }
 
+    /**
+     * Current hull HP for the HUD, applying the same lazy regen rule as
+     * {@link #damageHull}: a hull quiet past the regen window reads full.
+     */
+    public double hullHp(Boat boat) {
+        double maxHp = naval().hull().maxHp();
+        HullState state = hulls.get(boat.getUniqueId());
+        if (state == null) {
+            return maxHp;
+        }
+        if (System.currentTimeMillis() - state.lastHitMillis()
+                > naval().hull().regenSeconds() * 1000L) {
+            hulls.remove(boat.getUniqueId(), state);
+            return maxHp;
+        }
+        return state.hp();
+    }
+
+    /** Whole seconds until this player's surge is ready; 0 means ready now. */
+    public int surgeSecondsLeft(Player player) {
+        long readyAt = surgeReadyAt.getOrDefault(player.getUniqueId(), 0L);
+        long now = System.currentTimeMillis();
+        return readyAt <= now ? 0 : (int) ((readyAt - now + 999) / 1000);
+    }
+
     private void sink(Boat boat, Player attacker) {
         Player rider = boatRider(boat);
         Location loc = boat.getLocation();
@@ -248,7 +273,7 @@ public final class NavalCombatService implements Listener {
         long now = System.currentTimeMillis();
         long readyAt = surgeReadyAt.getOrDefault(player.getUniqueId(), 0L);
         if (!NavalMath.surgeReady(now, readyAt)) {
-            plugin.messages().actionBar(player, "naval-surge-cooldown",
+            plugin.hud().flash(player, "naval-surge-cooldown",
                     "seconds", String.valueOf((readyAt - now + 999) / 1000));
             return;
         }
@@ -277,7 +302,7 @@ public final class NavalCombatService implements Listener {
                 * slowFactor(boat);  // a wounded hull surges weakly
         boat.setVelocity(heading.normalize().multiply(burst)
                 .setY(boat.getVelocity().getY()));
-        plugin.messages().actionBar(player, "naval-surge");
+        plugin.hud().flash(player, "naval-surge");
         boat.getWorld().playSound(boat.getLocation(), Sound.ENTITY_DOLPHIN_SPLASH, 1.0f, 0.8f);
     }
 

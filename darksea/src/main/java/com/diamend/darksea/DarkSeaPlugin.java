@@ -19,6 +19,7 @@ import com.diamend.darksea.mob.MobDropService;
 import com.diamend.darksea.mob.MobDrops;
 import com.diamend.darksea.mob.MobSpawner;
 import com.diamend.darksea.naval.NavalCombatService;
+import com.diamend.darksea.naval.NavalHudService;
 import com.diamend.darksea.naval.NavalWeaponListener;
 import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.world.SeaResetScheduler;
@@ -54,6 +55,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private RelicService relics;
     private IslandPlacer placer;
     private NavalCombatService naval;
+    private NavalHudService hud;
     private RunLootService runLoot;
     private WorldService worldService;
     private MobSpawner mobSpawner;
@@ -87,6 +89,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         relics = new RelicService(this);
         placer = new IslandPlacer(this, registry);
         naval = new NavalCombatService(this);
+        hud = new NavalHudService(this);
         runLoot = new RunLootService(this);
         worldService = new WorldService(this, registry, placer);
         mobSpawner = new MobSpawner(this, registry);
@@ -117,6 +120,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         exposureTask.runTaskTimer(this, interval, interval);
         mobSpawner.runTaskTimer(this, 100L, settings.mobSpawning().scanIntervalTicks());
         relics.runTaskTimer(this, 20L, 20L);
+        hud.start();
         new SeaResetScheduler(this).runTaskTimer(this,
                 SeaResetScheduler.TICK_PERIOD, SeaResetScheduler.TICK_PERIOD);
 
@@ -221,6 +225,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public NavalCombatService naval() {
         return naval;
+    }
+
+    public NavalHudService hud() {
+        return hud;
     }
 
     public RunLootService runLoot() {

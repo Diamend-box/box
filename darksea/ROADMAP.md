@@ -311,6 +311,29 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
   toggle-sprint double-tap quirk), harpoon reel strength, ram frequency in
   real scrums.
 
+### 4c. Naval HUD — BUILT (Wyatt, Jul 21, designed together)
+Always-on action bar while riding a boat in the Dark Sea (Wyatt's call:
+hull HP visible at all times, "even if it's quite small"):
+- `⛵ Name ❘ ▮▮▮▮▮▮▯▯▯▯ 6 ❘ ⚠ hull wounded ❘ ⚡ 7s` — hull pips (raw
+  10-pip pool, green/yellow/red by fraction), boat name, wounded flag,
+  surge countdown / ready.
+- **Harpooned override**: `⚓ HARPOONED — surge to cut!` replaces the name
+  slot, but the hull pips and surge timer stay — HP is visible in EVERY
+  state, per Wyatt.
+- Raw pool (always /10), not toughness-scaled "effective HP": your own
+  bar reads identically on every boat, so it becomes muscle memory.
+- BMP-only glyphs (⛵ ⚓ ⚠ ⚡ ▮ ▯ ❘) — vanilla Unifont fallback renders
+  them; true emoji would be boxes on unmodified clients.
+- Transient flashes (surge fired / cooldown denied) hold the ticker off
+  the bar for 1.5s so they're readable, then the HUD resumes.
+- Pure renderer (`NavalHud`) fully pinned by tests; ticker
+  (`NavalHudService`, every `naval.hud.period-ticks`, default 10) is
+  Bukkit-facing and CI-compiled. `naval.hud.enabled` kill switch.
+- Open design question for return day: enemy hull visibility — currently
+  hidden (limping away at 1 HP stays a bluff). Candidate: hit-marker
+  flash showing the target's pips only at the moment you land a naval
+  hit.
+
 ### 5. Timed sea reset — BUILT (Wyatt, Jul 20 PM)
 `SeaResetScheduler` resets the whole sea on a cycle so loot can't be
 hoarded or camp-farmed forever. Config `reset.auto` (ships **enabled, 6h,

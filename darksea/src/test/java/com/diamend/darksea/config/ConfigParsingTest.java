@@ -93,6 +93,9 @@ class ConfigParsingTest {
                 < settings.naval().hull().woundedSpeedFactor(),
                 "chainshot must slow harder than an ordinary hull hit");
         assertTrue(settings.naval().harpoon().range() >= 4);
+        assertTrue(settings.naval().hud().enabled(), "the shipped config turns the boat HUD on");
+        assertTrue(settings.naval().hud().periodTicks() >= 2,
+                "HUD repaint must never run every tick");
 
         assertFalse(settings.messages().isEmpty());
         assertTrue(settings.messages().containsKey("prefix"));

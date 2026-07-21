@@ -148,6 +148,13 @@ public record DarkSeaSettings(
     }
 
     /**
+     * The always-on boat action bar (hull pips, wounded flag, surge state),
+     * repainted every {@code periodTicks} while riding in the Dark Sea.
+     */
+    public record HudSettings(boolean enabled, int periodTicks) {
+    }
+
+    /**
      * Naval weapons, together. {@code chainshotSlowSeconds} /
      * {@code chainshotSpeedFactor} are the sail-shredder arrow's harder,
      * longer wounded-hull slow; {@code hullpiercerDamage} is the boat-killer
@@ -156,7 +163,8 @@ public record DarkSeaSettings(
      */
     public record NavalSettings(RamSettings ram, HullSettings hull, SurgeSettings surge,
                                 int chainshotSlowSeconds, double chainshotSpeedFactor,
-                                double hullpiercerDamage, HarpoonSettings harpoon) {
+                                double hullpiercerDamage, HarpoonSettings harpoon,
+                                HudSettings hud) {
     }
 
     /** How many awake relics may work from a player's inventory at once. */
@@ -366,11 +374,14 @@ public record DarkSeaSettings(
                 Math.max(4, cfg.getDouble("naval.harpoon.range", 24)),
                 Math.max(0.5, cfg.getDouble("naval.harpoon.pull-seconds", 2.0)),
                 Math.max(0.05, cfg.getDouble("naval.harpoon.pull-strength", 0.35)));
+        HudSettings hud = new HudSettings(
+                cfg.getBoolean("naval.hud.enabled", true),
+                Math.max(2, cfg.getInt("naval.hud.period-ticks", 10)));
         return new NavalSettings(ram, hull, surge,
                 Math.max(1, cfg.getInt("naval.chainshot.slow-seconds", 6)),
                 Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.chainshot.speed-factor", 0.5))),
                 Math.max(0, cfg.getDouble("naval.hullpiercer.damage", 6.0)),
-                harpoon);
+                harpoon, hud);
     }
 
     private static BoatSettings loadBoat(FileConfiguration cfg, Logger log) {
