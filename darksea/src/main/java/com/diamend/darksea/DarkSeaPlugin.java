@@ -1,6 +1,7 @@
 package com.diamend.darksea;
 
 import com.diamend.darksea.armor.ProtectionService;
+import com.diamend.darksea.boat.BoatMenuService;
 import com.diamend.darksea.boat.BoatService;
 import com.diamend.darksea.combat.NaxCombatListener;
 import com.diamend.darksea.combat.SeaGuardListener;
@@ -52,6 +53,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private PlayerDataStore dataStore;
     private ProtectionService protection;
     private BoatService boat;
+    private BoatMenuService boatMenu;
     private RelicService relics;
     private IslandPlacer placer;
     private NavalCombatService naval;
@@ -86,6 +88,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         dataStore = new PlayerDataStore(new File(getDataFolder(), "playerdata"), getLogger());
         protection = new ProtectionService();
         boat = new BoatService(this, dataStore);
+        boatMenu = new BoatMenuService(this);
         relics = new RelicService(this);
         placer = new IslandPlacer(this, registry);
         naval = new NavalCombatService(this);
@@ -98,6 +101,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(protection, this);
         getServer().getPluginManager().registerEvents(boat, this);
+        getServer().getPluginManager().registerEvents(boatMenu, this);
         getServer().getPluginManager().registerEvents(chestRefill, this);
         getServer().getPluginManager().registerEvents(exposureTask, this);
         getServer().getPluginManager().registerEvents(relics, this);
@@ -217,6 +221,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public BoatService boat() {
         return boat;
+    }
+
+    public BoatMenuService boatMenu() {
+        return boatMenu;
     }
 
     public IslandPlacer placer() {

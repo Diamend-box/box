@@ -173,4 +173,33 @@ class NavalMathTest {
         Vector still = NavalMath.ramKnockback(pos, new Vector(0, 0, 0), pos.clone(), 0.8);
         assertEquals(0.0, still.length(), 1e-9, "two motionless overlapping boats: no shove");
     }
+
+    // ------------------------------------------------------------------
+    // Repair pricing (home dry-dock)
+    // ------------------------------------------------------------------
+
+    @Test
+    void repairCostScalesWithMissingHp() {
+        // 6 HP missing on a 10-HP hull at 2 Chronons/HP = 12.
+        assertEquals(12, NavalMath.repairCost(4.0, 10.0, 2.0));
+        // Half the damage, half the price.
+        assertEquals(6, NavalMath.repairCost(7.0, 10.0, 2.0));
+    }
+
+    @Test
+    void aFullHullIsFreeToRepair() {
+        assertEquals(0, NavalMath.repairCost(10.0, 10.0, 2.0));
+        assertEquals(0, NavalMath.repairCost(11.0, 10.0, 2.0), "over-full never bills negative");
+    }
+
+    @Test
+    void repairCostRoundsUpSoAScratchStillCostsSomething() {
+        // 0.5 HP missing at 1 Chronon/HP = 0.5 -> rounds up to 1.
+        assertEquals(1, NavalMath.repairCost(9.5, 10.0, 1.0));
+    }
+
+    @Test
+    void repairCostNeverGoesNegativeOnAConfigTypo() {
+        assertEquals(0, NavalMath.repairCost(4.0, 10.0, -2.0), "a negative rate can't pay the player");
+    }
 }

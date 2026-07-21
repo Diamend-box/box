@@ -101,12 +101,17 @@ class ConfigParsingTest {
         assertTrue(settings.naval().hud().enabled(), "the shipped config turns the boat HUD on");
         assertTrue(settings.naval().hud().periodTicks() >= 2,
                 "HUD repaint must never run every tick");
+        assertEquals(2.0, settings.naval().repair().costPerHp(),
+                "the shipped dry-dock bills 2 Chronons per missing hull HP");
 
         assertFalse(settings.messages().isEmpty());
         assertTrue(settings.messages().containsKey("prefix"));
         assertTrue(settings.messages().containsKey("reset-full-warning"));
         assertTrue(settings.messages().containsKey("naval-hooked"));
         assertTrue(settings.messages().containsKey("naval-surge-cooldown"));
+        assertTrue(settings.messages().containsKey("boat-stowed"));
+        assertTrue(settings.messages().containsKey("boat-repaired"));
+        assertTrue(settings.messages().containsKey("boat-pickup-combat"));
     }
 
     @Test

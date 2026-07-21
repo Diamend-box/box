@@ -216,6 +216,12 @@ naval:
     regen-per-second: 0.5
     wounded-slow-seconds: 4
     wounded-speed-factor: 0.7
+  # The home dry-dock, reached from the boat wheel (sneak-right-click your
+  # boat, or /ds boat). A wounded hull is patched straight back to full for
+  # cost-per-hp Chronons per missing HP — but ONLY inside the home sanctuary
+  # (combat.pvp-safe-radius), so a captain has to sail all the way home to it.
+  repair:
+    cost-per-hp: 2.0
   # Tap sprint or jump at the tiller: a burst to boost-factor * the speed
   # cap, then the cooldown. Surging while harpooned snaps the line instead.
   surge:
@@ -302,8 +308,18 @@ messages:
   boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
   boat-max: "<yellow>Your boat is already fully upgraded."
   boat-wrecked: "<red>Your boat is wrecked — you're adrift in the Dark Sea!"
-  boat-need-token: "<red>Hold a level-{level} Boat Upgrade Token in your main hand to upgrade."
+  boat-need-token: "<red>You need a level-{level} Boat Upgrade Token to upgrade."
   boat-set: "<green>Set {player}'s boat level to {level} ({name}<green>)."
+
+  boat-menu-none: "<red>No boat here — sit in your boat or stand beside it, then try again."
+  boat-menu-gone: "<red>That boat is no longer here."
+  boat-stowed: "<green>Boat stowed — it's back in your pack as a Dark Sea Boat."
+  boat-pickup-combat: "<red>You can't stow your boat in combat — wait for the fight to cool off."
+  boat-pickup-occupied: "<red>Someone else is aboard — you can't stow it out from under them."
+  boat-repaired: "<green>Hull patched to full at the dock. <aqua>-{cost} Chronons</aqua>"
+  boat-repair-sound: "<yellow>Your hull is already sound."
+  boat-repair-away: "<red>You can only repair at the home island — sail back to dock."
+  boat-repair-need-chronons: "<red>Repairs cost <aqua>{cost} Chronons</aqua> — you carry {have}."
 
   naval-surge: "<aqua>Surge!"
   naval-surge-cooldown: "<gray>Surge ready in {seconds}s."

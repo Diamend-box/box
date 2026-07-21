@@ -163,10 +163,18 @@ public record DarkSeaSettings(
      * arrow's hull damage, applied with only half the target's toughness
      * counted.
      */
+    /**
+     * The home dry-dock: a wounded hull is patched back to full for
+     * {@code costPerHp} Chronons per missing HP — but only within the home
+     * sanctuary, so a captain must sail all the way back to safety to use it.
+     */
+    public record RepairSettings(double costPerHp) {
+    }
+
     public record NavalSettings(RamSettings ram, HullSettings hull, SurgeSettings surge,
                                 int chainshotSlowSeconds, double chainshotSpeedFactor,
                                 double hullpiercerDamage, HarpoonSettings harpoon,
-                                HudSettings hud) {
+                                HudSettings hud, RepairSettings repair) {
     }
 
     /** How many awake relics may work from a player's inventory at once. */
@@ -380,11 +388,13 @@ public record DarkSeaSettings(
         HudSettings hud = new HudSettings(
                 cfg.getBoolean("naval.hud.enabled", true),
                 Math.max(2, cfg.getInt("naval.hud.period-ticks", 10)));
+        RepairSettings repair = new RepairSettings(
+                Math.max(0, cfg.getDouble("naval.repair.cost-per-hp", 2.0)));
         return new NavalSettings(ram, hull, surge,
                 Math.max(1, cfg.getInt("naval.chainshot.slow-seconds", 6)),
                 Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.chainshot.speed-factor", 0.5))),
                 Math.max(0, cfg.getDouble("naval.hullpiercer.damage", 6.0)),
-                harpoon, hud);
+                harpoon, hud, repair);
     }
 
     private static BoatSettings loadBoat(FileConfiguration cfg, Logger log) {

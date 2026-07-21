@@ -149,6 +149,9 @@ public final class DarkSeaItems {
     public static final String HULLPIERCER_ARROW = "hullpiercer_arrow";
     public static final String HARPOON_GUN = "harpoon_gun";
 
+    /** The stowable Dark Sea Boat — what picking a boat up hands back. */
+    public static final String DARK_SEA_BOAT = "dark_sea_boat";
+
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
@@ -160,6 +163,7 @@ public final class DarkSeaItems {
         ids.add(CHAINSHOT_ARROW);
         ids.add(HULLPIERCER_ARROW);
         ids.add(HARPOON_GUN);
+        ids.add(DARK_SEA_BOAT);
         for (Relic relic : Relic.values()) {
             ids.add(relic.id());
         }
@@ -216,6 +220,7 @@ public final class DarkSeaItems {
                             "<gray>not sailors.</gray>",
                             "<dark_gray>Heavy hull damage, cuts through plating.</dark_gray>"));
             case HARPOON_GUN -> createHarpoonGun();
+            case DARK_SEA_BOAT -> createDarkSeaBoat();
             default -> null;
         };
     }
@@ -250,6 +255,20 @@ public final class DarkSeaItems {
                 noItalic(MM.deserialize("<dark_gray>Surging snaps the line.</dark_gray>"))));
         meta.setUnbreakable(true);
         meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, HARPOON_GUN);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack createDarkSeaBoat() {
+        ItemStack item = new ItemStack(Material.DARK_OAK_BOAT);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<color:#2a7d8c>Dark Sea Boat</color>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>A vessel for the Deep. Set it</gray>")),
+                noItalic(MM.deserialize("<gray>down on open water to sail.</gray>")),
+                noItalic(MM.deserialize("<dark_gray>Sneak-right-click your boat to open</dark_gray>")),
+                noItalic(MM.deserialize("<dark_gray>its wheel: upgrade, repair, stow.</dark_gray>"))));
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, DARK_SEA_BOAT);
         item.setItemMeta(meta);
         return item;
     }

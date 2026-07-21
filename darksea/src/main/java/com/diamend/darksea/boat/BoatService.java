@@ -7,6 +7,7 @@ import com.diamend.darksea.config.DarkSeaSettings.BoatLevel;
 import com.diamend.darksea.data.PlayerDataStore;
 import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.relic.Relic;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -15,12 +16,15 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,6 +39,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * never run away.
  */
 public final class BoatService implements Listener {
+
+    /** PDC tag on a boat entity: the UUID string of the player who owns it. */
+    static final NamespacedKey OWNER_KEY =
+            Objects.requireNonNull(NamespacedKey.fromString("darksea:boat_owner"));
 
     private final DarkSeaPlugin plugin;
     private final PlayerDataStore data;
@@ -127,25 +135,45 @@ public final class BoatService implements Listener {
     }
 
     /**
-     * Consume a matching upgrade token from the main hand and raise the boat
-     * level by one. Tokens are per-level and only apply in sequence.
+     * Consume a matching upgrade token from anywhere in the inventory and raise
+     * the boat level by one. Tokens are per-level and only apply in sequence.
+     * Scanning the whole pack (not just the main hand) lets the boat wheel's
+     * Upgrade button and {@code /ds boat upgrade} share this one path.
      */
     public void upgrade(Player player) {
         int current = levelOf(player);
         int next = current + 1;
         boolean nextExists = plugin.settings().boat().levels().containsKey(next);
-        ItemStack hand = player.getInventory().getItemInMainHand();
-        switch (evaluateUpgrade(current, SeaArmor.tokenLevelOf(hand), nextExists)) {
+        int slot = findTokenSlot(player, next);
+        int tokenLevel = slot >= 0 ? next : 0;  // 0 = no matching token in the pack
+        switch (evaluateUpgrade(current, tokenLevel, nextExists)) {
             case AT_MAX -> plugin.messages().send(player, "boat-max");
             case WRONG_TOKEN ->
                     plugin.messages().send(player, "boat-need-token", "level", String.valueOf(next));
             case UPGRADED -> {
-                hand.setAmount(hand.getAmount() - 1);
+                ItemStack token = player.getInventory().getItem(slot);
+                token.setAmount(token.getAmount() - 1);
                 setLevel(player, next);
                 plugin.messages().send(player, "boat-upgraded",
                         "name", stats(next).name(), "level", String.valueOf(next));
             }
         }
+    }
+
+    /** The first inventory slot holding a boat token of {@code level}, or -1. */
+    private int findTokenSlot(Player player, int level) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            if (SeaArmor.tokenLevelOf(contents[i]) == level) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Whether the player carries a boat token of the given level anywhere. */
+    public boolean hasUpgradeToken(Player player, int level) {
+        return findTokenSlot(player, level) >= 0;
     }
 
     @EventHandler
@@ -242,6 +270,49 @@ public final class BoatService implements Listener {
         if (rider != null) {
             plugin.messages().send(rider, "boat-wrecked");
         }
+    }
+
+    /**
+     * Stamps ownership the first time a player boards a Dark Sea boat, and never
+     * overwrites it — an enemy can hop in and sail off, but can't claim the hull
+     * out from under you. Ownership gates the boat wheel and stowing, not who
+     * may ride.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onVehicleEnter(VehicleEnterEvent event) {
+        if (!(event.getVehicle() instanceof Boat boat)
+                || !(event.getEntered() instanceof Player player)
+                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+            return;
+        }
+        var pdc = boat.getPersistentDataContainer();
+        if (!pdc.has(OWNER_KEY, PersistentDataType.STRING)) {
+            pdc.set(OWNER_KEY, PersistentDataType.STRING, player.getUniqueId().toString());
+        }
+    }
+
+    /** The owner's UUID stamped on a boat, or null if it was never boarded. */
+    public static UUID ownerOf(Boat boat) {
+        String raw = boat.getPersistentDataContainer().get(OWNER_KEY, PersistentDataType.STRING);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    /** Whether this player owns the boat (was the first to board it). */
+    public static boolean isOwner(Boat boat, Player player) {
+        return player.getUniqueId().equals(ownerOf(boat));
+    }
+
+    /** Stamps a player as a boat's owner — used to claim an unowned hull. */
+    public static void claim(Boat boat, Player player) {
+        boat.getPersistentDataContainer().set(OWNER_KEY, PersistentDataType.STRING,
+                player.getUniqueId().toString());
     }
 
     /** The player riding a boat (the first passenger), or null if none. */

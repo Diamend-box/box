@@ -321,8 +321,32 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
   toughness-divide, so it takes the already-softened damage whole. Naval
   ammo is skipped (PDC-tagged) so `NavalWeaponListener` isn't double-hit;
   the sanctuary and unridden/empty boats are left to vanilla (keeps
-  owner-pickup working). Wyatt has a separate idea coming for pickup +
-  destruction — flagged, not yet built.
+  owner-pickup working).
+- **The boat wheel (GUI)** (Wyatt, Jul 21): sneak-right-click your own boat
+  — or `/ds boat` — opens the plugin's first chest menu (`BoatMenu` /
+  `BoatMenuService`), Wyatt's design. Four controls: **Upgrade** (now
+  consumes the next-level token from anywhere in the pack, not just the
+  main hand — `BoatService.upgrade` was generalized, so the command shares
+  it), a **Stats** readout (class/level, live hull HP, toughness, shield,
+  speed, combat state), **Repair**, and **Pick Up**.
+  - *Ownership*: a boat is stamped (`darksea:boat_owner` PDC) with the first
+    player to board it and never reassigned, so an enemy can ride it but
+    can't claim it; the wheel + stow are owner-only. An unowned hull is
+    claimed by the first captain to open its wheel.
+  - *Pick Up* stows the boat as a new **Dark Sea Boat** item
+    (`DarkSeaItems.DARK_SEA_BOAT`, dark-oak boat) — **blocked while the hull
+    is combat-tagged** so nobody pockets their boat out from under a ram to
+    deny the kill, and blocked if a non-owner is aboard. Level rides the
+    player, so re-placing the item gives you your level back.
+  - *Repair* patches the hull straight to full for
+    `naval.repair.cost-per-hp` Chronons per missing HP (default 2 → 20 max),
+    **but only inside the home sanctuary** (Wyatt's call) — the home island
+    is now a proper dry-dock, and you must sail all the way back to use it.
+    Price is pure `NavalMath.repairCost`, CI-pinned. Self-gates against
+    abuse: home is already no-PvP, so you can't repair-tank at sea.
+  - Return-day tuning: repair cost, whether stow should also require being
+    out of the sanctuary/stationary, and Wyatt's separate **destruction**
+    idea (still to come — this covered pickup).
 - Boxpvp note (flagged to Wyatt): escape-always-wins would break the
   run-loot kill economy — the richest targets have the best boats. The
   wounded-hull rule is what keeps them killable.

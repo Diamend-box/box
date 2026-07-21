@@ -124,4 +124,15 @@ public final class NavalMath {
         double healed = storedHp + (healingMillis / 1000.0) * Math.max(0, regenPerSecond);
         return Math.min(maxHp, healed);
     }
+
+    /**
+     * The Chronon price to patch a hull back to full at the home dry-dock:
+     * {@code costPerHp} per missing HP, rounded up, so a scratch is cheap and a
+     * near-wreck costs most of a purse. A full hull is free (0), and the price
+     * is never negative even if a config typo sets a negative rate.
+     */
+    public static int repairCost(double currentHp, double maxHp, double costPerHp) {
+        double missing = Math.max(0, maxHp - currentHp);
+        return (int) Math.ceil(missing * Math.max(0, costPerHp));
+    }
 }

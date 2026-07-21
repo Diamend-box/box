@@ -195,6 +195,40 @@ public final class NavalCombatService implements Listener {
         return hp;
     }
 
+    /**
+     * Whether this boat is combat-tagged right now — hit within the last
+     * {@code combatTagSeconds}. The boat wheel gates stowing on this so nobody
+     * can pocket their hull out from under a ram and deny the kill.
+     */
+    public boolean isCombatTagged(Boat boat) {
+        HullState state = hulls.get(boat.getUniqueId());
+        if (state == null) {
+            return false;
+        }
+        return System.currentTimeMillis() - state.lastHitMillis()
+                < naval().hull().combatTagSeconds() * 1000L;
+    }
+
+    /**
+     * A full patch-up at the home dry-dock: forget the hull's wounds and its
+     * wounded-speed slow so it reads and sails as new. The caller has already
+     * checked location and billed the Chronons.
+     */
+    public void repairHull(Boat boat) {
+        hulls.remove(boat.getUniqueId());
+        slows.remove(boat.getUniqueId());
+    }
+
+    /** Drop all naval state for a boat that's leaving the world (e.g. stowed). */
+    public void forgetBoat(Boat boat) {
+        clearBoat(boat.getUniqueId());
+    }
+
+    /** Whether a boat sits in the home sanctuary — the only place it repairs. */
+    public boolean atHomeDock(Boat boat) {
+        return withinSanctuary(boat.getLocation());
+    }
+
     /** Whole seconds until this player's surge is ready; 0 means ready now. */
     public int surgeSecondsLeft(Player player) {
         long readyAt = surgeReadyAt.getOrDefault(player.getUniqueId(), 0L);

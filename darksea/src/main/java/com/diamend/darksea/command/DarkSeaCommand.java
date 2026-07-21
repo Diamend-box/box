@@ -15,6 +15,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Boat;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -78,6 +79,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         Messages msg = plugin.messages();
         msg.sendBare(sender, "help-header");
         helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
+        helpLine(sender, "/ds boat", "open the boat wheel (upgrade, repair, stow)", "darksea.use");
         helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
         helpLine(sender, "/ds relic revive", "wake the held relic at the calm center (costs Chronons)", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
@@ -155,6 +157,19 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
     private void boat(CommandSender sender, String[] args) {
         Messages msg = plugin.messages();
         String action = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (action.isEmpty() || action.equals("menu")) {
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            Boat boat = plugin.boatMenu().targetBoat(player);
+            if (boat == null) {
+                msg.send(player, "boat-menu-none");
+                return;
+            }
+            plugin.boatMenu().open(player, boat);
+            return;
+        }
         if (action.equals("upgrade")) {
             if (!(sender instanceof Player player)) {
                 msg.send(sender, "players-only");
@@ -444,6 +459,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         } else if (args.length == 2) {
             switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "boat" -> {
+                    options.add("menu");
                     options.add("upgrade");
                     if (admin) {
                         options.add("set");
