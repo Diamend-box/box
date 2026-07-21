@@ -221,7 +221,7 @@ class LootShippedConfigTest {
                 }
             }
         }
-        assertEquals(Set.of(1, 2, 3), levels, "token levels reachable from chests");
+        assertEquals(Set.of(1, 2, 3, 4, 5), levels, "token levels reachable from chests");
     }
 
     @Test

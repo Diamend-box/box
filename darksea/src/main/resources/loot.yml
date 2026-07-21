@@ -141,6 +141,7 @@ tiers:
       - { type: armor, tier: 4, weight: 1 }
       - { type: token, level: 2, weight: 2 }
       - { type: token, level: 3, weight: 2 }
+      - { type: token, level: 4, weight: 1 }
       - { type: custom, id: chainshot_arrow,      min: 6, max: 10, weight: 3 }
       - { type: custom, id: hullpiercer_arrow,    min: 3, max: 6, weight: 3 }
     vault:
@@ -180,6 +181,8 @@ tiers:
       - { type: custom, id: order_ceremonial_blade, weight: 2 }
       - { type: armor, tier: 4, weight: 8 }
       - { type: token, level: 3, weight: 3 }
+      - { type: token, level: 4, weight: 2 }
+      - { type: token, level: 5, weight: 1 }
       - { type: custom, id: hullpiercer_arrow,    min: 4, max: 8, weight: 4 }
       - { type: custom, id: harpoon_gun,          weight: 2 }
     vault:
@@ -195,3 +198,5 @@ tiers:
         - { type: custom, id: order_ceremonial_blade, weight: 4 }
         - { type: armor, tier: 4, weight: 10 }
         - { type: token, level: 3, weight: 6 }
+        - { type: token, level: 4, weight: 4 }
+        - { type: token, level: 5, weight: 2 }

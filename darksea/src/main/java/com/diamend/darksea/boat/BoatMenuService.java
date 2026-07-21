@@ -182,7 +182,7 @@ public final class BoatMenuService implements Listener {
             plugin.messages().send(player, "boat-wreck-away");
             return;
         }
-        double maxHp = plugin.settings().naval().hull().maxHp();
+        double maxHp = plugin.naval().maxHpForLevel(plugin.boat().levelOf(player));
         int cost = NavalMath.repairCost(0, maxHp, plugin.settings().naval().repair().costPerHp());
         if (!DarkSeaItems.removeChronons(player.getInventory(), cost)) {
             plugin.messages().send(player, "boat-repair-need-chronons",
@@ -201,7 +201,7 @@ public final class BoatMenuService implements Listener {
     // ------------------------------------------------------------------
 
     private void repair(Player player, Boat boat) {
-        double maxHp = plugin.settings().naval().hull().maxHp();
+        double maxHp = plugin.naval().maxHp(boat);
         double hp = plugin.naval().hullHp(boat);
         if (hp >= maxHp) {
             plugin.messages().send(player, "boat-repair-sound");
@@ -284,7 +284,7 @@ public final class BoatMenuService implements Listener {
         int level = plugin.boat().levelOf(player);
         var stats = plugin.boat().stats(level);
         double hp = plugin.naval().hullHp(boat);
-        double maxHp = plugin.settings().naval().hull().maxHp();
+        double maxHp = plugin.naval().maxHp(boat);
         String state = plugin.naval().isCombatTagged(boat)
                 ? "<red>In combat</red>"
                 : (hp >= maxHp ? "<green>Hull sound</green>" : "<yellow>Repairing</yellow>");
@@ -292,6 +292,7 @@ public final class BoatMenuService implements Listener {
                 "<gray>Class: <aqua>" + stats.name() + "</aqua> (level " + level + ")",
                 "<gray>Hull: <white>" + fmt(hp) + " / " + fmt(maxHp) + "</white>",
                 "<gray>Toughness: <white>" + fmt(stats.toughness()) + "x</white> <dark_gray>(damage divisor)</dark_gray>",
+                "<gray>Ram Power: <white>" + fmt(plugin.naval().ramPower(boat)) + "x</white> <dark_gray>(damage you deal)</dark_gray>",
                 "<gray>Shield: <white>" + stats.shield() + "</white>",
                 "<gray>Speed: <white>" + fmt(stats.speed()) + "x</white>",
                 "<gray>Status: " + state));
@@ -299,7 +300,7 @@ public final class BoatMenuService implements Listener {
 
     private ItemStack repairButton(Player player, Boat boat) {
         double hp = plugin.naval().hullHp(boat);
-        double maxHp = plugin.settings().naval().hull().maxHp();
+        double maxHp = plugin.naval().maxHp(boat);
         if (hp >= maxHp) {
             return button(Material.OAK_PLANKS, "<green>Hull Sound</green>",
                     List.of("<dark_gray>Nothing to repair.</dark_gray>"));

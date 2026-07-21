@@ -97,7 +97,12 @@ public record DarkSeaSettings(
      * survives more hits before it's sunk, so the upgrade path buys naval
      * survivability, not just pace.
      */
-    public record BoatLevel(String name, double speed, int shield, double toughness) {
+    /**
+     * A boat tier's stats. {@code hp} is the tier's own hull max HP; 0 means
+     * "use the global {@code naval.hull.max-hp}", so only the tiers that want a
+     * bigger hull than the default need to set it.
+     */
+    public record BoatLevel(String name, double speed, int shield, double toughness, double hp) {
     }
 
     public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels) {
@@ -419,11 +424,12 @@ public record DarkSeaSettings(
                         sec.getString(key + ".name", "Level " + level),
                         Math.max(1.0, sec.getDouble(key + ".speed", 1.0)),
                         Math.max(0, sec.getInt(key + ".shield", 0)),
-                        Math.max(1.0, sec.getDouble(key + ".toughness", 1.0))));
+                        Math.max(1.0, sec.getDouble(key + ".toughness", 1.0)),
+                        Math.max(0, sec.getDouble(key + ".hp", 0.0))));
             }
         }
         if (!levels.containsKey(0)) {
-            levels.put(0, new BoatLevel("Rowboat", 1.0, 0, 1.0));
+            levels.put(0, new BoatLevel("Rowboat", 1.0, 0, 1.0, 0.0));
         }
         return new BoatSettings(Math.max(0.1, cfg.getDouble("boat.speed-cap-base", 0.45)), Map.copyOf(levels));
     }

@@ -252,7 +252,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         msg.send(player, "boat-debug-damaged",
                 "amount", trim(amount),
                 "hp", trim(hp),
-                "max", trim(plugin.settings().naval().hull().maxHp()));
+                "max", trim(plugin.naval().maxHp(boat)));
     }
 
     /** Formats a double without a trailing ".0" for whole numbers. */

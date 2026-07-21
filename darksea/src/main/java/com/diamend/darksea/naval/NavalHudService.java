@@ -65,7 +65,7 @@ public final class NavalHudService {
             String line = NavalHud.render(
                     plugin.boat().stats(plugin.boat().levelOf(player)).name(),
                     naval.hullHp(boat),
-                    plugin.settings().naval().hull().maxHp(),
+                    naval.maxHp(boat),
                     naval.speedCeiling(boat) < 1.0,
                     naval.surgeSecondsLeft(player),
                     naval.isHooked(boat));

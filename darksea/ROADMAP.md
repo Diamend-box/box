@@ -296,6 +296,23 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     of the momentary slow and the persistent per-HP tax, floored at 15% so a
     beaten hull can always limp home to the dry-dock. Return-day knob if the
     chase feels too swingy.
+  - **Ram Power (Wyatt)**: the offensive stat that was missing — the
+    attacker's charge lands harder per boat level (linear off 1.0,
+    `naval.ram.power-per-level` = 0.25): Rowboat 1.00×, Sloop 1.25×, Cutter
+    1.50×, Stormrunner 1.75×, Tempest 2.00×, Maelstrom 2.25×. Boosts only the
+    hull damage *dealt* (the 25% bouncing back rides at 1.0), and only one hit,
+    so a low-tier swarm still gangs a maxed boat.
+  - **Six boat tiers (Wyatt: "add 2 more levels, up the HP not just
+    toughness")**: levels 4–5 (**Tempest**, **Maelstrom**) join the ladder,
+    and hull HP is now a per-tier stat (`boat.levels.N.hp`; 0 = fall back to
+    the global `naval.hull.max-hp` = 10). Stormrunner 14, Tempest 18,
+    Maelstrom 24 — the apex tiers out-soak the default both by toughness AND
+    raw HP. Their tokens drop in the deep zones (3–4). NOTE for return day:
+    the per-*absolute*-HP speed tax now bites big hulls hard — a 24-HP
+    Maelstrom at half hull crawls at 40% (vs a Rowboat's 75% at half), and
+    hits the 15% floor with 7 HP still left. Intended "big ship = ponderous
+    when holed", but if it feels too punishing we can switch the tax to
+    per-*fraction* missing so all tiers slow at the same rate.
   - **Ram surge**: sprint OR jump key at the tiller (both, because toggle
     sprint makes the sprint flag latch — jump behaves the same for
     everyone), burst to 1.8× the cap, 9s cooldown.

@@ -81,6 +81,23 @@ public final class NavalCombatService implements Listener {
         return plugin.settings().naval();
     }
 
+    /**
+     * The hull's max HP for a given boat tier: the tier's own {@code hp} if it
+     * sets one, else the global {@code naval.hull.max-hp}. The two apex tiers
+     * carry bigger hulls, so their whole HP model — regen, the per-missing-HP
+     * speed tax, and repair cost — scales off this, not the flat default.
+     */
+    public double maxHpForLevel(int level) {
+        double tierHp = plugin.boat().stats(level).hp();
+        return tierHp > 0 ? tierHp : naval().hull().maxHp();
+    }
+
+    /** The hull's max HP for a boat, resolved from its rider's tier. */
+    public double maxHp(Boat boat) {
+        Player rider = boatRider(boat);
+        return maxHpForLevel(rider != null ? plugin.boat().levelOf(rider) : 0);
+    }
+
     // ------------------------------------------------------------------
     // Wounded hull: the speed tax on damage
     // ------------------------------------------------------------------
@@ -107,7 +124,7 @@ public final class NavalCombatService implements Listener {
      * hull regenerates or is repaired.
      */
     public double hullSpeedFactor(Boat boat) {
-        return NavalMath.hullSpeedFactor(hullHp(boat), naval().hull().maxHp(),
+        return NavalMath.hullSpeedFactor(hullHp(boat), maxHp(boat),
                 naval().hull().speedPenaltyPerHp(), HULL_SPEED_FLOOR);
     }
 
@@ -189,7 +206,7 @@ public final class NavalCombatService implements Listener {
             return;
         }
         long now = System.currentTimeMillis();
-        double maxHp = naval().hull().maxHp();
+        double maxHp = maxHp(boat);
         HullState state = hulls.get(boat.getUniqueId());
         double hp = state == null ? maxHp
                 : NavalMath.regenHp(state.hp(), maxHp, now - state.lastHitMillis(),
@@ -208,7 +225,7 @@ public final class NavalCombatService implements Listener {
      * {@link #damageHull}: a hull quiet past the regen window reads full.
      */
     public double hullHp(Boat boat) {
-        double maxHp = naval().hull().maxHp();
+        double maxHp = maxHp(boat);
         HullState state = hulls.get(boat.getUniqueId());
         if (state == null) {
             return maxHp;

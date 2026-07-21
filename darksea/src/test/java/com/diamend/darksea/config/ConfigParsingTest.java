@@ -79,10 +79,20 @@ class ConfigParsingTest {
         assertTrue(settings.generation().demoIslands());
         assertTrue(settings.generation().demoPaceTicks() >= 1);
 
-        assertEquals(4, settings.boat().levels().size());
+        assertEquals(6, settings.boat().levels().size());
         assertEquals(0, settings.boat().levels().get(0).shield());
         assertEquals(1, settings.boat().levels().get(3).shield());
+        assertEquals(2, settings.boat().levels().get(5).shield());
         assertTrue(settings.boat().levels().get(3).speed() > settings.boat().levels().get(1).speed());
+        assertTrue(settings.boat().levels().get(5).speed() > settings.boat().levels().get(3).speed());
+        // The two apex tiers carry a bigger hull than the global default;
+        // the low tiers leave hp at 0 to fall back on it.
+        assertEquals(0.0, settings.boat().levels().get(0).hp(), 1e-9);
+        assertEquals(18.0, settings.boat().levels().get(4).hp(), 1e-9);
+        assertEquals(24.0, settings.boat().levels().get(5).hp(), 1e-9);
+        assertTrue(settings.boat().levels().get(5).toughness()
+                > settings.boat().levels().get(3).toughness(),
+                "each apex tier out-tanks the one below it");
 
         assertEquals(0.75, settings.naval().ram().defenderShare());
         assertEquals(0.25, settings.naval().ram().powerPerLevel(), 1e-9,
