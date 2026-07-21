@@ -470,11 +470,13 @@ risk — fine for boxpvp, revisit only if ganking gets oppressive.
 
 ### 6b. The outer rings — BUILT (Wyatt, this session)
 Two new danger rings past the Abyssal Reaches, and a new zone concept.
-- **Zone 5 — The Sunless Trench** (tier 5, bounded 7000–9000): survivable
+- **Zone 5 — The Sunless Trench** (tier 5, bounded 14500–24500): survivable
   ONLY with the best kit. Tier-4 armor + a shield-2 boat (protection 6)
   fully negates it; tier-4 armor alone leaves you stung. No islands — it's
-  the approach gauntlet.
-- **Zone 6 — The Devouring Rim** (tier 6, unbounded outermost): the lethal
+  the approach gauntlet. Pushed far out (Wyatt): the Trench begins ~14,500
+  from center — ~15 min at a maxed Maelstrom's 16.2 b/s, and the whole run
+  out is tier-4 danger.
+- **Zone 6 — The Devouring Rim** (tier 6, unbounded, begins ~24,500 ≈ 25 min out): the lethal
   rim. New `bypass-protection: true` zone flag — armor and shield are
   ignored, so its full effects (Wither II + Darkness + Slowness II +
   Weakness) land on everyone no matter the gear. Wither ignores armor and

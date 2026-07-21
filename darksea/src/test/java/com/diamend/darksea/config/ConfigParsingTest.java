@@ -58,6 +58,13 @@ class ConfigParsingTest {
         assertEquals(6, zones.maxTier());
         assertEquals("safe", zones.zoneAt(0).id());
         assertEquals("zone4", zones.zoneAt(6000.0 * 6000.0).id());
+        // The two outer rings are pushed far out: the Trench (tier 5) starts at
+        // ~14,500 and the Rim (tier 6) at ~24,500 — roughly 15 and 25 minutes
+        // out at top boat speed.
+        assertEquals("zone4", zones.zoneAt(14000.0 * 14000.0).id());
+        assertEquals("zone5", zones.zoneAt(15000.0 * 15000.0).id());
+        assertEquals("zone5", zones.zoneAt(24000.0 * 24000.0).id());
+        assertEquals("zone6", zones.zoneAt(25000.0 * 25000.0).id());
         // The outermost ring is the lethal rim, and only it bypasses protection.
         assertEquals("zone6", zones.zoneAt(50000.0 * 50000.0).id());
         assertTrue(zones.byTier(6).bypassProtection(), "the rim ignores armor and shield");

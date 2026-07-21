@@ -60,7 +60,10 @@ zones:
         amplifier: 0
   - id: zone4
     name: "<dark_purple>The Abyssal Reaches</dark_purple>"
-    max-radius: 7000
+    # Stretched out so the tier-5 Trench begins ~14,500 blocks from center: a
+    # maxed Maelstrom (16.2 b/s) needs ~15 min just to reach ring 5, and the
+    # whole approach is tier-4 danger — you cross it in full kit or not at all.
+    max-radius: 14500
     required-tier: 4
     effects:
       - type: wither
@@ -72,7 +75,9 @@ zones:
   # stung. No islands out here — it's the approach gauntlet to the rim.
   - id: zone5
     name: "<dark_red>The Sunless Trench</dark_red>"
-    max-radius: 9000
+    # Ends ~24,500 from center, where the Devouring Rim begins: ~25 min out at
+    # top boat speed. The Trench itself is a ~10,000-block crossing.
+    max-radius: 24500
     required-tier: 5
     effects:
       - type: wither
