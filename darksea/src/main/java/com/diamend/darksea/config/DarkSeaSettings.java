@@ -299,7 +299,8 @@ public record DarkSeaSettings(
                     effects.add(new Zone.ZoneEffect(type, Math.max(0, toInt(em.get("amplifier"), 0))));
                 }
             }
-            zones.add(new Zone(id, name, maxRadius, requiredTier, List.copyOf(effects)));
+            boolean bypassProtection = zm.get("bypass-protection") instanceof Boolean b && b;
+            zones.add(new Zone(id, name, maxRadius, requiredTier, List.copyOf(effects), bypassProtection));
         }
         return zones;
     }

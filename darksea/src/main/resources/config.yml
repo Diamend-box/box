@@ -60,12 +60,45 @@ zones:
         amplifier: 0
   - id: zone4
     name: "<dark_purple>The Abyssal Reaches</dark_purple>"
-    max-radius: -1
+    max-radius: 7000
     required-tier: 4
     effects:
       - type: wither
         amplifier: 1
       - type: slowness
+        amplifier: 1
+  # Tier 5: survivable ONLY with the best kit. Tier-4 armor + a shield-2 boat
+  # (protection 6) fully negates it (5-4-2 < 0); tier-4 armor alone leaves you
+  # stung. No islands out here — it's the approach gauntlet to the rim.
+  - id: zone5
+    name: "<dark_red>The Sunless Trench</dark_red>"
+    max-radius: 9000
+    required-tier: 5
+    effects:
+      - type: wither
+        amplifier: 2
+      - type: weakness
+        amplifier: 1
+      - type: slowness
+        amplifier: 1
+  # Tier 6: the lethal rim. bypass-protection means armor AND shield are
+  # ignored — its full effects land on everyone, no matter the gear. The wither
+  # is the killer (it ignores armor), so the only way across is to out-heal it
+  # with stacks of golden/enchanted apples, bleeding the whole way. Whatever is
+  # out here is bait: reachable in theory, almost never in practice.
+  - id: zone6
+    name: "<dark_red>The Devouring Rim</dark_red>"
+    max-radius: -1
+    required-tier: 6
+    bypass-protection: true
+    effects:
+      - type: wither
+        amplifier: 2
+      - type: darkness
+        amplifier: 0
+      - type: slowness
+        amplifier: 2
+      - type: weakness
         amplifier: 1
 
 # Sea armor sets. Tier = the ring it fully protects against. Wearing a full

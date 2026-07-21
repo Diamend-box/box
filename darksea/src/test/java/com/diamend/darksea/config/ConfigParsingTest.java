@@ -53,11 +53,15 @@ class ConfigParsingTest {
         assertEquals(0, settings.centerX());
         assertEquals(0, settings.centerZ());
 
-        assertEquals(5, settings.zones().size());
+        assertEquals(7, settings.zones().size());
         ZoneManager zones = new ZoneManager(settings.zones());
-        assertEquals(4, zones.maxTier());
+        assertEquals(6, zones.maxTier());
         assertEquals("safe", zones.zoneAt(0).id());
         assertEquals("zone4", zones.zoneAt(6000.0 * 6000.0).id());
+        // The outermost ring is the lethal rim, and only it bypasses protection.
+        assertEquals("zone6", zones.zoneAt(50000.0 * 50000.0).id());
+        assertTrue(zones.byTier(6).bypassProtection(), "the rim ignores armor and shield");
+        assertFalse(zones.byTier(5).bypassProtection(), "tier 5 is still gear-reducible");
 
         // Every danger ring carries at least one resolvable potion effect.
         for (Zone zone : settings.zones()) {

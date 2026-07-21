@@ -59,7 +59,12 @@ public final class ExposureTask extends BukkitRunnable implements Listener {
 
             int protection = plugin.protection().tierOf(player);
             int shield = plugin.boat().shieldFor(player);
-            int exposure = ZoneManager.exposure(zone.requiredTier(), protection, shield);
+            // The lethal rim bypasses all protection: armor and shield don't
+            // reduce its danger, so its full effects land no matter the gear —
+            // the only way through is out-healing the damage with golden apples.
+            int exposure = zone.bypassProtection()
+                    ? zone.requiredTier()
+                    : ZoneManager.exposure(zone.requiredTier(), protection, shield);
 
             // Zone-crossing feedback (also for exempt players — it's navigation info).
             String previous = lastZone.put(player.getUniqueId(), zone.id());

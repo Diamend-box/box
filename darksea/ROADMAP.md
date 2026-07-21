@@ -468,6 +468,29 @@ asked): sound and non-punishing; the one thing it doesn't pressure is a
 fully-geared player's own gear, so top-gear players roam at low personal
 risk — fine for boxpvp, revisit only if ganking gets oppressive.
 
+### 6b. The outer rings — BUILT (Wyatt, this session)
+Two new danger rings past the Abyssal Reaches, and a new zone concept.
+- **Zone 5 — The Sunless Trench** (tier 5, bounded 7000–9000): survivable
+  ONLY with the best kit. Tier-4 armor + a shield-2 boat (protection 6)
+  fully negates it; tier-4 armor alone leaves you stung. No islands — it's
+  the approach gauntlet.
+- **Zone 6 — The Devouring Rim** (tier 6, unbounded outermost): the lethal
+  rim. New `bypass-protection: true` zone flag — armor and shield are
+  ignored, so its full effects (Wither II + Darkness + Slowness II +
+  Weakness) land on everyone no matter the gear. Wither ignores armor and
+  can kill, so the ONLY way across is out-healing it with stacks of golden/
+  enchanted apples, bleeding the whole way (Wyatt's exact spec: "nearly
+  impossible to reach… possible with stacks of gaps/egaps but taking
+  significant damage the whole time"). Whatever's out there is **bait** —
+  reachable in theory, almost never in practice.
+- Mechanic: `ExposureTask` forces `exposure = requiredTier` for a bypass
+  ring (skipping the armor/shield subtraction), so the downgrade rule can
+  never soften the rim. `ZoneManagerTest` + `ConfigParsingTest` pin it.
+- **OPEN — the bait itself is undefined.** The rim is a crossable death-
+  gauntlet with nothing at the end yet. Still need: what treasure/structure
+  sits out there, and whether it's visible from afar to tempt players.
+  Wyatt to decide the payoff before it's worth building the destination.
+
 ### 7. Schematic pipeline guide — docs
 Expand the schematic docs into a start-to-finish walkthrough (build →
 markers → save → sidecar → pool folders → migrate ring by ring) for when

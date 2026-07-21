@@ -7,12 +7,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Zone resolution by radius and the exposure formula — pure logic, no server. */
 class ZoneManagerTest {
 
     private static Zone zone(String id, double maxRadius, int tier) {
-        return new Zone(id, id, maxRadius, tier, List.of());
+        return new Zone(id, id, maxRadius, tier, List.of(), false);
     }
 
     private ZoneManager manager() {
@@ -75,6 +76,19 @@ class ZoneManagerTest {
         assertNull(zones.effectiveDangerZone(0));
         // Exposure beyond defined tiers clamps to the harshest ring.
         assertEquals("zone4", zones.effectiveDangerZone(7).id());
+    }
+
+    @Test
+    void bypassRimAppliesItsOwnEffectsAtFullExposure() {
+        // A bypass ring forces exposure = its tier (ExposureTask ignores armor
+        // and shield), so its own effects always resolve — protection can never
+        // downgrade the lethal rim to a milder ring.
+        ZoneManager zones = new ZoneManager(List.of(
+                zone("safe", 500, 0),
+                zone("zone5", 9000, 5),
+                new Zone("rim", "rim", -1, 6, List.of(), true)));
+        assertTrue(zones.byTier(6).bypassProtection());
+        assertEquals("rim", zones.effectiveDangerZone(6).id());
     }
 
     @Test
