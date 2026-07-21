@@ -180,8 +180,10 @@ boat:
   # shield = exposure protection (scout one ring farther per point)
   # toughness = divisor on incoming hull damage in PvP — a higher boat takes
   #   more hits before it's sunk, so upgrading buys survivability at sea, not
-  #   just pace. A Rowboat (1.0) pops fast; a Maelstrom (5.0) rides out a
-  #   real skirmish. Sinking a boat dumps its rider into the hostile sea.
+  #   just pace. Deliberately flattened (Wyatt: weaker ships shouldn't be
+  #   hopeless): toughness and hp MULTIPLY into effective HP, so a steep
+  #   toughness curve on top of bigger hulls made apex boats near-unkillable.
+  #   At this curve a Maelstrom is ~5.8x a Rowboat's effective HP, not 12x.
   # hp = the tier's own hull max HP. 0 (or omitted) means "use the global
   #   naval.hull.max-hp"; the two apex tiers carry bigger hulls so they soak
   #   both harder (toughness) AND longer (raw HP) than the default 10.
@@ -189,11 +191,11 @@ boat:
   #   level automatically: level 4 = 1.60x, level 5 = 1.75x.
   levels:
     0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0, hp: 0 }
-    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.5, hp: 0 }
-    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 2.0, hp: 0 }
-    3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 3.0, hp: 14 }
-    4: { name: "Tempest",     speed: 1.55, shield: 2, toughness: 4.0, hp: 18 }
-    5: { name: "Maelstrom",   speed: 1.65, shield: 2, toughness: 5.0, hp: 24 }
+    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.25, hp: 0 }
+    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 1.5, hp: 0 }
+    3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 1.8, hp: 14 }
+    4: { name: "Tempest",     speed: 1.55, shield: 2, toughness: 2.1, hp: 18 }
+    5: { name: "Maelstrom",   speed: 1.65, shield: 2, toughness: 2.4, hp: 24 }
 
 # Boat-vs-boat combat: rams, wounded hulls, the surge, naval ammo.
 naval:

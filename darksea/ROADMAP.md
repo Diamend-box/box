@@ -308,7 +308,11 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     and hull HP is now a per-tier stat (`boat.levels.N.hp`; 0 = fall back to
     the global `naval.hull.max-hp` = 10). Stormrunner 14, Tempest 18,
     Maelstrom 24 — the apex tiers out-soak the default both by toughness AND
-    raw HP. Their tokens drop in the deep zones (3–4). NOTE for return day:
+    raw HP. **Toughness curve flattened (Wyatt: weaker ships shouldn't be
+    hopeless)** to 1.0 / 1.25 / 1.5 / 1.8 / 2.1 / 2.4, because toughness × hp
+    is effective HP — the old 1→5 curve on top of bigger hulls made a
+    Maelstrom ~12× a Rowboat; now it's ~5.8×. Their tokens drop in the deep
+    zones (3–4). NOTE for return day:
     the per-*absolute*-HP speed tax now bites big hulls hard — a 24-HP
     Maelstrom at half hull crawls at 40% (vs a Rowboat's 75% at half), and
     hits the 15% floor with 7 HP still left. Intended "big ship = ponderous
