@@ -289,6 +289,96 @@ class DemoShapeTest {
     }
 
     @Test
+    void everyMariphageNestChestCanBeLootedWithoutBreakingBlocks() {
+        // The Core's nest buries its three chests in egg-chambers under the
+        // reef, each reached by a stepped shaft down from the deck. Unlike the
+        // castle's *true vaults* (sealed strongrooms you crack open) or the
+        // twin atoll's crawl-hollow, a nest chamber must be walk-in: a player
+        // can descend and climb back out on foot, breaking nothing. This is
+        // deliberately nest-scoped — walk-reachability is not an invariant of
+        // every shape, only of the Core's home, which is why we assert it here
+        // rather than across DemoShapes.ALL.
+        DemoShape nest = DemoShapes.byId("mariphage-nest");
+        assertNotNull(nest, "the Mariphage nest is not registered");
+        long[] seeds = {1L, 424242L, -777L, 4242L, 99L, 2026L, -55L, 700700L};
+        for (int tier = nest.minTier(); tier <= nest.maxTier(); tier++) {
+            for (long seed : seeds) {
+                ShapeBuild build = nest.build(tier, seed);
+                for (int c = 0; c < build.chests().size(); c++) {
+                    Rel chest = build.chests().get(c);
+                    assertTrue(reachableOnFoot(build, chest),
+                            nest.id() + " t" + tier + " seed " + seed + " chest#" + c
+                                    + " @ " + chest.x() + "," + chest.y() + "," + chest.z()
+                                    + " can't be reached on foot — is the shaft sealed?");
+                }
+            }
+        }
+    }
+
+    /**
+     * Flood-fills a 2-tall player from the chest out to open sky, breaking
+     * nothing. A cell is a valid standing spot when it has a solid floor and
+     * two blocks of clearance; the player may step or auto-jump up one block
+     * onto an adjacent tread, walk level, or fall any distance. Reaching a
+     * column with nothing solid overhead means daylight — the chest is walk-in.
+     */
+    private static boolean reachableOnFoot(ShapeBuild build, Rel chest) {
+        java.util.ArrayDeque<Rel> queue = new java.util.ArrayDeque<>();
+        java.util.Set<Rel> seen = new java.util.HashSet<>();
+        queue.add(chest);
+        seen.add(chest);
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        while (!queue.isEmpty()) {
+            Rel f = queue.poll();
+            if (openToSky(build, f)) {
+                return true;
+            }
+            for (int[] d : dirs) {
+                int nx = f.x() + d[0], nz = f.z() + d[1];
+                // Step level or auto-jump one block onto an adjacent tread.
+                for (int dy = 1; dy >= 0; dy--) {
+                    Rel step = new Rel(nx, f.y() + dy, nz);
+                    if (standable(build, step) && seen.add(step)) {
+                        queue.add(step);
+                    }
+                }
+                // Walk off the edge and fall until footing (any drop height).
+                if (isClear(build, new Rel(nx, f.y(), nz))
+                        && isClear(build, new Rel(nx, f.y() + 1, nz))) {
+                    for (int ny = f.y(); ny >= build.min().y(); ny--) {
+                        Rel land = new Rel(nx, ny, nz);
+                        if (isSolid(build, land.below())) {
+                            if (standable(build, land) && seen.add(land)) {
+                                queue.add(land);
+                            }
+                            break;
+                        }
+                        if (!isClear(build, land)) {
+                            break;   // shaft plugged by a solid block
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** A place a 2-tall player can stand: solid floor, two clear blocks above. */
+    private static boolean standable(ShapeBuild build, Rel pos) {
+        return isClear(build, pos) && isClear(build, pos.above()) && isSolid(build, pos.below());
+    }
+
+    /** Nothing solid anywhere above the standing cell — the player sees sky. */
+    private static boolean openToSky(ShapeBuild build, Rel pos) {
+        for (int y = pos.y() + 1; y <= build.max().y() + 1; y++) {
+            if (isSolid(build, new Rel(pos.x(), y, pos.z()))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Test
     void islandsWadeIntoTheSeaInsteadOfDroppingOffACliff() {
         for (DemoShape shape : DemoShapes.ALL) {
             for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
