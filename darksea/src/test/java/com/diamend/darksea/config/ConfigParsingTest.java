@@ -87,6 +87,11 @@ class ConfigParsingTest {
         assertEquals(0.75, settings.naval().ram().defenderShare());
         assertTrue(settings.naval().ram().minClosingSpeed() > 0);
         assertTrue(settings.naval().hull().maxHp() > 0);
+        assertTrue(settings.naval().hull().combatTagSeconds() >= 1,
+                "a naval hit must lock out healing for a real window");
+        assertTrue(settings.naval().hull().regenPerSecond() > 0
+                        && settings.naval().hull().regenPerSecond() < settings.naval().hull().maxHp(),
+                "regen is a gradual claw-back, not a same-second snap to full");
         assertTrue(settings.naval().hull().woundedSpeedFactor() < 1.0);
         assertTrue(settings.naval().surge().boostFactor() > 1.0);
         assertTrue(settings.naval().chainshotSpeedFactor()

@@ -116,6 +116,40 @@ class NavalMathTest {
     }
 
     // ------------------------------------------------------------------
+    // Hull regen: combat tag, then a gradual claw-back (never a snap)
+    // ------------------------------------------------------------------
+
+    @Test
+    void aFreshlyHitHullHealsNothingWhileCombatTagged() {
+        // 60s tag, 0.5 HP/s. At 0s, 30s, and right up to 60s: still frozen at 4.
+        assertEquals(4.0, NavalMath.regenHp(4.0, 10.0, 0, 60_000, 0.5), 1e-9);
+        assertEquals(4.0, NavalMath.regenHp(4.0, 10.0, 30_000, 60_000, 0.5), 1e-9);
+        assertEquals(4.0, NavalMath.regenHp(4.0, 10.0, 60_000, 60_000, 0.5), 1e-9,
+                "healing only begins after the tag, not on it");
+    }
+
+    @Test
+    void afterTheTagItClawsBackGraduallyNotAllAtOnce() {
+        // 10s past the tag at 0.5 HP/s = +5 HP; the old model would have snapped to 10.
+        assertEquals(9.0, NavalMath.regenHp(4.0, 10.0, 70_000, 60_000, 0.5), 1e-9);
+        // 4s past the tag = +2 HP.
+        assertEquals(6.0, NavalMath.regenHp(4.0, 10.0, 64_000, 60_000, 0.5), 1e-9);
+    }
+
+    @Test
+    void regenNeverExceedsMaxHp() {
+        assertEquals(10.0, NavalMath.regenHp(4.0, 10.0, 600_000, 60_000, 0.5), 1e-9);
+        assertEquals(10.0, NavalMath.regenHp(10.0, 10.0, 0, 60_000, 0.5), 1e-9,
+                "a full hull stays full");
+    }
+
+    @Test
+    void regenPerSecondIsFlooredSoAConfigTypoCannotDrainAHull() {
+        assertEquals(4.0, NavalMath.regenHp(4.0, 10.0, 120_000, 60_000, -2.0), 1e-9,
+                "negative regen never removes HP");
+    }
+
+    // ------------------------------------------------------------------
     // Knockback
     // ------------------------------------------------------------------
 

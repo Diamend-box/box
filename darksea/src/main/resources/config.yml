@@ -209,7 +209,11 @@ naval:
   # runner can always be chipped and caught.
   hull:
     max-hp: 10.0
-    regen-seconds: 15
+    # Any naval hit combat-tags the hull: no healing at all for this long.
+    combat-tag-seconds: 60
+    # After the tag lapses the hull claws back this much HP per second (it
+    # does NOT snap to full) — 0.5 = one pip every two seconds.
+    regen-per-second: 0.5
     wounded-slow-seconds: 4
     wounded-speed-factor: 0.7
   # Tap sprint or jump at the tiller: a burst to boost-factor * the speed

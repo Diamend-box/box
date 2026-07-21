@@ -42,7 +42,7 @@ public final class NavalCombatService implements Listener {
 
     private final DarkSeaPlugin plugin;
 
-    /** Hull HP under naval fire; heals fully after a quiet regen window. */
+    /** Hull HP under naval fire; combat-tagged, then claws back gradually. */
     private record HullState(double hp, long lastHitMillis) {
     }
 
@@ -122,9 +122,9 @@ public final class NavalCombatService implements Listener {
         long now = System.currentTimeMillis();
         double maxHp = naval().hull().maxHp();
         HullState state = hulls.get(boat.getUniqueId());
-        double hp = state == null
-                || now - state.lastHitMillis() > naval().hull().regenSeconds() * 1000L
-                ? maxHp : state.hp();
+        double hp = state == null ? maxHp
+                : NavalMath.regenHp(state.hp(), maxHp, now - state.lastHitMillis(),
+                        naval().hull().combatTagSeconds() * 1000L, naval().hull().regenPerSecond());
         hp -= damage;
         slow(boat, naval().hull().woundedSlowSeconds(), naval().hull().woundedSpeedFactor());
         if (hp > 0) {
@@ -144,12 +144,13 @@ public final class NavalCombatService implements Listener {
         if (state == null) {
             return maxHp;
         }
-        if (System.currentTimeMillis() - state.lastHitMillis()
-                > naval().hull().regenSeconds() * 1000L) {
-            hulls.remove(boat.getUniqueId(), state);
-            return maxHp;
+        double hp = NavalMath.regenHp(state.hp(), maxHp,
+                System.currentTimeMillis() - state.lastHitMillis(),
+                naval().hull().combatTagSeconds() * 1000L, naval().hull().regenPerSecond());
+        if (hp >= maxHp) {
+            hulls.remove(boat.getUniqueId(), state);  // fully healed: forget it
         }
-        return state.hp();
+        return hp;
     }
 
     /** Whole seconds until this player's surge is ready; 0 means ready now. */

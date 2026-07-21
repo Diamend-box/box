@@ -104,4 +104,24 @@ public final class NavalMath {
     public static boolean surgeReady(long nowMillis, long readyAtMillis) {
         return nowMillis >= readyAtMillis;
     }
+
+    /**
+     * A hull's HP after regen, given the HP it was left at and how long since
+     * its last naval hit. A hit combat-tags the hull: for {@code combatTagMillis}
+     * it heals nothing at all, then it climbs at {@code regenPerSecond} up to
+     * {@code maxHp} — a slow claw-back, never the old snap-to-full. Continuous
+     * in time, so the damage path and the HUD read the same value at any instant.
+     */
+    public static double regenHp(double storedHp, double maxHp, long millisSinceHit,
+                                 long combatTagMillis, double regenPerSecond) {
+        if (storedHp >= maxHp) {
+            return maxHp;
+        }
+        long healingMillis = millisSinceHit - combatTagMillis;
+        if (healingMillis <= 0) {
+            return storedHp;  // still combat-tagged: frozen, no heal
+        }
+        double healed = storedHp + (healingMillis / 1000.0) * Math.max(0, regenPerSecond);
+        return Math.min(maxHp, healed);
+    }
 }

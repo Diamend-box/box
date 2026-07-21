@@ -121,12 +121,14 @@ public record DarkSeaSettings(
     /**
      * The hull health model behind naval weapons (rams and anti-ship ammo —
      * vanilla whacking still uses vanilla boat wobble). A hull has
-     * {@code maxHp}, heals fully after {@code regenSeconds} without a naval
-     * hit, and any hull damage slows the boat to {@code woundedSpeedFactor}
-     * of its speed for {@code woundedSlowSeconds} — the wounded-hull rule
-     * that keeps a max-speed boat catchable: land a shot, close the gap.
+     * {@code maxHp}. Any naval hit combat-tags it for {@code combatTagSeconds},
+     * during which it heals nothing; after the tag it climbs back at
+     * {@code regenPerSecond} HP/s — a slow claw-back, never a snap to full.
+     * Any hull damage also slows the boat to {@code woundedSpeedFactor} of its
+     * speed for {@code woundedSlowSeconds} — the wounded-hull rule that keeps
+     * a max-speed boat catchable: land a shot, close the gap.
      */
-    public record HullSettings(double maxHp, int regenSeconds,
+    public record HullSettings(double maxHp, int combatTagSeconds, double regenPerSecond,
                                int woundedSlowSeconds, double woundedSpeedFactor) {
     }
 
@@ -364,7 +366,8 @@ public record DarkSeaSettings(
                 Math.max(250, cfg.getLong("naval.ram.pair-cooldown-millis", 1500)));
         HullSettings hull = new HullSettings(
                 Math.max(1.0, cfg.getDouble("naval.hull.max-hp", 10.0)),
-                Math.max(1, cfg.getInt("naval.hull.regen-seconds", 15)),
+                Math.max(0, cfg.getInt("naval.hull.combat-tag-seconds", 60)),
+                Math.max(0.01, cfg.getDouble("naval.hull.regen-per-second", 0.5)),
                 Math.max(1, cfg.getInt("naval.hull.wounded-slow-seconds", 4)),
                 Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.hull.wounded-speed-factor", 0.7))));
         SurgeSettings surge = new SurgeSettings(

@@ -301,9 +301,17 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     toward the shooter ~2s. **Surging while hooked snaps the line but
     spends the surge** — the counterplay loop. Tier 3 vault / tier 4 loot.
   - All naval ammo is island loot → tagged as run-loot → part of the haul.
-- Naval weapons run on their own hull-HP model (10 HP, heals after 15s
-  quiet) because Bukkit can't partially damage a boat entity; vanilla
-  melee keeps vanilla wobble + the toughness divisor.
+- Naval weapons run on their own hull-HP model (10 HP) because Bukkit
+  can't partially damage a boat entity; vanilla melee keeps vanilla
+  wobble + the toughness divisor.
+- **Hull combat tag + gradual regen** (Wyatt, Jul 21): any naval hit
+  combat-tags the hull for **60s** of zero healing, then it claws back at
+  **0.5 HP/s** (one pip every 2s) up to full — it never snaps to 10 the
+  way the old 15s-quiet model did. Worst case (1 HP) = 78s to full.
+  Config: `naval.hull.combat-tag-seconds`, `naval.hull.regen-per-second`
+  (replaced `regen-seconds`). Curve is pure `NavalMath.regenHp`, CI-pinned.
+  The HUD reads the same function, so a tagged hull visibly sits frozen
+  then ticks up. Return-day tuning knobs; possible HUD combat-tag glyph.
 - Boxpvp note (flagged to Wyatt): escape-always-wins would break the
   run-loot kill economy — the richest targets have the best boats. The
   wounded-hull rule is what keeps them killable.
