@@ -211,9 +211,8 @@ final class CorruptedForest implements DemoShape {
                             : r.nextInt(100) < 60 ? "COARSE_DIRT" : "MUD";
             s.fillBox(mcx - 2, -2, mcz - 2, mcx + 2, 1, mcz + 2, cellarWall);
             s.carveBox(mcx - 1, -1, mcz - 1, mcx + 1, 0, mcz + 1);
-            s.carveBox(mcx + cex * 4, 1, mcz + cez * 4, mcx + cex * 4, 3, mcz + cez * 4);
-            s.carveBox(mcx + cex * 3, 0, mcz + cez * 3, mcx + cex * 3, 2, mcz + cez * 3);
-            s.carveBox(mcx + cex * 2, -1, mcz + cez * 2, mcx + cex * 2, 1, mcz + cez * 2);
+            // The stair out is carved LAST (after the trees), so nothing can
+            // be planted on top of it and reseal the cellar — see below.
             chests.add(new Rel(mcx - cex, -1, mcz - cez));
             s.put(mcx + cez, -1, mcz + cex, "SHROOMLIGHT");
         }
@@ -247,6 +246,14 @@ final class CorruptedForest implements DemoShape {
             s.put(lgx + ldx * 4 + pxd, 2, lgz + ldz * 4 + pzd, "SHROOMLIGHT");
             s.put(lgx + pxd, 5, lgz + pzd, "BROWN_MUSHROOM");
             s.put(lgx + ldx * 3 - pxd, 5, lgz + ldz * 3 - pzd, "RED_MUSHROOM");
+            // A walkable mouth: step the hollow down to the forest floor and
+            // clear anything that spiralled in front of it, so the crawl is
+            // never a truly sealed dead end (island blocks can't be mined).
+            for (int i = -1; i >= -3; i--) {
+                int ci = lgx + ldx * i, cj = lgz + ldz * i;
+                s.put(ci, 0, cj, trunk(rng));
+                s.carveBox(ci, 1, cj, ci, 3, cj);
+            }
         }
 
         // The dying wood around it: trees on a golden-angle spiral, each in
@@ -270,6 +277,20 @@ final class CorruptedForest implements DemoShape {
                 continue;
             }
             tree(s, rng, tier, tx, ground, tz);
+        }
+
+        // Now the trees are down, cut the cellar's stair to daylight LAST, so
+        // no trunk or canopy can seal it. Climb OUT of the mound (an inward
+        // stair stays trapped under the dome and runs at the heart-tree), one
+        // block up per step until it clears the canopy into open air. Island
+        // blocks can't be mined, so this walkable exit is the only way in.
+        if (tier >= 3) {
+            java.util.function.Function<Random, String> tread =
+                    r -> r.nextInt(100) < 55 ? "ROOTED_DIRT"
+                            : r.nextInt(100) < 60 ? "COARSE_DIRT" : "MUD";
+            int odx = Math.abs(mcx) >= Math.abs(mcz) ? (mcx >= 0 ? 1 : -1) : 0;
+            int odz = odx == 0 ? (mcz >= 0 ? 1 : -1) : 0;
+            climbOut(s, rng, tread, mcx, -1, mcz, odx, odz, 10);
         }
 
         // Mobs: three, in clearings — columns are re-picked a few degrees
@@ -410,5 +431,22 @@ final class CorruptedForest implements DemoShape {
             return roll < 60 ? "MYCELIUM" : "COARSE_DIRT";
         }
         return floor(rng, tier);
+    }
+
+    /**
+     * Carves a guaranteed-climbable stepped shaft out of a buried chamber:
+     * one block up per step in a cardinal direction, each tread a solid block
+     * under two clear ones, until it breaks the surface. Island blocks are
+     * protected on the live server, so a buried chest with no walkable exit
+     * would be dead loot — every cellar is routed out through here.
+     */
+    private static void climbOut(ShapeSketch s, Random rng,
+            java.util.function.Function<Random, String> tread,
+            int cx, int cy, int cz, int dx, int dz, int steps) {
+        for (int i = 1; i <= steps; i++) {
+            int x = cx + dx * i, z = cz + dz * i, y = cy - 1 + i;
+            s.put(x, y - 1, z, tread.apply(rng));
+            s.carveBox(x, y, z, x, y + 1, z);
+        }
     }
 }

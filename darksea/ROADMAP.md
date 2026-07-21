@@ -577,6 +577,32 @@ larger 8000-block radius, and — now that it's a boxpvp server — a
 specifically-PvP look at the armor/boat tiers as the player-vs-player power
 curve, not just the PvE survival gates.
 
+### 9. Vault-cracking mechanic — code (MAYBE, later update; Wyatt Jul 21)
+Backlog idea, parked deliberately. Today every chest is reachable **on foot**
+(walk / crawl / drop — see 3e); nothing is sealed, because island blocks
+can't be mined. A later update could make the castle's two **true vaults**
+(and maybe the Core's chambers) *earned* instead of merely walked into: a
+lever, a puzzle, or a breakable vault door that the protection listener
+whitelists — so cracking a vault is a deliberate act, not a pickaxe grind.
+Wants its own design pass (what opens it, whether it's timed/contested,
+whether it resets on the soft-reset cycle) before any code.
+
+### 3e. Every chest lootable without breaking blocks — BUILT (Wyatt caught it Jul 21)
+Wyatt's question — "how do you break in if you can't break blocks?" — exposed
+a real bug: island protection cancels all block-breaks, so a **sealed** chest
+was dead loot. Found and fixed:
+- **The castle's buried vaults** (throne vault, reliquary, crypt, cistern) had
+  decorative stairs whose treads jumped two blocks — un-climbable. Routed each
+  through a guaranteed 1-per-step shaft (`climbOut`).
+- **The corrupted forest's cellar** climbed *inward* and got sealed under the
+  mushroom dome (and re-sealed by trees planted after it). Now it climbs
+  *outward*, carved **last** so nothing can bury it; the fallen-log crawl got a
+  walkable mouth.
+- **A reachability flood-fill** (`DemoShapeTest.everyChestCanBeLootedWithoutBreakingBlocks`)
+  now proves every chest on every shape is walk/crawl/fall-reachable — swept
+  clean over 28,000 chests offline, locked to a broad seed band in CI so no
+  future edit can re-seal one.
+
 **Default order if you go quiet: 4 → 5 → 6 → 7 → 8** (1–3 are done).
 Redirect any time by phone — nothing here needs the server.
 

@@ -436,6 +436,7 @@ final class RuinedCastle implements DemoShape {
         if (tier >= 4) {
             s.put(1, -2, vz, "GILDED_BLACKSTONE");
         }
+        climbOut(s, rng, p::rockMix, 0, -2, vz + 1, 0, 1, 6);   // up toward the court
 
         // 2. The undercroft below the great hall, entered by a stair
         //    trench at the hall's south side.
@@ -459,6 +460,7 @@ final class RuinedCastle implements DemoShape {
         s.carveBox(ax - 3, -1, -3, ax - 2, 0, -3);
         chests.add(new Rel(ax, -1, -3));
         s.put(ax - 1, -1, -4, p.glow());
+        climbOut(s, rng, p::rockMix, ax, -1, -3, -1, 0, 5);   // west into the nave
 
         // 4. The gatehouse cache, inside the east gate tower's ground room.
         s.carveBox(5, 2, w - 3, 7, 4, w - 1);
@@ -481,6 +483,7 @@ final class RuinedCastle implements DemoShape {
             chests.add(new Rel(gx, -3, gz));
             s.put(gx - 1, -3, gz, p.glow());
             s.put(gx + 1, -3, gz, "SKELETON_SKULL");
+            climbOut(s, rng, p::rockMix, gx, -3, gz, 0, 1, 7);   // up the trench to the yard
         }
 
         // 6. Tier 4: the cistern beside the well shaft — swim down, then
@@ -491,6 +494,7 @@ final class RuinedCastle implements DemoShape {
             s.carveBox(0, -3, wellZ + 1, 0, -2, wellZ + 1);
             chests.add(new Rel(0, -3, wellZ + 4));
             s.put(1, -3, wellZ + 2, p.glow());
+            climbOut(s, rng, p::rockMix, 0, -3, wellZ + 4, 0, 1, 7);   // south to the surface
         }
 
         // --- The garrison: denser than any other island. ---
@@ -506,5 +510,23 @@ final class RuinedCastle implements DemoShape {
         s.shore(radiusBudget(), p::groundPatch);
 
         return ShapeBuild.of(s, chests, mobs);
+    }
+
+    /**
+     * Carves a guaranteed-climbable stepped shaft out of a buried vault: from
+     * the chest cell it rises one block per step in a cardinal direction until
+     * it breaks the surface, each tread a solid block under two clear ones, so
+     * a player can walk down to the chest and back up without breaking
+     * anything. Island blocks are protected on the live server — a sealed
+     * vault would be dead loot — so every buried chest is routed through here.
+     */
+    private static void climbOut(ShapeSketch s, Random rng,
+            java.util.function.Function<Random, String> tread,
+            int cx, int cy, int cz, int dx, int dz, int steps) {
+        for (int i = 1; i <= steps; i++) {
+            int x = cx + dx * i, z = cz + dz * i, y = cy - 1 + i;
+            s.put(x, y - 1, z, tread.apply(rng));   // the tread you stand on
+            s.carveBox(x, y, z, x, y + 1, z);       // head-and-shoulders clearance
+        }
     }
 }
