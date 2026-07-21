@@ -105,7 +105,19 @@ public record DarkSeaSettings(
     public record BoatLevel(String name, double speed, int shield, double toughness, double hp) {
     }
 
-    public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels) {
+    public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels,
+                               StatPointSettings statPoints) {
+    }
+
+    /**
+     * The custom stat-point economy: a captain earns one point per boat level
+     * and spends it from the boat wheel's Outfit page. Each field is how much a
+     * single point adds to that stat; {@code resetCostPerPoint} is the Chronon
+     * price to respec, scaled by how many points are currently committed.
+     */
+    public record StatPointSettings(double speedPerPoint, double toughnessPerPoint,
+                                    double hpPerPoint, double ramPowerPerPoint,
+                                    int resetCostPerPoint) {
     }
 
     /**
@@ -431,7 +443,14 @@ public record DarkSeaSettings(
         if (!levels.containsKey(0)) {
             levels.put(0, new BoatLevel("Rowboat", 1.0, 0, 1.0, 0.0));
         }
-        return new BoatSettings(Math.max(0.1, cfg.getDouble("boat.speed-cap-base", 0.45)), Map.copyOf(levels));
+        StatPointSettings statPoints = new StatPointSettings(
+                Math.max(0, cfg.getDouble("boat.stat-points.speed-per-point", 0.03)),
+                Math.max(0, cfg.getDouble("boat.stat-points.toughness-per-point", 0.15)),
+                Math.max(0, cfg.getDouble("boat.stat-points.hp-per-point", 2.0)),
+                Math.max(0, cfg.getDouble("boat.stat-points.ram-power-per-point", 0.10)),
+                Math.max(0, cfg.getInt("boat.stat-points.reset-cost-per-point", 8)));
+        return new BoatSettings(Math.max(0.1, cfg.getDouble("boat.speed-cap-base", 0.45)),
+                Map.copyOf(levels), statPoints);
     }
 
     private static Material matchMaterial(String name, Material fallback, String path, Logger log) {

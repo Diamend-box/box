@@ -45,10 +45,20 @@ public final class BoatMenuService implements Listener {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
     private static final int MENU_SIZE = 27;
+    // Main wheel
     private static final int UPGRADE_SLOT = 11;
     private static final int STATS_SLOT = 13;
     private static final int REPAIR_SLOT = 15;
-    private static final int PICKUP_SLOT = 22;
+    private static final int OUTFIT_SLOT = 20;
+    private static final int PICKUP_SLOT = 24;
+    // Outfit page
+    private static final int OUTFIT_INFO_SLOT = 4;
+    private static final int OUTFIT_SPEED_SLOT = 10;
+    private static final int OUTFIT_TOUGH_SLOT = 12;
+    private static final int OUTFIT_HP_SLOT = 14;
+    private static final int OUTFIT_RAM_SLOT = 16;
+    private static final int OUTFIT_BACK_SLOT = 18;
+    private static final int OUTFIT_RESET_SLOT = 26;
 
     private final DarkSeaPlugin plugin;
 
@@ -84,11 +94,16 @@ public final class BoatMenuService implements Listener {
 
     /** Opens the wheel for a boat. Called by the listener and {@code /ds boat menu}. */
     public void open(Player player, Boat boat) {
-        BoatMenu holder = new BoatMenu(boat.getUniqueId());
-        Inventory inv = plugin.getServer().createInventory(holder, MENU_SIZE,
-                MM.deserialize("<dark_aqua>Boat Wheel</dark_aqua>"));
+        openPage(player, boat, BoatMenu.Page.MAIN);
+    }
+
+    private void openPage(Player player, Boat boat, BoatMenu.Page page) {
+        BoatMenu holder = new BoatMenu(boat.getUniqueId(), page);
+        String title = page == BoatMenu.Page.OUTFIT
+                ? "<dark_aqua>Boat Outfit</dark_aqua>" : "<dark_aqua>Boat Wheel</dark_aqua>";
+        Inventory inv = plugin.getServer().createInventory(holder, MENU_SIZE, MM.deserialize(title));
         holder.setInventory(inv);
-        populate(inv, player, boat);
+        populate(inv, page, player, boat);
         player.openInventory(inv);
     }
 
@@ -135,21 +150,77 @@ public final class BoatMenuService implements Listener {
             plugin.messages().send(player, "boat-menu-gone");
             return;
         }
+        if (menu.page() == BoatMenu.Page.OUTFIT) {
+            handleOutfitClick(event, player, boat);
+            return;
+        }
         switch (event.getSlot()) {
             case UPGRADE_SLOT -> {
                 plugin.boat().upgrade(player);
-                populate(event.getInventory(), player, boat);
+                populate(event.getInventory(), BoatMenu.Page.MAIN, player, boat);
             }
             case REPAIR_SLOT -> {
                 repair(player, boat);
                 if (boat.isValid()) {
-                    populate(event.getInventory(), player, boat);
+                    populate(event.getInventory(), BoatMenu.Page.MAIN, player, boat);
                 }
             }
+            case OUTFIT_SLOT -> openPage(player, boat, BoatMenu.Page.OUTFIT);
             case PICKUP_SLOT -> pickup(player, boat);
             default -> {
             }
         }
+    }
+
+    private void handleOutfitClick(InventoryClickEvent event, Player player, Boat boat) {
+        if (event.getSlot() == OUTFIT_BACK_SLOT) {
+            openPage(player, boat, BoatMenu.Page.MAIN);
+            return;
+        }
+        // No respeccing or buffing a hull out from under an active fight.
+        if (plugin.naval().isCombatTagged(boat)) {
+            plugin.messages().send(player, "boat-outfit-combat");
+            return;
+        }
+        BoatService.StatId stat = switch (event.getSlot()) {
+            case OUTFIT_SPEED_SLOT -> BoatService.StatId.SPEED;
+            case OUTFIT_TOUGH_SLOT -> BoatService.StatId.TOUGHNESS;
+            case OUTFIT_HP_SLOT -> BoatService.StatId.HP;
+            case OUTFIT_RAM_SLOT -> BoatService.StatId.RAM_POWER;
+            default -> null;
+        };
+        if (stat != null) {
+            if (plugin.boat().allocate(player, stat)) {
+                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.4f);
+            } else {
+                plugin.messages().send(player, "boat-outfit-no-points");
+            }
+            populate(event.getInventory(), BoatMenu.Page.OUTFIT, player, boat);
+            return;
+        }
+        if (event.getSlot() == OUTFIT_RESET_SLOT) {
+            resetStats(player);
+            populate(event.getInventory(), BoatMenu.Page.OUTFIT, player, boat);
+        }
+    }
+
+    /** Respec: refund every committed point for a Chronon price scaled by how many. */
+    private void resetStats(Player player) {
+        int spent = plugin.boat().statPoints(player).total();
+        if (spent <= 0) {
+            plugin.messages().send(player, "boat-outfit-nothing");
+            return;
+        }
+        int cost = plugin.boat().resetCost(player);
+        if (!DarkSeaItems.removeChronons(player.getInventory(), cost)) {
+            plugin.messages().send(player, "boat-outfit-need-chronons",
+                    "cost", String.valueOf(cost),
+                    "have", String.valueOf(DarkSeaItems.countChronons(player.getInventory())));
+            return;
+        }
+        plugin.boat().resetPoints(player);
+        player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.0f);
+        plugin.messages().send(player, "boat-outfit-reset", "cost", String.valueOf(cost));
     }
 
     @EventHandler
@@ -182,7 +253,7 @@ public final class BoatMenuService implements Listener {
             plugin.messages().send(player, "boat-wreck-away");
             return;
         }
-        double maxHp = plugin.naval().maxHpForLevel(plugin.boat().levelOf(player));
+        double maxHp = plugin.naval().maxHpFor(player);
         int cost = NavalMath.repairCost(0, maxHp, plugin.settings().naval().repair().costPerHp());
         if (!DarkSeaItems.removeChronons(player.getInventory(), cost)) {
             plugin.messages().send(player, "boat-repair-need-chronons",
@@ -246,7 +317,7 @@ public final class BoatMenuService implements Listener {
     // Buttons
     // ------------------------------------------------------------------
 
-    private void populate(Inventory inv, Player player, Boat boat) {
+    private void populate(Inventory inv, BoatMenu.Page page, Player player, Boat boat) {
         ItemStack filler = new ItemStack(Material.CYAN_STAINED_GLASS_PANE);
         ItemMeta fillerMeta = filler.getItemMeta();
         fillerMeta.displayName(Component.empty());
@@ -254,10 +325,37 @@ public final class BoatMenuService implements Listener {
         for (int i = 0; i < inv.getSize(); i++) {
             inv.setItem(i, filler);
         }
+        if (page == BoatMenu.Page.OUTFIT) {
+            populateOutfit(inv, player);
+            return;
+        }
         inv.setItem(UPGRADE_SLOT, upgradeButton(player));
         inv.setItem(STATS_SLOT, statsButton(player, boat));
         inv.setItem(REPAIR_SLOT, repairButton(player, boat));
+        inv.setItem(OUTFIT_SLOT, outfitButton(player));
         inv.setItem(PICKUP_SLOT, pickupButton(boat));
+    }
+
+    private void populateOutfit(Inventory inv, Player player) {
+        var pts = plugin.boat().statPoints(player);
+        var cfg = plugin.settings().boat().statPoints();
+        int free = plugin.boat().statPointsFree(player);
+        inv.setItem(OUTFIT_INFO_SLOT, button(Material.NAUTILUS_SHELL,
+                "<aqua>Outfit Your Boat</aqua>", List.of(
+                        "<gray>Free points: <yellow>" + free + "</yellow>",
+                        "<gray>Earned <white>1</white> per boat level, spent below.",
+                        "<dark_gray>Click a stat to invest a point.</dark_gray>")));
+        inv.setItem(OUTFIT_SPEED_SLOT, statPointButton(Material.FEATHER, "<aqua>Speed</aqua>",
+                pts.speed(), "+" + fmt(cfg.speedPerPoint() * 100) + "% top speed / point", free));
+        inv.setItem(OUTFIT_TOUGH_SLOT, statPointButton(Material.SHIELD, "<aqua>Toughness</aqua>",
+                pts.toughness(), "+" + fmt(cfg.toughnessPerPoint()) + " damage divisor / point", free));
+        inv.setItem(OUTFIT_HP_SLOT, statPointButton(Material.OAK_PLANKS, "<aqua>Hull HP</aqua>",
+                pts.hp(), "+" + fmt(cfg.hpPerPoint()) + " hull HP / point", free));
+        inv.setItem(OUTFIT_RAM_SLOT, statPointButton(Material.IRON_INGOT, "<aqua>Ram Power</aqua>",
+                pts.ramPower(), "+" + fmt(cfg.ramPowerPerPoint()) + "x ram damage / point", free));
+        inv.setItem(OUTFIT_BACK_SLOT, button(Material.ARROW, "<aqua>Back</aqua>",
+                List.of("<dark_gray>Return to the boat wheel.</dark_gray>")));
+        inv.setItem(OUTFIT_RESET_SLOT, resetButton(player));
     }
 
     private ItemStack upgradeButton(Player player) {
@@ -283,18 +381,21 @@ public final class BoatMenuService implements Listener {
     private ItemStack statsButton(Player player, Boat boat) {
         int level = plugin.boat().levelOf(player);
         var stats = plugin.boat().stats(level);
+        var pts = plugin.boat().statPoints(player);
+        var cfg = plugin.settings().boat().statPoints();
         double hp = plugin.naval().hullHp(boat);
         double maxHp = plugin.naval().maxHp(boat);
+        double speed = stats.speed() + pts.speed() * cfg.speedPerPoint();
         String state = plugin.naval().isCombatTagged(boat)
                 ? "<red>In combat</red>"
                 : (hp >= maxHp ? "<green>Hull sound</green>" : "<yellow>Repairing</yellow>");
         return button(Material.FILLED_MAP, "<aqua>Boat Stats</aqua>", List.of(
                 "<gray>Class: <aqua>" + stats.name() + "</aqua> (level " + level + ")",
                 "<gray>Hull: <white>" + fmt(hp) + " / " + fmt(maxHp) + "</white>",
-                "<gray>Toughness: <white>" + fmt(stats.toughness()) + "x</white> <dark_gray>(damage divisor)</dark_gray>",
+                "<gray>Toughness: <white>" + fmt(plugin.boat().effectiveToughness(player)) + "x</white> <dark_gray>(damage divisor)</dark_gray>",
                 "<gray>Ram Power: <white>" + fmt(plugin.naval().ramPower(boat)) + "x</white> <dark_gray>(damage you deal)</dark_gray>",
                 "<gray>Shield: <white>" + stats.shield() + "</white>",
-                "<gray>Speed: <white>" + fmt(stats.speed()) + "x</white>",
+                "<gray>Speed: <white>" + fmt(speed) + "x</white>",
                 "<gray>Status: " + state));
     }
 
@@ -330,6 +431,46 @@ public final class BoatMenuService implements Listener {
             lore.add("<green>Click to pick up.</green>");
         }
         return button(Material.DARK_OAK_BOAT, "<aqua>Pick Up Boat</aqua>", lore);
+    }
+
+    private ItemStack outfitButton(Player player) {
+        int free = plugin.boat().statPointsFree(player);
+        List<String> lore = new ArrayList<>();
+        lore.add("<gray>Spend earned stat points on your boat.");
+        if (free > 0) {
+            lore.add("<green>" + free + " free point" + (free == 1 ? "" : "s") + " to spend.</green>");
+        } else {
+            lore.add("<dark_gray>No free points — upgrade to earn more.</dark_gray>");
+        }
+        return button(Material.NAUTILUS_SHELL, "<aqua>Outfit Boat</aqua>", lore);
+    }
+
+    private ItemStack statPointButton(Material material, String name, int invested,
+                                      String perPoint, int free) {
+        List<String> lore = new ArrayList<>();
+        lore.add("<gray>Invested: <white>" + invested + "</white> point" + (invested == 1 ? "" : "s"));
+        lore.add("<gray>" + perPoint);
+        if (free > 0) {
+            lore.add("<green>Click to invest a point.</green>");
+        } else {
+            lore.add("<red>No free points.</red>");
+        }
+        return button(material, name, lore);
+    }
+
+    private ItemStack resetButton(Player player) {
+        int spent = plugin.boat().statPoints(player).total();
+        List<String> lore = new ArrayList<>();
+        if (spent <= 0) {
+            lore.add("<dark_gray>No points committed yet.</dark_gray>");
+            return button(Material.GRAY_DYE, "<gray>Reset Stats</gray>", lore);
+        }
+        int cost = plugin.boat().resetCost(player);
+        int have = DarkSeaItems.countChronons(player.getInventory());
+        lore.add("<gray>Refund all <white>" + spent + "</white> committed points.");
+        lore.add("<gray>Cost: <aqua>" + cost + " Chronons</aqua> <dark_gray>(you have " + have + ")</dark_gray>");
+        lore.add(have >= cost ? "<green>Click to respec.</green>" : "<red>Not enough Chronons.</red>");
+        return button(Material.GRINDSTONE, "<gold>Reset Stats</gold>", lore);
     }
 
     // ------------------------------------------------------------------

@@ -12,15 +12,24 @@ import java.util.UUID;
  */
 public final class BoatMenu implements InventoryHolder {
 
+    /** Which board is open: the main wheel or the stat-point Outfit page. */
+    enum Page { MAIN, OUTFIT }
+
     private final UUID boatId;
+    private final Page page;
     private Inventory inventory;
 
-    BoatMenu(UUID boatId) {
+    BoatMenu(UUID boatId, Page page) {
         this.boatId = boatId;
+        this.page = page;
     }
 
     UUID boatId() {
         return boatId;
+    }
+
+    Page page() {
+        return page;
     }
 
     void setInventory(Inventory inventory) {

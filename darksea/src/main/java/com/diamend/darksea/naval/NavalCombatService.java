@@ -92,10 +92,21 @@ public final class NavalCombatService implements Listener {
         return tierHp > 0 ? tierHp : naval().hull().maxHp();
     }
 
-    /** The hull's max HP for a boat, resolved from its rider's tier. */
+    /**
+     * The hull's max HP for a rider: the tier's base HP plus any HP the captain
+     * has poured custom stat points into. A null rider (empty boat) reads as the
+     * bare level-0 hull.
+     */
+    public double maxHpFor(Player rider) {
+        if (rider == null) {
+            return maxHpForLevel(0);
+        }
+        return maxHpForLevel(plugin.boat().levelOf(rider)) + plugin.boat().hpBonus(rider);
+    }
+
+    /** The hull's max HP for a boat, resolved from its rider. */
     public double maxHp(Boat boat) {
-        Player rider = boatRider(boat);
-        return maxHpForLevel(rider != null ? plugin.boat().levelOf(rider) : 0);
+        return maxHpFor(boatRider(boat));
     }
 
     // ------------------------------------------------------------------
@@ -370,11 +381,13 @@ public final class NavalCombatService implements Listener {
         at.getWorld().playSound(at, Sound.ITEM_SHIELD_BLOCK, 1.0f, 0.5f);
     }
 
-    /** The offensive ram multiplier of a boat, from its rider's level. */
+    /** The offensive ram multiplier of a boat: its rider's tier plus any
+     *  custom ram-power points the captain has spent. */
     public double ramPower(Boat boat) {
         Player rider = boatRider(boat);
         int level = rider != null ? plugin.boat().levelOf(rider) : 0;
-        return NavalMath.ramPower(level, naval().ram().powerPerLevel());
+        double bonus = rider != null ? plugin.boat().ramPowerBonus(rider) : 0.0;
+        return NavalMath.ramPower(level, naval().ram().powerPerLevel()) + bonus;
     }
 
     /**
@@ -384,8 +397,7 @@ public final class NavalCombatService implements Listener {
      */
     private void applyRamSide(Boat boat, double base, double share, Player opponent, double offense) {
         Player rider = boatRider(boat);
-        double toughness = rider != null
-                ? plugin.boat().stats(plugin.boat().levelOf(rider)).toughness() : 1.0;
+        double toughness = rider != null ? plugin.boat().effectiveToughness(rider) : 1.0;
         double hullDamage = NavalMath.hullShare(base, share, toughness) * offense;
         if (rider != null) {
             double bleed = hullDamage * naval().ram().riderBleed();

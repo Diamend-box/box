@@ -176,6 +176,17 @@ boat:
   # Hard ceiling on boat speed: cap = speed-cap-base * level speed multiplier
   # (blocks per tick of horizontal velocity). Tune in playtesting.
   speed-cap-base: 0.45
+  # Custom stat points: a captain earns ONE point per boat level (so a maxed
+  # level-5 hull has 5 to spend) and allocates them from the boat wheel's
+  # Outfit page into any of four stats. Each value below is what one point adds;
+  # reset-cost-per-point is the Chronon price to respec, times the number of
+  # points currently committed (so undoing a full 5-point build costs more).
+  stat-points:
+    speed-per-point: 0.03        # +3% top speed per point (kept small — chase safety)
+    toughness-per-point: 0.15    # +0.15 damage divisor per point
+    hp-per-point: 2.0            # +2 hull HP per point
+    ram-power-per-point: 0.10    # +0.10x ram damage dealt per point
+    reset-cost-per-point: 8
   # speed  = velocity multiplier while sailing the Dark Sea
   # shield = exposure protection (scout one ring farther per point)
   # toughness = divisor on incoming hull damage in PvP — a higher boat takes
@@ -349,6 +360,12 @@ messages:
   boat-debug-none: "<red>Sit in a Dark Sea boat first — /ds boat damage hits the boat you're in."
   boat-debug-damaged: "<gray>Debug: dealt <red>{amount}</red> hull damage — hull now <aqua>{hp}</aqua>/<aqua>{max}</aqua>."
   boat-debug-sunk: "<gray>Debug: that sank the boat."
+  # Outfit page (custom stat points).
+  boat-outfit-no-points: "<red>No free stat points — upgrade your boat to earn more."
+  boat-outfit-nothing: "<yellow>You haven't committed any stat points yet."
+  boat-outfit-need-chronons: "<red>Respec costs <aqua>{cost}</aqua> Chronons — you have {have}."
+  boat-outfit-reset: "<green>Stat points refunded. <aqua>-{cost} Chronons</aqua>"
+  boat-outfit-combat: "<red>Can't change your outfit in combat — wait for the tag to fade."
 
   naval-surge: "<aqua>Surge!"
   naval-surge-cooldown: "<gray>Surge ready in {seconds}s."

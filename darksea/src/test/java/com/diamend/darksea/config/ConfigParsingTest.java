@@ -93,6 +93,13 @@ class ConfigParsingTest {
         assertTrue(settings.boat().levels().get(5).toughness()
                 > settings.boat().levels().get(3).toughness(),
                 "each apex tier out-tanks the one below it");
+        // Custom stat-point economy.
+        assertEquals(0.03, settings.boat().statPoints().speedPerPoint(), 1e-9);
+        assertEquals(0.15, settings.boat().statPoints().toughnessPerPoint(), 1e-9);
+        assertEquals(2.0, settings.boat().statPoints().hpPerPoint(), 1e-9);
+        assertEquals(0.10, settings.boat().statPoints().ramPowerPerPoint(), 1e-9);
+        assertTrue(settings.boat().statPoints().resetCostPerPoint() > 0,
+                "a respec must cost something");
 
         assertEquals(0.75, settings.naval().ram().defenderShare());
         assertEquals(0.15, settings.naval().ram().powerPerLevel(), 1e-9,
@@ -129,6 +136,7 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("boat-wreck-recovered"));
         assertTrue(settings.messages().containsKey("boat-wreck-repaired"));
         assertTrue(settings.messages().containsKey("boat-debug-damaged"));
+        assertTrue(settings.messages().containsKey("boat-outfit-reset"));
     }
 
     @Test

@@ -318,6 +318,20 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     hits the 15% floor with 7 HP still left. Intended "big ship = ponderous
     when holed", but if it feels too punishing we can switch the tax to
     per-*fraction* missing so all tiers slow at the same rate.
+  - **Custom stat points (Wyatt)**: a captain earns **1 point per boat level**
+    (0 at Rowboat → 5 at Maelstrom) and spends them from a new **Outfit** page
+    in the boat wheel, into any of four stats — **Speed** (+3%/pt), **Toughness**
+    (+0.15/pt), **Hull HP** (+2/pt), **Ram Power** (+0.10x/pt). Shield is
+    deliberately NOT allocatable (Wyatt wants it a rarer, tier-only feature).
+    **Respec** costs Chronons scaled by points committed (`reset-cost-per-point`
+    × spent). Allocation + respec are blocked while combat-tagged so nobody
+    buffs a hull mid-ram. Points persist per-player (playerdata `stats.*`),
+    survive restarts, and fold into the live combat math (speed cap, toughness
+    divisor, max HP, ram power). All knobs in `boat.stat-points`. NOTE: Wyatt
+    green-lit Speed as spendable knowing the chase-risk — kept the per-point
+    speed small (3%) as a hedge; revisit if a speed-stacked glass build is a
+    problem. Open thread: he's considering making **shield level-5-exclusive**
+    (lower it on mid tiers so only the Maelstrom gets max Dark Sea protection).
   - **Ram surge**: sprint OR jump key at the tiller (both, because toggle
     sprint makes the sprint flag latch — jump behaves the same for
     everyone), burst to 1.8× the cap, 9s cooldown.

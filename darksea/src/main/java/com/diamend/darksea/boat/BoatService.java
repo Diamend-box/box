@@ -79,7 +79,8 @@ public final class BoatService implements Listener {
      * so boosts never break the anti-runaway clamp.
      */
     public double effectiveMultiplier(Player rider) {
-        double multiplier = stats(levelOf(rider)).speed();
+        double multiplier = stats(levelOf(rider)).speed()
+                + statPoints(rider).speed() * pts().speedPerPoint();
         if (plugin.relics() != null && plugin.relics().isActive(rider, Relic.Boost.BOAT)) {
             multiplier *= Relic.BOAT_BOOST_MULTIPLIER;
         }
@@ -101,6 +102,73 @@ public final class BoatService implements Listener {
         DarkSeaSettings.BoatSettings boat = plugin.settings().boat();
         BoatLevel stats = boat.levels().get(level);
         return stats != null ? stats : boat.levels().get(0);
+    }
+
+    // ------------------------------------------------------------------
+    // Custom stat points: one per boat level, spent in the Outfit page
+    // ------------------------------------------------------------------
+
+    /** The four stats a captain can pour custom points into (shield stays tier-only). */
+    public enum StatId { SPEED, TOUGHNESS, HP, RAM_POWER }
+
+    private DarkSeaSettings.StatPointSettings pts() {
+        return plugin.settings().boat().statPoints();
+    }
+
+    public PlayerDataStore.StatPoints statPoints(Player player) {
+        return data.statPoints(player.getUniqueId());
+    }
+
+    /** Points earned so far: one per boat level. */
+    public int statPointsEarned(Player player) {
+        return levelOf(player);
+    }
+
+    /** Points earned but not yet committed to a stat. */
+    public int statPointsFree(Player player) {
+        return Math.max(0, statPointsEarned(player) - statPoints(player).total());
+    }
+
+    /** Spend one free point on a stat; false (no-op) if none are free. */
+    public boolean allocate(Player player, StatId stat) {
+        if (statPointsFree(player) <= 0) {
+            return false;
+        }
+        PlayerDataStore.StatPoints p = statPoints(player);
+        PlayerDataStore.StatPoints next = switch (stat) {
+            case SPEED -> new PlayerDataStore.StatPoints(p.speed() + 1, p.toughness(), p.hp(), p.ramPower());
+            case TOUGHNESS -> new PlayerDataStore.StatPoints(p.speed(), p.toughness() + 1, p.hp(), p.ramPower());
+            case HP -> new PlayerDataStore.StatPoints(p.speed(), p.toughness(), p.hp() + 1, p.ramPower());
+            case RAM_POWER -> new PlayerDataStore.StatPoints(p.speed(), p.toughness(), p.hp(), p.ramPower() + 1);
+        };
+        data.setStatPoints(player.getUniqueId(), next);
+        return true;
+    }
+
+    /** The Chronon price to respec: per-point cost times points committed. */
+    public int resetCost(Player player) {
+        return statPoints(player).total() * pts().resetCostPerPoint();
+    }
+
+    /** Clears all committed points back to free (caller has billed the Chronons). */
+    public void resetPoints(Player player) {
+        data.setStatPoints(player.getUniqueId(), PlayerDataStore.StatPoints.ZERO);
+    }
+
+    /** Toughness with the rider's allocated points folded in. */
+    public double effectiveToughness(Player player) {
+        return stats(levelOf(player)).toughness()
+                + statPoints(player).toughness() * pts().toughnessPerPoint();
+    }
+
+    /** Extra hull HP from the rider's allocated points. */
+    public double hpBonus(Player player) {
+        return statPoints(player).hp() * pts().hpPerPoint();
+    }
+
+    /** Extra ram power from the rider's allocated points. */
+    public double ramPowerBonus(Player player) {
+        return statPoints(player).ramPower() * pts().ramPowerPerPoint();
     }
 
     /** Boat shield for the exposure formula: only while riding a boat in the sea. */
@@ -249,7 +317,7 @@ public final class BoatService implements Listener {
         if (rider == null) {
             return;
         }
-        double toughness = stats(levelOf(rider)).toughness();
+        double toughness = effectiveToughness(rider);
         if (toughness > 1.0) {
             event.setDamage(event.getDamage() / toughness);
         }

@@ -63,4 +63,25 @@ class PlayerDataStoreTest {
         assertEquals(2, reloaded.boatLevel(a));
         assertEquals(0, reloaded.boatLevel(b));
     }
+
+    @Test
+    void unknownPlayersHaveNoStatPoints() {
+        PlayerDataStore store = new PlayerDataStore(folder.toFile(), LOG);
+        assertEquals(PlayerDataStore.StatPoints.ZERO, store.statPoints(UUID.randomUUID()));
+    }
+
+    @Test
+    void statPointsSurviveAReloadAlongsideTheBoatLevel() {
+        UUID id = UUID.randomUUID();
+        PlayerDataStore store = new PlayerDataStore(folder.toFile(), LOG);
+        store.setBoatLevel(id, 5);
+        store.setStatPoints(id, new PlayerDataStore.StatPoints(1, 2, 1, 0));
+        assertEquals(4, store.statPoints(id).total());
+
+        // A cold store reads both the level and the allocation back off the same
+        // file — neither write clobbers the other's keys.
+        PlayerDataStore reloaded = new PlayerDataStore(folder.toFile(), LOG);
+        assertEquals(5, reloaded.boatLevel(id));
+        assertEquals(new PlayerDataStore.StatPoints(1, 2, 1, 0), reloaded.statPoints(id));
+    }
 }
