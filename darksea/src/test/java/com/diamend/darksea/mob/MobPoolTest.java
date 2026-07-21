@@ -70,6 +70,26 @@ class MobPoolTest {
     }
 
     @Test
+    void theTrenchInheritsTheReachesFoesThinned() {
+        // The roster names foes only through tier 4, but the Sunless Trench
+        // (tier 5) must still roam: the builder carries tier 4 out one ring,
+        // decayed, so the Trench sees the same Abomination/Lord as tier 4 but
+        // sparser — never an empty ring.
+        MobPool.MobEntry abom = new MobPool.MobEntry("NaxianAbomination", "RAVAGER", 8, 10);
+        Map<Integer, List<MobPool.Slot>> pools = MobPool.build(
+                Map.of(4, List.of(abom, LORD)), 0.35);
+
+        List<MobPool.Slot> trench = pools.get(5);
+        assertNotNull(trench, "the Trench (tier 5) must inherit a roaming pool");
+        assertEquals(2_800, weightOf(trench, "NaxianAbomination"));  // 8 × 0.35
+        assertEquals(2_100, weightOf(trench, "VironicLord"));        // 6 × 0.35
+        // Thinner than the Reaches, where the same foes roam at full weight.
+        assertTrue(weightOf(pools.get(4), "NaxianAbomination")
+                        > weightOf(trench, "NaxianAbomination"),
+                "the Trench must roam sparser than the Reaches");
+    }
+
+    @Test
     void weightsThatDecayToZeroAreDropped() {
         Map<Integer, List<MobPool.Slot>> pools = MobPool.build(
                 Map.of(1, List.of(new MobPool.MobEntry("Whisper", null, 1, 1)), 3, List.of(ACOLYTE)),

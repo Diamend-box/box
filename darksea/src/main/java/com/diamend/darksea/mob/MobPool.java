@@ -36,8 +36,13 @@ public final class MobPool {
 
     public static final double DEFAULT_DECAY = 0.35;
 
-    /** The sea has four rings; pools are always built at least this far out. */
-    private static final int MAX_TIER = 4;
+    /**
+     * The sea has six rings, but the roster only names foes through the fourth.
+     * Pools are always built at least this far out so the Sunless Trench
+     * (tier 5) still roams with the Reaches' foes — thinned by decay to a
+     * sparser, deadlier echo of tier 4 — instead of standing empty.
+     */
+    private static final int MAX_TIER = 5;
 
     private static final int WEIGHT_SCALE = 1000;
 

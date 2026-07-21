@@ -306,6 +306,29 @@ count and Core drops are the tuning knobs. Tests: `DemoShapeTest` (nest
 rarity/boss/tier + the shared structural sweep at t4 and t5), `MobConfigTest`
 (Core no longer native), `ConfigParsingTest` (tier-5 generation).
 
+### 3d. The Sunless Trench as a deadlier t4 — BUILT (Wyatt's ask Jul 21)
+Wyatt: "make t5 a more sparse and deadly version of t4." The Trench was
+already sparse (3 nests) but had **no roaming foes at all** (the roster
+named enemies only through tier 4) and its water was barely a step past the
+Reaches. Two contained changes close that:
+
+- **Roaming roster** (`MobPool.MAX_TIER` 4→5): the pool builder now carries
+  the Reaches' Abomination and Lord one ring further, thinned by
+  `lower-tier-decay` (0.35), so the Trench roams the **same foes as tier 4
+  but sparser** — a deadlier echo, not a new bestiary. `mobs.yml` documents
+  where to add Trench-only foes if we ever want them.
+- **Sunless water** (`config.yml` zone5): the Trench earns its name with
+  **perpetual Darkness** on top of its deeper wither — still gear-reducible,
+  so armor matters but tier-4 kit that walked the Reaches will struggle.
+  Bypass-protection stays the rim's alone.
+
+Honest limit: the roster's `level` field is future headroom (the shipped
+pack is flat-statted and vanilla fallbacks ignore it), so a t5 Abomination
+isn't numerically tougher than a t4 one *yet* — today's deadliness delta is
+the Darkness + the guaranteed Core, and the roster fills what was an empty
+ring. Tests: `MobPoolTest` (Trench inherits the Reaches' foes, thinned),
+`ConfigParsingTest` (zone5 carries Darkness, still gear-reducible).
+
 ### 4. Boats — hardening + PvP — BUILT (Wyatt, Jul 20 PM)
 Two halves, both done:
 - **Hardening.** MockBukkit tests around token matching, consumption and

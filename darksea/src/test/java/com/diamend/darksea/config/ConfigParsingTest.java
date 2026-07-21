@@ -69,6 +69,12 @@ class ConfigParsingTest {
         assertEquals("zone6", zones.zoneAt(50000.0 * 50000.0).id());
         assertTrue(zones.byTier(6).bypassProtection(), "the rim ignores armor and shield");
         assertFalse(zones.byTier(5).bypassProtection(), "tier 5 is still gear-reducible");
+        // The Sunless Trench (tier 5) is a deadlier ring than the Reaches: it
+        // adds perpetual darkness on top of a deeper wither, but still lets
+        // armor blunt it — only the rim bypasses gear.
+        assertTrue(zones.byTier(5).effects().stream()
+                        .anyMatch(e -> e.type() == org.bukkit.potion.PotionEffectType.DARKNESS),
+                "the Sunless Trench must carry darkness");
 
         // Every danger ring carries at least one resolvable potion effect.
         for (Zone zone : settings.zones()) {

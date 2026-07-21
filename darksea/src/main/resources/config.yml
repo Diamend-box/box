@@ -86,6 +86,11 @@ zones:
         amplifier: 1
       - type: slowness
         amplifier: 1
+      # The Sunless Trench earns its name: perpetual darkness on top of a
+      # deeper wither than the Reaches. Still gear-reducible — armor matters,
+      # but tier-4 kit that walked the Reaches will struggle out here.
+      - type: darkness
+        amplifier: 0
   # Tier 6: the lethal rim. bypass-protection means armor AND shield are
   # ignored — its full effects land on everyone, no matter the gear. The wither
   # is the killer (it ignores armor), so the only way across is to out-heal it

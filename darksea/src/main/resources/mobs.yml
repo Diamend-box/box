@@ -48,6 +48,12 @@ tiers:
   4:
     - { type: NaxianAbomination, fallback: RAVAGER,         weight: 8,  level: 10 }
     - { type: VironicLord,       fallback: EVOKER,          weight: 6,  level: 10 }
+  # ── The Sunless Trench (tier 5) names no foes of its own: the pool builder
+  #    carries the Reaches' Abomination and Lord out to it, thinned by
+  #    lower-tier-decay, so the Trench roams the same enemies as tier 4 but
+  #    sparser — a deadlier echo, not a new bestiary. Its guaranteed Mariphage
+  #    Core (the nest's resident boss) is what makes the ring lethal. Give
+  #    tier 5 its own entries here if you ever want Trench-only foes.
 
 # ---------------------------------------------------------------------------
 # Plugin-side signature drops, rolled on top of any MythicMobs pack drops.
