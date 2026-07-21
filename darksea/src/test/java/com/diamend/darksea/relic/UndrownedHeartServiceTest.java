@@ -23,8 +23,9 @@ class UndrownedHeartServiceTest {
     void cooldownGatesRepeatSaves() {
         long cooldown = 120_000L; // two minutes
         long lastSave = 1_000_000L;
-        // A fresh attunement (never saved) is always ready.
-        assertTrue(UndrownedHeartService.offCooldown(0L, 0L, cooldown));
+        // A fresh attunement (never saved, last-save 0) against a real clock is
+        // always ready — the elapsed span dwarfs any cooldown.
+        assertTrue(UndrownedHeartService.offCooldown(System.currentTimeMillis(), 0L, cooldown));
         // Immediately after a save the Heart is spent.
         assertFalse(UndrownedHeartService.offCooldown(lastSave, lastSave, cooldown));
         assertFalse(UndrownedHeartService.offCooldown(lastSave + 119_999L, lastSave, cooldown));
