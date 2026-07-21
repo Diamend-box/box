@@ -8,6 +8,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -15,6 +16,7 @@ import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -32,17 +34,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * surge on a cooldown (sprint or jump key at the tiller) that doubles as
  * the line-cutter when a harpoon has you.
  *
- * <p>Naval damage runs on its own hull-HP model ({@code naval.hull.max-hp},
- * healing after a quiet spell) because Bukkit offers no way to deal partial
- * damage to a boat entity; vanilla sword-whacking keeps the vanilla wobble
- * plus the toughness divisor in {@link com.diamend.darksea.boat.BoatService}.
- * The home sanctuary is a no-ram, no-hook zone, mirroring the PvP rule.
+ * <p>All hull damage — rams, naval ammo, and now plain melee and arrows —
+ * runs on one hull-HP model ({@code naval.hull.max-hp}, combat-tagged then
+ * clawed back) because Bukkit offers no partial-damage API for a boat entity.
+ * Every hit combat-tags the hull, and only that pool breaks a ridden Dark Sea
+ * boat; the per-level toughness divisor in
+ * {@link com.diamend.darksea.boat.BoatService} still softens each incoming hit
+ * first. The home sanctuary is a no-ram, no-hook zone, mirroring the PvP rule.
  */
 public final class NavalCombatService implements Listener {
 
     private final DarkSeaPlugin plugin;
 
-    /** Hull HP under naval fire; combat-tagged, then claws back gradually. */
+    /** Hull HP under any hit; combat-tagged, then claws back gradually. */
     private record HullState(double hp, long lastHitMillis) {
     }
 
@@ -97,13 +101,51 @@ public final class NavalCombatService implements Listener {
                         Math.min(a.factor(), b.factor())));
     }
 
-    /** Any vanilla hull hit (arrows, melee) wounds the boat too. */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Every ordinary hit on a ridden hull — melee or a plain arrow — now flows
+     * through the hull-HP model: it combat-tags the boat (freezing regen) and
+     * chips the same 10-HP pool a ram does, so nothing breaks a Dark Sea boat
+     * except that pool. Naval ammo is skipped — {@link NavalWeaponListener}
+     * already applied its payload from {@code onHit}. Runs after
+     * {@link com.diamend.darksea.boat.BoatService}'s HIGH handler, so the
+     * damage here has already had the toughness divisor taken off it.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onVehicleDamage(VehicleDamageEvent event) {
-        if (event.getVehicle() instanceof Boat boat && inDarkSea(boat.getLocation())
-                && event.getDamage() > 0 && boatRider(boat) != null) {
-            slow(boat, naval().hull().woundedSlowSeconds(), naval().hull().woundedSpeedFactor());
+        if (!(event.getVehicle() instanceof Boat boat) || !inDarkSea(boat.getLocation())
+                || boatRider(boat) == null || event.getDamage() <= 0) {
+            return;
         }
+        // The hull-HP pool is the only thing that breaks a ridden boat now.
+        event.setCancelled(true);
+        Entity source = event.getAttacker();
+        if (isNavalAmmo(source)) {
+            return;  // NavalWeaponListener drives naval payloads itself
+        }
+        if (withinSanctuary(boat.getLocation())) {
+            return;  // no naval damage inside the sanctuary
+        }
+        // Toughness was already divided out at HIGH priority; take it whole.
+        damageHull(boat, event.getDamage(), resolveAttacker(source));
+    }
+
+    /** The player behind a boat hit: a melee attacker or a projectile's shooter. */
+    private static Player resolveAttacker(Entity source) {
+        if (source instanceof Player player) {
+            return player;
+        }
+        if (source instanceof Projectile projectile
+                && projectile.getShooter() instanceof Player player) {
+            return player;
+        }
+        return null;
+    }
+
+    /** Naval ammo carries its own PDC tag; those hits belong to the weapon listener. */
+    private static boolean isNavalAmmo(Entity source) {
+        return source instanceof Projectile projectile
+                && projectile.getPersistentDataContainer()
+                        .has(NavalWeaponListener.AMMO_KEY, PersistentDataType.STRING);
     }
 
     // ------------------------------------------------------------------

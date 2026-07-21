@@ -312,6 +312,17 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
   (replaced `regen-seconds`). Curve is pure `NavalMath.regenHp`, CI-pinned.
   The HUD reads the same function, so a tagged hull visibly sits frozen
   then ticks up. Return-day tuning knobs; possible HUD combat-tag glyph.
+- **All hits feed one hull-HP pool** (Wyatt, Jul 21): melee and plain
+  arrows on a ridden boat now flow through the same 10-HP hull model as
+  rams and naval ammo — every hit combat-tags the hull (freezing regen)
+  and chips the pool. `NavalCombatService.onVehicleDamage` (HIGHEST) now
+  cancels the vanilla boat-break so the HP pool is the *only* thing that
+  sinks a ridden Dark Sea boat; it runs after `BoatService`'s HIGH
+  toughness-divide, so it takes the already-softened damage whole. Naval
+  ammo is skipped (PDC-tagged) so `NavalWeaponListener` isn't double-hit;
+  the sanctuary and unridden/empty boats are left to vanilla (keeps
+  owner-pickup working). Wyatt has a separate idea coming for pickup +
+  destruction — flagged, not yet built.
 - Boxpvp note (flagged to Wyatt): escape-always-wins would break the
   run-loot kill economy — the richest targets have the best boats. The
   wounded-hull rule is what keeps them killable.
