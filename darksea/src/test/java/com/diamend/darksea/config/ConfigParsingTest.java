@@ -95,8 +95,8 @@ class ConfigParsingTest {
                 "each apex tier out-tanks the one below it");
 
         assertEquals(0.75, settings.naval().ram().defenderShare());
-        assertEquals(0.25, settings.naval().ram().powerPerLevel(), 1e-9,
-                "the shipped ram gains 25% offensive power per boat level");
+        assertEquals(0.15, settings.naval().ram().powerPerLevel(), 1e-9,
+                "the shipped ram gains 15% offensive power per boat level");
         assertTrue(settings.naval().ram().minClosingSpeed() > 0);
         assertTrue(settings.naval().hull().maxHp() > 0);
         assertTrue(settings.naval().hull().combatTagSeconds() >= 1,

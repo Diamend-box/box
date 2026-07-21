@@ -185,8 +185,8 @@ boat:
   # hp = the tier's own hull max HP. 0 (or omitted) means "use the global
   #   naval.hull.max-hp"; the two apex tiers carry bigger hulls so they soak
   #   both harder (toughness) AND longer (raw HP) than the default 10.
-  # Ram Power (naval.ram.power-per-level, default 0.25) scales offense by
-  #   level automatically: level 4 = 2.00x, level 5 = 2.25x.
+  # Ram Power (naval.ram.power-per-level, default 0.15) scales offense by
+  #   level automatically: level 4 = 1.60x, level 5 = 1.75x.
   levels:
     0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0, hp: 0 }
     1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.5, hp: 0 }
@@ -212,10 +212,11 @@ naval:
     pair-cooldown-millis: 1500
     # Ram power: the attacker's charge lands harder per boat level (linear off
     # 1.0), boosting only the hull damage it DEALS — the share bouncing back onto
-    # the rammer is unaffected. At 0.25: Rowboat 1.00x, Sloop 1.25x, Cutter
-    # 1.50x, Stormrunner 1.75x. A maxed hull is both the tank (toughness 3.0) and
-    # the battering ram, but this only helps one hit, so a low-tier swarm still wins.
-    power-per-level: 0.25
+    # the rammer is unaffected. At 0.15: Rowboat 1.00x, Sloop 1.15x, Cutter
+    # 1.30x, Stormrunner 1.45x, Tempest 1.60x, Maelstrom 1.75x. A maxed hull is
+    # both the tank and the battering ram, but this only helps one hit, so a
+    # low-tier swarm still wins.
+    power-per-level: 0.15
   # Naval weapons run on their own hull HP (vanilla whacking keeps vanilla
   # wobble + toughness). Any hull hit — including plain arrows — slows the
   # boat to wounded-speed-factor for wounded-slow-seconds, so a max-speed

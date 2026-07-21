@@ -298,8 +298,9 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     chase feels too swingy.
   - **Ram Power (Wyatt)**: the offensive stat that was missing — the
     attacker's charge lands harder per boat level (linear off 1.0,
-    `naval.ram.power-per-level` = 0.25): Rowboat 1.00×, Sloop 1.25×, Cutter
-    1.50×, Stormrunner 1.75×, Tempest 2.00×, Maelstrom 2.25×. Boosts only the
+    `naval.ram.power-per-level` = 0.15, softened from 0.25 on Wyatt's call):
+    Rowboat 1.00×, Sloop 1.15×, Cutter 1.30×, Stormrunner 1.45×, Tempest
+    1.60×, Maelstrom 1.75×. Boosts only the
     hull damage *dealt* (the 25% bouncing back rides at 1.0), and only one hit,
     so a low-tier swarm still gangs a maxed boat.
   - **Six boat tiers (Wyatt: "add 2 more levels, up the HP not just
