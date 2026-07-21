@@ -14,9 +14,11 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -155,6 +157,43 @@ public final class BoatMenuService implements Listener {
         if (event.getInventory().getHolder() instanceof BoatMenu) {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * A wrecked boat never places as a working one. Right-clicking it does
+     * nothing at sea but tell you to dock; at the home island it rebuilds into
+     * a seaworthy Dark Sea Boat for the full repair price.
+     */
+    @EventHandler
+    public void onUseWreck(PlayerInteractEvent event) {
+        ItemStack item = event.getItem();
+        if (item == null
+                || !DarkSeaItems.BROKEN_DARK_SEA_BOAT.equals(DarkSeaItems.idOf(item))
+                || (event.getAction() != Action.RIGHT_CLICK_AIR
+                        && event.getAction() != Action.RIGHT_CLICK_BLOCK)) {
+            return;
+        }
+        event.setCancelled(true);  // a wreck can't be set down as a boat
+        repairWreck(event.getPlayer(), item);
+    }
+
+    private void repairWreck(Player player, ItemStack wreck) {
+        if (!plugin.naval().atHome(player.getLocation())) {
+            plugin.messages().send(player, "boat-wreck-away");
+            return;
+        }
+        double maxHp = plugin.settings().naval().hull().maxHp();
+        int cost = NavalMath.repairCost(0, maxHp, plugin.settings().naval().repair().costPerHp());
+        if (!DarkSeaItems.removeChronons(player.getInventory(), cost)) {
+            plugin.messages().send(player, "boat-repair-need-chronons",
+                    "cost", String.valueOf(cost),
+                    "have", String.valueOf(DarkSeaItems.countChronons(player.getInventory())));
+            return;
+        }
+        wreck.setAmount(wreck.getAmount() - 1);
+        giveOrDrop(player, DarkSeaItems.create(DarkSeaItems.DARK_SEA_BOAT, 1));
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, 1.0f, 0.9f);
+        plugin.messages().send(player, "boat-wreck-repaired", "cost", String.valueOf(cost));
     }
 
     // ------------------------------------------------------------------

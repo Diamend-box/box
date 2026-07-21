@@ -345,8 +345,22 @@ Boat-vs-boat PvP, the full package. Wyatt's calls, all locked in chat:
     Price is pure `NavalMath.repairCost`, CI-pinned. Self-gates against
     abuse: home is already no-PvP, so you can't repair-tank at sea.
   - Return-day tuning: repair cost, whether stow should also require being
-    out of the sanctuary/stationary, and Wyatt's separate **destruction**
-    idea (still to come — this covered pickup).
+    out of the sanctuary/stationary.
+- **Sink → salvage → rebuild** (Wyatt, Jul 21): a boat sunk in combat no
+  longer just vanishes. `NavalCombatService.sink` still strands the sailor
+  in the water (the whole point), but now floats a **Wrecked Dark Sea Boat**
+  item (`DarkSeaItems.BROKEN_DARK_SEA_BOAT`) into their pack. It can't be
+  placed — `BoatMenuService.onUseWreck` cancels the vanilla boat-placement —
+  and right-clicking it anywhere but home just tells you to dock. At the
+  home island a right-click rebuilds it into a working Dark Sea Boat for the
+  full repair price (`NavalMath.repairCost(0, maxHp, cost-per-hp)` = 20
+  Chronons at defaults). Net effect: sinking is now a **Chronon tax + strand**
+  instead of a total boat loss — since level always lived on the player, the
+  practical change is you keep your hull (broken) and pay to re-float it,
+  which also creates real Chronon demand. Flagged for return-day: the rebuild
+  cost, and the edge where a thief sunk in a stolen boat gets the wreck (the
+  rider, not the owner, salvages it). Wyatt's broader **destruction** idea is
+  still to come — this covered the recover-on-sink half.
 - Boxpvp note (flagged to Wyatt): escape-always-wins would break the
   run-loot kill economy — the richest targets have the best boats. The
   wounded-hull rule is what keeps them killable.

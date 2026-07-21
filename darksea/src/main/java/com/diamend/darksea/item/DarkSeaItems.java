@@ -152,6 +152,9 @@ public final class DarkSeaItems {
     /** The stowable Dark Sea Boat — what picking a boat up hands back. */
     public static final String DARK_SEA_BOAT = "dark_sea_boat";
 
+    /** A sunk boat's salvage: unusable until repaired at the home dry-dock. */
+    public static final String BROKEN_DARK_SEA_BOAT = "broken_dark_sea_boat";
+
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
@@ -164,6 +167,7 @@ public final class DarkSeaItems {
         ids.add(HULLPIERCER_ARROW);
         ids.add(HARPOON_GUN);
         ids.add(DARK_SEA_BOAT);
+        ids.add(BROKEN_DARK_SEA_BOAT);
         for (Relic relic : Relic.values()) {
             ids.add(relic.id());
         }
@@ -221,6 +225,7 @@ public final class DarkSeaItems {
                             "<dark_gray>Heavy hull damage, cuts through plating.</dark_gray>"));
             case HARPOON_GUN -> createHarpoonGun();
             case DARK_SEA_BOAT -> createDarkSeaBoat();
+            case BROKEN_DARK_SEA_BOAT -> createBrokenDarkSeaBoat();
             default -> null;
         };
     }
@@ -269,6 +274,19 @@ public final class DarkSeaItems {
                 noItalic(MM.deserialize("<dark_gray>Sneak-right-click your boat to open</dark_gray>")),
                 noItalic(MM.deserialize("<dark_gray>its wheel: upgrade, repair, stow.</dark_gray>"))));
         meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, DARK_SEA_BOAT);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack createBrokenDarkSeaBoat() {
+        ItemStack item = new ItemStack(Material.DARK_OAK_BOAT);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<color:#8a3a3a>Wrecked Dark Sea Boat</color>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>Splintered salvage from a hull</gray>")),
+                noItalic(MM.deserialize("<gray>the Deep took under. It won't sail.</gray>")),
+                noItalic(MM.deserialize("<red>Right-click at the home island to repair.</red>"))));
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, BROKEN_DARK_SEA_BOAT);
         item.setItemMeta(meta);
         return item;
     }

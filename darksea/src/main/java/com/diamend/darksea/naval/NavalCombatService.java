@@ -2,6 +2,7 @@ package com.diamend.darksea.naval;
 
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.config.DarkSeaSettings.NavalSettings;
+import com.diamend.darksea.item.DarkSeaItems;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -16,6 +17,7 @@ import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -229,6 +231,11 @@ public final class NavalCombatService implements Listener {
         return withinSanctuary(boat.getLocation());
     }
 
+    /** Whether a location sits in the home sanctuary — for rebuilding a wreck. */
+    public boolean atHome(Location loc) {
+        return withinSanctuary(loc);
+    }
+
     /** Whole seconds until this player's surge is ready; 0 means ready now. */
     public int surgeSecondsLeft(Player player) {
         long readyAt = surgeReadyAt.getOrDefault(player.getUniqueId(), 0L);
@@ -243,7 +250,13 @@ public final class NavalCombatService implements Listener {
         boat.remove();  // ejects the rider into the water — stranded
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_SPLASH, 1.0f, 0.6f);
         if (rider != null) {
-            plugin.messages().send(rider, "boat-wrecked");
+            // The wreck floats up into the sailor's pack: recoverable, but dead
+            // weight until it's rebuilt at the home dry-dock.
+            ItemStack wreck = DarkSeaItems.create(DarkSeaItems.BROKEN_DARK_SEA_BOAT, 1);
+            for (ItemStack leftover : rider.getInventory().addItem(wreck).values()) {
+                loc.getWorld().dropItemNaturally(loc, leftover);
+            }
+            plugin.messages().send(rider, "boat-wreck-recovered");
         }
         if (attacker != null && attacker != rider) {
             plugin.messages().send(attacker, "naval-sunk-them");

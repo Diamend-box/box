@@ -320,6 +320,9 @@ messages:
   boat-repair-sound: "<yellow>Your hull is already sound."
   boat-repair-away: "<red>You can only repair at the home island — sail back to dock."
   boat-repair-need-chronons: "<red>Repairs cost <aqua>{cost} Chronons</aqua> — you carry {have}."
+  boat-wreck-recovered: "<red>Your boat is wrecked and you're cast adrift — you salvage the hull. Rebuild it at the home island to sail again."
+  boat-wreck-away: "<red>This boat is wrecked — right-click it at the home island to rebuild it."
+  boat-wreck-repaired: "<green>The wreck is rebuilt — seaworthy again. <aqua>-{cost} Chronons</aqua>"
 
   naval-surge: "<aqua>Surge!"
   naval-surge-cooldown: "<gray>Surge ready in {seconds}s."
