@@ -113,5 +113,24 @@ public interface DemoShape {
         return 30;
     }
 
+    /**
+     * A custom DarkSeaItems id this shape seeds into its own chests on top of
+     * the tier loot table, or null (the default) for none. The Mariphage nest
+     * seeds the hunter's Soulwake Compass — kept as a plain id string so this
+     * package stays free of the Bukkit item registry.
+     */
+    default String chestBonusItem() {
+        return null;
+    }
+
+    /**
+     * Per-chest chance (0..1) that {@link #chestBonusItem()} turns up when a
+     * chest of this island refills — vault chests roll the richer odds. Zero
+     * whenever the shape seeds nothing.
+     */
+    default double chestBonusChance(boolean vault) {
+        return 0.0;
+    }
+
     ShapeBuild build(int tier, long seed);
 }

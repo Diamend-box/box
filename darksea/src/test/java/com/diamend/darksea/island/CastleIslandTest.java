@@ -104,6 +104,22 @@ class CastleIslandTest {
     }
 
     @Test
+    void nestIslandsSeedTheSoulwakeCompassButOrdinaryIslandsDoNot() {
+        IslandInstance nest = island("mariphage-nest", 5, 4);
+        assertEquals("soulwake_compass", nest.chestBonusItem(), "a nest seeds the compass");
+        assertTrue(nest.chestBonusChance(true) > nest.chestBonusChance(false),
+                "the nest's vaults out-roll its plain chambers for the compass");
+        assertTrue(nest.chestBonusChance(false) > 0, "even a plain nest chamber has a shot");
+
+        IslandInstance castle = island("ruined-castle", 5, 7);
+        assertEquals(null, castle.chestBonusItem(), "a castle seeds no bonus item");
+        assertEquals(0.0, castle.chestBonusChance(true), 1e-9);
+        IslandInstance plain = island("demo", 4, 3);
+        assertEquals(null, plain.chestBonusItem(), "a plain island seeds no bonus item");
+        assertEquals(0.0, plain.chestBonusChance(false), 1e-9);
+    }
+
+    @Test
     void castlesNeverDrownPoorButOrdinaryIslandsStillCan() {
         IslandInstance castle = island("ruined-castle", 3, 5);
         assertTrue(castle.wealthMultiplier() >= 1.4,

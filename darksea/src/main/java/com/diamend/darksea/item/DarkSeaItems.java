@@ -138,10 +138,15 @@ public final class DarkSeaItems {
     public static final String GILLWATER_PHILTER = "gillwater_philter";
     /** The apex relic hidden past the Devouring Rim — consumed once for a permanent, cooldowned death-save. */
     public static final String UNDROWNED_HEART = "undrowned_heart";
+    /** The hunter's charm from the Core nests: right-click to read the nearest soul's heading, consumed on use. */
+    public static final String SOULWAKE_COMPASS = "soulwake_compass";
 
     /** Tidal Draught: boat speed bonus multiplier and duration. */
     public static final double DRAUGHT_MULTIPLIER = 1.25;
     public static final int DRAUGHT_SECONDS = 90;
+
+    /** Soulwake Compass: how far out (blocks) it will still find a living soul. */
+    public static final double SOULWAKE_RANGE = 3000.0;
 
     // ------------------------------------------------------------------
     // Naval weapons (behavior in com.diamend.darksea.naval)
@@ -166,6 +171,7 @@ public final class DarkSeaItems {
         ids.add(DEEPSIGHT_TONIC);
         ids.add(GILLWATER_PHILTER);
         ids.add(UNDROWNED_HEART);
+        ids.add(SOULWAKE_COMPASS);
         ids.add(CHAINSHOT_ARROW);
         ids.add(HULLPIERCER_ARROW);
         ids.add(HARPOON_GUN);
@@ -227,6 +233,7 @@ public final class DarkSeaItems {
                             "<gray>not sailors.</gray>",
                             "<dark_gray>Heavy hull damage, cuts through plating.</dark_gray>"));
             case UNDROWNED_HEART -> createUndrownedHeart();
+            case SOULWAKE_COMPASS -> createSoulwakeCompass();
             case HARPOON_GUN -> createHarpoonGun();
             case DARK_SEA_BOAT -> createDarkSeaBoat();
             case BROKEN_DARK_SEA_BOAT -> createBrokenDarkSeaBoat();
@@ -333,6 +340,26 @@ public final class DarkSeaItems {
                 noItalic(MM.deserialize("<dark_gray>Hold it and the drowning never quite takes.</dark_gray>")),
                 noItalic(MM.deserialize("<dark_aqua>Right-click to attune. Consumed forever.</dark_aqua>"))));
         meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, UNDROWNED_HEART);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
+     * The Soulwake Compass: the Order of the Soul's hunting charm, kept in the
+     * Core nests. Right-clicked (see {@link SoulwakeService}) it reads the
+     * nearest living soul's heading and is spent. A recovery compass, so it
+     * reads as a needle already pointing somewhere other than home.
+     */
+    private static ItemStack createSoulwakeCompass() {
+        ItemStack item = new ItemStack(Material.RECOVERY_COMPASS);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<gradient:#2ee6c8:#7cf7ff>Soulwake Compass</gradient>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>The Order hunted the last living</gray>")),
+                noItalic(MM.deserialize("<gray>souls in the Deep. This found them.</gray>")),
+                noItalic(MM.deserialize("<dark_gray>Right-click: the nearest soul's heading.</dark_gray>")),
+                noItalic(MM.deserialize("<dark_gray>Spent on use.</dark_gray>"))));
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, SOULWAKE_COMPASS);
         item.setItemMeta(meta);
         return item;
     }

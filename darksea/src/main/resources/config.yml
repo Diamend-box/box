@@ -394,6 +394,11 @@ messages:
 
   draught-drunk: "<aqua>The tide takes your side — faster sailing for {seconds}s."
 
+  # The Soulwake Compass (the Core-nest hunting charm).
+  soulwake-heading: "<gradient:#2ee6c8:#7cf7ff>The Soulwake stirs</gradient> <gray>— nearest soul <white>{blocks}m</white> to the <white>{bearing}</white> ({elevation})."
+  soulwake-empty: "<gray>The Soulwake lies still — no living soul within reach."
+  soulwake-not-in-sea: "<gray>The Soulwake only wakes in the Dark Sea."
+
   boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
   boat-max: "<yellow>Your boat is already fully upgraded."
   boat-wrecked: "<red>Your boat is wrecked — you're adrift in the Dark Sea!"

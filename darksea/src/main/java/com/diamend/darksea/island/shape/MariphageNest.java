@@ -72,6 +72,19 @@ final class MariphageNest implements DemoShape {
     }
 
     @Override
+    public String chestBonusItem() {
+        // DarkSeaItems.SOULWAKE_COMPASS — a literal so this package stays Bukkit-free.
+        return "soulwake_compass";
+    }
+
+    @Override
+    public double chestBonusChance(boolean vault) {
+        // The Order's hunting charm rode deepest in the tithe: better odds in
+        // the two vaults than the plain offering-niches.
+        return vault ? 0.5 : 0.15;
+    }
+
+    @Override
     public ShapeBuild build(int tier, long seed) {
         Palette p = Palette.forTier(tier);
         ShapeSketch s = new ShapeSketch(seed);

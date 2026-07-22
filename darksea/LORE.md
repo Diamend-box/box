@@ -65,6 +65,16 @@ fragments of the plague that hunt for hosts and wither away on their own.
 The primordial power the Order serves stays beneath the sea, unfought and
 unnamed — cause, not creature.
 
+The nests hold one more thing the Order needed: a way to find the living.
+The **Soulwake Compass** (decided Jul 22) was their hunting charm — a recovery
+needle attuned not to a place but to a beating heart, so an acolyte could read
+the heading of the nearest soul still drawing breath in the Deep. Kept deepest
+in the tithe, it turns up in the nest caches (better odds in the two vaults).
+In a captain's hand it does the same work: right-click and the nearest living
+sailor's bearing and distance surface once, then the charm is spent — a snapshot,
+not a leash, so the quarry can still slip the trail. Those hiding in the home
+sanctuary read as no one; the dead don't hunt the safe.
+
 ## The refugees and the Chronon (decided Jul 19)
 
 Not every Naxian drowned. The ones who read the water right fled inward

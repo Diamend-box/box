@@ -2,6 +2,7 @@ package com.diamend.darksea.loot;
 
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.island.IslandRegistry;
+import com.diamend.darksea.item.DarkSeaItems;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
@@ -77,6 +78,20 @@ public final class ChestRefillService implements Listener {
                 RunLoot.tag(item);   // gathered this run — lost on death until banked at home
             }
             inventory.setItem(slots.get(i), item);
+        }
+        // A shape's signature cache — the Core nest seeds the Soulwake Compass
+        // into its chests, richer odds in the vaults — dropped on top of the
+        // rolled table into whatever slot is left free.
+        String bonusId = ref.island().chestBonusItem();
+        if (bonusId != null && rng.nextDouble() < ref.island().chestBonusChance(vault)) {
+            ItemStack bonus = DarkSeaItems.create(bonusId, 1);
+            int slot = inventory.firstEmpty();
+            if (bonus != null && slot >= 0) {
+                if (markRun) {
+                    RunLoot.tag(bonus);
+                }
+                inventory.setItem(slot, bonus);
+            }
         }
         ref.island().setRefilled(ref.pos(), now);
         registry.save();

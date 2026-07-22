@@ -11,6 +11,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -184,6 +185,9 @@ class DemoShapeTest {
             assertEquals(10, shape.rarityWeight(), shape.id() + " changed its pick weight");
             assertEquals(0, shape.mobTierBoost(), shape.id() + " boosts its mob tier");
             assertEquals(1, shape.vaultChestCount(), shape.id() + " elects extra vaults");
+            assertNull(shape.chestBonusItem(), shape.id() + " seeds a bonus item");
+            assertEquals(0.0, shape.chestBonusChance(true) + shape.chestBonusChance(false),
+                    shape.id() + " promises bonus loot with no item to give");
             for (int tier = shape.minTier(); tier <= shape.maxTier(); tier++) {
                 assertEquals(tier >= 4 ? 3 : tier == 3 ? 2 : 1, shape.chestCount(tier),
                         shape.id() + " changed its chest count at tier " + tier);
@@ -254,6 +258,14 @@ class DemoShapeTest {
         // the nest is the ONE island guaranteed to keep one standing.
         assertEquals("MariphageCore", nest.bossMob(), "the nest must house the Core");
         assertEquals("WARDEN", nest.bossFallback(), "the Core needs a vanilla fallback");
+
+        // The nest is the one shape that seeds the hunter's Soulwake Compass
+        // into its caches — richer odds in the two vaults than the plain niches.
+        assertEquals("soulwake_compass", nest.chestBonusItem(),
+                "the nest must seed the Soulwake Compass");
+        assertTrue(nest.chestBonusChance(true) > 0, "a nest vault must seed the compass");
+        assertTrue(nest.chestBonusChance(true) > nest.chestBonusChance(false),
+                "a vault must beat a plain niche for the compass");
         assertEquals(1.0, nest.residentBossChance(4), "the nest always keeps its Core");
         assertEquals(1.0, nest.residentBossChance(5), "the nest always keeps its Core");
         // The fallen Naxome outposts (the Trench castle and volcano) may host a

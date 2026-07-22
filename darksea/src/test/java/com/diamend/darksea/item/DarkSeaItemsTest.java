@@ -89,6 +89,18 @@ class DarkSeaItemsTest {
     }
 
     @Test
+    void soulwakeCompassIsARealRegistryItemTheNestCanSeed() {
+        ItemStack compass = DarkSeaItems.create(DarkSeaItems.SOULWAKE_COMPASS, 1);
+        assertEquals(Material.RECOVERY_COMPASS, compass.getType());
+        assertEquals(DarkSeaItems.SOULWAKE_COMPASS, DarkSeaItems.idOf(compass));
+        // The nest's bonus-loot id must name a real registry item, or a chest
+        // refill would try to create nothing.
+        String seeded = com.diamend.darksea.island.shape.DemoShapes.byId("mariphage-nest").chestBonusItem();
+        assertEquals(DarkSeaItems.SOULWAKE_COMPASS, seeded, "the nest seeds the compass by its real id");
+        assertTrue(DarkSeaItems.allIds().contains(seeded), "the seeded id is not registered");
+    }
+
+    @Test
     void chrononsCountAndPayCorrectly() {
         Inventory inventory = server.createInventory(null, 27);
         inventory.setItem(0, DarkSeaItems.create(DarkSeaItems.CHRONON, 60));

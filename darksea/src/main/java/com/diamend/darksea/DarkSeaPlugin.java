@@ -12,6 +12,7 @@ import com.diamend.darksea.data.PlayerDataStore;
 import com.diamend.darksea.island.IslandPlacer;
 import com.diamend.darksea.island.IslandRegistry;
 import com.diamend.darksea.item.ConsumableService;
+import com.diamend.darksea.item.SoulwakeService;
 import com.diamend.darksea.loot.ChestRefillService;
 import com.diamend.darksea.loot.LootConfig;
 import com.diamend.darksea.loot.LootTables;
@@ -107,6 +108,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(exposureTask, this);
         getServer().getPluginManager().registerEvents(relics, this);
         getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
+        getServer().getPluginManager().registerEvents(new SoulwakeService(this), this);
         getServer().getPluginManager().registerEvents(new UndrownedHeartService(this), this);
         getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);

@@ -162,6 +162,8 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("boat-outfit-reset"));
         assertTrue(settings.messages().containsKey("undrowned-attuned"));
         assertTrue(settings.messages().containsKey("undrowned-saved"));
+        assertTrue(settings.messages().containsKey("soulwake-heading"));
+        assertTrue(settings.messages().containsKey("soulwake-empty"));
     }
 
     @Test

@@ -333,6 +333,36 @@ Core chance, the `14`/`12` cap bonuses, and the `2`/`2` Trench rarity weights.
 Tests: `DemoShapeTest` (boss-guarantee invariant), `CastleIslandTest`
 (tier-aware cap + the per-island Core roll's rare-but-real band + determinism).
 
+### 3c-iii. The Soulwake Compass — the nest's hunting charm — BUILT (Wyatt's ask Jul 22)
+Wyatt: "nest chests should also contain a special item … a consumable that
+points you towards the closest player, allowing for easier hunting." Built as a
+one-shot direction-finder, not a live radar:
+- **The item** (`DarkSeaItems.SOULWAKE_COMPASS`, a `RECOVERY_COMPASS`):
+  right-click and it reads the **nearest living soul's** heading — distance,
+  8-point bearing, and an above/below/level hint — then is **spent**. A private
+  soul-flame streak points the way and a sculk shriek fires, both to the hunter
+  alone. `SoulwakeService` is the shell; the pick/bearing/range math is pure in
+  `HunterSense` (unit-tested off-server).
+- **What counts as quarry**: another player in the Dark Sea, alive, not a
+  spectator/creative, **outside the home sanctuary** (a safe camper's heading
+  never leaks), within `SOULWAKE_RANGE` (**3000** blocks). An empty sea keeps
+  the charge — nothing to point at, nothing spent.
+- **Where it drops** (shape-seam, nest-exclusive): a new Bukkit-free
+  `DemoShape.chestBonusItem()` / `chestBonusChance(boolean vault)` that only the
+  nest overrides; `ChestRefillService` seeds it on top of the rolled table.
+  Odds per chest on each refill: **0.5** in a vault, **0.15** in a plain niche →
+  ~0.8 compasses per nest per refill cycle. Tier tables stay clean; no other
+  shape (castle/volcano vaults included) can drop it.
+
+Boxpvp lever: an action-forcing "UAV" that collapses the search on an 8000-radius
+sea, but fair — snapshot only (the quarry can juke after the ping), consumable,
+nest-sourced, and blind to sanctuary campers. **No team system yet**, so it
+finds the literally nearest other player (an ally included). Knobs: `SOULWAKE_RANGE`
+(3000), the `0.5`/`0.15` seed odds on `MariphageNest`, the sanctuary skip.
+Tests: `HunterSenseTest` (bearing/nearest/range math), `DemoShapeTest`
+(only the nest seeds a bonus), `CastleIslandTest` (nest-vs-plain delegation),
+`DarkSeaItemsTest` (the seeded id is a real registry item).
+
 ### 3d. The Sunless Trench as a deadlier t4 — BUILT (Wyatt's ask Jul 21)
 Wyatt: "make t5 a more sparse and deadly version of t4." The Trench was
 already sparse (3 nests) but had **no roaming foes at all** (the roster

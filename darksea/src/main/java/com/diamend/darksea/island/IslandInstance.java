@@ -166,6 +166,21 @@ public final class IslandInstance {
         return shape != null ? shape.bossFallback() : null;
     }
 
+    /**
+     * A custom item id this island seeds into its chests beyond the tier
+     * table (the nest's Soulwake Compass), or null for an ordinary island.
+     */
+    public String chestBonusItem() {
+        DemoShape shape = shape();
+        return shape != null ? shape.chestBonusItem() : null;
+    }
+
+    /** Chance a refilling chest of the given kind carries {@link #chestBonusItem()}. */
+    public double chestBonusChance(boolean vault) {
+        DemoShape shape = shape();
+        return shape != null ? shape.chestBonusChance(vault) : 0.0;
+    }
+
     /** Where the resident boss rises — the shape's first mob spawn, its heart. */
     public Pos bossSpawn() {
         return spawnPoints.isEmpty() ? null : spawnPoints.get(0);
