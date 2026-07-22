@@ -3,6 +3,7 @@ package com.diamend.darksea;
 import com.diamend.darksea.armor.ProtectionService;
 import com.diamend.darksea.boat.BoatMenuService;
 import com.diamend.darksea.boat.BoatService;
+import com.diamend.darksea.bounty.BountyService;
 import com.diamend.darksea.combat.NaxCombatListener;
 import com.diamend.darksea.combat.SeaGuardListener;
 import com.diamend.darksea.command.DarkSeaCommand;
@@ -61,6 +62,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private NavalCombatService naval;
     private NavalHudService hud;
     private RunLootService runLoot;
+    private BountyService bounty;
     private WorldService worldService;
     private MobSpawner mobSpawner;
     private ExposureTask exposureTask;
@@ -96,6 +98,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         naval = new NavalCombatService(this);
         hud = new NavalHudService(this);
         runLoot = new RunLootService(this);
+        bounty = new BountyService(this);
         worldService = new WorldService(this, registry, placer);
         mobSpawner = new MobSpawner(this, registry);
         exposureTask = new ExposureTask(this);
@@ -115,6 +118,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(naval, this);
         getServer().getPluginManager().registerEvents(new NavalWeaponListener(this, naval), this);
         getServer().getPluginManager().registerEvents(runLoot, this);
+        getServer().getPluginManager().registerEvents(bounty, this);
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
 
         PluginCommand command = getCommand("darksea");
@@ -143,6 +147,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
         }
         if (registry != null) {
             registry.save();
+        }
+        if (bounty != null) {
+            bounty.save();
         }
     }
 
@@ -249,6 +256,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public RunLootService runLoot() {
         return runLoot;
+    }
+
+    public BountyService bounty() {
+        return bounty;
     }
 
     public WorldService worldService() {

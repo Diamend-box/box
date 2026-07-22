@@ -10,6 +10,7 @@ import com.diamend.darksea.zone.Zone;
 import com.diamend.darksea.zone.ZoneManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 /** /darksea (alias /ds) — every player and admin entry point. */
 public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
@@ -42,6 +44,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "status" -> status(sender);
             case "tp" -> tp(sender);
             case "boat" -> boat(sender, args);
+            case "bounty" -> bounty(sender, args);
             case "relic" -> relic(sender, args);
             case "generate" -> {
                 if (requireAdmin(sender)) {
@@ -81,6 +84,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
         helpLine(sender, "/ds boat", "open the boat wheel (upgrade, repair, stow)", "darksea.use");
         helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
+        helpLine(sender, "/ds bounty [player] [amount]", "list bounties, or spend Chronons to place one", "darksea.use");
         helpLine(sender, "/ds relic revive", "wake the held relic at the calm center (costs Chronons)", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
         helpLine(sender, "/ds generate [count]", "place islands (all rings, or just <count> at a time)", "darksea.admin");
@@ -134,6 +138,68 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             msg.sendBare(player, "status-safe");
         } else {
             msg.sendBare(player, "status-danger", "exposure", String.valueOf(exposure));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Bounties: /ds bounty (list) | /ds bounty <player> <amount> (place)
+    // ------------------------------------------------------------------
+
+    private void bounty(CommandSender sender, String[] args) {
+        Messages msg = plugin.messages();
+        if (!(sender instanceof Player player)) {
+            msg.send(sender, "players-only");
+            return;
+        }
+        if (args.length < 2) {
+            bountyList(player);
+            return;
+        }
+        if (args.length < 3) {
+            msg.send(player, "bounty-usage");
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            msg.send(player, "bounty-no-target", "name", args[1]);
+            return;
+        }
+        if (target.equals(player)) {
+            msg.send(player, "bounty-self");
+            return;
+        }
+        int amount;
+        try {
+            amount = Integer.parseInt(args[2]);
+        } catch (NumberFormatException ex) {
+            msg.send(player, "bounty-bad-amount", "value", args[2]);
+            return;
+        }
+        if (amount <= 0) {
+            msg.send(player, "bounty-bad-amount", "value", args[2]);
+            return;
+        }
+        if (!plugin.bounty().place(player, target, amount)) {
+            msg.send(player, "bounty-need-chronons",
+                    "cost", String.valueOf(amount),
+                    "have", String.valueOf(DarkSeaItems.countChronons(player.getInventory())));
+        }
+    }
+
+    private void bountyList(Player player) {
+        Messages msg = plugin.messages();
+        List<Map.Entry<UUID, Integer>> top = plugin.bounty().top(10);
+        if (top.isEmpty()) {
+            msg.send(player, "bounty-none");
+            return;
+        }
+        msg.sendBare(player, "bounty-list-header");
+        for (Map.Entry<UUID, Integer> entry : top) {
+            OfflinePlayer head = Bukkit.getOfflinePlayer(entry.getKey());
+            String name = head.getName() != null
+                    ? head.getName() : entry.getKey().toString().substring(0, 8);
+            msg.sendBare(player, "bounty-list-entry",
+                    "name", name, "amount", String.valueOf(entry.getValue()));
         }
     }
 
@@ -498,6 +564,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             options.add("help");
             options.add("status");
             options.add("boat");
+            options.add("bounty");
             options.add("relic");
             if (sender.hasPermission("darksea.tp")) {
                 options.add("tp");
@@ -520,6 +587,11 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     }
                 }
                 case "relic" -> options.add("revive");
+                case "bounty" -> {
+                    for (Player online : Bukkit.getOnlinePlayers()) {
+                        options.add(online.getName());
+                    }
+                }
                 case "reset" -> {
                     if (admin) {
                         options.add("soft");

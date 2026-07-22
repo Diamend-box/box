@@ -669,6 +669,20 @@ sword 12.8: Enhanced Claw 14.4, Abomination Bone 14.3 burst, Stinger 5.6 but
 TRUE/armor-piercing; Vironic is a full-set-only leather glass cannon, +2x tier
 in-sea, one borrowed piece breaks it.)
 
+### 8b. Chronon bounties — BUILT (Wyatt picked it Jul 22)
+Spend Chronons to put a price on a captain's head; whoever kills them in the
+Dark Sea collects the whole pool, broadcast server-wide. Anyone can add to a
+standing bounty, so a hated raider's price climbs.
+- **`BountyLedger`** (Bukkit-free, unit-tested): pooling, one-shot `claim`,
+  richest-first `top`, snapshot/load that drops malformed rows.
+- **`BountyService`**: spends Chronons via the existing
+  `DarkSeaItems.removeChronons`, pays the killer on a `PlayerDeathEvent` (only
+  a real player kill in the sea — an environmental drowning leaves the bounty
+  standing), persists to `bounties.yml` across restarts.
+- **`/ds bounty`** lists standing bounties; **`/ds bounty <player> <amount>`**
+  places one (online targets, no self-bounty). Tab-completes online names.
+- Ten new `bounty-*` messages; the placed/claimed lines broadcast to everyone.
+
 ### 9. Vault-cracking mechanic — code (MAYBE, later update; Wyatt Jul 21)
 Backlog idea, parked deliberately. Today every chest is reachable **on foot**
 (walk / crawl / drop — see 3e); nothing is sealed, because island blocks

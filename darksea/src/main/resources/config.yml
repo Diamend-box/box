@@ -352,6 +352,17 @@ messages:
   world-missing: "<red>The Dark Sea world is not loaded."
   player-not-found: "<red>Player {player} is not online."
   invalid-number: "<red>{value} is not a valid number."
+  # Bounties (/ds bounty). Placed and claimed lines are broadcast to everyone.
+  bounty-usage: "<gray>Usage: <white>/ds bounty <player> <amount></white> — spend Chronons to put a price on a head.</gray>"
+  bounty-no-target: "<red>No online player named <white>{name}</white>.</red>"
+  bounty-self: "<red>You can't put a bounty on your own head.</red>"
+  bounty-bad-amount: "<red><white>{value}</white> isn't a positive number of Chronons.</red>"
+  bounty-need-chronons: "<red>That bounty costs <aqua>{cost}</aqua> Chronons — you only have <aqua>{have}</aqua>.</red>"
+  bounty-placed: "<gold>☠ <white>{sponsor}</white> put <aqua>{amount}</aqua> Chronons on <white>{target}</white>'s head — the bounty stands at <aqua>{total}</aqua>.</gold>"
+  bounty-claimed: "<gold>☠ <white>{killer}</white> collected the <aqua>{amount}</aqua>-Chronon bounty on <white>{target}</white>!</gold>"
+  bounty-none: "<gray>No bounties on any heads right now. Set one with <white>/ds bounty <player> <amount></white>.</gray>"
+  bounty-list-header: "<gold>☠ Standing bounties</gold>"
+  bounty-list-entry: "<gray>• <white>{name}</white> — <aqua>{amount}</aqua> Chronons</gray>"
 
   zone-crossed-protected: "<gray>Entering {zone}<gray> — your armor holds."
   zone-crossed-exposed: "<red>Entering {zone}<red> — you are not protected here!"
