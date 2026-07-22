@@ -69,8 +69,8 @@ final class RuinedCastle implements DemoShape {
 
     @Override
     public int rarityWeight(int tier) {
-        // Rarer still out in the Trench, where the nest (weight 10) reigns —
-        // a castle there is a lucky find, not the norm.
+        // Out in the Trench the nest (weight 4) takes about half the ring and
+        // the castle splits the rest with the volcano — a lucky find, not the norm.
         return tier >= 5 ? 2 : rarityWeight();
     }
 

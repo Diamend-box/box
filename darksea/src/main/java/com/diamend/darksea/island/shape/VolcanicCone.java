@@ -33,7 +33,7 @@ final class VolcanicCone implements DemoShape {
     @Override
     public int rarityWeight(int tier) {
         // A rare intruder out in the Trench (ring 5), where the Mariphage
-        // nest otherwise reigns; an ordinary shape in its home rings.
+        // nest takes about half the ring; an ordinary shape in its home rings.
         return tier >= 5 ? 2 : rarityWeight();
     }
 

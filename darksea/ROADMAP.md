@@ -295,17 +295,17 @@ found only at nests), spanning **tier 4 rarely and tier 5 commonly**, a
   wherever it dies.
 - **Per-tier rarity** (`DemoShape.rarityWeight(tier)`, weighted pick): the
   nest weighs **2** against six shapes at 10 in the Reaches (~3%, a rare
-  stray) but **dominates** the Sunless Trench at weight **10** against the two
-  intruders that also reach tier 5 — the ruined castle and volcanic cone at
-  weight **2** each — so ~72% of the Trench's sparse islands
-  (`islands-per-ring[5] = 3`, ~14.5k–24.5k out) are Core nests, the rest a
-  lucky drowned fortress or dead volcano. The Devouring Rim (tier 6) stays
-  island-free.
+  stray) but is the **plurality** of the Sunless Trench at weight **4** against
+  the two intruders that also reach tier 5 — the ruined castle and volcanic
+  cone at weight **2** each — so ~50% of the Trench's sparse islands
+  (`islands-per-ring[5] = 2`, ~14.5k–24.5k out) are Core nests, the rest a
+  lucky drowned fortress or dead volcano (each a rare non-nest Core path). The
+  Devouring Rim (tier 6) stays island-free.
 
-Boxpvp note: a guaranteed warden per Trench island is a strong endgame
-draw and a strong deterrent — 400 HP, pulls, plague bursts, Darkness — kept
-sparse (3 nests) and gated behind a ~15-min haul into tier-5 waters. Nest
-count and Core drops are the tuning knobs. Tests: `DemoShapeTest` (nest
+Boxpvp note: a Core nest on about half the Trench's islands is a strong
+endgame draw and a strong deterrent — 400 HP, pulls, plague bursts, Darkness —
+kept sparse (2 islands, ~1 nest) and gated behind a ~15-min haul into tier-5
+waters. Nest weight, island count and Core drops are the tuning knobs. Tests: `DemoShapeTest` (nest
 rarity/boss/tier + the shared structural sweep at t4 and t5), `MobConfigTest`
 (Core no longer native), `ConfigParsingTest` (tier-5 generation).
 
@@ -637,7 +637,8 @@ self-contained and foot-reachable (island blocks are protected, no mining
 in), a tier folder with any `.schem` overrides the built-in shapes for that
 whole ring (so migration is incremental — unbuilt rings keep the generated
 shapes), the timed reset should be paused while testing builds, tier 5 is
-nest-exclusive by design, and raw schematics are plain islands (castle/nest
+nest-dominant (~half nests, rest rare castle/volcano) by design, and raw
+schematics are plain islands (castle/nest
 traits are shape-code seams, flag if wanted on a hand-build). Linked from the
 README's "Building island schematics" section.
 

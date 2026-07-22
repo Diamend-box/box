@@ -111,10 +111,10 @@ pasted at center and the generator never touches it (it stays hand-built /
 yours). This is also where the refugee trader and any Undrowned-Heart hints
 live once you build them.
 
-**Tier 5 (the Sunless Trench)** builds only a handful of islands from a
-nest-*dominant* pool: the Mariphage nest at weight 10, plus rare Trench
-variants of the ruined castle and the volcano at weight 2 each (~71% nest,
-~14% castle, ~14% volcano over `islands-per-ring[5]` = 3). The nest is a
+**Tier 5 (the Sunless Trench)** builds only a couple of islands from a
+nest-*dominant* pool: the Mariphage nest at weight 4, plus rare Trench
+variants of the ruined castle and the volcano at weight 2 each (~50% nest,
+~25% castle, ~25% volcano over `islands-per-ring[5]` = 2). The nest is a
 guaranteed Core; the two outposts are the rare non-nest Core path — far
 denser garrisons (castle 14 mobs, volcano 12) with a 0.12 chance to raise a
 Core of their own. Dropping ordinary schematics into `tier5/` replaces that
@@ -191,7 +191,7 @@ playable.
 | Mob-spawn marker | block placed in build | `GOLD_BLOCK` (`markers.mob-spawn`) |
 | Paste height | `generation.paste-y` or sidecar | Y 58 |
 | Selection weight | sidecar `weight:` | 1 |
-| Islands per ring | `generation.islands-per-ring` | 6/8/8/10/3 |
+| Islands per ring | `generation.islands-per-ring` | 6/8/8/10/2 |
 | Reload after adding | `/ds reload` then `/ds reset full confirm` | — |
 
 Any tier folder with at least one `.schem` overrides the built-in shapes for

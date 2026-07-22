@@ -47,8 +47,10 @@ final class MariphageNest implements DemoShape {
 
     @Override
     public int rarityWeight(int tier) {
-        // Rare among the Reaches' seven shapes; the Trench builds nothing else.
-        return tier >= 5 ? 10 : 2;
+        // Rare among the Reaches' seven shapes. Out in the Trench it takes
+        // about half the ring (weight 4), sharing the rest with the rare
+        // drowned castle and dead volcano (weight 2 each).
+        return tier >= 5 ? 4 : 2;
     }
 
     @Override

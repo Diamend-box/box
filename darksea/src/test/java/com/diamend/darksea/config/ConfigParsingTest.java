@@ -90,8 +90,9 @@ class ConfigParsingTest {
 
         assertEquals(5, settings.generation().islandsPerRing().size());
         assertEquals(6, settings.generation().islandsPerRing().get(1));
-        // The Sunless Trench (tier 5) builds a sparse handful of Core nests.
-        assertEquals(3, settings.generation().islandsPerRing().get(5));
+        // The Sunless Trench (tier 5) builds a sparse couple of islands, about
+        // half of them Core nests and the rest rare castle/volcano outposts.
+        assertEquals(2, settings.generation().islandsPerRing().get(5));
         assertEquals(Material.LODESTONE, settings.generation().chestMarker());
         assertEquals(Material.GOLD_BLOCK, settings.generation().mobMarker());
         assertTrue(settings.generation().outerRadius() > 5000);

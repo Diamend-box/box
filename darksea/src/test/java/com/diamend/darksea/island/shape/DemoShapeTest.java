@@ -282,9 +282,10 @@ class DemoShapeTest {
             }
         }
 
-        // Rare among the Reaches' shapes, and the norm in the Trench: the
+        // Rare among the Reaches' shapes, and the plurality in the Trench: the
         // nest shares tier 5 only with rare intruders (a drowned castle, a
-        // dead volcano), whom it out-weighs better than two to one.
+        // dead volcano), and is weighted to take about half the ring — its
+        // weight equals the two rivals combined.
         assertTrue(nest.rarityWeight(4) < 10, "the nest must be a rare stray in tier 4");
         assertEquals(nest.rarityWeight(5), nest.rarityWeight(5),
                 "tier-5 weight must be stable");
@@ -293,11 +294,11 @@ class DemoShapeTest {
         int nestWeight = nest.rarityWeight(5);
         int rivalWeight = trench.stream().filter(s -> s != nest)
                 .mapToInt(s -> s.rarityWeight(5)).sum();
-        assertTrue(nestWeight > rivalWeight * 2,
-                "the nest must dominate the Trench pool, was " + nestWeight + " vs " + rivalWeight);
+        assertEquals(rivalWeight, nestWeight,
+                "the nest must be about half the Trench pool, was " + nestWeight + " vs " + rivalWeight);
 
-        // Picking at tier 5 therefore lands the nest the large majority of the
-        // time, and it garrisons a real fight — a heart mob spawn plus flanks.
+        // Picking at tier 5 therefore lands the nest about half the time, and
+        // it garrisons a real fight — a heart mob spawn plus flanks.
         Random rng = new Random(99L);
         int nestPicks = 0, trials = 4000;
         for (int i = 0; i < trials; i++) {
@@ -305,8 +306,8 @@ class DemoShapeTest {
                 nestPicks++;
             }
         }
-        assertTrue(nestPicks > trials * 0.6, "tier 5 must be mostly nests, was "
-                + nestPicks + "/" + trials);
+        assertTrue(nestPicks > trials * 0.44 && nestPicks < trials * 0.56,
+                "tier 5 must be about half nests, was " + nestPicks + "/" + trials);
         // The nest stays modest — a rare stray, not a castle: at tier 4 the
         // Reaches' ~7 shapes should each still be pickable around it.
         Random reaches = new Random(7L);
