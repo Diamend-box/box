@@ -105,9 +105,13 @@ class ConfigParsingTest {
         assertEquals(2, settings.boat().levels().get(5).shield());
         assertTrue(settings.boat().levels().get(3).speed() > settings.boat().levels().get(1).speed());
         assertTrue(settings.boat().levels().get(5).speed() > settings.boat().levels().get(3).speed());
-        // The two apex tiers carry a bigger hull than the global default;
-        // the low tiers leave hp at 0 to fall back on it.
+        // Every level from the Sloop up carries its own hull, a smooth ramp
+        // (11/13/14/18/24) instead of a cliff at tier 3; only the Rowboat
+        // leaves hp at 0 to fall back on the global default (10).
         assertEquals(0.0, settings.boat().levels().get(0).hp(), 1e-9);
+        assertEquals(11.0, settings.boat().levels().get(1).hp(), 1e-9);
+        assertEquals(13.0, settings.boat().levels().get(2).hp(), 1e-9);
+        assertEquals(14.0, settings.boat().levels().get(3).hp(), 1e-9);
         assertEquals(18.0, settings.boat().levels().get(4).hp(), 1e-9);
         assertEquals(24.0, settings.boat().levels().get(5).hp(), 1e-9);
         assertTrue(settings.boat().levels().get(5).toughness()
@@ -134,6 +138,11 @@ class ConfigParsingTest {
         assertTrue(settings.naval().hull().woundedSpeedFactor() < 1.0);
         assertEquals(0.05, settings.naval().hull().speedPenaltyPerHp(), 1e-9,
                 "the shipped hull loses 5% top speed per missing HP");
+        // The hullpiercer is the rare anti-tank arrow: big flat damage that
+        // ignores most of the toughness bonus, so a fat curve barely helps.
+        assertEquals(9.0, settings.naval().hullpiercerDamage(), 1e-9);
+        assertEquals(0.25, settings.naval().hullpiercerToughnessFactor(), 1e-9,
+                "only a quarter of the toughness bonus resists a hullpiercer");
         assertTrue(settings.naval().surge().boostFactor() > 1.0);
         assertTrue(settings.naval().chainshotSpeedFactor()
                 < settings.naval().hull().woundedSpeedFactor(),

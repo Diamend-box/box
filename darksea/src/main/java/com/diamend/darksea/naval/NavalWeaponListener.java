@@ -91,8 +91,9 @@ public final class NavalWeaponListener implements Listener {
             }
             case DarkSeaItems.HULLPIERCER_ARROW -> {
                 double toughness = plugin.boat().stats(plugin.boat().levelOf(rider)).toughness();
-                // Cuts through plating: only half the toughness bonus counts.
-                double effective = 1.0 + (Math.max(1.0, toughness) - 1.0) * 0.5;
+                // Cuts through plating: only a fraction of the toughness bonus counts.
+                double factor = plugin.settings().naval().hullpiercerToughnessFactor();
+                double effective = 1.0 + (Math.max(1.0, toughness) - 1.0) * factor;
                 naval.damageHull(boat, plugin.settings().naval().hullpiercerDamage() / effective,
                         shooter);
                 boat.getWorld().playSound(boat.getLocation(), Sound.ITEM_TRIDENT_HIT, 1.0f, 0.7f);

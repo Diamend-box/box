@@ -642,11 +642,32 @@ schematics are plain islands (castle/nest
 traits are shape-code seams, flag if wanted on a hand-build). Linked from the
 README's "Building island schematics" section.
 
-### 8. Balance pass — config
+### 8. Balance pass — config (naval curve done Jul 22; foot PvP is Wyatt's)
 Per-tier effect stacks, message polish, a sanity check of ring math at the
 larger 8000-block radius, and — now that it's a boxpvp server — a
 specifically-PvP look at the armor/boat tiers as the player-vs-player power
 curve, not just the PvE survival gates.
+
+**Naval curve — done (Jul 22).** After laying out the effective-HP ladder
+(hp x toughness) for Wyatt to judge:
+- **Smoothed the mid-tiers** so every upgrade feels earned instead of a cliff
+  at tier 3: Sloop hp 0->11, Cutter hp 0->13 (they used to inherit the global
+  10). Effective HP is now 10 / 13.75 / 19.5 / 25.2 / 37.8 / 57.6 — apex
+  untouched, a Maelstrom still ~5.8x a Rowboat.
+- **Buffed the hullpiercer** (the rare anti-tank arrow, and the counter that
+  keeps the effective-HP ladder from being a wall): damage 6.0->9.0 and it now
+  ignores three-quarters of the toughness bonus instead of half. New config
+  knob `naval.hullpiercer.toughness-factor` (0.25) makes the pierce tunable.
+  Sinks a Maelstrom in ~4 hits, was ~7.
+- **Two live-feel knobs flagged, not changed:** harpoon velocity-carry (0.6)
+  vs a fully speed-stacked runner, and hullpiercer drop accessibility.
+
+**Foot PvP — Wyatt's.** He's tuning weapons/armor around the server's own
+custom gear, so the DarkSea weapon damages and the Vironic set bonus stay as
+shipped until he calls specific numbers. (Reference DPS vs vanilla netherite
+sword 12.8: Enhanced Claw 14.4, Abomination Bone 14.3 burst, Stinger 5.6 but
+TRUE/armor-piercing; Vironic is a full-set-only leather glass cannon, +2x tier
+in-sea, one borrowed piece breaks it.)
 
 ### 9. Vault-cracking mechanic — code (MAYBE, later update; Wyatt Jul 21)
 Backlog idea, parked deliberately. Today every chest is reachable **on foot**

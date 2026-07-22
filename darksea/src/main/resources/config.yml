@@ -253,14 +253,17 @@ boat:
   #   toughness curve on top of bigger hulls made apex boats near-unkillable.
   #   At this curve a Maelstrom is ~5.8x a Rowboat's effective HP, not 12x.
   # hp = the tier's own hull max HP. 0 (or omitted) means "use the global
-  #   naval.hull.max-hp"; the two apex tiers carry bigger hulls so they soak
-  #   both harder (toughness) AND longer (raw HP) than the default 10.
+  #   naval.hull.max-hp" (10); each level from the Sloop up carries a slightly
+  #   bigger hull (11/13/14/18/24) so every upgrade soaks both harder
+  #   (toughness) AND longer (raw HP), a smooth ramp instead of a cliff at
+  #   tier 3. Effective HP (hp x toughness): 10 / 13.75 / 19.5 / 25.2 / 37.8 /
+  #   57.6 — a Maelstrom is ~5.8x a Rowboat, not 12x.
   # Ram Power (naval.ram.power-per-level, default 0.15) scales offense by
   #   level automatically: level 4 = 1.60x, level 5 = 1.75x.
   levels:
     0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0, hp: 0 }
-    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.25, hp: 0 }
-    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 1.5, hp: 0 }
+    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.25, hp: 11 }
+    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 1.5, hp: 13 }
     3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 1.8, hp: 14 }
     4: { name: "Tempest",     speed: 1.55, shield: 2, toughness: 2.1, hp: 18 }
     5: { name: "Maelstrom",   speed: 1.65, shield: 2, toughness: 2.4, hp: 24 }
@@ -321,9 +324,14 @@ naval:
   chainshot:
     slow-seconds: 6
     speed-factor: 0.5
-  # Hullpiercer arrow: heavy hull damage through half the toughness bonus.
+  # Hullpiercer arrow: the rare boat-killer. Heavy hull damage that shrugs off
+  # most of the plating — only toughness-factor of the target's toughness BONUS
+  # (the part above 1.0) still counts, so a fat toughness curve barely helps.
+  # At damage 9.0 / factor 0.25 it sinks a Maelstrom (24 hull, tough 2.4) in ~4
+  # hits instead of ~7; against a Rowboat it's a flat ~9. Worth its rarity.
   hullpiercer:
-    damage: 6.0
+    damage: 9.0
+    toughness-factor: 0.25
   # Harpoon gun: hooks a ridden boat in range and reels it toward the shooter.
   harpoon:
     range: 24

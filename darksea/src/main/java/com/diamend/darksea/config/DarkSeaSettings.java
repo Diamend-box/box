@@ -181,8 +181,8 @@ public record DarkSeaSettings(
      * Naval weapons, together. {@code chainshotSlowSeconds} /
      * {@code chainshotSpeedFactor} are the sail-shredder arrow's harder,
      * longer wounded-hull slow; {@code hullpiercerDamage} is the boat-killer
-     * arrow's hull damage, applied with only half the target's toughness
-     * counted.
+     * arrow's hull damage, applied with only {@code hullpiercerToughnessFactor}
+     * of the target's toughness BONUS (above 1.0) counted.
      */
     /**
      * The home dry-dock: a wounded hull is patched back to full for
@@ -194,7 +194,8 @@ public record DarkSeaSettings(
 
     public record NavalSettings(RamSettings ram, HullSettings hull, SurgeSettings surge,
                                 int chainshotSlowSeconds, double chainshotSpeedFactor,
-                                double hullpiercerDamage, HarpoonSettings harpoon,
+                                double hullpiercerDamage, double hullpiercerToughnessFactor,
+                                HarpoonSettings harpoon,
                                 HudSettings hud, RepairSettings repair) {
     }
 
@@ -427,7 +428,8 @@ public record DarkSeaSettings(
         return new NavalSettings(ram, hull, surge,
                 Math.max(1, cfg.getInt("naval.chainshot.slow-seconds", 6)),
                 Math.min(1.0, Math.max(0.05, cfg.getDouble("naval.chainshot.speed-factor", 0.5))),
-                Math.max(0, cfg.getDouble("naval.hullpiercer.damage", 6.0)),
+                Math.max(0, cfg.getDouble("naval.hullpiercer.damage", 9.0)),
+                Math.min(1.0, Math.max(0.0, cfg.getDouble("naval.hullpiercer.toughness-factor", 0.25))),
                 harpoon, hud, repair);
     }
 
