@@ -263,9 +263,8 @@ class DemoShapeTest {
         // into its caches — richer odds in the two vaults than the plain niches.
         assertEquals("soulwake_compass", nest.chestBonusItem(),
                 "the nest must seed the Soulwake Compass");
-        assertTrue(nest.chestBonusChance(true) > 0, "a nest vault must seed the compass");
-        assertTrue(nest.chestBonusChance(true) > nest.chestBonusChance(false),
-                "a vault must beat a plain niche for the compass");
+        assertEquals(0.30, nest.chestBonusChance(true), 1e-9, "a nest chest seeds the compass at 30%");
+        assertEquals(0.30, nest.chestBonusChance(false), 1e-9, "vault and plain niche seed alike");
         assertEquals(1.0, nest.residentBossChance(4), "the nest always keeps its Core");
         assertEquals(1.0, nest.residentBossChance(5), "the nest always keeps its Core");
         // The fallen Naxome outposts (the Trench castle and volcano) may host a

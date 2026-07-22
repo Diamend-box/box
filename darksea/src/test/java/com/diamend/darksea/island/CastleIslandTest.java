@@ -107,9 +107,8 @@ class CastleIslandTest {
     void nestIslandsSeedTheSoulwakeCompassButOrdinaryIslandsDoNot() {
         IslandInstance nest = island("mariphage-nest", 5, 4);
         assertEquals("soulwake_compass", nest.chestBonusItem(), "a nest seeds the compass");
-        assertTrue(nest.chestBonusChance(true) > nest.chestBonusChance(false),
-                "the nest's vaults out-roll its plain chambers for the compass");
-        assertTrue(nest.chestBonusChance(false) > 0, "even a plain nest chamber has a shot");
+        assertEquals(0.30, nest.chestBonusChance(true), 1e-9, "a nest chest seeds the compass at 30%");
+        assertEquals(0.30, nest.chestBonusChance(false), 1e-9, "vault and plain niche seed alike");
 
         IslandInstance castle = island("ruined-castle", 5, 7);
         assertEquals(null, castle.chestBonusItem(), "a castle seeds no bonus item");

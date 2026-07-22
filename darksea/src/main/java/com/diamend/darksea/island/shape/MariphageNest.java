@@ -79,9 +79,8 @@ final class MariphageNest implements DemoShape {
 
     @Override
     public double chestBonusChance(boolean vault) {
-        // The Order's hunting charm rode deepest in the tithe: better odds in
-        // the two vaults than the plain offering-niches.
-        return vault ? 0.5 : 0.15;
+        // A flat 30% in any nest cache, vault or plain offering-niche alike.
+        return 0.30;
     }
 
     @Override

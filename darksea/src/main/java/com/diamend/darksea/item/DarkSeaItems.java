@@ -145,8 +145,13 @@ public final class DarkSeaItems {
     public static final double DRAUGHT_MULTIPLIER = 1.25;
     public static final int DRAUGHT_SECONDS = 90;
 
-    /** Soulwake Compass: how far out (blocks) it will still find a living soul. */
-    public static final double SOULWAKE_RANGE = 3000.0;
+    /**
+     * Soulwake Compass: how far out (blocks) it will still find a living soul.
+     * Effectively sea-wide — the outer rings sit ~25k out. No lag cost: the use
+     * only loops the online players in the sea, and this is a distance
+     * threshold in that loop, not a chunk-loading search radius.
+     */
+    public static final double SOULWAKE_RANGE = 30000.0;
 
     // ------------------------------------------------------------------
     // Naval weapons (behavior in com.diamend.darksea.naval)

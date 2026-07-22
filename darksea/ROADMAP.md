@@ -345,20 +345,24 @@ one-shot direction-finder, not a live radar:
   `HunterSense` (unit-tested off-server).
 - **What counts as quarry**: another player in the Dark Sea, alive, not a
   spectator/creative, **outside the home sanctuary** (a safe camper's heading
-  never leaks), within `SOULWAKE_RANGE` (**3000** blocks). An empty sea keeps
+  never leaks), within `SOULWAKE_RANGE` (**30,000** blocks — effectively
+  sea-wide, the outer rings sit ~25k out; Wyatt's Jul 22 bump). No lag cost:
+  the use only loops the sea's online players, and range is a distance
+  threshold in that loop, not a chunk-loading search radius. An empty sea keeps
   the charge — nothing to point at, nothing spent.
 - **Where it drops** (shape-seam, nest-exclusive): a new Bukkit-free
   `DemoShape.chestBonusItem()` / `chestBonusChance(boolean vault)` that only the
   nest overrides; `ChestRefillService` seeds it on top of the rolled table.
-  Odds per chest on each refill: **0.5** in a vault, **0.15** in a plain niche →
-  ~0.8 compasses per nest per refill cycle. Tier tables stay clean; no other
-  shape (castle/volcano vaults included) can drop it.
+  Odds per nest chest on each refill: a flat **30%** (Wyatt's Jul 22 call, up
+  from the first 0.5-vault/0.15-plain split) → ~1.2 compasses per nest per
+  refill cycle across its four caches. Tier tables stay clean; no other shape
+  (castle/volcano vaults included) can drop it.
 
 Boxpvp lever: an action-forcing "UAV" that collapses the search on an 8000-radius
 sea, but fair — snapshot only (the quarry can juke after the ping), consumable,
 nest-sourced, and blind to sanctuary campers. **No team system yet**, so it
 finds the literally nearest other player (an ally included). Knobs: `SOULWAKE_RANGE`
-(3000), the `0.5`/`0.15` seed odds on `MariphageNest`, the sanctuary skip.
+(30,000), the flat `0.30` seed odds on `MariphageNest`, the sanctuary skip.
 Tests: `HunterSenseTest` (bearing/nearest/range math), `DemoShapeTest`
 (only the nest seeds a bonus), `CastleIslandTest` (nest-vs-plain delegation),
 `DarkSeaItemsTest` (the seeded id is a real registry item).
