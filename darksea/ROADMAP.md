@@ -295,9 +295,12 @@ found only at nests), spanning **tier 4 rarely and tier 5 commonly**, a
   wherever it dies.
 - **Per-tier rarity** (`DemoShape.rarityWeight(tier)`, weighted pick): the
   nest weighs **2** against six shapes at 10 in the Reaches (~3%, a rare
-  stray) but is the **only** shape that fits the Sunless Trench — so every
-  one of the Trench's sparse islands (`islands-per-ring[5] = 3`, ~14.5k–24.5k
-  out) is a Core nest. The Devouring Rim (tier 6) stays island-free.
+  stray) but **dominates** the Sunless Trench at weight **10** against the two
+  intruders that also reach tier 5 — the ruined castle and volcanic cone at
+  weight **2** each — so ~72% of the Trench's sparse islands
+  (`islands-per-ring[5] = 3`, ~14.5k–24.5k out) are Core nests, the rest a
+  lucky drowned fortress or dead volcano. The Devouring Rim (tier 6) stays
+  island-free.
 
 Boxpvp note: a guaranteed warden per Trench island is a strong endgame
 draw and a strong deterrent — 400 HP, pulls, plague bursts, Darkness — kept

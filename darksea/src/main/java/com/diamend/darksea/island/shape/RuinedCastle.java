@@ -6,13 +6,14 @@ import java.util.Random;
 
 /**
  * The rare landmark island: a drowned Naxian fortress, far bigger than
- * anything else the sea builds (~70x70 at ring 2 up to ~79x79 at ring 4).
+ * anything else the sea builds (~70x70 at ring 2 up to ~86x86 at ring 5).
  * A square curtain wall with four corner towers rings a courtyard holding
  * a roofless keep (throne dais over a sunken vault), a great hall over an
  * undercroft, and a chapel the Order has since reconsecrated. Every chest
- * sits in a buried or walled room — 4/5/6 of them by tier, two elected as
+ * sits in a buried or walled room — 4/5/6/7 of them by tier, two elected as
  * vaults — and the garrison is denser and drawn from one ring deeper than
- * the water it stands in.
+ * the water it stands in. A rare intruder even out in the Sunless Trench
+ * (ring 5), where the Mariphage nest otherwise holds sway.
  */
 final class RuinedCastle implements DemoShape {
 
@@ -58,12 +59,19 @@ final class RuinedCastle implements DemoShape {
 
     @Override
     public int maxTier() {
-        return 4;
+        return 5;
     }
 
     @Override
     public int rarityWeight() {
         return 3;  // ~5% of picks against five-six shapes at weight 10
+    }
+
+    @Override
+    public int rarityWeight(int tier) {
+        // Rarer still out in the Trench, where the nest (weight 10) reigns —
+        // a castle there is a lucky find, not the norm.
+        return tier >= 5 ? 2 : rarityWeight();
     }
 
     @Override
@@ -464,6 +472,7 @@ final class RuinedCastle implements DemoShape {
 
         // 4. The gatehouse cache, inside the east gate tower's ground room.
         s.carveBox(5, 2, w - 3, 7, 4, w - 1);
+        s.fillBox(5, 5, w - 3, 7, 5, w - 1, ShapeSketch.solid(st.brick()));  // low ceiling — the cache stays a hidden ground room, not open up the tower shaft
         s.carveBox(4, 2, w - 3, 4, 3, w - 3);  // doorway to the gate passage
         chests.add(new Rel(6, 2, w - 2));
         s.put(7, 2, w - 3, p.glow());
@@ -495,6 +504,25 @@ final class RuinedCastle implements DemoShape {
             chests.add(new Rel(0, -3, wellZ + 4));
             s.put(1, -3, wellZ + 2, p.glow());
             climbOut(s, rng, p::rockMix, 0, -3, wellZ + 4, 0, 1, 7);   // south to the surface
+        }
+
+        // 7. Tier 5: the deep ossuary — a second crypt off the north-west
+        //    yard, mirroring the north-east crypt down its own stepped trench.
+        if (tier >= 5) {
+            int gx = -13, gz = -13;
+            s.fillBox(gx - 2, -4, gz - 2, gx + 2, 0, gz + 2, p::rockMix);
+            s.carveBox(gx - 1, -3, gz - 1, gx + 1, -2, gz + 1);
+            s.put(gx, 0, gz + 4, p.rockMix(rng));
+            s.carveBox(gx, 1, gz + 4, gx, 2, gz + 4);
+            s.put(gx, -1, gz + 3, p.rockMix(rng));
+            s.carveBox(gx, 0, gz + 3, gx, 1, gz + 3);
+            s.put(gx, -2, gz + 2, p.rockMix(rng));
+            s.carveBox(gx, -1, gz + 2, gx, 0, gz + 2);
+            s.carveBox(gx, -2, gz + 1, gx, -1, gz + 1);
+            chests.add(new Rel(gx, -3, gz));
+            s.put(gx - 1, -3, gz, p.glow());
+            s.put(gx + 1, -3, gz, "WITHER_SKELETON_SKULL");
+            climbOut(s, rng, p::rockMix, gx, -3, gz, 0, 1, 7);   // up the trench to the yard
         }
 
         // --- The garrison: denser than any other island. ---

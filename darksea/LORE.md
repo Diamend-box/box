@@ -56,9 +56,10 @@ and again.
 A Core is not found roaming: it is grown, and it is grown in **nests** — low
 prismarine reefs gone to sculk, with an open socket of sculk and sea-light at
 their heart that a Core always rises from. A nest is a rare stray in the
-Abyssal Reaches, but out in the **Sunless Trench** the reef is all there is:
-every island that far from the calm center is a Core nest, the Order's
-breeding ground where the water pools thickest. In battle a Core sheds
+Abyssal Reaches, but out in the **Sunless Trench** the reef all but takes
+over: most islands that far from the calm center are Core nests, the Order's
+breeding ground where the water pools thickest — only the odd drowned
+fortress or dead volcano breaks the reef's hold. In battle a Core sheds
 **Mariphage Vessels** (name provisional — Wyatt may still rename), skittering
 fragments of the plague that hunt for hosts and wither away on their own.
 The primordial power the Order serves stays beneath the sea, unfought and

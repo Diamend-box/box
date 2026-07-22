@@ -260,20 +260,31 @@ class DemoShapeTest {
             }
         }
 
-        // Rare among the Reaches' shapes, but the Trench builds nothing else.
+        // Rare among the Reaches' shapes, and the norm in the Trench: the
+        // nest shares tier 5 only with rare intruders (a drowned castle, a
+        // dead volcano), whom it out-weighs better than two to one.
         assertTrue(nest.rarityWeight(4) < 10, "the nest must be a rare stray in tier 4");
         assertEquals(nest.rarityWeight(5), nest.rarityWeight(5),
                 "tier-5 weight must be stable");
         List<DemoShape> trench = DemoShapes.forTier(5);
-        assertEquals(List.of(nest), trench, "the Trench builds only the nest");
+        assertTrue(trench.contains(nest), "the nest must build in the Trench");
+        int nestWeight = nest.rarityWeight(5);
+        int rivalWeight = trench.stream().filter(s -> s != nest)
+                .mapToInt(s -> s.rarityWeight(5)).sum();
+        assertTrue(nestWeight > rivalWeight * 2,
+                "the nest must dominate the Trench pool, was " + nestWeight + " vs " + rivalWeight);
 
-        // Picking at tier 5 therefore always lands the nest, and it garrisons
-        // a real fight — a heart mob spawn plus flanking spots.
+        // Picking at tier 5 therefore lands the nest the large majority of the
+        // time, and it garrisons a real fight — a heart mob spawn plus flanks.
         Random rng = new Random(99L);
-        for (int i = 0; i < 30; i++) {
-            assertEquals("mariphage-nest", DemoShapes.pick(5, rng).id(),
-                    "tier 5 must always build a nest");
+        int nestPicks = 0, trials = 4000;
+        for (int i = 0; i < trials; i++) {
+            if (DemoShapes.pick(5, rng).id().equals("mariphage-nest")) {
+                nestPicks++;
+            }
         }
+        assertTrue(nestPicks > trials * 0.6, "tier 5 must be mostly nests, was "
+                + nestPicks + "/" + trials);
         // The nest stays modest — a rare stray, not a castle: at tier 4 the
         // Reaches' ~7 shapes should each still be pickable around it.
         Random reaches = new Random(7L);

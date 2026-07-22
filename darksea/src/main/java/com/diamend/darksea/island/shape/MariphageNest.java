@@ -13,8 +13,9 @@ import java.util.Random;
  * an altar; and the buried chambers below are offering niches, gilded and
  * skull-lit. Its heart is an open socket of sculk and sea-light that a
  * Mariphage Core always rises from — kill it and the reef simply grows
- * another. Three egg-chambers are buried under the reef floor, each reached by
- * a stepped shaft, holding what the plague hoards.
+ * another. Four egg-chambers are buried under the reef floor, each reached by
+ * a stepped shaft, holding what the plague hoards — two of them elected vaults,
+ * the Order's deepest tithe.
  *
  * A rare stray in the Abyssal Reaches (tier 4) but the only landmark the
  * Sunless Trench builds at all (tier 5), so past the Trench's edge every
@@ -23,11 +24,11 @@ import java.util.Random;
  */
 final class MariphageNest implements DemoShape {
 
-    // The three chamber shafts break the surface here (a chamber centred at
+    // The four chamber shafts break the surface here (a chamber centred at
     // (cx,cz) climbs out on its +z face at (cx, cz+3)). Nothing the Order
     // strews on the deck may cap a mouth, or the vault below turns un-lootable
     // — island blocks can't be mined open.
-    private static final int[][] SHAFT_MOUTHS = {{0, 8}, {-8, 1}, {8, 6}};
+    private static final int[][] SHAFT_MOUTHS = {{0, 8}, {-8, 1}, {8, 6}, {0, -5}};
 
     @Override
     public String id() {
@@ -48,6 +49,16 @@ final class MariphageNest implements DemoShape {
     public int rarityWeight(int tier) {
         // Rare among the Reaches' seven shapes; the Trench builds nothing else.
         return tier >= 5 ? 10 : 2;
+    }
+
+    @Override
+    public int chestCount(int tier) {
+        return 4;   // four buried offering-niches, richer than an ordinary reef
+    }
+
+    @Override
+    public int vaultChestCount() {
+        return 2;   // the Order tithes deep — two of the four are vaults
     }
 
     @Override
@@ -163,12 +174,13 @@ final class MariphageNest implements DemoShape {
             }
         }
 
-        // --- Three egg-chambers, buried under the reef and roofed by it, each
+        // --- Four egg-chambers, buried under the reef and roofed by it, each
         //     entered by a stepped shaft and dressed as an offering niche. ---
         List<Rel> chests = new ArrayList<>();
         chests.add(buryChamber(s, rng, 0, 5, p.glow()));
         chests.add(buryChamber(s, rng, -8, -2, p.glow()));
         chests.add(buryChamber(s, rng, 8, 3, p.glow()));
+        chests.add(buryChamber(s, rng, 0, -8, p.glow()));
 
         // --- Mobs: the Core rises at the heart (spawn 0 — the boss the
         //     spawner keeps standing), Vessels pace the reef beside it. ---

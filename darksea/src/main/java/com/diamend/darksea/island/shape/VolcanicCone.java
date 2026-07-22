@@ -27,7 +27,14 @@ final class VolcanicCone implements DemoShape {
 
     @Override
     public int maxTier() {
-        return 4;
+        return 5;
+    }
+
+    @Override
+    public int rarityWeight(int tier) {
+        // A rare intruder out in the Trench (ring 5), where the Mariphage
+        // nest otherwise reigns; an ordinary shape in its home rings.
+        return tier >= 5 ? 2 : rarityWeight();
     }
 
     @Override
@@ -38,7 +45,7 @@ final class VolcanicCone implements DemoShape {
 
         int baseR = 12 + 2 * (tier - 2) + rng.nextInt(2);   // t3 14-15, t4 16-17
         int height = 14 + 4 * (tier - 2) + rng.nextInt(2);  // t3 18-19, t4 22-23
-        int bias = tier == 4 ? 45 : 22;                     // blackstone patch share
+        int bias = tier >= 4 ? 45 : 22;                     // blackstone patch share
         ShapeSketch.Shader rock = (x, y, z, r) -> volcanic(x, y, z, r, bias);
 
         // Black-sand beach ring and the underwater root.
