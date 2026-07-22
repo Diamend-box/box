@@ -111,12 +111,16 @@ pasted at center and the generator never touches it (it stays hand-built /
 yours). This is also where the refugee trader and any Undrowned-Heart hints
 live once you build them.
 
-**Tier 5 (the Sunless Trench)** builds only a handful of islands and is
-designed so every one is a Core nest (guaranteed warden). Dropping ordinary
-schematics into `tier5/` would replace that — only do it if you *want* the
-Trench to stop being nest-exclusive. Tier 6 (the Devouring Rim) generates no
-islands at all; the bait landmark out there is hand-placed, not a schematic
-pool.
+**Tier 5 (the Sunless Trench)** builds only a handful of islands from a
+nest-*dominant* pool: the Mariphage nest at weight 10, plus rare Trench
+variants of the ruined castle and the volcano at weight 2 each (~71% nest,
+~14% castle, ~14% volcano over `islands-per-ring[5]` = 3). The nest is a
+guaranteed Core; the two outposts are the rare non-nest Core path — far
+denser garrisons (castle 14 mobs, volcano 12) with a 0.12 chance to raise a
+Core of their own. Dropping ordinary schematics into `tier5/` replaces that
+whole pool with plain islands and removes every Trench Core path — only do it
+if that's what you want. Tier 6 (the Devouring Rim) generates no islands at
+all; the bait landmark out there is hand-placed, not a schematic pool.
 
 ## 5. (Optional) sidecar YAML
 
