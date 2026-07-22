@@ -627,10 +627,19 @@ Two new danger rings past the Abyssal Reaches, and a new zone concept.
   chest by hand. No islands generate in tiers 5–6, so the landmark is the
   only thing out there.
 
-### 7. Schematic pipeline guide — docs
-Expand the schematic docs into a start-to-finish walkthrough (build →
-markers → save → sidecar → pool folders → migrate ring by ring) for when
-FAWE is updated.
+### 7. Schematic pipeline guide — docs — BUILT (Jul 22)
+`SCHEMATICS.md` — a start-to-finish walkthrough (build → markers → set
+origin → `//copy`/`//schem save` → drop into `schematics/tierN/` → optional
+sidecar → `/ds reload` + `/ds reset full confirm` → verify → next ring) for
+when FAWE is updated on return day. Written against what the plugin already
+reads — no code changes. Calls out the return-day gotchas: builds must be
+self-contained and foot-reachable (island blocks are protected, no mining
+in), a tier folder with any `.schem` overrides the built-in shapes for that
+whole ring (so migration is incremental — unbuilt rings keep the generated
+shapes), the timed reset should be paused while testing builds, tier 5 is
+nest-exclusive by design, and raw schematics are plain islands (castle/nest
+traits are shape-code seams, flag if wanted on a hand-build). Linked from the
+README's "Building island schematics" section.
 
 ### 8. Balance pass — config
 Per-tier effect stacks, message polish, a sanity check of ring math at the

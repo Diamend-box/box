@@ -171,6 +171,11 @@ paste-y: 60    # override generation.paste-y for this template
 Put templates in `schematics/tier1/` … `tier4/`; the home island goes in
 `schematics/spawn/` (first schematic found is used).
 
+**Full walkthrough:** see [`SCHEMATICS.md`](SCHEMATICS.md) for the complete
+start-to-finish pipeline (build → markers → origin → save → pool folders →
+sidecar → reload → verify), including the return-day gotchas and how to
+migrate the sea ring by ring.
+
 ---
 
 ## MythicMobs & loot
