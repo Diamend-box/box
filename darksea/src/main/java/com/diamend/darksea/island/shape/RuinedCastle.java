@@ -85,6 +85,23 @@ final class RuinedCastle implements DemoShape {
     }
 
     @Override
+    public String bossMob() {
+        return "MariphageCore";   // only *sometimes* raised — see residentBossChance
+    }
+
+    @Override
+    public String bossFallback() {
+        return "WARDEN";
+    }
+
+    @Override
+    public double residentBossChance(int tier) {
+        // The outer Naxome the Order reached first: out in the Trench a rare
+        // fortress was seeded with a Core, never in the calmer rings.
+        return tier >= 5 ? 0.12 : 0.0;
+    }
+
+    @Override
     public int mobTierBoost() {
         return 1;
     }
@@ -92,6 +109,12 @@ final class RuinedCastle implements DemoShape {
     @Override
     public int mobCapBonus() {
         return 4;
+    }
+
+    @Override
+    public int mobCapBonus(int tier) {
+        // A drowned garrison at any ring; overrun by the plague in the Trench.
+        return tier >= 5 ? 14 : 4;
     }
 
     @Override
@@ -534,6 +557,16 @@ final class RuinedCastle implements DemoShape {
         mobs.add(s.stand(hx1 + 2, 10, p::groundMix));      // hall corner
         mobs.add(s.stand(cx0 - 2, -10, p::groundMix));     // chapel yard
         mobs.add(s.stand(w - 1, 0, r -> st.brick()));      // the east wall walk
+        if (tier >= 5) {
+            // Overrun: the fallen Naxome fortress crawls with the plague, so
+            // the Trench castle posts a far denser watch across the bailey.
+            mobs.add(s.stand(-15, 5, p::groundMix));
+            mobs.add(s.stand(15, 5, p::groundMix));
+            mobs.add(s.stand(-15, -5, p::groundMix));
+            mobs.add(s.stand(15, -5, p::groundMix));
+            mobs.add(s.stand(-6, 16, p::groundMix));
+            mobs.add(s.stand(6, 16, p::groundMix));
+        }
 
         s.shore(radiusBudget(), p::groundPatch);
 

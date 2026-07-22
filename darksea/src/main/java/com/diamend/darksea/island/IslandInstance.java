@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * A placed island: where a template landed, its bounding box, and the world
@@ -121,17 +122,42 @@ public final class IslandInstance {
     /** Extra concurrent mobs this island holds beyond the configured cap. */
     public int mobCapBonus() {
         DemoShape shape = shape();
-        return shape != null ? shape.mobCapBonus() : 0;
+        return shape != null ? shape.mobCapBonus(tier) : 0;
     }
 
     /**
-     * The resident boss this island always keeps standing (a Mariphage nest's
-     * Core), or null for an ordinary island. The spawner re-raises it whenever
-     * the island is empty of one — the Order simply grows another.
+     * The resident boss this island keeps standing (a Mariphage Core), or null
+     * for an ordinary island. A nest always has one; a fallen Naxome outpost
+     * (a Trench castle or volcano) only sometimes did, so the shape's
+     * {@link DemoShape#residentBossChance(int)} is rolled here against a stable
+     * per-island seed — the same island always decides the same way, which is
+     * what lets a soft reset re-raise (or not) the very same Core. The spawner
+     * re-raises a present boss whenever the island is empty of one.
      */
     public String bossMob() {
         DemoShape shape = shape();
-        return shape != null ? shape.bossMob() : null;
+        if (shape == null) {
+            return null;
+        }
+        String boss = shape.bossMob();
+        if (boss == null) {
+            return null;
+        }
+        double chance = shape.residentBossChance(tier);
+        if (chance >= 1.0) {
+            return boss;
+        }
+        if (chance <= 0.0) {
+            return null;
+        }
+        return bossRoll() < chance ? boss : null;
+    }
+
+    /** A stable 0..1 roll for this island, keyed on its origin so it survives
+     *  a soft reset (which never stores the decision, only the position). */
+    private double bossRoll() {
+        return new Random(DemoShapes.seedFor(origin.x(), origin.z()) * 1099511628211L
+                + 0xB0550000B055L).nextDouble();
     }
 
     /** Vanilla fallback entity for {@link #bossMob()} where MythicMobs is absent. */

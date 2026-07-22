@@ -38,6 +38,29 @@ final class VolcanicCone implements DemoShape {
     }
 
     @Override
+    public String bossMob() {
+        return "MariphageCore";   // only *sometimes* raised — see residentBossChance
+    }
+
+    @Override
+    public String bossFallback() {
+        return "WARDEN";
+    }
+
+    @Override
+    public double residentBossChance(int tier) {
+        // A dead volcano the Order overran out in the Trench sometimes hides a
+        // Core in its magma-lit heart; never in the calmer rings.
+        return tier >= 5 ? 0.12 : 0.0;
+    }
+
+    @Override
+    public int mobCapBonus(int tier) {
+        // Overrun by the plague out in the Trench; an ordinary cone elsewhere.
+        return tier >= 5 ? 12 : 0;
+    }
+
+    @Override
     public ShapeBuild build(int tier, long seed) {
         Palette p = Palette.forTier(tier);
         ShapeSketch s = new ShapeSketch(seed);
@@ -300,6 +323,16 @@ final class VolcanicCone implements DemoShape {
         s.carve(gx, 1, gz);
         s.carve(gx, 2, gz);
         mobs.add(new Rel(gx, 1, gz));
+
+        if (tier >= 5) {
+            // Overrun: the dead volcano the Order reached first crawls with the
+            // plague — a ring of watchers posted around the black beach.
+            for (double a : new double[]{0.6, 2.1, 3.6, 5.1}) {
+                int px = (int) Math.round(Math.cos(a) * (baseR + 1));
+                int pz = (int) Math.round(Math.sin(a) * (baseR + 1));
+                mobs.add(s.stand(px, pz, ShapeSketch.solid("BLACKSTONE")));
+            }
+        }
 
         s.shore(radiusBudget(), VolcanicCone::blackSand);
 

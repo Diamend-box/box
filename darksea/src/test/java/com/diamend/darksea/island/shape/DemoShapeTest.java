@@ -250,13 +250,24 @@ class DemoShapeTest {
         assertEquals(4, nest.minTier(), "the nest starts in the Abyssal Reaches");
         assertEquals(5, nest.maxTier(), "the nest reaches into the Sunless Trench");
 
-        // Its resident boss is the Core, with a vanilla warden fallback.
+        // Its resident boss is the Core, with a vanilla warden fallback, and
+        // the nest is the ONE island guaranteed to keep one standing.
         assertEquals("MariphageCore", nest.bossMob(), "the nest must house the Core");
         assertEquals("WARDEN", nest.bossFallback(), "the Core needs a vanilla fallback");
-        // No other shape claims a resident boss.
+        assertEquals(1.0, nest.residentBossChance(4), "the nest always keeps its Core");
+        assertEquals(1.0, nest.residentBossChance(5), "the nest always keeps its Core");
+        // The fallen Naxome outposts (the Trench castle and volcano) may host a
+        // Core, but only sometimes — never guaranteed — and nothing else grows
+        // a boss at all, nor promises a chance it can't spawn.
         for (DemoShape other : DemoShapes.ALL) {
-            if (other != nest) {
-                assertEquals(null, other.bossMob(), other.id() + " grew an unexpected boss");
+            if (other == nest) {
+                continue;
+            }
+            assertTrue(other.residentBossChance(5) < 1.0,
+                    other.id() + " must not be guaranteed a resident boss");
+            if (other.bossMob() == null) {
+                assertEquals(0.0, other.residentBossChance(4) + other.residentBossChance(5),
+                        other.id() + " promises a boss chance with no boss to spawn");
             }
         }
 

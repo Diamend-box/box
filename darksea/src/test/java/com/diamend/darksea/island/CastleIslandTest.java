@@ -18,13 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CastleIslandTest {
 
     private static IslandInstance island(String template, int tier, int chestCount) {
+        return islandAt(template, tier, chestCount, 1000, -2000);
+    }
+
+    private static IslandInstance islandAt(String template, int tier, int chestCount, int ox, int oz) {
         List<Pos> chests = new ArrayList<>();
         for (int i = 0; i < chestCount; i++) {
-            chests.add(new Pos(1000 + i * 9, 63, -2000 + i * 7));
+            chests.add(new Pos(ox + i * 9, 63, oz + i * 7));
         }
         return new IslandInstance("t" + tier + "-1", template, tier,
-                new Pos(1000, 58, -2000), new Pos(960, 50, -2040), new Pos(1040, 80, -1960),
-                chests, List.of(new Pos(1001, 64, -2001)));
+                new Pos(ox, 58, oz), new Pos(ox - 40, 50, oz - 40), new Pos(ox + 40, 80, oz + 40),
+                chests, List.of(new Pos(ox + 1, 64, oz + 1)));
     }
 
     @Test
@@ -65,6 +69,38 @@ class CastleIslandTest {
         // Ring 4 castles ask for a tier-5 pool; the spawner falls back to
         // the ring's own pool, so the request itself is fine to make.
         assertEquals(5, island("ruined-castle", 4, 6).mobTier());
+    }
+
+    @Test
+    void trenchCastlesGarrisonHarderAndSometimesRaiseACore() {
+        // A Trench (ring 5) castle overflows with the plague and, on a rare
+        // island, keeps a Core standing — a jackpot island the outer Naxome
+        // fell to first. Below the Trench neither ever happens.
+        assertEquals(4, island("ruined-castle", 4, 6).mobCapBonus(),
+                "a ring-4 castle keeps its ordinary garrison");
+        assertTrue(island("ruined-castle", 5, 7).mobCapBonus() > 8,
+                "a Trench castle holds far more mobs");
+
+        int trenchCores = 0, reachCores = 0, samples = 3000;
+        for (int i = 0; i < samples; i++) {
+            int ox = 1000 + i * 37, oz = -3000 - i * 53;
+            if (islandAt("ruined-castle", 5, 7, ox, oz).bossMob() != null) {
+                trenchCores++;
+            }
+            if (islandAt("ruined-castle", 4, 6, ox, oz).bossMob() != null) {
+                reachCores++;
+            }
+        }
+        assertEquals(0, reachCores, "no castle raises a Core below the Trench");
+        double share = trenchCores / (double) samples;
+        assertTrue(share > 0.04 && share < 0.22,
+                "t5 castle Core share " + share + " outside the rare-but-real band");
+
+        // The decision is stable per position — a soft reset re-raises (or
+        // doesn't) the very same Core.
+        IslandInstance same = islandAt("ruined-castle", 5, 7, 4242, -4242);
+        assertEquals(same.bossMob(), islandAt("ruined-castle", 5, 7, 4242, -4242).bossMob(),
+                "the Core roll must be deterministic per island");
     }
 
     @Test

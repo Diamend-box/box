@@ -50,6 +50,19 @@ public interface DemoShape {
         return null;
     }
 
+    /**
+     * The chance (0..1) that a given island of this shape, at this tier,
+     * actually keeps its {@link #bossMob()} standing. A Mariphage nest always
+     * does (1.0). A shape that only <em>sometimes</em> fell to the Order — the
+     * outer Naxome the plague reached first, out in the Trench — returns a
+     * small chance at those tiers and 0 elsewhere. The roll is taken once per
+     * island from its position (see {@code IslandInstance}), so a soft reset
+     * re-decides identically. Zero whenever there is no {@link #bossMob()}.
+     */
+    default double residentBossChance(int tier) {
+        return bossMob() != null ? 1.0 : 0.0;
+    }
+
     /** How many loot chests this shape hides at the given tier. */
     default int chestCount(int tier) {
         return tier >= 4 ? 3 : tier == 3 ? 2 : 1;
@@ -76,6 +89,15 @@ public interface DemoShape {
     /** Added to the per-island concurrent mob cap — big shapes hold more. */
     default int mobCapBonus() {
         return 0;
+    }
+
+    /**
+     * Per-tier concurrent-cap bonus. Defaults to the flat {@link #mobCapBonus()}
+     * at every tier, but a shape can garrison harder in a particular ring — a
+     * fallen Naxome outpost out in the Sunless Trench crawls with the plague.
+     */
+    default int mobCapBonus(int tier) {
+        return mobCapBonus();
     }
 
     /**

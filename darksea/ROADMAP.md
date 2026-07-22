@@ -309,6 +309,30 @@ count and Core drops are the tuning knobs. Tests: `DemoShapeTest` (nest
 rarity/boss/tier + the shared structural sweep at t4 and t5), `MobConfigTest`
 (Core no longer native), `ConfigParsingTest` (tier-5 generation).
 
+### 3c-ii. The Trench fills out — BUILT (Wyatt's ask Jul 22)
+Wyatt: "add significantly more mobs to the normal t5 islands with a small
+chance to add a core to them too … the outer lines of the Naxome that fell to
+the Order first." The **ruined castle** and **volcanic cone** now reach tier 5
+(rarity **2** each against the nest's 10 — see 3c-i), and out in the Trench:
+- **Swollen garrisons** (`DemoShape.mobCapBonus(int tier)`, tier-aware): a t5
+  castle holds **20** concurrent (`per-island-cap 6` + **14**, up from 10) with
+  **13** garrison spawn points across its bailey (up from 7); a t5 volcano
+  holds **18** (6 + **12**, up from 6) with **7** points ringing the black
+  beach (up from 3). Below the Trench both keep their ordinary watch.
+- **A rare resident Core** (`DemoShape.residentBossChance(int tier)`, rolled
+  per-island in `IslandInstance.bossMob()` from the position seed so a soft
+  reset re-decides identically): **~12%** of t5 castles/volcanoes keep a
+  Mariphage Core standing (WARDEN fallback), **never** below tier 5. The nest
+  stays the only island *guaranteed* one.
+- The nest itself grew to **4 chests / 2 vaults** (a 4th buried egg-chamber);
+  the castle to **7 chests** at t5 (a second "deep ossuary" crypt).
+
+Boxpvp lever: a Core-bearing castle is a jackpot **and** a wall — 20 plague
+mobs plus a warden guarding 7 chests (2 vaults). The knobs are the `0.12`
+Core chance, the `14`/`12` cap bonuses, and the `2`/`2` Trench rarity weights.
+Tests: `DemoShapeTest` (boss-guarantee invariant), `CastleIslandTest`
+(tier-aware cap + the per-island Core roll's rare-but-real band + determinism).
+
 ### 3d. The Sunless Trench as a deadlier t4 — BUILT (Wyatt's ask Jul 21)
 Wyatt: "make t5 a more sparse and deadly version of t4." The Trench was
 already sparse (3 nests) but had **no roaming foes at all** (the roster
