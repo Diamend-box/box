@@ -545,3 +545,7 @@ messages:
   editor-removed: "<yellow>Removed <white>{item}</white>."
   editor-list-full: "<red>That shelf is full."
   editor-cannot-encode: "<red>That item can't be put on a shelf."
+
+  # --- The cultist caves ---------------------------------------------
+  caves-unbreakable: "<red>The rock here doesn't give. Only the veins do."
+  caves-no-building: "<red>This place was built once already. Not by you."

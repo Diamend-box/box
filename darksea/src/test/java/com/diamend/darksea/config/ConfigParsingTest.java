@@ -190,6 +190,8 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("shop-clue-bearing"));
         assertTrue(settings.messages().containsKey("vault-sealed"));
         assertTrue(settings.messages().containsKey("vault-cracked"));
+        assertTrue(settings.messages().containsKey("caves-unbreakable"));
+        assertTrue(settings.messages().containsKey("caves-no-building"));
         // Every rung of the old man's ladder must have a line to speak. The
         // ladder's length is shops.yml's clue-costs list; ShopConfigTest pins
         // that to four, so four lines is what config.yml owes.

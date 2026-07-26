@@ -1,0 +1,76 @@
+# DarkSea — ore veins in the cultist caves
+#
+# The caves' ore is NOT in the terrain. It exists as a small number of large,
+# hand-placed veins that regrow on a timer. That is the whole design: supply is
+# a number in this file rather than a function of how hard someone strip-mines,
+# so you can retune the progression curve with /ds reload instead of
+# regenerating the world.
+#
+# Two knobs do most of the work:
+#
+#   count       how many veins of this type exist in the entire world
+#   min-spacing how far apart any two veins must stand
+#
+# Spacing is a supply dial that does not look like one. Two veins close enough
+# to work back to back are effectively one richer vein with half the travel,
+# which is exactly what node-based supply exists to prevent.
+#
+# Veins are deliberately few and large. Twenty to forty blocks takes real time
+# to clear, which leaves whoever is working it stationary and exposed, and
+# everyone on the server knows where it is — that is what makes a vein
+# contested ground rather than a solo chore.
+#
+# ---------------------------------------------------------------------------
+# The rule worth keeping: these drops are UPGRADE MATERIAL ONLY.
+#
+# No Chronon value, no shop buys them, no shop sells them. Chronons stay
+# something you earn in the Dark Sea and spend at the artificer, so a safe
+# mining dimension can never out-earn sailing. A unit test fails the build if
+# an ore id turns up on any shop board.
+# ---------------------------------------------------------------------------
+
+
+# Minimum blocks between any two veins, of any type.
+min-spacing: 48
+
+# How many spots the scatter may try per vein before giving up. Only matters if
+# you ask for more veins than the caves have room for; it then places what fits
+# rather than looping forever.
+placement-tries: 4000
+
+
+veins:
+
+  # The workhorse. Common enough that a run always comes back with something.
+  emberiron:
+    block: NETHER_GOLD_ORE
+    drop: emberiron_chunk
+    drop-amount: 1
+    count: 8
+    size:
+      min: 20
+      max: 34
+    regrow-minutes: 25
+
+  # The mid tier. Fewer, bigger, and slower to come back.
+  voidsalt:
+    block: NETHER_QUARTZ_ORE
+    drop: voidsalt
+    drop-amount: 1
+    count: 5
+    size:
+      min: 22
+      max: 38
+    regrow-minutes: 40
+
+  # The prize. Three in the whole world, over an hour to regrow — these are the
+  # ones people will learn the locations of and fight over.
+  ichor:
+    block: CRYING_OBSIDIAN
+    drop: mariphage_ichor
+    drop-amount: 1
+    count: 3
+    size:
+      min: 24
+      max: 40
+    regrow-minutes: 70

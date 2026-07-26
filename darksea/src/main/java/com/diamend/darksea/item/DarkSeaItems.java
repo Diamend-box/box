@@ -167,6 +167,20 @@ public final class DarkSeaItems {
     /** A sunk boat's salvage: unusable until repaired at the home dry-dock. */
     public static final String BROKEN_DARK_SEA_BOAT = "broken_dark_sea_boat";
 
+    // ------------------------------------------------------------------
+    // Cave ores (com.diamend.darksea.world.cultist)
+    // ------------------------------------------------------------------
+
+    /**
+     * What the veins in the cultist caves drop. Upgrade material and nothing
+     * else: no Chronon value, no shop will buy them, and no shop may sell
+     * them. Chronons stay a thing you earn in the Dark Sea and spend at the
+     * artificer, so a safe mining dimension can never out-earn sailing.
+     */
+    public static final String EMBERIRON_CHUNK = "emberiron_chunk";
+    public static final String VOIDSALT = "voidsalt";
+    public static final String MARIPHAGE_ICHOR = "mariphage_ichor";
+
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
@@ -182,6 +196,9 @@ public final class DarkSeaItems {
         ids.add(HARPOON_GUN);
         ids.add(DARK_SEA_BOAT);
         ids.add(BROKEN_DARK_SEA_BOAT);
+        ids.add(EMBERIRON_CHUNK);
+        ids.add(VOIDSALT);
+        ids.add(MARIPHAGE_ICHOR);
         for (Relic relic : Relic.values()) {
             ids.add(relic.id());
         }
@@ -242,8 +259,42 @@ public final class DarkSeaItems {
             case HARPOON_GUN -> createHarpoonGun();
             case DARK_SEA_BOAT -> createDarkSeaBoat();
             case BROKEN_DARK_SEA_BOAT -> createBrokenDarkSeaBoat();
+            case EMBERIRON_CHUNK -> createOre(id, amount, Material.RAW_IRON,
+                    "<color:#e2725b>Emberiron Chunk</color>",
+                    List.of("<gray>Still warm. It has been</gray>",
+                            "<gray>underground for a very long time.</gray>",
+                            "<dark_gray>The artificer knows what to do with it.</dark_gray>"));
+            case VOIDSALT -> createOre(id, amount, Material.GLOWSTONE_DUST,
+                    "<color:#b39ddb>Voidsalt</color>",
+                    List.of("<gray>It hums against the palm</gray>",
+                            "<gray>at a pitch you feel rather than hear.</gray>"));
+            case MARIPHAGE_ICHOR -> createOre(id, amount, Material.AMETHYST_SHARD,
+                    "<dark_purple>Mariphage Ichor</dark_purple>",
+                    List.of("<gray>The rock down here bleeds.</gray>",
+                            "<gray>Whatever it came out of is still</gray>",
+                            "<gray>further down.</gray>"));
             default -> null;
         };
+    }
+
+    /**
+     * A cave ore drop: a plain stackable material carrying the registry tag.
+     * No stats and no behavior — its whole job is to be spent at the artificer,
+     * so it deliberately has no combat or economy value of its own.
+     */
+    private static ItemStack createOre(String id, int amount, Material material,
+                                       String name, List<String> loreLines) {
+        ItemStack item = new ItemStack(material, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize(name)));
+        List<Component> lore = new ArrayList<>();
+        for (String line : loreLines) {
+            lore.add(noItalic(MM.deserialize(line)));
+        }
+        meta.lore(lore);
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, id);
+        item.setItemMeta(meta);
+        return item;
     }
 
     private static ItemStack createNavalArrow(String id, int amount, Color color,

@@ -33,6 +33,9 @@ import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.relic.UndrownedHeartService;
 import com.diamend.darksea.vault.VaultService;
 import com.diamend.darksea.world.ManagedWorld;
+import com.diamend.darksea.world.cultist.NodeService;
+import com.diamend.darksea.world.cultist.OreConfig;
+import com.diamend.darksea.world.cultist.OreTables;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
@@ -59,6 +62,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private volatile LootTables lootTables;
     private volatile Map<String, List<MobDrops.Line>> mobDrops;
     private volatile ShopStock shopStock;
+    private volatile OreTables oreTables;
 
     private Messages messages;
     private IslandRegistry registry;
@@ -78,6 +82,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private NpcService npcs;
     private ShopMenuService shops;
     private ShopEditorService shopEditor;
+    private NodeService nodes;
     private VaultService vaults;
 
     @Override
@@ -86,6 +91,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         saveResourceIfAbsent("mobs.yml");
         saveResourceIfAbsent("loot.yml");
         saveResourceIfAbsent("shops.yml");
+        saveResourceIfAbsent("ores.yml");
         createDirectories();
 
         try {
@@ -101,6 +107,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         lootTables = loadLootTables();
         mobDrops = loadMobDrops();
         shopStock = loadShopStock();
+        oreTables = loadOreTables();
 
         registry = new IslandRegistry(new File(getDataFolder(), "islands.yml"), getLogger());
         registry.load();
@@ -120,6 +127,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         npcs = new NpcService(this);
         shops = new ShopMenuService(this);
         shopEditor = new ShopEditorService(this);
+        nodes = new NodeService(this);
         vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
 
@@ -142,6 +150,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(npcs, this);
         getServer().getPluginManager().registerEvents(shops, this);
         getServer().getPluginManager().registerEvents(shopEditor, this);
+        getServer().getPluginManager().registerEvents(nodes, this);
         getServer().getPluginManager().registerEvents(vaults, this);
 
         PluginCommand command = getCommand("darksea");
@@ -151,6 +160,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
         worldService.init();
         npcs.spawnAll();
+        nodes.placeAllIfEmpty(worldService.caves());
+        nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
+                NodeService.REGROW_PERIOD_TICKS);
 
         int interval = settings.exposure().checkIntervalTicks();
         exposureTask.runTaskTimer(this, interval, interval);
@@ -193,12 +205,22 @@ public final class DarkSeaPlugin extends JavaPlugin {
         this.lootTables = loadLootTables();
         this.mobDrops = loadMobDrops();
         this.shopStock = loadShopStock();
+        this.oreTables = loadOreTables();
         this.mobSpawner.reloadSets();
     }
 
     private LootTables loadLootTables() {
         File file = new File(getDataFolder(), "loot.yml");
         return LootConfig.load(YamlConfiguration.loadConfiguration(file), getLogger());
+    }
+
+    private OreTables loadOreTables() {
+        File file = new File(getDataFolder(), "ores.yml");
+        OreTables loaded = OreConfig.load(
+                YamlConfiguration.loadConfiguration(file), getLogger());
+        getLogger().info("Loaded " + loaded.totalVeins() + " ore veins across "
+                + loaded.types().size() + " types");
+        return loaded;
     }
 
     private ShopStock loadShopStock() {
@@ -349,6 +371,15 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public ShopMenuService shops() {
         return shops;
+    }
+
+    /** The parsed ores.yml snapshot — re-read by {@code /ds reload}. */
+    public OreTables oreTables() {
+        return oreTables;
+    }
+
+    public NodeService nodes() {
+        return nodes;
     }
 
     public ShopEditorService shopEditor() {
