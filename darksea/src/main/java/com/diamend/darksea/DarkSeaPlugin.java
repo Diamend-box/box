@@ -33,6 +33,7 @@ import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.relic.UndrownedHeartService;
 import com.diamend.darksea.vault.VaultService;
 import com.diamend.darksea.world.ManagedWorld;
+import com.diamend.darksea.world.cultist.ExtractionChannel;
 import com.diamend.darksea.world.cultist.NodeService;
 import com.diamend.darksea.world.cultist.OreConfig;
 import com.diamend.darksea.world.cultist.OreTables;
@@ -84,6 +85,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private ShopMenuService shops;
     private ShopEditorService shopEditor;
     private NodeService nodes;
+    private ExtractionChannel extraction;
     private PortalService portals;
     private VaultService vaults;
 
@@ -130,6 +132,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         shops = new ShopMenuService(this);
         shopEditor = new ShopEditorService(this);
         nodes = new NodeService(this);
+        extraction = new ExtractionChannel(this, nodes);
         portals = new PortalService(this);
         vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
@@ -154,6 +157,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(shops, this);
         getServer().getPluginManager().registerEvents(shopEditor, this);
         getServer().getPluginManager().registerEvents(nodes, this);
+        getServer().getPluginManager().registerEvents(extraction, this);
         getServer().getPluginManager().registerEvents(portals, this);
         getServer().getPluginManager().registerEvents(vaults, this);
 
@@ -169,6 +173,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         nodes.placeAllIfEmpty(worldService.caves());
         nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
                 NodeService.REGROW_PERIOD_TICKS);
+        extraction.start();
 
         int interval = settings.exposure().checkIntervalTicks();
         exposureTask.runTaskTimer(this, interval, interval);
@@ -184,6 +189,11 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (extraction != null) {
+            // Clears every in-flight crack overlay. Skipping this would leave
+            // half-broken-looking crystal for whoever logs in after a reload.
+            extraction.stop();
+        }
         if (npcs != null) {
             npcs.despawnAll();  // they are re-spawned from npcs.yml on enable
         }

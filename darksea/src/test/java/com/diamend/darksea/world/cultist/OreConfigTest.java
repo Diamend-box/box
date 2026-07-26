@@ -89,27 +89,80 @@ class OreConfigTest {
         assertTrue(tables.minSpacing() > 0);
     }
 
-    /** Few and large is the design, so the shipped numbers had better be. */
+    /**
+     * Few and <em>very</em> large is the design. The floor is 50 rather than the
+     * 15 it started at: a vein has to be minutes of work for the "you are
+     * stationary and everybody knows where you are" tension to exist at all, and
+     * a small vein would quietly undo that without failing anything else.
+     */
     @Test
     void theShippedVeinsAreFewAndLarge() throws Exception {
         OreTables tables = loadShipped();
         assertTrue(tables.totalVeins() <= 30,
                 "that is a lot of veins for 'few': " + tables.totalVeins());
         for (OreType type : tables.types()) {
-            assertTrue(type.minSize() >= 15,
+            assertTrue(type.minSize() >= 50,
                     type.id() + " is too small to be worth defending: " + type.minSize());
             assertTrue(type.cooldownMinutes() >= 10,
                     type.id() + " regrows too fast to be scarce");
         }
     }
 
+    /**
+     * The whole point of the caves is that you can keep working them. If the
+     * time to clear every vein of a type ever exceeds its regrow cooldown by
+     * much, that type has a dead window where a solo player has nothing to mine
+     * — which is exactly the problem first-touch timing and big veins were
+     * introduced to fix.
+     */
+    @Test
+    void everyCrystalComesBackBeforeASoloSweepCouldRunOut() throws Exception {
+        OreTables tables = loadShipped();
+        for (OreType type : tables.types()) {
+            double blocks = (double) type.veinCount() * (type.minSize() + type.maxSize()) / 2.0;
+            double sweepMinutes = blocks * type.mineSeconds() / 60.0;
+            double gap = type.cooldownMinutes() - sweepMinutes;
+            assertTrue(gap <= 12.0, type.id() + " leaves a " + Math.round(gap)
+                    + "-minute drought after a full sweep — raise count/size or cut regrow-minutes");
+        }
+    }
+
     @Test
     void everyVeinBlockAndDropActuallyExists() throws Exception {
         for (OreType type : loadShipped().types()) {
-            assertNotNull(Material.matchMaterial(type.blockId()),
-                    type.id() + ": unknown block " + type.blockId());
+            assertNotNull(Material.matchMaterial(type.coreBlock()),
+                    type.id() + ": unknown block " + type.coreBlock());
+            assertNotNull(Material.matchMaterial(type.matrixBlock()),
+                    type.id() + ": unknown matrix " + type.matrixBlock());
+            if (type.hasShell()) {
+                assertNotNull(Material.matchMaterial(type.shellBlock()),
+                        type.id() + ": unknown shell " + type.shellBlock());
+                assertNotNull(Material.matchMaterial(type.budBlock()),
+                        type.id() + ": unknown bud " + type.budBlock());
+            }
             assertNotNull(DarkSeaItems.create(type.dropId(), 1),
                     type.id() + ": unknown drop " + type.dropId());
+        }
+    }
+
+    /**
+     * The reference gear has to resolve to a real pickaxe, or every
+     * {@code mine-seconds} in the file silently means something else.
+     */
+    @Test
+    void theReferenceGearIsARealPickaxe() throws Exception {
+        OreTables tables = loadShipped();
+        assertTrue(warnings.isEmpty(), "ores.yml produced warnings: " + warnings);
+        assertNotNull(MiningSpeed.tierOf(tables.referenceTool()),
+                "reference-tool is not a pickaxe: " + tables.referenceTool());
+        // A reference pick must land on exactly the configured time, or the
+        // numbers in the file are not the numbers players experience.
+        double refSpeed = tables.referenceSpeed();
+        for (OreType type : tables.types()) {
+            assertEquals(type.mineSeconds(),
+                    MiningSpeed.seconds(type.mineSeconds(), refSpeed, refSpeed,
+                            tables.floorSeconds()),
+                    1e-9, type.id() + " does not take mine-seconds at reference gear");
         }
     }
 
@@ -139,23 +192,42 @@ class OreConfigTest {
     @Test
     void badVeinsAreSkippedAndNamed() {
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("veins.good.block", "NETHER_GOLD_ORE");
-        yaml.set("veins.good.drop", "emberiron_chunk");
+        yaml.set("veins.good.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.good.drop", "emberglass");
         yaml.set("veins.good.count", 4);
-        yaml.set("veins.nodrop.block", "NETHER_GOLD_ORE");
+        yaml.set("veins.nodrop.block", "OCHRE_FROGLIGHT");
         yaml.set("veins.nodrop.count", 4);
-        yaml.set("veins.nocount.block", "NETHER_GOLD_ORE");
-        yaml.set("veins.nocount.drop", "voidsalt");
+        yaml.set("veins.nocount.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.nocount.drop", "voidbloom");
         yaml.set("veins.nocount.count", 0);
-        yaml.set("veins.badsize.block", "NETHER_GOLD_ORE");
-        yaml.set("veins.badsize.drop", "voidsalt");
+        yaml.set("veins.badsize.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.badsize.drop", "voidbloom");
         yaml.set("veins.badsize.count", 2);
         yaml.set("veins.badsize.size.min", 30);
         yaml.set("veins.badsize.size.max", 10);
+        yaml.set("veins.badspeed.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.badspeed.drop", "godspore");
+        yaml.set("veins.badspeed.count", 2);
+        yaml.set("veins.badspeed.mine-seconds", 0);
 
         OreTables tables = OreConfig.load(yaml, log);
         assertEquals(1, tables.types().size(), "only the good vein should survive");
-        assertEquals(3, warnings.size(), "unexpected complaints: " + warnings);
+        assertEquals(4, warnings.size(), "unexpected complaints: " + warnings);
+    }
+
+    /** A reference tool that isn't a pickaxe is complained about, not obeyed. */
+    @Test
+    void aNonsenseReferenceToolFallsBackRatherThanBreakingTheCurve() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("reference-tool", "NETHERITE_SHOVEL");
+        yaml.set("veins.good.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.good.drop", "emberglass");
+        yaml.set("veins.good.count", 4);
+
+        OreTables tables = OreConfig.load(yaml, log);
+        assertEquals("NETHERITE_PICKAXE", tables.referenceTool());
+        assertTrue(tables.referenceSpeed() > 0);
+        assertFalse(warnings.isEmpty(), "a bad reference-tool should be named in the log");
     }
 
     @Test

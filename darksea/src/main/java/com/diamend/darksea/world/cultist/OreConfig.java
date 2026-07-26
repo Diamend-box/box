@@ -26,6 +26,14 @@ public final class OreConfig {
         }
         int spacing = Math.max(1, root.getInt("min-spacing", 48));
         int tries = Math.max(1, root.getInt("placement-tries", 4000));
+        String refTool = root.getString("reference-tool", "NETHERITE_PICKAXE");
+        int refEff = root.getInt("reference-efficiency", 15);
+        double floor = root.getDouble("floor-seconds", 0.4);
+        if (MiningSpeed.tierOf(refTool) == null) {
+            log.warning("ores.yml: reference-tool '" + refTool
+                    + "' is not a pickaxe — falling back to NETHERITE_PICKAXE");
+            refTool = "NETHERITE_PICKAXE";
+        }
 
         ConfigurationSection section = root.getConfigurationSection("veins");
         if (section == null) {
@@ -56,25 +64,35 @@ public final class OreConfig {
                 log.warning("ores.yml '" + id + "': count is " + count + " — skipped");
                 continue;
             }
-            int min = vein.getInt("size.min", 20);
-            int max = vein.getInt("size.max", 40);
+            int min = vein.getInt("size.min", 80);
+            int max = vein.getInt("size.max", 120);
             if (min < 1 || max < min) {
                 log.warning("ores.yml '" + id + "': size " + min + ".." + max
                         + " is not a band — skipped");
                 continue;
             }
-            long cooldown = vein.getLong("regrow-minutes", 30L);
+            long cooldown = vein.getLong("regrow-minutes", 20L);
             if (cooldown < 1) {
                 log.warning("ores.yml '" + id + "': regrow-minutes is " + cooldown + " — skipped");
                 continue;
             }
-            types.add(new OreType(id, block, drop,
+            double mineSeconds = vein.getDouble("mine-seconds", 2.0);
+            if (mineSeconds <= 0) {
+                log.warning("ores.yml '" + id + "': mine-seconds is " + mineSeconds + " — skipped");
+                continue;
+            }
+            types.add(new OreType(id, block,
+                    vein.getString("shell", "CALCITE"),
+                    vein.getString("bud", "AMETHYST_CLUSTER"),
+                    vein.getString("matrix", "BASALT"),
+                    Math.max(0, vein.getInt("bud-one-in", 7)),
+                    drop,
                     Math.max(1, vein.getInt("drop-amount", 1)),
-                    count, min, max, cooldown));
+                    count, min, max, mineSeconds, cooldown));
         }
         if (types.isEmpty()) {
             log.warning("ores.yml defined no usable veins");
         }
-        return new OreTables(types, spacing, tries);
+        return new OreTables(types, spacing, tries, refTool, refEff, floor);
     }
 }

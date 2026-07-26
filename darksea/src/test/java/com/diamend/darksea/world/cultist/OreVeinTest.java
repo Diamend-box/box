@@ -124,4 +124,73 @@ class OreVeinTest {
         // Reversed bounds are tolerated rather than throwing at a config typo.
         assertTrue(OreVein.sizeFor(123L, 40, 20) >= 20);
     }
+
+    // ------------------------------------------------------------------
+    // The geode rind
+    // ------------------------------------------------------------------
+
+    /**
+     * The rind must completely surround the core. A gap would leave a crystal
+     * block touching raw basalt, which is the difference between "a geode" and
+     * "someone spilled ore in the wall".
+     */
+    @Test
+    void theShellFullyEnclosesTheCoreAndNeverOverlapsIt() {
+        for (long seed = 1; seed <= 25; seed++) {
+            List<OreVein.Offset> core = OreVein.grow(seed, OreVein.sizeFor(seed, 60, 150));
+            List<OreVein.Offset> shell = OreVein.shell(core);
+            Set<OreVein.Offset> body = new HashSet<>(core);
+            Set<OreVein.Offset> rind = new HashSet<>(shell);
+
+            assertEquals(shell.size(), rind.size(), "seed " + seed + ": duplicate shell cells");
+            for (OreVein.Offset cell : shell) {
+                assertTrue(!body.contains(cell),
+                        "seed " + seed + ": shell overlaps the core at " + cell);
+            }
+            Set<OreVein.Offset> all = new HashSet<>(body);
+            all.addAll(rind);
+            int[][] faces = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+            for (OreVein.Offset block : core) {
+                for (int[] face : faces) {
+                    OreVein.Offset neighbour = new OreVein.Offset(
+                            block.dx() + face[0], block.dy() + face[1], block.dz() + face[2]);
+                    assertTrue(all.contains(neighbour),
+                            "seed " + seed + ": core block " + block + " is exposed at " + neighbour);
+                }
+            }
+        }
+    }
+
+    /** The shell is recomputed on every load rather than stored, so it must be stable. */
+    @Test
+    void theSameCoreAlwaysProducesTheSameShell() {
+        for (long seed = 1; seed <= 10; seed++) {
+            List<OreVein.Offset> core = OreVein.grow(seed, 90);
+            assertEquals(OreVein.shell(core), OreVein.shell(OreVein.grow(seed, 90)),
+                    "seed " + seed + ": shell is not reproducible");
+        }
+        assertTrue(OreVein.shell(List.of()).isEmpty());
+    }
+
+    /**
+     * Buds are hashed from position rather than drawn from a stream, so a cell's
+     * answer cannot depend on what order the shell happened to be walked in —
+     * which is what makes recomputing the shell safe.
+     */
+    @Test
+    void budsAreStablePerCellAndLandNearTheConfiguredRate() {
+        List<OreVein.Offset> shell = OreVein.shell(OreVein.grow(7L, 120));
+        for (OreVein.Offset cell : shell) {
+            assertEquals(OreVein.isBud(7L, cell, 7), OreVein.isBud(7L, cell, 7),
+                    "bud decision is not stable for " + cell);
+        }
+        long buds = shell.stream().filter(cell -> OreVein.isBud(7L, cell, 7)).count();
+        double rate = (double) buds / shell.size();
+        assertTrue(rate > 0.05 && rate < 0.30,
+                "one-in-7 buds came out at " + rate + " of the rind");
+
+        // Degenerate rates are answers, not crashes.
+        assertTrue(OreVein.isBud(7L, shell.get(0), 1), "one-in-1 should make everything a bud");
+        assertTrue(!OreVein.isBud(7L, shell.get(0), 0), "one-in-0 should make nothing a bud");
+    }
 }

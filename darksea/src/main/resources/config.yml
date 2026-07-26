@@ -554,8 +554,9 @@ messages:
   editor-cannot-encode: "<red>That item can't be put on a shelf."
 
   # --- The cultist caves ---------------------------------------------
-  caves-unbreakable: "<red>The rock here doesn't give. Only the veins do."
+  caves-unbreakable: "<red>The rock here doesn't give. Only the crystal does."
   caves-no-building: "<red>This place was built once already. Not by you."
+  caves-needs-pickaxe: "<red>The crystal won't come away like that. <gray>You need a pickaxe."
   portal-closed: "<red>Nothing answers. The way isn't open."
   portal-descended: "<dark_purple>The rock takes you. <gray>It is colder down here."
   portal-ascended: "<aqua>Salt air. <gray>You are back on the landfall."

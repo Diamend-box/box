@@ -1,24 +1,38 @@
-# DarkSea — ore veins in the cultist caves
+# DarkSea — crystal veins in the cultist caves
 #
-# The caves' ore is NOT in the terrain. It exists as a small number of large,
-# hand-placed veins that regrow on a timer. That is the whole design: supply is
-# a number in this file rather than a function of how hard someone strip-mines,
-# so you can retune the progression curve with /ds reload instead of
-# regenerating the world.
+# The caves' crystal is NOT in the terrain. It exists as a small number of very
+# large, plugin-placed geodes that regrow on a timer. That is the whole design:
+# supply is a number in this file rather than a function of how hard someone
+# strip-mines, so you can retune the progression curve with /ds reload instead
+# of regenerating the world.
 #
-# Two knobs do most of the work:
+# A vein is a GEODE, not a lump:
 #
-#   count       how many veins of this type exist in the entire world
-#   min-spacing how far apart any two veins must stand
+#   block   the harvestable crystal core
+#   shell   the rind of rock the crystal grew inside
+#   bud     crystal growths studded through that rind
+#   matrix  what a mined-out core cell looks like until it regrows
 #
-# Spacing is a supply dial that does not look like one. Two veins close enough
-# to work back to back are effectively one richer vein with half the travel,
-# which is exactly what node-based supply exists to prevent.
+# Only the core is mineable and only the core regrows. The shell is placed once
+# and is indestructible, so a spent vein still reads from across the cavern as a
+# geode waiting to refill.
 #
-# Veins are deliberately few and large. Twenty to forty blocks takes real time
-# to clear, which leaves whoever is working it stationary and exposed, and
-# everyone on the server knows where it is — that is what makes a vein
-# contested ground rather than a solo chore.
+# ---------------------------------------------------------------------------
+# CONTINUOUSLY GRINDABLE — the thing this file is tuned for.
+#
+# regrow-minutes is counted from the FIRST block mined out of a vein, not the
+# last. Two consequences, both deliberate:
+#
+#   1. Half-mining a vein no longer punishes you. The clock does not reset with
+#      every block, so a vein you chip at returns on schedule.
+#   2. Regrow times spread themselves out. Players touch different veins at
+#      different moments, so the cycle desynchronises on its own. The
+#      everything-live-at-once burst can only happen once, on world creation.
+#
+# The counts and sizes below are set so that clearing every vein of a type
+# takes about as long as that type's cooldown. Sweep the six emberglass geodes
+# end to end and the first one is back before you finish the last.
+# ---------------------------------------------------------------------------
 #
 # ---------------------------------------------------------------------------
 # The rule worth keeping: these drops are UPGRADE MATERIAL ONLY.
@@ -26,11 +40,15 @@
 # No Chronon value, no shop buys them, no shop sells them. Chronons stay
 # something you earn in the Dark Sea and spend at the artificer, so a safe
 # mining dimension can never out-earn sailing. A unit test fails the build if
-# an ore id turns up on any shop board.
+# a crystal id turns up on any shop board.
 # ---------------------------------------------------------------------------
 
 
 # Minimum blocks between any two veins, of any type.
+#
+# A supply dial that does not look like one: two geodes close enough to work
+# back to back are effectively one richer geode with half the travel, which is
+# exactly what node-based supply exists to prevent.
 min-spacing: 48
 
 # How many spots the scatter may try per vein before giving up. Only matters if
@@ -39,38 +57,87 @@ min-spacing: 48
 placement-tries: 4000
 
 
+# ---------------------------------------------------------------------------
+# Reference gear — what every mine-seconds below is measured against.
+#
+# Vanilla block hardness cannot be overridden, and at endgame pickaxe speeds
+# every block that looks like a crystal breaks instantly. So the caves run their
+# own extraction timer, and mine-seconds is the time with the pickaxe a player
+# is EXPECTED to have by the time they get down here — not with a bare one.
+#
+# Actual time scales by (reference dig-speed / your dig-speed), following the
+# vanilla formula: tier base, plus level*level + 1 for Efficiency, times
+# 1 + 0.2*level for Haste, times 0.3^level for Mining Fatigue.
+#
+# This framing is the right way round. The numbers below become a FLOOR on
+# extraction time and therefore a CEILING on supply: better-than-reference gear
+# is the only thing that beats them, and floor-seconds stops even a Haste beacon
+# reaching zero. Weaker gear is slower, so supply can be under-run but never
+# exceeded.
+#
+# The spread is steep on purpose. Efficiency 15 is 235 dig-speed against
+# Efficiency 5's 35 — a mid-game pickaxe works and takes roughly seven times as
+# long. That is the gate on the caves being endgame content.
+#
+# Raise reference-efficiency if your endgame pickaxe gets faster, and every
+# crystal rescales together instead of needing thirteen numbers edited.
+reference-tool: NETHERITE_PICKAXE
+reference-efficiency: 15
+
+# No single block may ever take less than this, however the gear stacks.
+floor-seconds: 0.4
+
+
 veins:
 
-  # The workhorse. Common enough that a run always comes back with something.
-  emberiron:
-    block: NETHER_GOLD_ORE
-    drop: emberiron_chunk
+  # The workhorse. Six geodes, ~125 blocks each, and an 18-minute clock — a full
+  # sweep takes about 19 minutes, so there is always one live somewhere.
+  emberglass:
+    block: OCHRE_FROGLIGHT
+    shell: CALCITE
+    bud: AMETHYST_CLUSTER
+    matrix: BASALT
+    bud-one-in: 7
+    drop: emberglass
     drop-amount: 1
-    count: 8
+    count: 6
     size:
-      min: 20
-      max: 34
-    regrow-minutes: 25
+      min: 100
+      max: 150
+    mine-seconds: 1.5
+    regrow-minutes: 18
 
-  # The mid tier. Fewer, bigger, and slower to come back.
-  voidsalt:
-    block: NETHER_QUARTZ_ORE
-    drop: voidsalt
+  # The mid tier. Fewer, slower per block, and a longer clock.
+  voidbloom:
+    block: PEARLESCENT_FROGLIGHT
+    shell: CALCITE
+    bud: AMETHYST_CLUSTER
+    matrix: BASALT
+    bud-one-in: 6
+    drop: voidbloom
     drop-amount: 1
-    count: 5
+    count: 4
     size:
-      min: 22
-      max: 38
-    regrow-minutes: 40
+      min: 80
+      max: 120
+    mine-seconds: 2.5
+    regrow-minutes: 22
 
-  # The prize. Three in the whole world, over an hour to regrow — these are the
-  # ones people will learn the locations of and fight over.
-  ichor:
-    block: CRYING_OBSIDIAN
-    drop: mariphage_ichor
+  # The prize, and the god's own growth. Three in the whole world at four
+  # seconds a block — these are the ones people will learn the locations of and
+  # fight over. Budding amethyst in the rind rather than plain clusters, because
+  # this is the one that is visibly still growing.
+  godspore:
+    block: VERDANT_FROGLIGHT
+    shell: CALCITE
+    bud: BUDDING_AMETHYST
+    matrix: BASALT
+    bud-one-in: 5
+    drop: godspore
     drop-amount: 1
     count: 3
     size:
-      min: 24
-      max: 40
-    regrow-minutes: 70
+      min: 60
+      max: 90
+    mine-seconds: 4.0
+    regrow-minutes: 25

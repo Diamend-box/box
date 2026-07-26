@@ -23,10 +23,10 @@ class VeinScatterTest {
 
     private static OreTables tables() {
         return new OreTables(List.of(
-                new OreType("emberiron", "NETHER_GOLD_ORE", "emberiron_chunk", 1, 8, 20, 34, 25),
-                new OreType("voidsalt", "NETHER_QUARTZ_ORE", "voidsalt", 1, 5, 22, 38, 40),
-                new OreType("ichor", "CRYING_OBSIDIAN", "mariphage_ichor", 1, 3, 24, 40, 70)),
-                SPACING, 4000);
+                OreType.of("emberglass", "OCHRE_FROGLIGHT", "emberglass", 6, 100, 150, 1.5, 18),
+                OreType.of("voidbloom", "PEARLESCENT_FROGLIGHT", "voidbloom", 4, 80, 120, 2.5, 22),
+                OreType.of("godspore", "VERDANT_FROGLIGHT", "godspore", 3, 60, 90, 4.0, 25)),
+                SPACING, 4000, "NETHERITE_PICKAXE", 15, 0.4);
     }
 
     private static CultistCarve carve(long seed) {
@@ -137,8 +137,8 @@ class VeinScatterTest {
     @Test
     void anImpossibleConfigPlacesWhatItCanAndGivesUp() {
         OreTables greedy = new OreTables(List.of(
-                new OreType("everywhere", "NETHER_GOLD_ORE", "x", 1, 5000, 20, 30, 25)),
-                SPACING, 500);
+                OreType.of("everywhere", "OCHRE_FROGLIGHT", "x", 5000, 20, 30, 1.5, 25)),
+                SPACING, 500, "NETHERITE_PICKAXE", 15, 0.4);
         List<VeinScatter.Placement> placed = VeinScatter.scatter(carve(1L), greedy, 1L);
         assertTrue(placed.size() < 5000, "it claimed to place the impossible");
         assertTrue(placed.size() > 0, "it should still place some");

@@ -1,6 +1,7 @@
 package com.diamend.darksea.world.cultist;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -11,12 +12,17 @@ import java.util.Set;
  * origin. Pure and deterministic — the same seed always grows the same blob —
  * so the shape can be asserted without a server.
  *
- * <p>Veins are deliberately <em>few and large</em>. A blob of twenty to forty
- * blocks takes real time to clear, which means whoever is working it is
- * stationary and exposed for that whole time, and everyone on the server knows
- * where it is. That is what makes a vein contested ground rather than a chore.
- * Scattering the same number of ore blocks as singles would produce the same
- * total supply and none of the tension.
+ * <p>Veins are deliberately <em>few and very large</em> — sixty to a hundred and
+ * fifty blocks. A blob that size takes minutes to clear, which means whoever is
+ * working it is stationary and exposed for that whole time, and everyone on the
+ * server knows where it is. That is what makes a vein contested ground rather
+ * than a chore. Scattering the same number of ore blocks as singles would
+ * produce the same total supply and none of the tension.
+ *
+ * <p>The blob this class grows is only the harvestable <em>core</em>. The visible
+ * geode is core plus {@link #shell(Collection) shell} — the rind of rock the
+ * crystal has grown inside, which is decorative, unbreakable, and never
+ * regenerates because it never changes.
  *
  * <p>Grown by random walk from the origin rather than carved from noise: a walk
  * is contiguous by construction, so there is no way for a vein to come out as
@@ -112,6 +118,51 @@ public final class OreVein {
         // A different derived seed from grow()'s, so size and shape vary
         // independently rather than moving together.
         return low + new Random(seed ^ 0x5A1E_2B77L).nextInt(high - low + 1);
+    }
+
+    /**
+     * The rind around a core: every face-neighbour of a core block that is not
+     * itself core. Returned in a stable order so two runs place the same rock in
+     * the same cells.
+     *
+     * <p>This is what turns a lump of ore into a geode. The shell is calcite and
+     * amethyst rather than more of the surrounding basalt, so a vein reads as a
+     * grown formation from across the cavern instead of as a recoloured patch of
+     * wall — and once the core has been mined out, the empty shell is still
+     * visibly a geode waiting to refill.
+     */
+    public static List<Offset> shell(Collection<Offset> core) {
+        Set<Offset> body = new LinkedHashSet<>(core);
+        Set<Offset> rind = new LinkedHashSet<>();
+        for (Offset block : body) {
+            for (int[] step : NEIGHBOURS) {
+                Offset neighbour = new Offset(
+                        block.dx() + step[0], block.dy() + step[1], block.dz() + step[2]);
+                if (!body.contains(neighbour)) {
+                    rind.add(neighbour);
+                }
+            }
+        }
+        return List.copyOf(rind);
+    }
+
+    /**
+     * Whether a given shell cell should be a crystal bud rather than plain
+     * calcite. Hashed from the vein seed and the offset rather than drawn from a
+     * {@link Random}, so a cell's answer does not depend on what order the shell
+     * was walked in — which is what lets the shell be recomputed on every load
+     * instead of stored.
+     */
+    public static boolean isBud(long seed, Offset cell, int oneIn) {
+        if (oneIn <= 1) {
+            return oneIn == 1;
+        }
+        long hash = seed;
+        hash = hash * 0x9E37_79B9_7F4A_7C15L + cell.dx();
+        hash = hash * 0x9E37_79B9_7F4A_7C15L + cell.dy();
+        hash = hash * 0x9E37_79B9_7F4A_7C15L + cell.dz();
+        hash ^= hash >>> 29;
+        return Math.floorMod(hash, oneIn) == 0;
     }
 
     /** Whether every offset touches another face-to-face — the invariant a walk guarantees. */

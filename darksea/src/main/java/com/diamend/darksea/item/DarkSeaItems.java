@@ -168,18 +168,23 @@ public final class DarkSeaItems {
     public static final String BROKEN_DARK_SEA_BOAT = "broken_dark_sea_boat";
 
     // ------------------------------------------------------------------
-    // Cave ores (com.diamend.darksea.world.cultist)
+    // Cave crystals (com.diamend.darksea.world.cultist)
     // ------------------------------------------------------------------
 
     /**
-     * What the veins in the cultist caves drop. Upgrade material and nothing
+     * What the geodes in the cultist caves drop. Upgrade material and nothing
      * else: no Chronon value, no shop will buy them, and no shop may sell
      * them. Chronons stay a thing you earn in the Dark Sea and spend at the
      * artificer, so a safe mining dimension can never out-earn sailing.
+     *
+     * <p>One material family on purpose. The three of them are the Mariphage's
+     * growth surfacing through the rock at three depths of infection, which is
+     * why the rarest is named for the god and the other two are not — you find
+     * glass before you work out what is making it.
      */
-    public static final String EMBERIRON_CHUNK = "emberiron_chunk";
-    public static final String VOIDSALT = "voidsalt";
-    public static final String MARIPHAGE_ICHOR = "mariphage_ichor";
+    public static final String EMBERGLASS = "emberglass";
+    public static final String VOIDBLOOM = "voidbloom";
+    public static final String GODSPORE = "godspore";
 
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
@@ -196,9 +201,9 @@ public final class DarkSeaItems {
         ids.add(HARPOON_GUN);
         ids.add(DARK_SEA_BOAT);
         ids.add(BROKEN_DARK_SEA_BOAT);
-        ids.add(EMBERIRON_CHUNK);
-        ids.add(VOIDSALT);
-        ids.add(MARIPHAGE_ICHOR);
+        ids.add(EMBERGLASS);
+        ids.add(VOIDBLOOM);
+        ids.add(GODSPORE);
         for (Relic relic : Relic.values()) {
             ids.add(relic.id());
         }
@@ -259,20 +264,22 @@ public final class DarkSeaItems {
             case HARPOON_GUN -> createHarpoonGun();
             case DARK_SEA_BOAT -> createDarkSeaBoat();
             case BROKEN_DARK_SEA_BOAT -> createBrokenDarkSeaBoat();
-            case EMBERIRON_CHUNK -> createOre(id, amount, Material.RAW_IRON,
-                    "<color:#e2725b>Emberiron Chunk</color>",
-                    List.of("<gray>Still warm. It has been</gray>",
-                            "<gray>underground for a very long time.</gray>",
+            case EMBERGLASS -> createOre(id, amount, Material.GLOWSTONE_DUST,
+                    "<color:#e8a33d>Emberglass</color>",
+                    List.of("<gray>A shard of warm gold, still lit</gray>",
+                            "<gray>from somewhere inside itself.</gray>",
                             "<dark_gray>The artificer knows what to do with it.</dark_gray>"));
-            case VOIDSALT -> createOre(id, amount, Material.GLOWSTONE_DUST,
-                    "<color:#b39ddb>Voidsalt</color>",
-                    List.of("<gray>It hums against the palm</gray>",
-                            "<gray>at a pitch you feel rather than hear.</gray>"));
-            case MARIPHAGE_ICHOR -> createOre(id, amount, Material.AMETHYST_SHARD,
-                    "<dark_purple>Mariphage Ichor</dark_purple>",
-                    List.of("<gray>The rock down here bleeds.</gray>",
-                            "<gray>Whatever it came out of is still</gray>",
-                            "<gray>further down.</gray>"));
+            case VOIDBLOOM -> createOre(id, amount, Material.AMETHYST_SHARD,
+                    "<color:#c9a0dc>Voidbloom</color>",
+                    List.of("<gray>It hums against the palm at a pitch</gray>",
+                            "<gray>you feel rather than hear.</gray>",
+                            "<dark_gray>It was growing before you broke it off.</dark_gray>"));
+            case GODSPORE -> createOre(id, amount, Material.AMETHYST_SHARD,
+                    "<color:#8bc34a>Godspore</color>",
+                    List.of("<gray>The green in it moves when you</gray>",
+                            "<gray>are not looking at it.</gray>",
+                            "<dark_gray>Whatever seeded this rock is still</dark_gray>",
+                            "<dark_gray>further down, and still growing.</dark_gray>"));
             default -> null;
         };
     }

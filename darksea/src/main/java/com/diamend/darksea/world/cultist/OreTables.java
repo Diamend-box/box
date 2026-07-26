@@ -11,17 +11,45 @@ import java.util.List;
  * close enough to work back to back are effectively a single richer vein with
  * half the travel, which is exactly the outcome node-based supply exists to
  * prevent.
+ *
+ * <p>The reference-gear fields define what every {@code mine-seconds} is
+ * measured against — see {@link MiningSpeed}. They live here rather than on the
+ * individual types because the whole economy has to be calibrated to one
+ * yardstick; letting each crystal pick its own would make the numbers
+ * incomparable.
+ *
+ * @param referenceTool       material name of the pickaxe the numbers assume
+ * @param referenceEfficiency Efficiency level that pickaxe is assumed to carry
+ * @param floorSeconds        no block may take less than this, however stacked
  */
-public record OreTables(List<OreType> types, int minSpacing, int maxPlacementTries) {
+public record OreTables(List<OreType> types, int minSpacing, int maxPlacementTries,
+                        String referenceTool, int referenceEfficiency, double floorSeconds) {
 
     public OreTables {
         types = List.copyOf(types);
         minSpacing = Math.max(1, minSpacing);
         maxPlacementTries = Math.max(1, maxPlacementTries);
+        referenceTool = referenceTool == null || referenceTool.isBlank()
+                ? "NETHERITE_PICKAXE" : referenceTool;
+        referenceEfficiency = Math.max(0, referenceEfficiency);
+        floorSeconds = Math.max(MiningSpeed.FLOOR_SECONDS_MIN, floorSeconds);
     }
 
     public static OreTables empty() {
-        return new OreTables(List.of(), 48, 2000);
+        return new OreTables(List.of(), 48, 2000, "NETHERITE_PICKAXE", 15, 0.4);
+    }
+
+    /**
+     * The dig speed every extraction is scaled against. Falls back to a bare
+     * netherite pickaxe if the configured reference tool is not a pickaxe at
+     * all, so a typo slows the caves down rather than dividing by zero.
+     */
+    public double referenceSpeed() {
+        MiningSpeed.Tier tier = MiningSpeed.tierOf(referenceTool);
+        if (tier == null) {
+            tier = MiningSpeed.Tier.NETHERITE;
+        }
+        return MiningSpeed.speed(tier, referenceEfficiency, 0, 0);
     }
 
     /** Total veins across every type — how many landmarks the world holds. */

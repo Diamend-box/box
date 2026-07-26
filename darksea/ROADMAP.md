@@ -874,23 +874,68 @@ portal stranded in one. Openness alone would never catch it, so the tests flood
 fill from the chamber and assert a connectivity floor. If the caves ever want
 to be tighter, that is the thing that will quietly break the world.
 
-### Ore veins — few, large, contested
+### Crystal geodes — few, huge, contested
 
-Sixteen veins in the whole world (8 emberiron, 5 voidsalt, 3 ichor), 20-40
-blocks each, scattered deterministically from the world seed. Not ore in the
-terrain: supply is a number in `ores.yml` rather than a function of how hard
-somebody strip-mines, so retuning progression is `/ds reload` instead of
-regenerating the world.
+Thirteen geodes in the whole world, scattered deterministically from the world
+seed. Not ore in the terrain: supply is a number in `ores.yml` rather than a
+function of how hard somebody strip-mines, so retuning progression is
+`/ds reload` instead of regenerating the world.
+
+One material family — the Mariphage's growth surfacing through the rock at three
+depths of infection:
+
+| Crystal | Core | Veins | Size | mine-seconds | Regrow |
+| --- | --- | --- | --- | --- | --- |
+| **Emberglass** | ochre froglight | 6 | 100-150 | 1.5 | 18 min |
+| **Voidbloom** | pearlescent froglight | 4 | 80-120 | 2.5 | 22 min |
+| **Godspore** | verdant froglight | 3 | 60-90 | 4.0 | 25 min |
+
+Each is a geode: a harvestable core wrapped in a calcite rind studded with
+amethyst buds, placed once and indestructible. The rind is what makes a vein a
+landmark visible across a cavern, and it means a spent vein still reads as a
+geode waiting to refill rather than as a hole. Budding amethyst in the godspore
+rind is deliberate — it is the one vanilla block that visibly regrows, so the
+regen mechanic becomes something the rock is observably doing.
 
 | Rule | Why |
 | --- | --- |
-| **Whole vein regrows at once**, timed from the last block taken | Makes the decision "do I have time to clear this before someone turns up" instead of "do I chip two blocks off it every minute" |
+| **Whole vein regrows at once**, timed from the **first** block taken | Chipping at a vein stops punishing you, and regrow times desynchronise on their own because players touch different veins at different moments |
+| **Counts sized so a sweep ≈ a cooldown** | Clearing all six emberglass geodes takes ~19 minutes against an 18-minute clock, so the first is back before you finish the last |
 | **Min spacing 48** | Two veins close enough to work back to back are one richer vein with half the travel |
 | **Nothing else in the caves breaks or places** | Closes tunnelling up to a vein from below, and walling one off |
 | **Drops are upgrade material only** | Chronons stay earned in the Dark Sea and spent at the artificer, so a safe mining dimension can't out-earn sailing |
 
-That last one is enforced: a test walks every NPC board across 25 rotations and
-fails the build if an ore id appears on one.
+The last one is enforced: a test walks every NPC board across 25 rotations and
+fails the build if a crystal id appears on one. The sweep-vs-cooldown rule is
+enforced too — a test fails if any crystal would leave more than a 12-minute
+drought after a full solo clear.
+
+### Extraction — the plugin owns the clock
+
+Vanilla block hardness cannot be overridden, and by the time anyone reaches the
+caves their pickaxe breaks anything instantly regardless of block choice. Left
+alone a 150-block geode would evaporate in fifteen seconds and none of the
+"stand still where everyone can see you" design would survive. So mining a
+crystal is a **channel**: the block never breaks, the plugin drives the crack
+overlay, and `MiningSpeed` decides the duration from what the player holds.
+
+`mine-seconds` is therefore the time at **reference gear**
+(`reference-tool: NETHERITE_PICKAXE`, `reference-efficiency: 15`), not with a
+bare pick. Everything scales off that ratio, which is the right way round: the
+shipped numbers are a **floor on time** and a **ceiling on supply**. Only
+better-than-reference gear beats them, and `floor-seconds` stops a Haste beacon
+reaching zero. The spread is steep on purpose — Efficiency 5 is roughly seven
+times slower than Efficiency 15 — and that is the gate on the caves being
+endgame content.
+
+**The subtle part, and the thing to watch in game.** `setInstaBreak(false)` stops
+the block vanishing on tick one, but vanilla still runs its own dig timer
+underneath ours and completes almost immediately against a fast pickaxe. That
+break is cancelled and the block resent, so a player holding the button produces
+a stream of start/cancel churn — and `BlockDamageAbortEvent` fires inside it.
+Ending the channel on an abort would make crystal *unmineable* with exactly the
+gear this is tuned for, so an abort only stops refreshing the channel and half a
+second of real silence ends it. This cannot be proven in CI.
 
 ### The seam
 
@@ -913,8 +958,21 @@ that has to be one fixed room.
 - `/ds reload` re-reads `ores.yml`. Vein positions do not move on reload —
   they live in `nodes.yml` and are placed once.
 - Everything above is CI-proven but **none of it has run on a real server**.
-  The vein regrowth timer and the portal round-trip are the two things worth
-  walking through first.
+  In priority order, the things worth walking through first:
+  1. **The extraction channel.** Does the crack overlay advance smoothly, or
+     does the block flicker as vanilla's dig timer keeps completing underneath?
+     This is the one piece with a known-hard interaction and no CI coverage. If
+     the flicker is bad, the fallback is to hold Mining Fatigue on players while
+     they are channelling so vanilla's timer never completes.
+  2. **Regrow timing.** Half-mine a geode, note the clock, leave. It must come
+     back **whole** at first-touch plus the cooldown — not last-touch, and not
+     block by block.
+  3. **The tool curve.** A reference-grade pickaxe should land near the
+     configured `mine-seconds` and a worse one should be obviously slower. This
+     is the number most likely to want retuning once it is in hand, which is
+     why it is a config value and not a constant.
+  4. **The portal round-trip**, and that a geode's rind is intact and its core
+     harvestable.
 
 ---
 

@@ -21,25 +21,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The ore veins: placing them, mining them, growing them back, and making sure
- * they are the only thing in the caves anyone can touch.
+ * The crystal veins: placing them, growing them back, and making sure they are
+ * the only thing in the caves anyone can touch. The act of extracting a block
+ * lives in {@link ExtractionChannel}, which calls back into
+ * {@link #extract} here when a channel completes.
  *
- * <p>Three rules, all of them deliberate.
+ * <p>Four rules, all of them deliberate.
  *
  * <p><b>The whole vein comes back at once</b>, on a cooldown measured from the
- * last block taken out of it. A half-mined vein therefore returns whole rather
- * than dribbling blocks back individually, which makes the decision at a vein
- * "do I have time to clear this before someone turns up" instead of "do I chip
- * two blocks off it every minute".
+ * <em>first</em> block taken out of it. A half-mined vein returns whole and on
+ * schedule rather than dribbling blocks back individually or having its
+ * deadline pushed back by every further swing — so the decision at a vein is
+ * "do I have time to clear this before someone turns up", and chipping at one
+ * costs you nothing.
+ *
+ * <p><b>A vein is a geode.</b> The harvestable core is wrapped in a rind of
+ * calcite and crystal buds, placed once and never touched again. That rind is
+ * what makes a vein a landmark you can see across a cavern, and it means a
+ * spent vein still reads as a geode waiting to refill rather than as a hole.
  *
  * <p><b>Nothing else in the caves is breakable or placeable.</b> The dimension
  * is a designed space, not a canvas. That also stops the obvious ways around a
  * vein: tunnelling up to one from underneath, or walling one off so nobody
  * else can work it.
  *
- * <p><b>Mining never yields the block.</b> A vein block is scenery that hands
- * out an item; the player gets the configured drop and the block becomes
- * ordinary rock until it regrows.
+ * <p><b>Mining never yields the block.</b> A crystal block is scenery that hands
+ * out an item; the player gets the configured drop and the block becomes the
+ * type's matrix rock until it regrows.
  */
 public final class NodeService extends BukkitRunnable implements Listener {
 
@@ -102,13 +110,15 @@ public final class NodeService extends BukkitRunnable implements Listener {
             }
             NodeRegistry.Node node = new NodeRegistry.Node(
                     type.id() + "-" + (i + 1), type.id(),
-                    new Pos(placement.x(), placement.y(), placement.z()), blocks, 0L);
+                    new Pos(placement.x(), placement.y(), placement.z()), blocks,
+                    placement.seed(), 0L);
             registry.add(node);
+            paintShell(caves, carve, node, type);
             paint(caves, node, type);
             built++;
         }
         registry.save();
-        plugin.getLogger().info("Placed " + built + " ore veins in the caves");
+        plugin.getLogger().info("Placed " + built + " crystal veins in the caves");
         return built;
     }
 
@@ -136,12 +146,12 @@ public final class NodeService extends BukkitRunnable implements Listener {
         return blocks;
     }
 
-    /** Writes a vein's blocks into the world. */
+    /** Writes a vein's core blocks into the world. */
     private void paint(World caves, NodeRegistry.Node node, OreType type) {
-        Material material = Material.matchMaterial(type.blockId());
+        Material material = Material.matchMaterial(type.coreBlock());
         if (material == null) {
             plugin.getLogger().warning("ores.yml '" + type.id() + "': unknown block '"
-                    + type.blockId() + "' — vein left as rock");
+                    + type.coreBlock() + "' — vein left as rock");
             return;
         }
         for (Pos pos : node.blocks()) {
@@ -149,10 +159,67 @@ public final class NodeService extends BukkitRunnable implements Listener {
         }
     }
 
+    /**
+     * Writes the geode rind: the shell material in every solid cell touching the
+     * core, with buds scattered through it.
+     *
+     * <p>Only ever writes into rock. A shell cell that lands in open cave is
+     * skipped rather than filled, so a geode exposed in a passage wall stays
+     * exposed — you can see the crystal, which is the entire point of the vein
+     * being a landmark. Filling those cells would brick the vein over.
+     *
+     * <p>Done once at placement and never repaired. The rind is indestructible
+     * like the rest of the caves, so there is nothing to repair.
+     */
+    private void paintShell(World caves, CultistCarve carve, NodeRegistry.Node node,
+                            OreType type) {
+        if (!type.hasShell()) {
+            return;
+        }
+        Material shell = Material.matchMaterial(type.shellBlock());
+        if (shell == null) {
+            plugin.getLogger().warning("ores.yml '" + type.id() + "': unknown shell '"
+                    + type.shellBlock() + "' — vein placed without a rind");
+            return;
+        }
+        Material bud = type.budBlock() == null ? null : Material.matchMaterial(type.budBlock());
+
+        Pos origin = node.origin();
+        List<OreVein.Offset> core = new ArrayList<>();
+        for (Pos pos : node.blocks()) {
+            core.add(new OreVein.Offset(pos.x() - origin.x(), pos.y() - origin.y(),
+                    pos.z() - origin.z()));
+        }
+        for (OreVein.Offset offset : OreVein.shell(core)) {
+            int x = origin.x() + offset.dx();
+            int y = origin.y() + offset.dy();
+            int z = origin.z() + offset.dz();
+            if (!carve.inBounds(x, z) || y <= carve.floorY() || y >= carve.roofY()) {
+                continue;
+            }
+            if (carve.isOpen(x, y, z)) {
+                continue;   // the face of the geode, left open so it can be seen
+            }
+            Material material = shell;
+            if (bud != null && OreVein.isBud(node.seed(), offset, type.budOneIn())) {
+                material = bud;
+            }
+            caves.getBlockAt(x, y, z).setType(material, false);
+        }
+    }
+
     // ------------------------------------------------------------------
     // Mining
     // ------------------------------------------------------------------
 
+    /**
+     * Nothing in the caves ever breaks by itself.
+     *
+     * <p>Crystal is taken by {@link ExtractionChannel}, on the plugin's own
+     * timer, so this handler's whole job is to say no — to plain rock with a
+     * message, and to crystal silently, because the channel is already running
+     * and telling the player it cannot be broken would be a lie.
+     */
     @EventHandler(ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
@@ -165,36 +232,49 @@ public final class NodeService extends BukkitRunnable implements Listener {
             return;   // an admin in creative can still edit the place
         }
 
-        event.setCancelled(true);   // nothing in the caves drops its own block
+        event.setCancelled(true);
 
         Pos pos = new Pos(block.getX(), block.getY(), block.getZ());
-        NodeRegistry.Node node = registry.nodeAt(pos);
-        if (node == null) {
+        if (registry.nodeAt(pos) == null) {
             plugin.messages().send(player, "caves-unbreakable");
-            return;
         }
-        OreType type = plugin.oreTables().byId(node.typeId());
-        if (type == null) {
-            return;
-        }
-        if (block.getType() == Material.STONE || block.getType().isAir()) {
-            return;   // already mined out, waiting to regrow
-        }
+    }
 
-        block.setType(Material.STONE, false);
-        node.setLastMined(System.currentTimeMillis());
+    /**
+     * Takes one crystal block out of a vein: hands the player the drop, leaves
+     * the matrix rock behind, and starts the regrow clock if this was the first
+     * block out of this vein.
+     *
+     * <p>Called by {@link ExtractionChannel} when a channel runs to completion —
+     * never directly from a break event, because in the caves a break event
+     * means the player tried, not that the block came out.
+     *
+     * @return true if a block was actually extracted
+     */
+    public boolean extract(Player player, Block block, NodeRegistry.Node node, OreType type) {
+        Material core = Material.matchMaterial(type.coreBlock());
+        if (core == null || block.getType() != core) {
+            return false;   // already mined out, waiting to regrow
+        }
+        Material matrix = Material.matchMaterial(type.matrixBlock());
+        block.setType(matrix == null ? Material.BASALT : matrix, false);
+
+        // First touch only. Every later block out of this vein leaves the
+        // deadline where it is, so working a vein never delays its return.
+        node.touch(System.currentTimeMillis());
         registry.save();
 
         ItemStack drop = DarkSeaItems.create(type.dropId(), type.dropAmount());
         if (drop == null) {
             plugin.getLogger().warning("ores.yml '" + type.id() + "': unknown drop '"
                     + type.dropId() + "'");
-            return;
+            return true;
         }
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(drop);
         for (ItemStack spill : leftover.values()) {
             player.getWorld().dropItemNaturally(player.getLocation(), spill);
         }
+        return true;
     }
 
     /** The caves are a designed space: no building in them either. */
@@ -229,7 +309,7 @@ public final class NodeService extends BukkitRunnable implements Listener {
             if (type == null || !node.isDue(now, type.cooldownMillis())) {
                 continue;
             }
-            Material material = Material.matchMaterial(type.blockId());
+            Material material = Material.matchMaterial(type.coreBlock());
             if (material == null) {
                 continue;
             }
@@ -241,7 +321,9 @@ public final class NodeService extends BukkitRunnable implements Listener {
                     block.setType(material, false);
                 }
             }
-            node.setLastMined(0L);
+            // Clock back to unset, so the next block mined starts a fresh cycle
+            // rather than the vein being instantly due again.
+            node.resetClock();
             changed = true;
         }
         if (changed) {
