@@ -23,6 +23,7 @@ import java.util.logging.Logger;
  */
 public record DarkSeaSettings(
         String worldName,
+        String cultistWorldName,
         int seaLevel,
         int seabedBaseY,
         int seabedVariation,
@@ -219,6 +220,9 @@ public record DarkSeaSettings(
      */
     public static DarkSeaSettings load(FileConfiguration cfg, Logger log) {
         String worldName = cfg.getString("world.name", "dark_sea");
+        // The caves past the origin island. A separate world rather than a
+        // region of the sea, because it plays by entirely different rules.
+        String cultistWorldName = cfg.getString("world.cultist-name", "dark_sea_caves");
         int seaLevel = cfg.getInt("world.sea-level", 62);
         int seabedBaseY = cfg.getInt("world.seabed.base-y", 45);
         int seabedVariation = cfg.getInt("world.seabed.variation", 5);
@@ -277,7 +281,7 @@ public record DarkSeaSettings(
             }
         }
 
-        return new DarkSeaSettings(worldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
+        return new DarkSeaSettings(worldName, cultistWorldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
                 exposure, zones, armor, generation, mobSpawning, combat, reset, boat, naval,
                 relics, Map.copyOf(messages));
     }

@@ -32,12 +32,14 @@ import com.diamend.darksea.npc.ShopMenuService;
 import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.relic.UndrownedHeartService;
 import com.diamend.darksea.vault.VaultService;
+import com.diamend.darksea.world.ManagedWorld;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
 import com.diamend.darksea.zone.ZoneManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -238,6 +240,38 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public Messages messages() {
         return messages;
+    }
+
+    /**
+     * Which of the plugin's worlds this is, or null for a world the plugin
+     * does not manage at all (the vanilla overworld, a hub, someone else's
+     * plot world). Callers ask the returned descriptor what rules apply rather
+     * than comparing names themselves — see {@link ManagedWorld}.
+     */
+    public ManagedWorld managedWorld(World world) {
+        if (world == null) {
+            return null;
+        }
+        return managedWorld(world.getName());
+    }
+
+    public ManagedWorld managedWorld(String worldName) {
+        DarkSeaSettings snapshot = settings;
+        if (snapshot == null || worldName == null) {
+            return null;
+        }
+        if (worldName.equals(snapshot.worldName())) {
+            return ManagedWorld.DARK_SEA;
+        }
+        if (worldName.equals(snapshot.cultistWorldName())) {
+            return ManagedWorld.CULTIST;
+        }
+        return null;
+    }
+
+    /** Shorthand for the commonest guard: is this happening in the sea? */
+    public boolean isDarkSea(World world) {
+        return managedWorld(world) == ManagedWorld.DARK_SEA;
     }
 
     public ZoneManager zoneManager() {

@@ -64,7 +64,7 @@ public final class NaxCombatListener implements Listener {
             }
         }
 
-        if (player.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (plugin.isDarkSea(player.getWorld())) {
             double bonus = VironicArmor.setBonusDamage(player.getInventory().getArmorContents());
             if (bonus > 0) {
                 event.setDamage(event.getDamage() + bonus);

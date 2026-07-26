@@ -124,7 +124,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 "level", String.valueOf(plugin.boat().levelOf(player)),
                 "shield", String.valueOf(boatStats.shield()));
 
-        if (!player.getWorld().getName().equals(settings.worldName())) {
+        if (!plugin.isDarkSea(player.getWorld())) {
             msg.sendBare(player, "status-not-in-world");
             return;
         }
@@ -300,7 +300,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (plugin.naval() == null || !(player.getVehicle() instanceof Boat boat)
-                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(boat.getWorld())) {
             msg.send(player, "boat-debug-none");
             return;
         }

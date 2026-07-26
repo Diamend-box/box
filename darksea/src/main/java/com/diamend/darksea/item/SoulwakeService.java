@@ -46,7 +46,7 @@ public final class SoulwakeService implements Listener {
         // It never places or opens anything — reading the sea always wins the click.
         event.setCancelled(true);
         Player hunter = event.getPlayer();
-        if (!hunter.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (!plugin.isDarkSea(hunter.getWorld())) {
             plugin.messages().actionBar(hunter, "soulwake-not-in-sea");
             return;
         }

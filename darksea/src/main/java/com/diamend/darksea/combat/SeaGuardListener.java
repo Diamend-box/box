@@ -157,6 +157,6 @@ public final class SeaGuardListener implements Listener {
 
     private boolean inDarkSea(Location loc) {
         World world = loc.getWorld();
-        return world != null && world.getName().equals(plugin.settings().worldName());
+        return plugin.isDarkSea(world);
     }
 }

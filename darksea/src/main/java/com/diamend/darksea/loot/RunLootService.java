@@ -62,7 +62,7 @@ public final class RunLootService implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         if (!plugin.settings().combat().runLootDeath()
-                || !player.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(player.getWorld())) {
             return;
         }
         // Take control regardless of the server keep-inventory gamerule: only the

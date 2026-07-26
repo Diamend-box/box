@@ -79,7 +79,7 @@ public final class BoatMenuService implements Listener {
         }
         Player player = event.getPlayer();
         if (!player.isSneaking()
-                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(boat.getWorld())) {
             return;  // a plain right-click still boards; only in the Dark Sea
         }
         UUID owner = BoatService.ownerOf(boat);

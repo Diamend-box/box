@@ -133,7 +133,7 @@ public final class VaultService implements Listener {
             return;
         }
         Block block = event.getClickedBlock();
-        if (!block.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (!plugin.isDarkSea(block.getWorld())) {
             return;
         }
         IslandInstance island = plugin.registry()

@@ -550,7 +550,7 @@ public final class NavalCombatService implements Listener {
 
     boolean inDarkSea(Location loc) {
         World world = loc.getWorld();
-        return world != null && world.getName().equals(plugin.settings().worldName());
+        return plugin.isDarkSea(world);
     }
 
     private static String pairKey(UUID a, UUID b) {

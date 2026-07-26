@@ -174,7 +174,7 @@ public final class BoatService implements Listener {
     /** Boat shield for the exposure formula: only while riding a boat in the sea. */
     public int shieldFor(Player player) {
         if (player.getVehicle() instanceof Boat boat
-                && boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                && plugin.isDarkSea(boat.getWorld())) {
             return stats(levelOf(player)).shield();
         }
         return 0;
@@ -249,7 +249,7 @@ public final class BoatService implements Listener {
         if (!(event.getVehicle() instanceof Boat boat)) {
             return;
         }
-        if (!boat.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (!plugin.isDarkSea(boat.getWorld())) {
             return;
         }
         Player rider = boatRider(boat);
@@ -310,7 +310,7 @@ public final class BoatService implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onVehicleDamage(VehicleDamageEvent event) {
         if (!(event.getVehicle() instanceof Boat boat)
-                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(boat.getWorld())) {
             return;
         }
         Player rider = boatRider(boat);
@@ -331,7 +331,7 @@ public final class BoatService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVehicleDestroy(VehicleDestroyEvent event) {
         if (!(event.getVehicle() instanceof Boat boat)
-                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(boat.getWorld())) {
             return;
         }
         Player rider = boatRider(boat);
@@ -350,7 +350,7 @@ public final class BoatService implements Listener {
     public void onVehicleEnter(VehicleEnterEvent event) {
         if (!(event.getVehicle() instanceof Boat boat)
                 || !(event.getEntered() instanceof Player player)
-                || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(boat.getWorld())) {
             return;
         }
         var pdc = boat.getPersistentDataContainer();

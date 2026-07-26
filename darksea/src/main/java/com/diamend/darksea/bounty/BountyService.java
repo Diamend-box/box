@@ -71,7 +71,7 @@ public final class BountyService implements Listener {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
         if (killer == null || killer.equals(victim)
-                || !victim.getWorld().getName().equals(plugin.settings().worldName())) {
+                || !plugin.isDarkSea(victim.getWorld())) {
             return;
         }
         int purse = ledger.claim(victim.getUniqueId());

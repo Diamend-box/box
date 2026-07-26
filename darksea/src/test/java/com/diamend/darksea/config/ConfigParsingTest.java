@@ -49,6 +49,7 @@ class ConfigParsingTest {
         DarkSeaSettings settings = loadDefault();
 
         assertEquals("dark_sea", settings.worldName());
+        assertEquals("dark_sea_caves", settings.cultistWorldName());
         assertEquals(62, settings.seaLevel());
         assertEquals(0, settings.centerX());
         assertEquals(0, settings.centerZ());

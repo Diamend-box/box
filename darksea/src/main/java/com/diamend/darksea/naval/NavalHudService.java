@@ -50,7 +50,7 @@ public final class NavalHudService {
         long now = System.currentTimeMillis();
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (!(player.getVehicle() instanceof Boat boat)
-                    || !boat.getWorld().getName().equals(plugin.settings().worldName())) {
+                    || !plugin.isDarkSea(boat.getWorld())) {
                 holdUntil.remove(player.getUniqueId());
                 continue;
             }

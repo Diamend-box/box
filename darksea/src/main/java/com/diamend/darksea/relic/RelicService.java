@@ -190,7 +190,7 @@ public final class RelicService extends BukkitRunnable implements Listener {
 
     /** The refugees live at the calm center: the sea's ring with required tier 0. */
     private boolean atTheRefugees(Player player) {
-        if (!player.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (!plugin.isDarkSea(player.getWorld())) {
             return false;
         }
         double dx = player.getLocation().getX() - plugin.settings().centerX();

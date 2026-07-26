@@ -43,7 +43,7 @@ public final class ChestRefillService implements Listener {
         if (block == null || block.getType() != Material.CHEST) {
             return;
         }
-        if (!block.getWorld().getName().equals(plugin.settings().worldName())) {
+        if (!plugin.isDarkSea(block.getWorld())) {
             return;
         }
         IslandRegistry.ChestRef ref = registry.chestAt(block.getX(), block.getY(), block.getZ());
