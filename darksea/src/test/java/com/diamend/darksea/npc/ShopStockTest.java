@@ -171,6 +171,89 @@ class ShopStockTest {
         assertNotEquals(0, ShopOffer.buy("x", 1, 100).scaled(0.0).price());
     }
 
+    // ------------------------------------------------------------------
+    // Editing (what /ds shop does under the GUI)
+    // ------------------------------------------------------------------
+
+    @Test
+    void pricesClampAtOneRatherThanThrowing() {
+        ShopOffer offer = ShopOffer.buy("sea_salve", 1, 3);
+        assertEquals(1, offer.withPrice(0).price());
+        assertEquals(1, offer.withPrice(-50).price());
+        assertEquals(99, offer.withPrice(99).price());
+    }
+
+    /** The editor cycles lot size with one click, so the top must wrap. */
+    @Test
+    void lotSizeWrapsAtBothEnds() {
+        ShopOffer offer = ShopOffer.buy("sea_salve", 1, 10);
+        assertEquals(2, offer.withAmount(2).amount());
+        assertEquals(1, offer.withAmount(ShopOffer.MAX_AMOUNT + 1).amount());
+        assertEquals(ShopOffer.MAX_AMOUNT, offer.withAmount(0).amount());
+    }
+
+    @Test
+    void customIdsAreRecognisedAndUnwrapped() {
+        ShopOffer custom = ShopOffer.buy(ShopOffer.CUSTOM + "AAAA", 1, 10);
+        assertTrue(custom.isCustom());
+        assertFalse(custom.isVanilla());
+        assertEquals("AAAA", custom.customData());
+
+        ShopOffer plain = ShopOffer.buy("sea_salve", 1, 10);
+        assertFalse(plain.isCustom());
+        assertNull(plain.customData());
+    }
+
+    /** An NPC's two shelves share one file list; editing one must not eat the other. */
+    @Test
+    void replacingOneNpcListLeavesEverythingElseAlone() {
+        ShopStock stock = stock();
+        List<ShopOffer> merged = List.of(
+                ShopOffer.buy("dark_sea_boat", 1, 40),
+                ShopOffer.sell("naxian_claw", 1, 8));
+        ShopStock edited = stock.withFixed(NpcType.REFUGEE_TRADER.id(), merged);
+
+        assertEquals(1, edited.fixedFor(NpcType.REFUGEE_TRADER.id(), ShopOffer.Kind.BUY).size());
+        assertEquals(1, edited.fixedFor(NpcType.REFUGEE_TRADER.id(), ShopOffer.Kind.SELL).size());
+        assertEquals(stock.rotatingPool(), edited.rotatingPool());
+        assertEquals(stock.salvage(), edited.salvage());
+        assertEquals(stock.clueCosts(), edited.clueCosts());
+        // And the original snapshot is untouched — boards holding it stay valid.
+        assertEquals(1, stock.fixedFor(NpcType.REFUGEE_TRADER.id()).size());
+    }
+
+    @Test
+    void togglingSalvageTakersIsReversible() {
+        ShopStock stock = stock();
+        ShopStock off = stock.withSalvageTaker(NpcType.REFUGEE_TRADER.id(), false);
+        assertFalse(off.takesSalvage().contains(NpcType.REFUGEE_TRADER.id()));
+        assertTrue(off.offers(NpcType.REFUGEE_TRADER, 0L).stream()
+                .noneMatch(o -> o.kind() == ShopOffer.Kind.SELL));
+
+        ShopStock on = off.withSalvageTaker(NpcType.REFUGEE_TRADER.id(), true);
+        assertEquals(stock.salvage(), on.salvageAt(1.0));
+    }
+
+    @Test
+    void marketDialsClampToUsableValues() {
+        ShopStock stock = stock().withMarketSettings(-5.0, 0.0, -3);
+        assertTrue(stock.markup() > 0, "markup must stay positive");
+        assertTrue(stock.salvageRate() > 0, "salvage rate must stay positive");
+        assertEquals(0, stock.slots());
+        assertTrue(stock.rotate(0L).isEmpty(), "zero slots means nothing rotates");
+    }
+
+    @Test
+    void addingAndRemovingClueRungsChangesTheLadderLength() {
+        ShopStock stock = stock().withClueCosts(List.of(50, 200));
+        assertEquals(2, stock.maxClueLevel());
+        assertEquals(50, stock.clueCost(0));
+        assertEquals(200, stock.clueCost(1));
+        assertEquals(200, stock.clueCost(5));
+
+        assertEquals(0, stock.withClueCosts(List.of()).maxClueLevel());
+    }
+
     private static ShopOffer find(List<ShopOffer> board, String itemId, ShopOffer.Kind kind) {
         for (ShopOffer offer : board) {
             if (offer.itemId().equals(itemId) && offer.kind() == kind) {

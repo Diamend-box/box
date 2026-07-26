@@ -2,14 +2,21 @@ package com.diamend.darksea.npc;
 
 import org.mockbukkit.mockbukkit.MockBukkit;
 import com.diamend.darksea.relic.Relic;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -164,6 +171,112 @@ class ShopConfigTest {
         ShopStock stock = ShopConfig.load(new YamlConfiguration(), log);
         assertEquals(0, stock.lineCount());
         assertFalse(warnings.isEmpty(), "an empty shops.yml should be complained about");
+    }
+
+    // ------------------------------------------------------------------
+    // Writing back (what /ds shop does after every click)
+    // ------------------------------------------------------------------
+
+    /**
+     * The editor writes shops.yml on every change, so a save that loses or
+     * mangles anything would silently corrupt the economy one click at a time.
+     */
+    @Test
+    void aSavedSnapshotReloadsIdentically(@TempDir Path dir) throws Exception {
+        ShopStock original = loadShipped();
+        File file = dir.resolve("shops.yml").toFile();
+        ShopConfig.save(original, file, log);
+
+        warnings.clear();
+        ShopStock reloaded = ShopConfig.load(
+                YamlConfiguration.loadConfiguration(file), log);
+        assertTrue(warnings.isEmpty(), "the round trip complained: " + warnings);
+
+        assertEquals(original.lineCount(), reloaded.lineCount());
+        assertEquals(original.markup(), reloaded.markup(), 1e-9);
+        assertEquals(original.salvageRate(), reloaded.salvageRate(), 1e-9);
+        assertEquals(original.slots(), reloaded.slots());
+        assertEquals(original.clueCosts(), reloaded.clueCosts());
+        assertEquals(original.rotatingPool(), reloaded.rotatingPool());
+        assertEquals(original.salvage(), reloaded.salvage());
+        assertEquals(original.takesSalvage(), reloaded.takesSalvage());
+        for (NpcType type : NpcType.values()) {
+            assertEquals(original.fixedFor(type.id()), reloaded.fixedFor(type.id()),
+                    type + " changed across a save");
+            // The boards themselves, not just the file, must come back the same.
+            assertEquals(original.offers(type, 4L), reloaded.offers(type, 4L), type.toString());
+        }
+    }
+
+    /** An edited line — the common case — must survive the write. */
+    @Test
+    void editsSurviveTheRoundTrip(@TempDir Path dir) throws Exception {
+        ShopStock edited = loadShipped()
+                .withFixed(NpcType.APOTHECARY.id(),
+                        List.of(ShopOffer.buy("sea_salve", 7, 999)))
+                .withMarketSettings(2.5, 1.1, 3)
+                .withClueCosts(List.of(5, 5000))
+                .withSalvageTaker(NpcType.APOTHECARY.id(), true);
+
+        File file = dir.resolve("shops.yml").toFile();
+        ShopConfig.save(edited, file, log);
+        ShopStock reloaded = ShopConfig.load(YamlConfiguration.loadConfiguration(file), log);
+
+        List<ShopOffer> board = reloaded.fixedFor(NpcType.APOTHECARY.id());
+        assertEquals(1, board.size());
+        assertEquals(7, board.get(0).amount());
+        assertEquals(999, board.get(0).price());
+        assertEquals(2.5, reloaded.markup(), 1e-9);
+        assertEquals(3, reloaded.slots());
+        assertEquals(List.of(5, 5000), reloaded.clueCosts());
+        assertTrue(reloaded.takesSalvage().contains(NpcType.APOTHECARY.id()));
+    }
+
+    /**
+     * The whole reason the editor exists: an item with real item data becomes a
+     * base64 snapshot that survives a save, a reload, and decoding back into
+     * the same stack.
+     */
+    @Test
+    void customItemSnapshotsSurviveTheRoundTrip(@TempDir Path dir) throws Exception {
+        ItemStack fancy = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = fancy.getItemMeta();
+        meta.displayName(Component.text("Wyatt's Custom Blade"));
+        meta.lore(List.of(Component.text("not a DarkSea item at all")));
+        fancy.setItemMeta(meta);
+
+        String id = ShopItems.encode(fancy, log);
+        assertNotNull(id);
+        assertTrue(id.startsWith(ShopOffer.CUSTOM), "expected a snapshot, got " + id);
+
+        ShopStock stock = loadShipped().withFixed(NpcType.BOAT_EXPERT.id(),
+                List.of(new ShopOffer(id, 1, 500, ShopOffer.Kind.BUY)));
+        File file = dir.resolve("shops.yml").toFile();
+        ShopConfig.save(stock, file, log);
+        ShopStock reloaded = ShopConfig.load(YamlConfiguration.loadConfiguration(file), log);
+
+        ShopOffer offer = reloaded.fixedFor(NpcType.BOAT_EXPERT.id()).get(0);
+        assertTrue(offer.isCustom());
+        ItemStack decoded = ShopItems.resolve(offer, log);
+        assertNotNull(decoded, "the snapshot did not decode");
+        assertTrue(decoded.isSimilar(fancy), "the decoded item is not the one we saved");
+        assertTrue(ShopItems.matches(fancy, offer, log), "a player's copy should match the line");
+    }
+
+    /** Registry items keep their readable id rather than becoming base64 noise. */
+    @Test
+    void plainItemsEncodeToReadableIds() {
+        assertEquals("vanilla:BREAD", ShopItems.encode(new ItemStack(Material.BREAD), log));
+        assertNull(ShopItems.encode(null, log));
+        assertNull(ShopItems.encode(new ItemStack(Material.AIR), log));
+    }
+
+    /** A corrupt snapshot should degrade to a blank tile, not take the board down. */
+    @Test
+    void anUnreadableSnapshotResolvesToNull() {
+        ShopOffer broken = ShopOffer.buy(ShopOffer.CUSTOM + "not-base64-at-all!!", 1, 10);
+        assertNull(ShopItems.resolve(broken, log));
+        assertFalse(warnings.isEmpty(), "a corrupt snapshot should be logged");
     }
 
     private static int priceOf(List<ShopOffer> board, String itemId) {

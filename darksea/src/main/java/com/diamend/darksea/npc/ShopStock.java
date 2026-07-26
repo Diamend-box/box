@@ -3,6 +3,7 @@ package com.diamend.darksea.npc;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -161,13 +162,88 @@ public final class ShopStock {
         return salvage;
     }
 
+    /** A mutable copy, so callers can test membership of a null id safely. */
     public Set<String> takesSalvage() {
         return new HashSet<>(takesSalvage);
     }
 
     /** The non-rotating lines for an NPC id, exactly as configured. */
     public List<ShopOffer> fixedFor(String npcId) {
-        return fixed.getOrDefault(npcId, List.of());
+        // The backing map is immutable, and those reject a null lookup outright
+        // rather than missing — so answer for the pool and salvage boards, which
+        // have no NPC of their own, before asking it.
+        return npcId == null ? List.of() : fixed.getOrDefault(npcId, List.of());
+    }
+
+    /** The configured lines for an NPC of one kind, in file order. */
+    public List<ShopOffer> fixedFor(String npcId, ShopOffer.Kind kind) {
+        List<ShopOffer> filtered = new ArrayList<>();
+        for (ShopOffer offer : fixedFor(npcId)) {
+            if (offer.kind() == kind) {
+                filtered.add(offer);
+            }
+        }
+        return List.copyOf(filtered);
+    }
+
+    /** Every NPC id that has configured lines, plus every NPC type — the editor's menu. */
+    public Set<String> configuredNpcIds() {
+        return Set.copyOf(fixed.keySet());
+    }
+
+    // ------------------------------------------------------------------
+    // Editing — every mutation returns a new snapshot
+    // ------------------------------------------------------------------
+
+    /**
+     * This snapshot with one NPC's lines replaced. Immutable-with-copy rather
+     * than in-place: the running boards hold a reference to the live snapshot,
+     * so swapping the whole thing at once means a board can never be read
+     * half-edited.
+     */
+    public ShopStock withFixed(String npcId, List<ShopOffer> lines) {
+        Map<String, List<ShopOffer>> copy = new LinkedHashMap<>(fixed);
+        copy.put(npcId, List.copyOf(lines));
+        return new ShopStock(copy, rotatingPool, salvage, takesSalvage,
+                markup, salvageRate, slots, clueCosts);
+    }
+
+    public ShopStock withPool(List<ShopOffer> lines) {
+        return new ShopStock(fixed, lines, salvage, takesSalvage,
+                markup, salvageRate, slots, clueCosts);
+    }
+
+    public ShopStock withSalvage(List<ShopOffer> lines) {
+        return new ShopStock(fixed, rotatingPool, lines, takesSalvage,
+                markup, salvageRate, slots, clueCosts);
+    }
+
+    /** Turns an NPC's standing salvage offer on or off. */
+    public ShopStock withSalvageTaker(String npcId, boolean takes) {
+        Set<String> copy = new LinkedHashSet<>(takesSalvage);
+        if (takes) {
+            copy.add(npcId);
+        } else {
+            copy.remove(npcId);
+        }
+        return new ShopStock(fixed, rotatingPool, salvage, copy,
+                markup, salvageRate, slots, clueCosts);
+    }
+
+    /** The black market's three dials, clamped to values that can't break a board. */
+    public ShopStock withMarketSettings(double newMarkup, double newSalvageRate, int newSlots) {
+        return new ShopStock(fixed, rotatingPool, salvage, takesSalvage,
+                Math.max(0.01, newMarkup), Math.max(0.01, newSalvageRate),
+                Math.max(0, newSlots), clueCosts);
+    }
+
+    public ShopStock withClueCosts(List<Integer> costs) {
+        return new ShopStock(fixed, rotatingPool, salvage, takesSalvage,
+                markup, salvageRate, slots, costs);
+    }
+
+    public List<Integer> clueCosts() {
+        return clueCosts;
     }
 
     /** Total configured lines — what the load message reports. */

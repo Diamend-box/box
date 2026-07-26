@@ -759,6 +759,38 @@ can never drift apart by accident. Malformed lines are logged and skipped, and
 the shipped-file test fails the build if the shipped `shops.yml` produces even
 one warning.
 
+### Editing shops in game: `/ds shop`
+
+Admin-only. Opens a picker: five NPCs, the black market's rotation pool, the
+shared salvage list, and a settings board for the rates and the clue ladder.
+Left-click an NPC for what they **sell**, right-click for what they **buy**.
+
+On a list board:
+
+| Gesture | What it does |
+| --- | --- |
+| **Click an item in your own pack** | Puts that exact item on the shelf at 10 Chronons |
+| **Left / right-click a line** | Price +1 / -1 (hold shift for 10) |
+| **Middle-click a line** | Lot size +1, wrapping at 64 |
+| **Press Q on a line** | Removes it |
+
+**The editor never moves an item.** Adding a line *copies* what you clicked;
+your stack stays exactly where it was. An admin tool that shuffles real
+inventory is one misclick away from eating someone's gear, and it shouldn't
+have that failure mode at all.
+
+Adding a custom item is the reason this exists. The id written depends on what
+you clicked, chosen to keep the file readable: a DarkSea item or relic writes
+its own id, a plain vanilla item writes `vanilla:MATERIAL`, and anything with
+real item data — your custom gear, another plugin's items — writes
+`custom:<base64>`, a full snapshot of the stack. Name, lore, enchants, model
+data and foreign NBT all survive. Selling one back matches on everything but
+the amount, so a player can sell a partial stack and lookalikes don't pass.
+
+Every click writes `shops.yml` immediately, so a crash can't lose an edit. The
+rewrite re-emits the file's header and section comments, so it stays
+hand-editable no matter how many times the GUI has been through it.
+
 ### Two economy rules the tests enforce
 
 1. **Nothing that ends a run is for sale.** The Undrowned Heart, the Soulwake

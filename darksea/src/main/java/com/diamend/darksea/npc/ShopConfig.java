@@ -1,7 +1,10 @@
 package com.diamend.darksea.npc;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -106,6 +109,108 @@ public final class ShopConfig {
 
         return new ShopStock(fixed, pool, salvage, takesSalvage,
                 markup, salvageRate, slots, clueCosts);
+    }
+
+    // ------------------------------------------------------------------
+    // Writing back (the in-game editor)
+    // ------------------------------------------------------------------
+
+    /**
+     * Renders a snapshot back into {@code shops.yml}. The in-game editor is
+     * the only caller, and it writes after every change so a crash can never
+     * lose an edit.
+     *
+     * <p>A rewrite necessarily loses hand-written comments, so the header and
+     * the per-section notes are re-emitted here rather than living only in the
+     * shipped resource — the file stays readable and hand-editable no matter
+     * how many times the editor has been through it.
+     */
+    public static void save(ShopStock stock, File file, Logger log) {
+        YamlConfiguration yaml = new YamlConfiguration();
+
+        yaml.set("black-market.markup", stock.markup());
+        yaml.set("black-market.salvage-rate", stock.salvageRate());
+        yaml.set("black-market.slots", stock.slots());
+        yaml.set("black-market.pool", toMaps(stock.rotatingPool()));
+        yaml.set("clue-costs", stock.clueCosts());
+        yaml.set("salvage", toMaps(stock.salvage()));
+
+        for (NpcType type : NpcType.values()) {
+            String path = "shops." + type.id();
+            List<ShopOffer> lines = stock.fixedFor(type.id());
+            yaml.set(path + ".takes-salvage", stock.takesSalvage().contains(type.id()));
+            List<Map<String, Object>> buys = toMaps(byKind(lines, ShopOffer.Kind.BUY));
+            List<Map<String, Object>> sells = toMaps(byKind(lines, ShopOffer.Kind.SELL));
+            yaml.set(path + ".buy", buys.isEmpty() ? null : buys);
+            yaml.set(path + ".sell", sells.isEmpty() ? null : sells);
+        }
+
+        yaml.options().setHeader(HEADER);
+        yaml.setComments("black-market", List.of("",
+                "The black market's shelf rotates once per sea reset, and is priced off",
+                "the refugee's numbers: it charges 'markup' times what he charges and",
+                "pays 'salvage-rate' times what he pays. Fewer 'slots' than pool entries",
+                "is the design — scarcity is what makes a good cycle feel good."));
+        yaml.setComments("clue-costs", List.of("",
+                "What the old boat expert charges per rumour about the Heart, in order.",
+                "The list's length is how many he has to sell; each rung needs a matching",
+                "shop-clue-<n> message in config.yml."));
+        yaml.setComments("salvage", List.of("",
+                "Sea salvage: what the redundant weapons are worth. These are the",
+                "refugee's honest prices; everyone with 'takes-salvage: true' buys from",
+                "this same list, and the black market applies its salvage-rate on top."));
+        yaml.setComments("shops", List.of("",
+                "Per-NPC lines. 'buy' is what the NPC sells to players; 'sell' is what it",
+                "buys from them. An 'item' may be a DarkSea id, 'vanilla:MATERIAL', or",
+                "'custom:<base64>' — a literal item snapshot written by /ds shop."));
+
+        try {
+            yaml.save(file);
+        } catch (IOException ex) {
+            log.severe("Could not save " + file + ": " + ex.getMessage());
+        }
+    }
+
+    private static final List<String> HEADER = List.of(
+            "DarkSea — shop boards",
+            "",
+            "Every price the outpost's NPCs trade at. Editable three ways: by hand here,",
+            "with /ds reload to pick it up; or in game with /ds shop, which writes this",
+            "file back after every change.",
+            "",
+            "A line is {item, amount, price}. 'amount' defaults to 1 and 'price' is always",
+            "the price of the whole lot, not per item.",
+            "",
+            "Two rules worth keeping when you edit this file:",
+            "  1. Nothing that ends a run should be on a 'buy' list — the Undrowned Heart,",
+            "     the Soulwake Compass, boat upgrade tokens, or relics. Shops should make a",
+            "     run cheaper to attempt, never skippable. A unit test enforces this.",
+            "  2. The artificer should pay less for a dormant relic than waking one costs,",
+            "     or selling relics becomes a way to fund waking them.");
+
+    private static List<ShopOffer> byKind(List<ShopOffer> lines, ShopOffer.Kind kind) {
+        List<ShopOffer> filtered = new ArrayList<>();
+        for (ShopOffer offer : lines) {
+            if (offer.kind() == kind) {
+                filtered.add(offer);
+            }
+        }
+        return filtered;
+    }
+
+    /** Offers as the plain maps the parser reads back, omitting default amounts. */
+    private static List<Map<String, Object>> toMaps(List<ShopOffer> offers) {
+        List<Map<String, Object>> maps = new ArrayList<>(offers.size());
+        for (ShopOffer offer : offers) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("item", offer.itemId());
+            if (offer.amount() != 1) {
+                map.put("amount", offer.amount());
+            }
+            map.put("price", offer.price());
+            maps.add(map);
+        }
+        return maps;
     }
 
     /**

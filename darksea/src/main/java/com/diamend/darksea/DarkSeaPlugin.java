@@ -26,6 +26,7 @@ import com.diamend.darksea.naval.NavalHudService;
 import com.diamend.darksea.naval.NavalWeaponListener;
 import com.diamend.darksea.npc.NpcService;
 import com.diamend.darksea.npc.ShopConfig;
+import com.diamend.darksea.npc.ShopEditorService;
 import com.diamend.darksea.npc.ShopStock;
 import com.diamend.darksea.npc.ShopMenuService;
 import com.diamend.darksea.relic.RelicService;
@@ -74,6 +75,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private ExposureTask exposureTask;
     private NpcService npcs;
     private ShopMenuService shops;
+    private ShopEditorService shopEditor;
     private VaultService vaults;
 
     @Override
@@ -115,6 +117,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         exposureTask = new ExposureTask(this);
         npcs = new NpcService(this);
         shops = new ShopMenuService(this);
+        shopEditor = new ShopEditorService(this);
         vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
 
@@ -136,6 +139,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
         getServer().getPluginManager().registerEvents(npcs, this);
         getServer().getPluginManager().registerEvents(shops, this);
+        getServer().getPluginManager().registerEvents(shopEditor, this);
         getServer().getPluginManager().registerEvents(vaults, this);
 
         PluginCommand command = getCommand("darksea");
@@ -311,6 +315,20 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public ShopMenuService shops() {
         return shops;
+    }
+
+    public ShopEditorService shopEditor() {
+        return shopEditor;
+    }
+
+    /**
+     * Swaps the live shop snapshot and writes shops.yml — the in-game editor's
+     * only way to change anything. Written on every edit rather than on close,
+     * so a crash mid-session can't lose work.
+     */
+    public void saveShopStock(ShopStock updated) {
+        this.shopStock = updated;
+        ShopConfig.save(updated, new File(getDataFolder(), "shops.yml"), getLogger());
     }
 
     public VaultService vaults() {

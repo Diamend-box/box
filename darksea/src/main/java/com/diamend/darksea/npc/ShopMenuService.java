@@ -174,17 +174,9 @@ public final class ShopMenuService implements Listener {
         return component.decoration(TextDecoration.ITALIC, false);
     }
 
-    /** Builds the stack an offer trades in — plugin item, relic, or vanilla. */
+    /** Builds the stack an offer trades in — registry item, vanilla, or snapshot. */
     private ItemStack itemFor(ShopOffer offer) {
-        if (offer.isVanilla()) {
-            Material material = Material.matchMaterial(offer.vanillaMaterial());
-            return material == null ? null : new ItemStack(material, offer.amount());
-        }
-        ItemStack stack = DarkSeaItems.create(offer.itemId(), offer.amount());
-        if (stack != null && stack.getAmount() != offer.amount() && stack.getMaxStackSize() > 1) {
-            stack.setAmount(offer.amount());
-        }
-        return stack;
+        return ShopItems.resolve(offer, plugin.getLogger());
     }
 
     // ------------------------------------------------------------------
@@ -305,18 +297,7 @@ public final class ShopMenuService implements Listener {
     }
 
     private boolean matches(ItemStack stack, ShopOffer offer) {
-        if (stack == null || stack.getType() == Material.AIR) {
-            return false;
-        }
-        if (offer.isVanilla()) {
-            Material material = Material.matchMaterial(offer.vanillaMaterial());
-            return material != null && stack.getType() == material;
-        }
-        Relic relic = Relic.of(stack);
-        if (relic != null) {
-            return relic.id().equals(offer.itemId()) && !Relic.isAwake(stack);
-        }
-        return offer.itemId().equals(DarkSeaItems.idOf(stack));
+        return ShopItems.matches(stack, offer, plugin.getLogger());
     }
 
     private void giveOrDrop(Player player, ItemStack stack) {

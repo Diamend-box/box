@@ -66,6 +66,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "island" -> island(sender, args);
             case "give" -> give(sender, args);
             case "npc" -> npc(sender, args);
+            case "shop" -> shop(sender);
             case "reload" -> {
                 if (requireAdmin(sender)) {
                     plugin.reloadAll();
@@ -617,6 +618,22 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * /ds shop — the in-game price editor. Everything it can change lives in
+     * shops.yml, so this is a convenience rather than a second source of
+     * truth: hand-editing the file and reloading does exactly the same thing.
+     */
+    private void shop(CommandSender sender) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "players-only");
+            return;
+        }
+        plugin.shopEditor().openPicker(player);
+    }
+
     private boolean requireAdmin(CommandSender sender) {
         if (!sender.hasPermission("darksea.admin")) {
             plugin.messages().send(sender, "no-permission");
@@ -653,6 +670,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 options.add("island");
                 options.add("give");
                 options.add("npc");
+                options.add("shop");
                 options.add("reload");
             }
         } else if (args.length == 2) {
