@@ -139,14 +139,15 @@ public final class CultistLandfall implements DemoShape {
             }
         }
 
-        // Three caches: two out on the shelf where the Order camped, and one
-        // tucked under the ziggurat's lowest step.
+        // Three caches, cut into the ziggurat's lowest step as dead-end
+        // alcoves at the inner end of a crawlway. Chest positions are
+        // declared, never drawn — the placer turns a marker into the real
+        // chest — and each sits against rock on three sides with the crawlway
+        // as the only way in, so none of them is visible from the water.
         List<Rel> chests = new ArrayList<>();
-        chests.add(cache(s, 16, 4));
-        chests.add(cache(s, -13, -12));
-        s.carveBox(-2, 3, 15, 2, 4, 17);
-        s.put(0, 3, 16, "CHEST");
-        chests.add(new Rel(0, 3, 16));
+        chests.add(alcove(s, 8, 4, 0, 1, 0));
+        chests.add(alcove(s, -8, 4, 3, -1, 0));
+        chests.add(alcove(s, 2, 4, -9, 0, -1));
 
         List<Rel> mobs = new ArrayList<>();
         mobs.add(s.stand(0, 7, ShapeSketch.solid("POLISHED_BLACKSTONE")));
@@ -157,13 +158,20 @@ public final class CultistLandfall implements DemoShape {
         return ShapeBuild.of(s, chests, mobs);
     }
 
-    /** A chest sunk one block into the shelf, with air above it to open into. */
-    private Rel cache(ShapeSketch s, int x, int z) {
-        int top = s.topY(x, z, 0);
-        s.carve(x, top + 1, z);
-        s.carve(x, top + 2, z);
-        s.put(x, top, z, "CHEST");
-        return new Rel(x, top, z);
+    /**
+     * A dead-end alcove and the crawlway leading to it, bored out through the
+     * ziggurat's flank in direction {@code (dx, dz)}. Returns the chest cell:
+     * clear, with solid rock under it and headroom above, walled on three
+     * sides, and roofed by the steps stacked overhead.
+     */
+    private Rel alcove(ShapeSketch s, int x, int y, int z, int dx, int dz) {
+        for (int step = 0; step <= 12; step++) {
+            int cx = x + dx * step;
+            int cz = z + dz * step;
+            s.carve(cx, y, cz);
+            s.carve(cx, y + 1, cz);
+        }
+        return new Rel(x, y, z);
     }
 
     private static String shelfPatch(int x, int y, int z, Random rng) {

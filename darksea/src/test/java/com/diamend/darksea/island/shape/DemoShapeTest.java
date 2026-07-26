@@ -177,8 +177,11 @@ class DemoShapeTest {
     void standardShapesKeepTheClassicBudgetsOnlyTheCastleExceedsThem() {
         for (DemoShape shape : DemoShapes.ALL) {
             // The castle and the Mariphage nest are the two special landmarks:
-            // they carry non-standard rarity, boss, or tier traits.
-            if (shape.id().equals("ruined-castle") || shape.id().equals("mariphage-nest")) {
+            // they carry non-standard rarity, boss, or tier traits. The cultist
+            // landfall is a third exception and a stronger one — it is not in
+            // any ring's pool at all, so a pick weight is meaningless for it.
+            if (shape.id().equals("ruined-castle") || shape.id().equals("mariphage-nest")
+                    || shape.id().equals("cultist-landfall")) {
                 continue;
             }
             assertEquals(30, shape.radiusBudget(), shape.id() + " changed its preload budget");
