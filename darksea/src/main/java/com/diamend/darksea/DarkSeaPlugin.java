@@ -263,7 +263,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         if (worldName.equals(snapshot.worldName())) {
             return ManagedWorld.DARK_SEA;
         }
-        if (worldName.equals(snapshot.cultistWorldName())) {
+        if (worldName.equals(snapshot.cultist().worldName())) {
             return ManagedWorld.CULTIST;
         }
         return null;

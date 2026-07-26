@@ -49,7 +49,12 @@ class ConfigParsingTest {
         DarkSeaSettings settings = loadDefault();
 
         assertEquals("dark_sea", settings.worldName());
-        assertEquals("dark_sea_caves", settings.cultistWorldName());
+        assertEquals("dark_sea_caves", settings.cultist().worldName());
+        assertTrue(settings.cultist().roofY() > settings.cultist().floorY() + 8,
+                "the caves need headroom between floor and roof");
+        assertEquals(256, settings.cultist().halfExtent(), "a 512x512 box");
+        assertTrue(settings.cultist().chamberRadius() > 0,
+                "the portal needs somewhere open to arrive");
         assertEquals(62, settings.seaLevel());
         assertEquals(0, settings.centerX());
         assertEquals(0, settings.centerZ());

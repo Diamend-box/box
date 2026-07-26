@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  */
 public record DarkSeaSettings(
         String worldName,
-        String cultistWorldName,
+        CultistSettings cultist,
         int seaLevel,
         int seabedBaseY,
         int seabedVariation,
@@ -213,6 +213,22 @@ public record DarkSeaSettings(
     }
 
     /**
+     * The cultist caves: a second plugin-generated world past the origin
+     * island, playing by ordinary rules.
+     *
+     * <p>{@code halfExtent} is half the world's width, so 256 is a 512x512 box.
+     * Bounding it is deliberate — every vein stays findable, the map has a
+     * shape that can be designed around, and a small server's disk use is
+     * capped instead of growing with however far someone decides to walk.
+     *
+     * <p>{@code chamberRadius} is the guaranteed-open room at the origin the
+     * portal arrives in, so nobody is ever dropped inside stone.
+     */
+    public record CultistSettings(String worldName, int floorY, int roofY,
+                                  int halfExtent, int chamberRadius) {
+    }
+
+    /**
      * Parses a configuration. Throws {@link IllegalStateException} with a
      * human-readable reason for unusable configs (no zones, no armor tiers);
      * recoverable oddities (an unknown effect type, a bad material) are
@@ -222,7 +238,14 @@ public record DarkSeaSettings(
         String worldName = cfg.getString("world.name", "dark_sea");
         // The caves past the origin island. A separate world rather than a
         // region of the sea, because it plays by entirely different rules.
-        String cultistWorldName = cfg.getString("world.cultist-name", "dark_sea_caves");
+        int cavesFloor = cfg.getInt("world.caves.floor-y", 20);
+        int cavesRoof = Math.max(cavesFloor + 8, cfg.getInt("world.caves.roof-y", 90));
+        CultistSettings cultist = new CultistSettings(
+                cfg.getString("world.caves.name", "dark_sea_caves"),
+                cavesFloor,
+                cavesRoof,
+                Math.max(32, cfg.getInt("world.caves.half-extent", 256)),
+                Math.max(1, cfg.getInt("world.caves.chamber-radius", 6)));
         int seaLevel = cfg.getInt("world.sea-level", 62);
         int seabedBaseY = cfg.getInt("world.seabed.base-y", 45);
         int seabedVariation = cfg.getInt("world.seabed.variation", 5);
@@ -281,7 +304,7 @@ public record DarkSeaSettings(
             }
         }
 
-        return new DarkSeaSettings(worldName, cultistWorldName, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
+        return new DarkSeaSettings(worldName, cultist, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
                 exposure, zones, armor, generation, mobSpawning, combat, reset, boat, naval,
                 relics, Map.copyOf(messages));
     }

@@ -4,8 +4,11 @@ import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.island.IslandPlacer;
 import com.diamend.darksea.island.IslandRegistry;
+import com.diamend.darksea.world.cultist.CultistBiomeProvider;
+import com.diamend.darksea.world.cultist.CultistChunkGenerator;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.WorldCreator;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -40,10 +43,61 @@ public final class WorldService {
         return Bukkit.getWorld(plugin.settings().worldName());
     }
 
-    /** Startup: make sure the world exists and the home island has landed. */
+    /** The cultist caves, or null if they have not been created yet. */
+    public World caves() {
+        return Bukkit.getWorld(plugin.settings().cultist().worldName());
+    }
+
+    /** Startup: make sure both worlds exist and the home island has landed. */
     public void init() {
         getOrCreate(null);
+        getOrCreateCaves();
         placer.maybeQueueSpawn(Bukkit.getConsoleSender(), null);
+    }
+
+    /**
+     * Creates the cultist caves if they are missing. Unlike the sea this world
+     * is never reset — it is a designed space with hand-placed veins rather
+     * than a rolled layout, and there is nothing in it that goes stale.
+     */
+    public World getOrCreateCaves() {
+        DarkSeaSettings.CultistSettings caves = plugin.settings().cultist();
+        World existing = Bukkit.getWorld(caves.worldName());
+        if (existing != null) {
+            return existing;
+        }
+        World world = new WorldCreator(caves.worldName())
+                // NETHER for the atmosphere it brings for free: red fog, no
+                // sky, no weather. The terrain is entirely ours.
+                .environment(World.Environment.NETHER)
+                .generateStructures(false)
+                .generator(new CultistChunkGenerator(caves))
+                .biomeProvider(new CultistBiomeProvider())
+                .createWorld();
+        if (world == null) {
+            plugin.getLogger().severe("Could not create the caves world '"
+                    + caves.worldName() + "'");
+            return null;
+        }
+        applyCaveBorder(world, caves);
+        world.setSpawnLocation(0, caves.floorY() + 1, 0);
+        plugin.getLogger().info("Cultist caves '" + caves.worldName()
+                + "' ready — " + (caves.halfExtent() * 2) + " blocks across");
+        return world;
+    }
+
+    /**
+     * The world border. It is the visible wall and the thing that pushes
+     * players back; the generator's bedrock past the same line is what stops
+     * anyone simply tunnelling around it, since a border does not affect
+     * blocks at all.
+     */
+    private void applyCaveBorder(World world, DarkSeaSettings.CultistSettings caves) {
+        WorldBorder border = world.getWorldBorder();
+        border.setCenter(0.5, 0.5);
+        border.setSize(caves.halfExtent() * 2.0);
+        border.setWarningDistance(8);
+        border.setDamageAmount(0.0);   // the bedrock already stops them; no need to hurt
     }
 
     private World getOrCreate(Long seed) {
