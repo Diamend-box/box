@@ -20,8 +20,12 @@ import java.util.Random;
  * down. The building materials are the caves' own — basalt, blackstone, soul
  * soil — so the island reads as a piece of somewhere else pushed up through
  * the sea floor rather than anything the Naxome built.
+ *
+ * <p>Public where every other shape is package-private: the placer has to name
+ * it to place the one of it, and the portal service has to know where its pad
+ * sits.
  */
-final class CultistLandfall implements DemoShape {
+public final class CultistLandfall implements DemoShape {
 
     /** The id the registry stores and the portal service looks the island up by. */
     public static final String ID = "cultist-landfall";
