@@ -77,6 +77,7 @@ public final class WorldService {
             return;
         }
         plugin.mobSpawner().despawnAll();
+        plugin.npcs().registry().bumpRotation();  // the black market restocks
         placer.repasteAll(sender);
     }
 
@@ -90,6 +91,7 @@ public final class WorldService {
             plugin.messages().send(sender, "generate-busy");
             return;
         }
+        plugin.npcs().registry().bumpRotation();  // the black market restocks
         World world = world();
         if (world != null) {
             World fallback = Bukkit.getWorlds().get(0);

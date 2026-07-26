@@ -28,6 +28,8 @@ public final class IslandInstance {
     private final List<Pos> chests;
     private final List<Pos> spawnPoints;
     private final Map<String, Long> chestRefills = new HashMap<>();
+    private Pos vaultLever;
+    private boolean vaultsCracked;
 
     public IslandInstance(String id, String template, int tier, Pos origin, Pos min, Pos max,
                           List<Pos> chests, List<Pos> spawnPoints) {
@@ -216,6 +218,38 @@ public final class IslandInstance {
         chestRefills.clear();
     }
 
+    // ------------------------------------------------------------------
+    // Vault cracking
+    // ------------------------------------------------------------------
+
+    /**
+     * Where this island's vault lever stands, or null for an island with no
+     * vaults (and so nothing to crack). Stored rather than derived: the lever
+     * is placed against whatever the shape actually raised, and a soft reset
+     * must put it back in exactly the same place.
+     */
+    public Pos vaultLever() {
+        return vaultLever;
+    }
+
+    public void setVaultLever(Pos pos) {
+        this.vaultLever = pos;
+    }
+
+    /**
+     * Whether the lever has been thrown and this island's vaults are open.
+     * Deliberately not cleared by {@link #clearRefills()}: a soft reset heals
+     * the island and restocks its chests, but a cracked vault stays cracked,
+     * so vaults are a once-per-full-cycle prize rather than a timer to farm.
+     */
+    public boolean vaultsCracked() {
+        return vaultsCracked;
+    }
+
+    public void setVaultsCracked(boolean cracked) {
+        this.vaultsCracked = cracked;
+    }
+
     public void save(ConfigurationSection sec) {
         sec.set("template", template);
         sec.set("tier", tier);
@@ -224,6 +258,8 @@ public final class IslandInstance {
         sec.set("max", max.serialize());
         sec.set("chests", chests.stream().map(Pos::serialize).toList());
         sec.set("spawn-points", spawnPoints.stream().map(Pos::serialize).toList());
+        sec.set("vault-lever", vaultLever != null ? vaultLever.serialize() : null);
+        sec.set("vaults-cracked", vaultsCracked);
         ConfigurationSection refills = sec.createSection("chest-refills");
         for (Map.Entry<String, Long> entry : chestRefills.entrySet()) {
             // "x,y,z" contains no YAML path separators, safe as a key.
@@ -247,6 +283,11 @@ public final class IslandInstance {
                 Pos.parse(sec.getString("min", "0,0,0")),
                 Pos.parse(sec.getString("max", "0,0,0")),
                 chests, spawnPoints);
+        String lever = sec.getString("vault-lever");
+        if (lever != null && !lever.isBlank()) {
+            instance.vaultLever = Pos.parse(lever);
+        }
+        instance.vaultsCracked = sec.getBoolean("vaults-cracked", false);
         ConfigurationSection refills = sec.getConfigurationSection("chest-refills");
         if (refills != null) {
             for (String key : refills.getKeys(false)) {

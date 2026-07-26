@@ -6,6 +6,8 @@ import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.config.Messages;
 import com.diamend.darksea.island.IslandInstance;
+import com.diamend.darksea.npc.NpcRegistry;
+import com.diamend.darksea.npc.NpcType;
 import com.diamend.darksea.zone.Zone;
 import com.diamend.darksea.zone.ZoneManager;
 import org.bukkit.Bukkit;
@@ -63,6 +65,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "reset" -> reset(sender, args);
             case "island" -> island(sender, args);
             case "give" -> give(sender, args);
+            case "npc" -> npc(sender, args);
             case "reload" -> {
                 if (requireAdmin(sender)) {
                     plugin.reloadAll();
@@ -539,6 +542,81 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
     // Helpers
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // /ds npc — placing the outpost's people
+    // ------------------------------------------------------------------
+
+    /**
+     * Placement is a command rather than schematic markers on purpose: the
+     * home island is hand-built and can be re-laid out any number of times,
+     * and an admin standing in the right doorway is a more reliable anchor
+     * than a marker block someone has to remember to place.
+     */
+    private void npc(CommandSender sender, String[] args) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        String action = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        switch (action) {
+            case "create" -> npcCreate(sender, args);
+            case "remove" -> npcRemove(sender, args);
+            case "respawn" -> {
+                plugin.npcs().despawnAll();
+                int spawned = plugin.npcs().spawnAll();
+                plugin.messages().send(sender, "npc-respawned",
+                        "count", String.valueOf(spawned));
+            }
+            default -> npcList(sender);
+        }
+    }
+
+    private void npcCreate(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "players-only");
+            return;
+        }
+        if (args.length < 3) {
+            plugin.messages().send(sender, "npc-usage");
+            return;
+        }
+        NpcType type = NpcType.byId(args[2]);
+        if (type == null) {
+            plugin.messages().send(sender, "npc-unknown-type", "type", args[2]);
+            return;
+        }
+        NpcRegistry.Placement placement = plugin.npcs().create(player, type);
+        plugin.messages().send(sender, "npc-created",
+                "id", placement.id(), "type", type.id());
+    }
+
+    private void npcRemove(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.messages().send(sender, "npc-usage");
+            return;
+        }
+        NpcRegistry.Placement removed = plugin.npcs().remove(args[2]);
+        if (removed == null) {
+            plugin.messages().send(sender, "npc-unknown-id", "id", args[2]);
+            return;
+        }
+        plugin.messages().send(sender, "npc-removed", "id", removed.id());
+    }
+
+    private void npcList(CommandSender sender) {
+        List<NpcRegistry.Placement> all = plugin.npcs().registry().all();
+        plugin.messages().send(sender, "npc-list-header",
+                "count", String.valueOf(all.size()));
+        for (NpcRegistry.Placement placement : all) {
+            plugin.messages().sendBare(sender, "npc-list-entry",
+                    "id", placement.id(),
+                    "type", placement.type().id(),
+                    "world", placement.world(),
+                    "x", String.valueOf((int) placement.x()),
+                    "y", String.valueOf((int) placement.y()),
+                    "z", String.valueOf((int) placement.z()));
+        }
+    }
+
     private boolean requireAdmin(CommandSender sender) {
         if (!sender.hasPermission("darksea.admin")) {
             plugin.messages().send(sender, "no-permission");
@@ -574,6 +652,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 options.add("reset");
                 options.add("island");
                 options.add("give");
+                options.add("npc");
                 options.add("reload");
             }
         } else if (args.length == 2) {
@@ -611,6 +690,14 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                         options.add("item");
                     }
                 }
+                case "npc" -> {
+                    if (admin) {
+                        options.add("create");
+                        options.add("remove");
+                        options.add("list");
+                        options.add("respawn");
+                    }
+                }
                 default -> {
                 }
             }
@@ -625,6 +712,17 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     if (admin && args[1].equalsIgnoreCase("tp")) {
                         for (IslandInstance island : plugin.registry().all()) {
                             options.add(island.id());
+                        }
+                    }
+                }
+                case "npc" -> {
+                    if (admin && args[1].equalsIgnoreCase("create")) {
+                        for (NpcType type : NpcType.values()) {
+                            options.add(type.id());
+                        }
+                    } else if (admin && args[1].equalsIgnoreCase("remove")) {
+                        for (NpcRegistry.Placement placement : plugin.npcs().registry().all()) {
+                            options.add(placement.id());
                         }
                     }
                 }

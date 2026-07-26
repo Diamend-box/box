@@ -35,6 +35,7 @@ public final class PlayerDataStore {
     private final Map<UUID, StatPoints> statPoints = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> undrowned = new ConcurrentHashMap<>();
     private final Map<UUID, Long> undrownedLastSave = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> clueLevels = new ConcurrentHashMap<>();
 
     public PlayerDataStore(File folder, Logger log) {
         this.folder = folder;
@@ -136,6 +137,30 @@ public final class PlayerDataStore {
                 ? YamlConfiguration.loadConfiguration(file)
                 : new YamlConfiguration();
         yaml.set("undrowned.last-save", epochMillis);
+        save(yaml, file);
+    }
+
+    /**
+     * How many rumours about the Heart this captain has bought from the old
+     * boat expert. Ratchets up only — the ladder is a purchase history, not a
+     * consumable, so a death never costs you a clue you already paid for.
+     */
+    public int clueLevel(UUID player) {
+        return clueLevels.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists()
+                    ? YamlConfiguration.loadConfiguration(file).getInt("heart-clues", 0)
+                    : 0;
+        });
+    }
+
+    public void setClueLevel(UUID player, int level) {
+        clueLevels.put(player, level);
+        File file = fileFor(player);
+        YamlConfiguration yaml = file.exists()
+                ? YamlConfiguration.loadConfiguration(file)
+                : new YamlConfiguration();
+        yaml.set("heart-clues", level);
         save(yaml, file);
     }
 

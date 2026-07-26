@@ -146,8 +146,21 @@ public final class RelicService extends BukkitRunnable implements Listener {
     // Revival
     // ------------------------------------------------------------------
 
+    /**
+     * The artificer's anvil. Same price and same rules as {@code /ds relic
+     * revive}, minus the geography check: standing at his board already proves
+     * you walked to him, and he is the only one in the outpost who does this.
+     */
+    public void wakeAtArtificer(Player player) {
+        revive(player, false);
+    }
+
     /** /ds relic revive — all failure paths message the player and change nothing. */
     public void revive(Player player) {
+        revive(player, true);
+    }
+
+    private void revive(Player player, boolean requireHome) {
         ItemStack hand = player.getInventory().getItemInMainHand();
         Relic relic = Relic.of(hand);
         if (relic == null) {
@@ -158,7 +171,7 @@ public final class RelicService extends BukkitRunnable implements Listener {
             plugin.messages().send(player, "relic-already-awake");
             return;
         }
-        if (!atTheRefugees(player)) {
+        if (requireHome && !atTheRefugees(player)) {
             plugin.messages().send(player, "relic-only-home");
             return;
         }

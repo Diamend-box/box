@@ -471,3 +471,41 @@ messages:
 
   help-header: "<dark_aqua><bold>DarkSea commands</bold>"
   help-line: "<gray>{usage} <dark_gray>— {description}"
+
+  # --- The outpost's people -----------------------------------------
+  npc-usage: "<red>/ds npc create <type> | remove <id> | list | respawn"
+  npc-unknown-type: "<red>No such NPC type: <white>{type}</white>. Try refugee_trader, artificer, black_market, boat_expert, apothecary."
+  npc-unknown-id: "<red>No NPC registered as <white>{id}</white>."
+  npc-created: "<green>Placed <white>{id}</white> ({type}) where you stand."
+  npc-removed: "<yellow>Removed <white>{id}</white>."
+  npc-respawned: "<green>Re-spawned {count} outpost NPC(s)."
+  npc-list-header: "<dark_aqua>Outpost NPCs <gray>({count})"
+  npc-list-entry: "<gray>  {id} <dark_gray>— {type} @ {world} {x} {y} {z}"
+
+  # --- Shop boards ---------------------------------------------------
+  shop-lore-buy: "<aqua>Buy {amount} — {price} Chronons</aqua>"
+  shop-lore-sell: "<gold>Sell {amount} — {price} Chronons</gold>"
+  shop-purse: "<gray>You are carrying <aqua>{have}</aqua> Chronons."
+  shop-bought: "<green>Bought {amount}x {item}. <aqua>-{cost} Chronons</aqua>"
+  shop-sold: "<green>Sold {amount}. <aqua>+{price} Chronons</aqua>"
+  shop-nothing-to-sell: "<red>You aren't carrying enough of that."
+  shop-need-chronons: "<red>That costs {cost} Chronons; you have {have}."
+  shop-no-room: "<red>No room in your pack."
+  shop-unavailable: "<red>That line is out of stock."
+  shop-wake-title: "<color:#c9a227>Wake a Relic</color>"
+  shop-wake-empty: "<gray>Hold a dormant relic in your main hand."
+  shop-wake-holding: "<gray>{name} <dark_gray>— {cost} Chronons"
+  shop-clue-title: "<color:#7fb2c4>What He's Heard</color>"
+  shop-clue-next: "<gray>Rumour {n} <dark_gray>— {cost} Chronons"
+  shop-clue-exhausted: "<gray>He's told you everything he knows."
+  shop-clue-1: "<italic><gray>'The Heart isn't sunk. It's kept. Past the last honest water, where the rings stop being rings.'"
+  shop-clue-2: "<italic><gray>'The things that keep it grew out of a nest, not a temple. Find the nests and you've found the road.'"
+  shop-clue-3: "<italic><gray>'A Core knows where it came from. Kill enough of them and one of them will point.'"
+  shop-clue-4: "<italic><gray>The old man goes quiet, then draws a line on the table with one finger."
+  shop-clue-bearing: "<aqua>Nearest nest: <white>{heading}</white>, about <white>{blocks}</white> blocks out."
+  shop-clue-no-bearing: "<gray>'Nothing's nesting out there right now. Come back after the sea turns over.'"
+
+  # --- Vaults --------------------------------------------------------
+  vault-sealed: "<red>Sealed. Something on this island holds it shut."
+  vault-cracked: "<green>The lever gives. <gray>{count} vault(s) on this island are open — and stay open."
+  vault-already-cracked: "<gray>Already thrown. The vaults here are open."

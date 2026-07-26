@@ -174,6 +174,21 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("undrowned-saved"));
         assertTrue(settings.messages().containsKey("soulwake-heading"));
         assertTrue(settings.messages().containsKey("soulwake-empty"));
+        assertTrue(settings.messages().containsKey("npc-created"));
+        assertTrue(settings.messages().containsKey("npc-unknown-type"));
+        assertTrue(settings.messages().containsKey("shop-lore-buy"));
+        assertTrue(settings.messages().containsKey("shop-lore-sell"));
+        assertTrue(settings.messages().containsKey("shop-bought"));
+        assertTrue(settings.messages().containsKey("shop-sold"));
+        assertTrue(settings.messages().containsKey("shop-wake-holding"));
+        assertTrue(settings.messages().containsKey("shop-clue-bearing"));
+        assertTrue(settings.messages().containsKey("vault-sealed"));
+        assertTrue(settings.messages().containsKey("vault-cracked"));
+        // Every rung of the old man's ladder must have a line to speak.
+        for (int level = 1; level <= com.diamend.darksea.npc.ShopStock.MAX_CLUE_LEVEL; level++) {
+            assertTrue(settings.messages().containsKey("shop-clue-" + level),
+                    "missing shop-clue-" + level);
+        }
     }
 
     @Test

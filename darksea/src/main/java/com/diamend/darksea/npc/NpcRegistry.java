@@ -1,0 +1,153 @@
+package com.diamend.darksea.npc;
+
+import org.bukkit.Location;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.logging.Logger;
+
+/**
+ * Where the outpost's people stand, in {@code npcs.yml}. Placement is a
+ * runtime admin command rather than anything baked into a schematic, which is
+ * what lets the whole NPC layer exist before the home island is built: paste
+ * the outpost whenever it's ready, walk to each doorway, run
+ * {@code /ds npc create <type>}.
+ *
+ * <p>The file also carries the shop rotation counter, bumped by every sea
+ * reset — it lives here rather than with the islands because it must survive
+ * a full reset, which wipes the island registry outright.
+ */
+public final class NpcRegistry {
+
+    /** A placed NPC: its stable id, what it is, and exactly where it stands. */
+    public record Placement(String id, NpcType type, String world,
+                            double x, double y, double z, float yaw) {
+
+        public Location toLocation(org.bukkit.World bukkitWorld) {
+            return new Location(bukkitWorld, x, y, z, yaw, 0.0f);
+        }
+    }
+
+    private final File file;
+    private final Logger log;
+    private final Map<String, Placement> placements = new LinkedHashMap<>();
+    private long rotation;
+
+    public NpcRegistry(File file, Logger log) {
+        this.file = file;
+        this.log = log;
+    }
+
+    public void load() {
+        placements.clear();
+        rotation = 0L;
+        if (!file.exists()) {
+            return;
+        }
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        rotation = yaml.getLong("rotation", 0L);
+        ConfigurationSection root = yaml.getConfigurationSection("npcs");
+        if (root == null) {
+            return;
+        }
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection sec = root.getConfigurationSection(id);
+            if (sec == null) {
+                continue;
+            }
+            NpcType type = NpcType.byId(sec.getString("type", ""));
+            if (type == null) {
+                log.warning("npcs.yml: '" + id + "' has an unknown type — skipped");
+                continue;
+            }
+            placements.put(id, new Placement(id, type,
+                    sec.getString("world", ""),
+                    sec.getDouble("x"), sec.getDouble("y"), sec.getDouble("z"),
+                    (float) sec.getDouble("yaw")));
+        }
+        log.info("Loaded " + placements.size() + " NPC placements (rotation " + rotation + ")");
+    }
+
+    public void save() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("rotation", rotation);
+        ConfigurationSection root = yaml.createSection("npcs");
+        for (Placement placement : placements.values()) {
+            ConfigurationSection sec = root.createSection(placement.id());
+            sec.set("type", placement.type().id());
+            sec.set("world", placement.world());
+            sec.set("x", placement.x());
+            sec.set("y", placement.y());
+            sec.set("z", placement.z());
+            sec.set("yaw", placement.yaw());
+        }
+        try {
+            yaml.save(file);
+        } catch (IOException ex) {
+            log.severe("Could not save " + file + ": " + ex.getMessage());
+        }
+    }
+
+    public List<Placement> all() {
+        return List.copyOf(placements.values());
+    }
+
+    public Placement get(String id) {
+        return placements.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Records a placement, replacing any NPC already registered under the
+     * generated id. Ids are {@code <type>-<n>} so a second artificer is
+     * {@code artificer-2} and the first stays {@code artificer-1} — stable
+     * across restarts, which is what the spawned entity is tagged with.
+     */
+    public Placement add(NpcType type, Location location) {
+        String id = nextId(type);
+        Placement placement = new Placement(id, type, location.getWorld().getName(),
+                location.getX(), location.getY(), location.getZ(), location.getYaw());
+        placements.put(id, placement);
+        save();
+        return placement;
+    }
+
+    /** Removes a placement by id; returns what was removed, or null. */
+    public Placement remove(String id) {
+        Placement removed = placements.remove(id.toLowerCase(Locale.ROOT));
+        if (removed != null) {
+            save();
+        }
+        return removed;
+    }
+
+    private String nextId(NpcType type) {
+        for (int n = 1; ; n++) {
+            String candidate = type.id() + "-" + n;
+            if (!placements.containsKey(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Shop rotation
+    // ------------------------------------------------------------------
+
+    /** The current rotation counter — the black market's shelf seed. */
+    public long rotation() {
+        return rotation;
+    }
+
+    /** Called by every sea reset: the black market gets new stock. */
+    public void bumpRotation() {
+        rotation++;
+        save();
+    }
+}

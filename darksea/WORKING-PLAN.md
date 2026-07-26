@@ -8,10 +8,12 @@ proven by CI. Nothing ships until you're back and say so. (Full history is in
 `ROADMAP.md`; the original v1 spec is `PLAN.md`. This file is just the
 short-term working plan.)
 
-**Budget reality:** ~6% of your weekly limit left, resets Saturday night. My
-building does **not** spend your limit — only your messages do. So spend your
-6% on **decisions**, not on watching me build. Your thinking is free; each
-short "go" from you unlocks a big batch of my solo, CI-verified work.
+**Budget reality:** ~6% of your weekly limit left, resets Saturday night.
+Correction to an earlier version of this file: **my building spends your limit
+too**, not just your messages. So the economy is — batch the decisions, then
+send one short "go" that unlocks a large block of work, rather than a
+back-and-forth. Design thinking on your side is the cheap part; my tool use is
+the expensive part.
 
 **Fastest way to use this:** read §1 (what I can build without you) and §2
 (what you can decide on your own), then send **one** message picking what you
@@ -27,7 +29,10 @@ self-check CI, and report — no further messages needed per item.
 Each is pre-specced so a one-word approve is enough. Tweak any spec in your
 reply and I'll follow it.
 
-### 1a. Naval base island — the "Naxian Drydock" (10th shape) ⭐ biggest
+### 1a. Naval base island — the "Naxian Drydock" (10th shape) — **PARKED**
+> Your call, day 5: *"the naval base could be added later but it's not
+> necessary at the moment."* Left here as a full spec for whenever it comes
+> back up; nothing below it depends on it.
 A rare, drowned Naxian naval yard: half-sunk stone slipways, a cracked
 dry-dock basin, a rusted gantry crane, and the ribcage of an unfinished
 warship. A destination landmark and a natural PvP arena.

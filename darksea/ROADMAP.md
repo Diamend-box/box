@@ -714,6 +714,89 @@ Redirect any time by phone — nothing here needs the server.
 
 ---
 
+## The outpost: NPCs, shops, and vault cracking
+
+Built day 5, from your design decisions — no Citizens, our own NPC layer.
+
+### The five people
+
+Every NPC is a villager that has been thoroughly talked out of being one: no
+AI, no gravity, no collision, invulnerable, silent, and intercepted before
+vanilla can open a trading screen. They are **not** persistent entities —
+`npcs.yml` is the truth and every server start re-spawns them from it, so a
+duplicated or corrupted villager is always one restart away from fixed.
+
+Placement is a runtime admin command, not schematic markers:
+
+```
+/ds npc create <refugee_trader|artificer|black_market|boat_expert|apothecary>
+/ds npc remove <id>          /ds npc list          /ds npc respawn
+```
+
+That is the deliberate unblock — the whole shop system exists *before* your
+40x40 outpost does. Build the island whenever you like, walk to each doorway,
+run the command. Ids are stable (`artificer-1`), so a re-laid-out island just
+means `remove` and `create` again.
+
+| NPC | What they're for |
+| --- | --- |
+| **Refugee trader** | The honest baseline. Basic kit out, sea salvage in. |
+| **Artificer** | **Owns relic waking** (moved off the refugee, per your call). Also buys relics you don't want. |
+| **Black market** | Stock rotates every sea reset, marked up 1.6x, pays 1.5x for salvage. Only source of Hullpiercer arrows. |
+| **Old boat expert** | Hulls and naval kit — and the Heart clue ladder. |
+| **Apothecary** | Every tonic, plus food that is actually food. |
+
+### Two economy rules the tests enforce
+
+1. **Nothing that ends a run is for sale.** The Undrowned Heart, the Soulwake
+   Compass, boat upgrade tokens and the Vector relic can never appear on any
+   board, at any price, in any rotation. Shops make a run *cheaper to attempt*,
+   never skippable.
+2. **The artificer pays half a relic's waking cost for it.** Selling a dormant
+   relic can therefore never fund waking a different one.
+
+### The clue ladder
+
+The old boat expert sells four rumours at 40 / 120 / 300 / 750 Chronons. The
+first three are flavour with real information buried in them; the fourth is
+**live** — the heading and range from where you stand to the nearest standing
+Core nest. Purchases ratchet (`heart-clues` in playerdata) and are never lost
+on death.
+
+### Vault cracking
+
+Your spec: a lever, no key, no redstone, doesn't reset on a soft reset.
+
+An island's elected vault chests now sit **sealed**. The plugin plants one
+lever per island at paste time, on the mob spawn point **furthest from the
+first vault chest** — so cracking a castle means clearing your way across it,
+not sprinting to the loot. Throw the lever and every vault on that island
+opens permanently.
+
+The rule that makes it matter: **cracked stays cracked.** A soft reset
+re-pastes the island, which would otherwise restore an un-thrown lever every
+six hours and turn vaults into a farm; instead the state lives on the island
+record, survives the re-paste, and is re-applied to the freshly pasted lever
+(it comes back already thrown). Only a **full** reset — which drops the island
+registry outright — puts the seals back.
+
+**boxpvp consequence, flagged:** vaults become a once-per-full-cycle prize.
+That creates a real rush incentive on reset day and makes full-reset timing a
+server event rather than a maintenance task. If that's too spiky, the knob is
+to clear `vaults-cracked` on soft reset too — one line.
+
+### Still open (your call, not blocking)
+
+- Should new-dimension ores be sellable, or upgrade-material only? My
+  recommendation stands: **upgrade-material only**, so Chronons stay a
+  Dark-Sea-earned currency.
+- Additive vs. multiplicative stacking on rebirth's +25%. I'd go additive.
+- The rebirth perk pool as drafted — cuts welcome. Rebirth itself is now
+  **last in the queue**, per your call, and its inventory + ender-chest wipe
+  is specced but unbuilt.
+
+---
+
 ## Return-day checklist
 
 1. Upgrade the Minehut plan (6 GB).

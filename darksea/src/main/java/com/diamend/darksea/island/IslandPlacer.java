@@ -560,6 +560,9 @@ public final class IslandPlacer {
                     + "); world spawn set to Y " + spawnY);
         } else if (job.existing() != null) {
             job.existing().clearRefills();
+            // The re-paste buried the lever under fresh blocks; put it back,
+            // in whatever state this island was already left in.
+            plugin.vaults().install(world, job.existing());
             registry.save();
             feedback(sender, "generate-progress",
                     "id", job.existing().id(), "template", job.template().name(),
@@ -570,6 +573,7 @@ public final class IslandPlacer {
             Pos max = origin.offset(scan.relMax().x(), scan.relMax().y(), scan.relMax().z());
             IslandInstance island = new IslandInstance(registry.nextId(job.template().tier()),
                     job.template().name(), job.template().tier(), origin, min, max, chests, spawnPoints);
+            plugin.vaults().install(world, island);
             registry.add(island);
             feedback(sender, "generate-progress",
                     "id", island.id(), "template", job.template().name(),

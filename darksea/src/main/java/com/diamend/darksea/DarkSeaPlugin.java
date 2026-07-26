@@ -24,8 +24,11 @@ import com.diamend.darksea.mob.MobSpawner;
 import com.diamend.darksea.naval.NavalCombatService;
 import com.diamend.darksea.naval.NavalHudService;
 import com.diamend.darksea.naval.NavalWeaponListener;
+import com.diamend.darksea.npc.NpcService;
+import com.diamend.darksea.npc.ShopMenuService;
 import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.relic.UndrownedHeartService;
+import com.diamend.darksea.vault.VaultService;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
@@ -66,6 +69,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private WorldService worldService;
     private MobSpawner mobSpawner;
     private ExposureTask exposureTask;
+    private NpcService npcs;
+    private ShopMenuService shops;
+    private VaultService vaults;
 
     @Override
     public void onEnable() {
@@ -102,6 +108,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
         worldService = new WorldService(this, registry, placer);
         mobSpawner = new MobSpawner(this, registry);
         exposureTask = new ExposureTask(this);
+        npcs = new NpcService(this);
+        shops = new ShopMenuService(this);
+        vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
 
         getServer().getPluginManager().registerEvents(protection, this);
@@ -120,6 +129,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(runLoot, this);
         getServer().getPluginManager().registerEvents(bounty, this);
         getServer().getPluginManager().registerEvents(new MobDropService(this), this);
+        getServer().getPluginManager().registerEvents(npcs, this);
+        getServer().getPluginManager().registerEvents(shops, this);
+        getServer().getPluginManager().registerEvents(vaults, this);
 
         PluginCommand command = getCommand("darksea");
         DarkSeaCommand executor = new DarkSeaCommand(this);
@@ -127,6 +139,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         command.setTabCompleter(executor);
 
         worldService.init();
+        npcs.spawnAll();
 
         int interval = settings.exposure().checkIntervalTicks();
         exposureTask.runTaskTimer(this, interval, interval);
@@ -142,6 +155,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (npcs != null) {
+            npcs.despawnAll();  // they are re-spawned from npcs.yml on enable
+        }
         if (mobSpawner != null) {
             mobSpawner.despawnAll();
         }
@@ -268,5 +284,17 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public MobSpawner mobSpawner() {
         return mobSpawner;
+    }
+
+    public NpcService npcs() {
+        return npcs;
+    }
+
+    public ShopMenuService shops() {
+        return shops;
+    }
+
+    public VaultService vaults() {
+        return vaults;
     }
 }
