@@ -842,6 +842,82 @@ to clear `vaults-cracked` on soft reset too — one line.
 
 ---
 
+## The cultist caves (post-sea, part one)
+
+The first half of the post-sea arc: a second plugin-generated world, the ore
+that comes out of it, and the seam that makes it reachable. The cultist base,
+the temple, the inner Mariphage dimension and rebirth all sit behind this.
+
+### Two worlds now, so worlds carry rules
+
+Eighteen listeners used to ask "is this world named `dark_sea`?". They now ask
+what they meant — `ManagedWorld` says which world has exposure, run loot, naval
+combat, PvP, and item loss on death. The caves' answer: **PvP on, item loss
+off.** Veins are meant to be contested; a materials run is not a second
+extraction run stacked on the sea's.
+
+### The caves
+
+A sealed **512x512** box on the NETHER canvas — red fog, no sky, no weather.
+Bedrock on all six sides. The world border is the visible wall, but a border
+does not affect blocks, so the bedrock past the same line is what stops anyone
+tunnelling around it.
+
+Terrain is two noise fields: ridged tunnels (connected passages, where a plain
+threshold gives isolated bubbles) plus a coarser cavern field for rooms big
+enough to hold a vein and a fight.
+
+**The number to be careful with** is the tunnel threshold, currently 0.04. At
+0.035 the caves still measure 21% open but under **10%** of that is reachable
+from the arrival chamber — the same air chopped into sealed pockets with the
+portal stranded in one. Openness alone would never catch it, so the tests flood
+fill from the chamber and assert a connectivity floor. If the caves ever want
+to be tighter, that is the thing that will quietly break the world.
+
+### Ore veins — few, large, contested
+
+Sixteen veins in the whole world (8 emberiron, 5 voidsalt, 3 ichor), 20-40
+blocks each, scattered deterministically from the world seed. Not ore in the
+terrain: supply is a number in `ores.yml` rather than a function of how hard
+somebody strip-mines, so retuning progression is `/ds reload` instead of
+regenerating the world.
+
+| Rule | Why |
+| --- | --- |
+| **Whole vein regrows at once**, timed from the last block taken | Makes the decision "do I have time to clear this before someone turns up" instead of "do I chip two blocks off it every minute" |
+| **Min spacing 48** | Two veins close enough to work back to back are one richer vein with half the travel |
+| **Nothing else in the caves breaks or places** | Closes tunnelling up to a vein from below, and walling one off |
+| **Drops are upgrade material only** | Chronons stay earned in the Dark Sea and spent at the artificer, so a safe mining dimension can't out-earn sailing |
+
+That last one is enforced: a test walks every NPC board across 25 rotations and
+fails the build if an ore id appears on one.
+
+### The seam
+
+One **cultist landfall** island, at a fixed spot ~3,100 blocks out from the calm
+center — far enough that reaching it needs a real boat and real armor, which
+makes the journey itself the gate on the whole post-sea arc. Exactly one exists:
+its tier sits above every generated ring, so the weighted pool can never roll a
+second.
+
+Stand on the black pad at the top of its ziggurat and you drop into the caves'
+arrival chamber; stand on the matching pad there and you come back. Deliberately
+not a vanilla nether portal — those search for a counterpart, build one if they
+can't find it, and snap to a coordinate ratio, all of which fights a destination
+that has to be one fixed room.
+
+### Return-day notes
+
+- The caves world is created on first start and **never reset**. It is a
+  designed space with placed veins, not a rolled layout.
+- `/ds reload` re-reads `ores.yml`. Vein positions do not move on reload —
+  they live in `nodes.yml` and are placed once.
+- Everything above is CI-proven but **none of it has run on a real server**.
+  The vein regrowth timer and the portal round-trip are the two things worth
+  walking through first.
+
+---
+
 ## Return-day checklist
 
 1. Upgrade the Minehut plan (6 GB).

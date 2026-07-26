@@ -53,6 +53,10 @@ class ConfigParsingTest {
         assertTrue(settings.cultist().roofY() > settings.cultist().floorY() + 8,
                 "the caves need headroom between floor and roof");
         assertEquals(256, settings.cultist().halfExtent(), "a 512x512 box");
+        // The landfall stands well out from the calm center: reaching it needs
+        // a real boat and real armor, which is the gate on the whole post-sea arc.
+        assertTrue(Math.hypot(settings.landfallOffsetX(), settings.landfallOffsetZ()) > 1500,
+                "the landfall is too close to home to be a journey");
         assertTrue(settings.cultist().chamberRadius() > 0,
                 "the portal needs somewhere open to arrive");
         assertEquals(62, settings.seaLevel());
@@ -192,6 +196,9 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("vault-cracked"));
         assertTrue(settings.messages().containsKey("caves-unbreakable"));
         assertTrue(settings.messages().containsKey("caves-no-building"));
+        assertTrue(settings.messages().containsKey("portal-descended"));
+        assertTrue(settings.messages().containsKey("portal-ascended"));
+        assertTrue(settings.messages().containsKey("portal-closed"));
         // Every rung of the old man's ladder must have a line to speak. The
         // ladder's length is shops.yml's clue-costs list; ShopConfigTest pins
         // that to four, so four lines is what config.yml owes.

@@ -5,6 +5,7 @@ import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.island.shape.DemoShape;
 import com.diamend.darksea.island.shape.DemoShapes;
 import com.diamend.darksea.island.shape.Rel;
+import com.diamend.darksea.island.shape.CultistLandfall;
 import com.diamend.darksea.island.shape.ShapeBuild;
 import com.diamend.darksea.util.Pos;
 import com.diamend.darksea.zone.Zone;
@@ -60,6 +61,14 @@ public final class IslandPlacer {
 
     /** Template name used for built-in demo islands (no schematic on disk). */
     private static final String DEMO_TEMPLATE = "demo";
+
+    /**
+     * The landfall's tier. Above every generated ring on purpose, which is
+     * what keeps the shape out of the weighted pool — and it also puts the
+     * island's chests on the richest loot table, which suits the one place
+     * the Order actually landed.
+     */
+    private static final int LANDFALL_TIER = 5;
 
     /** Marker positions found in a clipboard, relative to its origin. */
     private record ScanResult(List<Pos> chests, List<Pos> spawnPoints, Pos relMin, Pos relMax) {
@@ -207,6 +216,29 @@ public final class IslandPlacer {
         }
         int y = spawn.pasteY() != null ? spawn.pasteY() : settings.generation().pasteY();
         queue.add(new PasteJob(spawn, settings.centerX(), y, settings.centerZ(), true, null, afterDone, false));
+        pump(sender);
+        return true;
+    }
+
+    /**
+     * Places the one cultist landfall, if it is not already standing. Follows
+     * the home island's pattern rather than the generator's: a fixed position
+     * and exactly one of them, because it is the seam into the caves and there
+     * can only be one way down.
+     */
+    public boolean maybeQueueLandfall(CommandSender sender, Runnable afterDone) {
+        for (IslandInstance island : registry.all()) {
+            if (CultistLandfall.ID.equals(island.template())) {
+                if (afterDone != null) {
+                    afterDone.run();
+                }
+                return false;
+            }
+        }
+        DarkSeaSettings settings = plugin.settings();
+        int x = settings.centerX() + settings.landfallOffsetX();
+        int z = settings.centerZ() + settings.landfallOffsetZ();
+        queue.add(builtinJob(CultistLandfall.ID, LANDFALL_TIER, x, z, false, null, afterDone));
         pump(sender);
         return true;
     }

@@ -15,7 +15,11 @@ public final class DemoShapes {
             new VolcanicCone(),
             new AbyssalMonolith(),
             new MariphageNest(),
-            new RuinedCastle());
+            new RuinedCastle(),
+            // Not in any ring's pool — its tier is above every generated ring,
+            // so forTier can never return it. Listed here only so byId() can
+            // find it when a soft reset re-pastes the one that was placed.
+            new CultistLandfall());
 
     private DemoShapes() {
     }

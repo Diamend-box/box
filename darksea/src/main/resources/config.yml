@@ -18,6 +18,13 @@ world:
     roof-y: 90          # solid roof above this, so there is no sky
     half-extent: 256    # half the width — 256 gives a 512x512 box
     chamber-radius: 6   # the guaranteed-open room the portal arrives in
+
+  # The one cultist landfall, offset from the calm center. There is exactly
+  # one in the world and it never moves — it is the only way down into the
+  # caves. Far enough out that reaching it needs a real boat and real armor.
+  landfall:
+    offset-x: 2600
+    offset-z: -1800
   sea-level: 62
   seabed:
     base-y: 45        # average ocean-floor height
@@ -549,3 +556,6 @@ messages:
   # --- The cultist caves ---------------------------------------------
   caves-unbreakable: "<red>The rock here doesn't give. Only the veins do."
   caves-no-building: "<red>This place was built once already. Not by you."
+  portal-closed: "<red>Nothing answers. The way isn't open."
+  portal-descended: "<dark_purple>The rock takes you. <gray>It is colder down here."
+  portal-ascended: "<aqua>Salt air. <gray>You are back on the landfall."

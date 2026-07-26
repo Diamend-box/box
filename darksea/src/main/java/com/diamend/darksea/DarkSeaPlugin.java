@@ -36,6 +36,7 @@ import com.diamend.darksea.world.ManagedWorld;
 import com.diamend.darksea.world.cultist.NodeService;
 import com.diamend.darksea.world.cultist.OreConfig;
 import com.diamend.darksea.world.cultist.OreTables;
+import com.diamend.darksea.world.cultist.PortalService;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
@@ -83,6 +84,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private ShopMenuService shops;
     private ShopEditorService shopEditor;
     private NodeService nodes;
+    private PortalService portals;
     private VaultService vaults;
 
     @Override
@@ -128,6 +130,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         shops = new ShopMenuService(this);
         shopEditor = new ShopEditorService(this);
         nodes = new NodeService(this);
+        portals = new PortalService(this);
         vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
 
@@ -151,6 +154,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(shops, this);
         getServer().getPluginManager().registerEvents(shopEditor, this);
         getServer().getPluginManager().registerEvents(nodes, this);
+        getServer().getPluginManager().registerEvents(portals, this);
         getServer().getPluginManager().registerEvents(vaults, this);
 
         PluginCommand command = getCommand("darksea");
@@ -160,6 +164,8 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
         worldService.init();
         npcs.spawnAll();
+        placer.maybeQueueLandfall(getServer().getConsoleSender(), null);
+        portals.installReturnPad(worldService.caves());
         nodes.placeAllIfEmpty(worldService.caves());
         nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
                 NodeService.REGROW_PERIOD_TICKS);
@@ -380,6 +386,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public NodeService nodes() {
         return nodes;
+    }
+
+    public PortalService portals() {
+        return portals;
     }
 
     public ShopEditorService shopEditor() {

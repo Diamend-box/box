@@ -24,6 +24,8 @@ import java.util.logging.Logger;
 public record DarkSeaSettings(
         String worldName,
         CultistSettings cultist,
+        int landfallOffsetX,
+        int landfallOffsetZ,
         int seaLevel,
         int seabedBaseY,
         int seabedVariation,
@@ -246,6 +248,11 @@ public record DarkSeaSettings(
                 cavesRoof,
                 Math.max(32, cfg.getInt("world.caves.half-extent", 256)),
                 Math.max(1, cfg.getInt("world.caves.chamber-radius", 6)));
+        // Where the one cultist landfall stands, relative to the calm center.
+        // Far enough out to need a real boat, inside the rings that gate on
+        // sea armor so getting there is itself the prerequisite.
+        int landfallOffsetX = cfg.getInt("world.landfall.offset-x", 2600);
+        int landfallOffsetZ = cfg.getInt("world.landfall.offset-z", -1800);
         int seaLevel = cfg.getInt("world.sea-level", 62);
         int seabedBaseY = cfg.getInt("world.seabed.base-y", 45);
         int seabedVariation = cfg.getInt("world.seabed.variation", 5);
@@ -304,7 +311,7 @@ public record DarkSeaSettings(
             }
         }
 
-        return new DarkSeaSettings(worldName, cultist, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
+        return new DarkSeaSettings(worldName, cultist, landfallOffsetX, landfallOffsetZ, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
                 exposure, zones, armor, generation, mobSpawning, combat, reset, boat, naval,
                 relics, Map.copyOf(messages));
     }
