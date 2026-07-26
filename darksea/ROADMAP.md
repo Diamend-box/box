@@ -746,6 +746,19 @@ means `remove` and `create` again.
 | **Old boat expert** | Hulls and naval kit — and the Heart clue ladder. |
 | **Apothecary** | Every tonic, plus food that is actually food. |
 
+### Prices live in `shops.yml`
+
+Every price, amount, rotation slot and clue cost is in `plugins/DarkSea/shops.yml`
+and re-read by `/ds reload` — no rebuild to tune the economy. A line is
+`{item, amount, price}`; `amount` defaults to 1 and `price` is always for the
+whole lot. Prefix an id with `vanilla:` to trade a plain Minecraft item.
+
+The black market is *derived* rather than written out twice: it charges
+`markup` times and pays `salvage-rate` times the refugee's numbers, so the two
+can never drift apart by accident. Malformed lines are logged and skipped, and
+the shipped-file test fails the build if the shipped `shops.yml` produces even
+one warning.
+
 ### Two economy rules the tests enforce
 
 1. **Nothing that ends a run is for sale.** The Undrowned Heart, the Soulwake

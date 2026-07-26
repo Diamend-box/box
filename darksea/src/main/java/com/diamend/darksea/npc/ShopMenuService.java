@@ -67,7 +67,7 @@ public final class ShopMenuService implements Listener {
 
         int buySlot = 0;
         int sellSlot = SELL_ROW_START;
-        for (ShopOffer offer : ShopStock.offers(type, rotation)) {
+        for (ShopOffer offer : plugin.shopStock().offers(type, rotation)) {
             if (offer.kind() == ShopOffer.Kind.BUY) {
                 if (buySlot >= SELL_ROW_START) {
                     continue;  // shelf full; the stock tables never come close
@@ -149,12 +149,12 @@ public final class ShopMenuService implements Listener {
         meta.displayName(line(plugin.messages().component("shop-clue-title")));
         int owned = plugin.data().clueLevel(player.getUniqueId());
         List<Component> lore = new ArrayList<>();
-        if (owned >= ShopStock.MAX_CLUE_LEVEL) {
+        if (owned >= plugin.shopStock().maxClueLevel()) {
             lore.add(line(plugin.messages().component("shop-clue-exhausted")));
         } else {
             lore.add(line(plugin.messages().component("shop-clue-next",
                     "n", String.valueOf(owned + 1),
-                    "cost", String.valueOf(ShopStock.clueCost(owned)))));
+                    "cost", String.valueOf(plugin.shopStock().clueCost(owned)))));
         }
         meta.lore(lore);
         stack.setItemMeta(meta);
@@ -345,11 +345,12 @@ public final class ShopMenuService implements Listener {
      */
     private void buyClue(Player player) {
         int owned = plugin.data().clueLevel(player.getUniqueId());
-        if (owned >= ShopStock.MAX_CLUE_LEVEL) {
+        int maxLevel = plugin.shopStock().maxClueLevel();
+        if (owned >= maxLevel) {
             plugin.messages().send(player, "shop-clue-exhausted");
             return;
         }
-        int cost = ShopStock.clueCost(owned);
+        int cost = plugin.shopStock().clueCost(owned);
         if (!DarkSeaItems.removeChronons(player.getInventory(), cost)) {
             plugin.messages().send(player, "shop-need-chronons",
                     "cost", String.valueOf(cost),
@@ -360,7 +361,7 @@ public final class ShopMenuService implements Listener {
         plugin.data().setClueLevel(player.getUniqueId(), level);
         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_TRADE, 1.0f, 0.8f);
         plugin.messages().send(player, "shop-clue-" + level);
-        if (level >= ShopStock.MAX_CLUE_LEVEL) {
+        if (level >= maxLevel) {
             tellBearing(player);
         }
     }

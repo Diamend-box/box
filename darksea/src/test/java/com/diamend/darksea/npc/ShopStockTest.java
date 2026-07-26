@@ -4,26 +4,38 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The shop price list, asserted without a server. */
+/**
+ * The pure half of the shop system: rotation, derivation and the clue ladder,
+ * asserted against hand-built stock rather than the shipped file. What the
+ * shipped shops.yml actually says is {@link ShopConfigTest}'s job.
+ */
 class ShopStockTest {
 
-    @Test
-    void everyNpcTypeHasABoard() {
-        for (NpcType type : NpcType.values()) {
-            List<ShopOffer> offers = ShopStock.offers(type, 0L);
-            assertNotNull(offers, type + " has no board");
-            assertFalse(offers.isEmpty(), type + " has an empty board");
-        }
+    /** A miniature outpost: two rotating lines shown out of a pool of four. */
+    private static ShopStock stock() {
+        return new ShopStock(
+                Map.of(NpcType.REFUGEE_TRADER.id(), List.of(ShopOffer.buy("sea_salve", 1, 20)),
+                        NpcType.BLACK_MARKET.id(), List.of()),
+                List.of(ShopOffer.buy("hullpiercer_arrow", 1, 50),
+                        ShopOffer.buy("chainshot_arrow", 8, 45),
+                        ShopOffer.buy("harpoon_gun", 1, 150),
+                        ShopOffer.buy("dark_sea_boat", 1, 55)),
+                List.of(ShopOffer.sell("naxian_claw", 1, 8),
+                        ShopOffer.sell("mariphage_stinger", 1, 45)),
+                Set.of(NpcType.REFUGEE_TRADER.id(), NpcType.BLACK_MARKET.id()),
+                1.6, 1.5, 2,
+                List.of(40, 120, 300, 750));
     }
 
     @Test
@@ -39,7 +51,7 @@ class ShopStockTest {
         for (NpcType type : NpcType.values()) {
             assertTrue(ids.add(type.id()), "duplicate NPC id " + type.id());
             assertEquals(type, NpcType.byId(type.id()));
-            assertEquals(type, NpcType.byId(type.id().toUpperCase(java.util.Locale.ROOT)));
+            assertEquals(type, NpcType.byId(type.id().toUpperCase(Locale.ROOT)));
         }
         assertNull(NpcType.byId("harbourmaster"));
         assertNull(NpcType.byId(null));
@@ -57,75 +69,87 @@ class ShopStockTest {
     /** The whole point of walking the extra thirty blocks. */
     @Test
     void blackMarketPaysMoreForSalvageAndChargesMoreForStock() {
-        for (ShopOffer honest : ShopStock.salvage(1.0)) {
-            ShopOffer gouged = find(ShopStock.blackMarket(3L), honest.itemId(),
-                    ShopOffer.Kind.SELL);
-            assertNotNull(gouged, "black market won't buy " + honest.itemId());
+        ShopStock stock = stock();
+        for (ShopOffer honest : stock.salvageAt(1.0)) {
+            ShopOffer gouged = find(stock.offers(NpcType.BLACK_MARKET, 3L),
+                    honest.itemId(), ShopOffer.Kind.SELL);
+            assertNotEquals(null, gouged, "black market won't buy " + honest.itemId());
             assertTrue(gouged.price() > honest.price(),
                     honest.itemId() + ": " + gouged.price() + " should beat " + honest.price());
+        }
+        // And it charges more than the pool's face value for what it sells.
+        for (ShopOffer sold : stock.offers(NpcType.BLACK_MARKET, 3L)) {
+            if (sold.kind() != ShopOffer.Kind.BUY) {
+                continue;
+            }
+            ShopOffer face = find(stock.rotatingPool(), sold.itemId(), ShopOffer.Kind.BUY);
+            assertNotEquals(null, face, "sold something not in the pool: " + sold.itemId());
+            assertTrue(sold.price() > face.price(), sold.itemId() + " wasn't marked up");
         }
     }
 
     @Test
-    void blackMarketStockRotatesButIsStableWithinACycle() {
-        List<ShopOffer> first = ShopStock.blackMarket(1L);
-        assertEquals(first, ShopStock.blackMarket(1L), "same cycle must give the same shelf");
+    void rotationIsStableWithinACycleAndChangesAcrossThem() {
+        ShopStock stock = stock();
+        assertEquals(stock.rotate(1L), stock.rotate(1L), "same cycle, same shelf");
 
-        // Over a run of cycles the shelf must actually change at least once.
         boolean changed = false;
         for (long cycle = 2L; cycle <= 12L && !changed; cycle++) {
-            changed = !ShopStock.blackMarket(cycle).equals(first);
+            changed = !stock.rotate(cycle).equals(stock.rotate(1L));
         }
         assertTrue(changed, "the black market never restocked");
     }
 
     @Test
-    void blackMarketShowsTheRightNumberOfRotatingLines() {
+    void rotationShowsExactlyItsSlotsAndNeverRepeatsALine() {
+        ShopStock stock = stock();
         for (long cycle = 0L; cycle < 20L; cycle++) {
-            List<ShopOffer> board = ShopStock.blackMarket(cycle);
-            long buys = board.stream().filter(o -> o.kind() == ShopOffer.Kind.BUY).count();
-            assertEquals(ShopStock.BLACK_MARKET_SLOTS, buys, "cycle " + cycle);
+            List<ShopOffer> shelf = stock.rotate(cycle);
+            assertEquals(stock.slots(), shelf.size(), "cycle " + cycle);
+            assertEquals(shelf.size(), new HashSet<>(shelf).size(),
+                    "cycle " + cycle + " listed a line twice");
         }
     }
 
-    /** Nothing that ends a run may be purchasable, at any price, from anyone. */
+    /** Fewer slots than pool entries is the design: scarcity is the feature. */
     @Test
-    void nothingRunEndingIsForSale() {
-        Set<String> forbidden = Set.of("undrowned_heart", "soulwake_compass",
-                "boat_upgrade_token", "relic_mariphage_vector");
+    void rotationNeverExceedsThePool() {
+        ShopStock thin = new ShopStock(Map.of(), List.of(ShopOffer.buy("sea_salve", 1, 20)),
+                List.of(), Set.of(), 1.6, 1.5, 5, List.of(10));
+        assertEquals(1, thin.rotate(0L).size());
+    }
+
+    @Test
+    void onlySalvageTakersBuyLoot() {
+        ShopStock stock = stock();
         for (NpcType type : NpcType.values()) {
-            for (long cycle = 0L; cycle < 20L; cycle++) {
-                for (ShopOffer offer : ShopStock.offers(type, cycle)) {
-                    if (offer.kind() == ShopOffer.Kind.BUY) {
-                        assertFalse(forbidden.contains(offer.itemId()),
-                                type + " is selling " + offer.itemId());
-                    }
-                }
-            }
-        }
-    }
-
-    /** Selling a dormant relic must never fund waking another one. */
-    @Test
-    void artificerBuysRelicsBelowTheirWakingCost() {
-        List<ShopOffer> board = ShopStock.artificer();
-        assertFalse(board.isEmpty());
-        for (ShopOffer offer : board) {
-            assertEquals(ShopOffer.Kind.SELL, offer.kind(), "the artificer sells nothing");
-            assertTrue(offer.itemId().startsWith("relic_"), offer.itemId());
+            boolean buysLoot = stock.offers(type, 0L).stream()
+                    .anyMatch(o -> o.kind() == ShopOffer.Kind.SELL);
+            assertEquals(stock.takesSalvage().contains(type.id()), buysLoot, type.toString());
         }
     }
 
     @Test
-    void clueLadderOnlyGetsSteeper() {
+    void clueLadderOnlyGetsSteeperAndPlateausPastTheLastRung() {
+        ShopStock stock = stock();
+        assertEquals(4, stock.maxClueLevel());
         int previous = 0;
-        for (int owned = 0; owned < ShopStock.MAX_CLUE_LEVEL; owned++) {
-            int cost = ShopStock.clueCost(owned);
+        for (int owned = 0; owned < stock.maxClueLevel(); owned++) {
+            int cost = stock.clueCost(owned);
             assertTrue(cost > previous, "rumour " + (owned + 1) + " got cheaper");
             previous = cost;
         }
-        assertEquals(ShopStock.clueCost(ShopStock.MAX_CLUE_LEVEL - 1),
-                ShopStock.clueCost(99), "past the last rung the price plateaus");
+        assertEquals(stock.clueCost(stock.maxClueLevel() - 1), stock.clueCost(99));
+    }
+
+    @Test
+    void anEmptySnapshotIsHarmless() {
+        ShopStock empty = ShopStock.empty();
+        assertEquals(0, empty.maxClueLevel());
+        assertEquals(0, empty.lineCount());
+        for (NpcType type : NpcType.values()) {
+            assertTrue(empty.offers(type, 7L).isEmpty(), type.toString());
+        }
     }
 
     @Test

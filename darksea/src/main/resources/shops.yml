@@ -1,0 +1,123 @@
+# DarkSea — shop boards
+#
+# Every price the outpost's NPCs trade at. Reloadable with /ds reload; no
+# rebuild needed, so this is the file to tune when the economy feels wrong.
+#
+# A line is {item, amount, price}. 'amount' defaults to 1 and 'price' is
+# always the price of the whole lot, not per item — so four arrows for 25
+# Chronons is {item: chainshot_arrow, amount: 4, price: 25}.
+#
+# 'item' is a DarkSea item id (see /ds give item <tab>) or a relic id. Prefix
+# it with 'vanilla:' to trade a plain Minecraft item instead, e.g.
+# 'vanilla:GOLDEN_CARROT'.
+#
+# Under each shop, 'buy' is what the NPC sells to players and 'sell' is what
+# the NPC buys from them.
+#
+# ---------------------------------------------------------------------------
+# Two rules worth keeping when you edit this file
+#
+#   1. Nothing that ends a run should be on a 'buy' list — the Undrowned
+#      Heart, the Soulwake Compass, boat upgrade tokens, and the Vector
+#      relic. Shops should make a run cheaper to attempt, never skippable.
+#      There is a unit test that fails the build if one appears.
+#
+#   2. The artificer should pay less for a dormant relic than waking one
+#      costs, or selling relics becomes a way to fund waking them.
+# ---------------------------------------------------------------------------
+
+
+# The black market's shelf rotates once per sea reset. It is priced off the
+# refugee's honest numbers rather than written out separately: it charges
+# 'markup' times what he charges, and pays 'salvage-rate' times what he pays.
+# That difference is the entire reason to walk the extra thirty blocks.
+black-market:
+  markup: 1.6
+  salvage-rate: 1.5
+
+  # How many pool lines show at once. Fewer slots than pool entries is the
+  # point — Hullpiercer arrows are in here rather than guaranteed, so the
+  # cycles where he has them matter.
+  slots: 5
+
+  pool:
+    - {item: hullpiercer_arrow, amount: 2, price: 90}
+    - {item: hullpiercer_arrow, amount: 1, price: 50}
+    - {item: chainshot_arrow, amount: 8, price: 45}
+    - {item: harpoon_gun, price: 150}
+    - {item: tidal_draught, amount: 2, price: 60}
+    - {item: sea_salve, amount: 2, price: 45}
+    - {item: deepsight_tonic, amount: 2, price: 30}
+    - {item: gillwater_philter, amount: 2, price: 30}
+    - {item: dark_sea_boat, price: 55}
+
+
+# What the old boat expert charges for each rumour about the Heart, in order.
+# The list's length is how many he has to sell; the last one is live — the
+# heading and range to the nearest standing Core nest.
+clue-costs: [40, 120, 300, 750]
+
+
+# Sea salvage: the redundant weapons the Dark Sea keeps handing you. These are
+# the refugee's honest prices; anyone with 'takes-salvage: true' buys from
+# this same list, and the black market applies its salvage-rate on top.
+salvage:
+  - {item: naxian_claw, price: 8}
+  - {item: sailors_cutlass, price: 10}
+  - {item: naxian_boarding_axe, price: 14}
+  - {item: harborguard_pike, price: 14}
+  - {item: order_ceremonial_blade, price: 25}
+  - {item: enhanced_naxian_claw, price: 30}
+  - {item: abomination_bone, price: 30}
+  - {item: mariphage_stinger, price: 45}
+
+
+shops:
+
+  # The honest one. Deliberately dull prices: he exists so a captain is never
+  # stuck ashore without a hull, not to be anyone's supplier.
+  refugee_trader:
+    takes-salvage: true
+    buy:
+      - {item: dark_sea_boat, price: 40}
+      - {item: gillwater_philter, price: 15}
+      - {item: deepsight_tonic, price: 15}
+      - {item: sea_salve, price: 20}
+      - {item: chainshot_arrow, amount: 4, price: 25}
+
+  # Sells nothing. His board is the relic-waking button (priced by each
+  # relic's own revive cost, not from this file) plus a standing offer on
+  # relics you have no use for, at half what waking one costs.
+  artificer:
+    sell:
+      - {item: relic_trade_coin, price: 25}
+      - {item: relic_harbor_bell, price: 50}
+      - {item: relic_mariphage_sample, price: 75}
+      - {item: relic_monolith_splinter, price: 100}
+      - {item: relic_naxome_heart, price: 100}
+      - {item: relic_mariphage_vector, price: 125}
+
+  # Rotating stock comes from black-market.pool above; anything listed here
+  # is on his shelf every cycle.
+  black_market:
+    takes-salvage: true
+
+  # Hulls and the tools to fight from one. His real trade is the clue ladder.
+  boat_expert:
+    buy:
+      - {item: dark_sea_boat, price: 35}
+      - {item: harpoon_gun, price: 120}
+      - {item: chainshot_arrow, amount: 8, price: 40}
+      - {item: tidal_draught, price: 28}
+
+  # Every tonic, undercutting the refugee on the two he also stocks, plus food
+  # that is actually food.
+  apothecary:
+    buy:
+      - {item: tidal_draught, price: 25}
+      - {item: sea_salve, price: 18}
+      - {item: deepsight_tonic, price: 12}
+      - {item: gillwater_philter, price: 12}
+      - {item: "vanilla:COOKED_COD", amount: 8, price: 10}
+      - {item: "vanilla:BREAD", amount: 8, price: 10}
+      - {item: "vanilla:GOLDEN_CARROT", amount: 4, price: 30}

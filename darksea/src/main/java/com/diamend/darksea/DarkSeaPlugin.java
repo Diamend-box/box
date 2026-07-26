@@ -25,6 +25,8 @@ import com.diamend.darksea.naval.NavalCombatService;
 import com.diamend.darksea.naval.NavalHudService;
 import com.diamend.darksea.naval.NavalWeaponListener;
 import com.diamend.darksea.npc.NpcService;
+import com.diamend.darksea.npc.ShopConfig;
+import com.diamend.darksea.npc.ShopStock;
 import com.diamend.darksea.npc.ShopMenuService;
 import com.diamend.darksea.relic.RelicService;
 import com.diamend.darksea.relic.UndrownedHeartService;
@@ -53,6 +55,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private volatile ZoneManager zoneManager;
     private volatile LootTables lootTables;
     private volatile Map<String, List<MobDrops.Line>> mobDrops;
+    private volatile ShopStock shopStock;
 
     private Messages messages;
     private IslandRegistry registry;
@@ -78,6 +81,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         saveDefaultConfig();
         saveResourceIfAbsent("mobs.yml");
         saveResourceIfAbsent("loot.yml");
+        saveResourceIfAbsent("shops.yml");
         createDirectories();
 
         try {
@@ -92,6 +96,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         messages = new Messages(settings.messages());
         lootTables = loadLootTables();
         mobDrops = loadMobDrops();
+        shopStock = loadShopStock();
 
         registry = new IslandRegistry(new File(getDataFolder(), "islands.yml"), getLogger());
         registry.load();
@@ -181,12 +186,21 @@ public final class DarkSeaPlugin extends JavaPlugin {
         this.messages.reload(loaded.messages());
         this.lootTables = loadLootTables();
         this.mobDrops = loadMobDrops();
+        this.shopStock = loadShopStock();
         this.mobSpawner.reloadSets();
     }
 
     private LootTables loadLootTables() {
         File file = new File(getDataFolder(), "loot.yml");
         return LootConfig.load(YamlConfiguration.loadConfiguration(file), getLogger());
+    }
+
+    private ShopStock loadShopStock() {
+        File file = new File(getDataFolder(), "shops.yml");
+        ShopStock loaded = ShopConfig.load(
+                YamlConfiguration.loadConfiguration(file), getLogger());
+        getLogger().info("Loaded " + loaded.lineCount() + " shop lines");
+        return loaded;
     }
 
     private Map<String, List<MobDrops.Line>> loadMobDrops() {
@@ -232,6 +246,11 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public Map<String, List<MobDrops.Line>> mobDrops() {
         return mobDrops;
+    }
+
+    /** The parsed shops.yml snapshot — re-read by {@code /ds reload}. */
+    public ShopStock shopStock() {
+        return shopStock;
     }
 
     public RelicService relics() {

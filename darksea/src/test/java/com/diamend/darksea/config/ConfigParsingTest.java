@@ -184,8 +184,10 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("shop-clue-bearing"));
         assertTrue(settings.messages().containsKey("vault-sealed"));
         assertTrue(settings.messages().containsKey("vault-cracked"));
-        // Every rung of the old man's ladder must have a line to speak.
-        for (int level = 1; level <= com.diamend.darksea.npc.ShopStock.MAX_CLUE_LEVEL; level++) {
+        // Every rung of the old man's ladder must have a line to speak. The
+        // ladder's length is shops.yml's clue-costs list; ShopConfigTest pins
+        // that to four, so four lines is what config.yml owes.
+        for (int level = 1; level <= 4; level++) {
             assertTrue(settings.messages().containsKey("shop-clue-" + level),
                     "missing shop-clue-" + level);
         }
