@@ -5,6 +5,7 @@ import com.diamend.darksea.relic.Relic;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.logging.Logger;
 
@@ -93,17 +94,28 @@ public final class ShopItems {
 
     /**
      * Whether a stack is an ordinary item of its type, carrying nothing a
-     * fresh one wouldn't.
+     * fresh one wouldn't — the question {@link #encode} has to answer to
+     * decide between a readable id and a base64 snapshot.
      *
-     * <p>Deliberately not {@code hasItemMeta()}: an ItemStack can hold a meta
-     * object that is entirely default, and on some server implementations a
-     * brand-new stack already does — which would send every plain loaf of
-     * bread down the base64 path. Comparing against a default stack of the
-     * same type answers the question that actually matters: is there anything
-     * here worth snapshotting?
+     * <p>Asked by comparing the serialised forms, because that is literally
+     * the thing being decided: if snapshotting this stack would produce the
+     * same bytes as snapshotting a bare one, the snapshot carries no
+     * information and the readable id is strictly better. The two obvious
+     * shortcuts both lie, in opposite directions — {@code hasItemMeta()} is
+     * true for stacks whose meta is entirely default, and
+     * {@code isSimilar()} is only as thorough as the server's item factory.
+     * Amount is normalised away first: it belongs to the shop line, not the
+     * item.
      */
     public static boolean isPlain(ItemStack stack) {
-        return new ItemStack(stack.getType()).isSimilar(stack);
+        try {
+            ItemStack one = stack.clone();
+            one.setAmount(1);
+            return Arrays.equals(one.serializeAsBytes(),
+                    new ItemStack(stack.getType()).serializeAsBytes());
+        } catch (RuntimeException ex) {
+            return !stack.hasItemMeta();  // can't serialise it; assume it's special
+        }
     }
 
     /**

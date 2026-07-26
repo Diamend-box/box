@@ -262,6 +262,10 @@ class ShopConfigTest {
         assertNotNull(decoded, "the snapshot did not decode");
         assertTrue(decoded.isSimilar(fancy), "the decoded item is not the one we saved");
         assertTrue(ShopItems.matches(fancy, offer, log), "a player's copy should match the line");
+        // The mock server's isSimilar is coarser than a real one's, so treat the
+        // two assertions above as smoke: what they genuinely prove is that the
+        // snapshot survived the file and decoded back into the same item.
+        assertFalse(ShopItems.isPlain(decoded), "a snapshot should never look plain");
     }
 
     /**
