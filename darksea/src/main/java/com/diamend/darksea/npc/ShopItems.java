@@ -78,7 +78,7 @@ public final class ShopItems {
         if (registryId != null) {
             return registryId;
         }
-        if (!stack.hasItemMeta()) {
+        if (isPlain(stack)) {
             return ShopOffer.VANILLA + stack.getType().name();
         }
         try {
@@ -89,6 +89,21 @@ public final class ShopItems {
                     + " for a shop line: " + ex.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Whether a stack is an ordinary item of its type, carrying nothing a
+     * fresh one wouldn't.
+     *
+     * <p>Deliberately not {@code hasItemMeta()}: an ItemStack can hold a meta
+     * object that is entirely default, and on some server implementations a
+     * brand-new stack already does — which would send every plain loaf of
+     * bread down the base64 path. Comparing against a default stack of the
+     * same type answers the question that actually matters: is there anything
+     * here worth snapshotting?
+     */
+    public static boolean isPlain(ItemStack stack) {
+        return new ItemStack(stack.getType()).isSimilar(stack);
     }
 
     /**
@@ -109,7 +124,7 @@ public final class ShopItems {
             Material material = Material.matchMaterial(offer.vanillaMaterial());
             // A plain-material line takes plain items only: an admin who put
             // COOKED_COD on the shelf did not mean "and anything renamed".
-            return material != null && stack.getType() == material && !stack.hasItemMeta();
+            return material != null && stack.getType() == material && isPlain(stack);
         }
         Relic relic = Relic.of(stack);
         if (relic != null) {

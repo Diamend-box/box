@@ -264,12 +264,42 @@ class ShopConfigTest {
         assertTrue(ShopItems.matches(fancy, offer, log), "a player's copy should match the line");
     }
 
-    /** Registry items keep their readable id rather than becoming base64 noise. */
+    /**
+     * Plain items must keep a readable id rather than becoming base64 noise —
+     * a shops.yml where every loaf of bread is a wall of encoded bytes is not
+     * a file anyone can hand-edit afterwards.
+     */
     @Test
     void plainItemsEncodeToReadableIds() {
-        assertEquals("vanilla:BREAD", ShopItems.encode(new ItemStack(Material.BREAD), log));
+        for (Material material : List.of(Material.BREAD, Material.COOKED_COD,
+                Material.GOLDEN_CARROT, Material.DIAMOND_SWORD, Material.OAK_BOAT)) {
+            assertEquals("vanilla:" + material.name(),
+                    ShopItems.encode(new ItemStack(material), log),
+                    material + " should encode readably");
+        }
+        // Amount is a property of the line, not the item, so it changes nothing.
+        assertEquals("vanilla:BREAD", ShopItems.encode(new ItemStack(Material.BREAD, 17), log));
         assertNull(ShopItems.encode(null, log));
         assertNull(ShopItems.encode(new ItemStack(Material.AIR), log));
+    }
+
+    /** ...and only a stack carrying something extra takes the snapshot path. */
+    @Test
+    void onlyItemsWithRealDataBecomeSnapshots() {
+        ItemStack plain = new ItemStack(Material.DIAMOND_SWORD);
+        assertTrue(ShopItems.isPlain(plain));
+
+        ItemStack named = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = named.getItemMeta();
+        meta.displayName(Component.text("Named"));
+        named.setItemMeta(meta);
+        assertFalse(ShopItems.isPlain(named));
+        assertTrue(ShopItems.encode(named, log).startsWith(ShopOffer.CUSTOM));
+
+        // A plain-material line must not accept the renamed one.
+        ShopOffer line = ShopOffer.sell("vanilla:DIAMOND_SWORD", 1, 10);
+        assertTrue(ShopItems.matches(plain, line, log));
+        assertFalse(ShopItems.matches(named, line, log));
     }
 
     /** A corrupt snapshot should degrade to a blank tile, not take the board down. */
