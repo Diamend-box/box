@@ -2,26 +2,33 @@
 
 **Platform:** Paper 1.21.4, Minehut free plan.
 
-**Status:** v4. Supersedes all previous versions. Earlier drafts contained coins, a sell step,
+**Status:** v5. Supersedes all previous versions. Earlier drafts contained coins, a sell step,
 carry-capacity upgrades, box depletion, schematic refills and per-player build caps — **none of
 those exist.** Discard older copies.
 
-**Changes in v4** (all from review; rationale inline in the affected sections):
+**Changes in v5:**
 
-- **Exposure clock pauses while combat-tagged** instead of accruing. This is a full reversal of the
-  v3 clause and it fixes an inversion where being attacked made banking *cheaper*. §5, §10.
+- **Cargo containment.** Whitelisted ore and compressed units cannot be moved into any *persistent*
+  inventory. A chest was a free bank — dump, die losing nothing, retrieve. Closed at the transfer,
+  not by banning containers. §3.
+- **Manual drops stay legal** so teammates can trade, with a ~60s despawn on player-dropped
+  whitelisted ore. Death drops keep the normal timer. §3.
+- **Reseal decay removed outright**, not deferred. v3's trigger was circular and v4's proximity
+  version killed legitimate tactical walls. §12, §18.
+- **Clamp hooks revised.** `InventoryCloseEvent` is dropped — containment makes it redundant — but
+  drop and craft are added, because both remove ore with no container involved. §4.
+- **Three questions opened**: workstations vs. containers, the raw→ingot path, and whether the fee
+  clock resets on entering spawn. §3, §19.
+
+**Changes in v4** (retained for history):
+
+- **Exposure clock pauses while combat-tagged** instead of accruing. A full reversal of the v3
+  clause; it fixes an inversion where being attacked made banking *cheaper*. §5, §10.
 - **Banking remains blocked while combat-tagged.** The v3 rule stands; the objection to it was
-  withdrawn. §5's anti-denial valve is rewritten, because that paragraph described a mechanic the
-  tag block removes. §4, §5.
-- **Survival clock gains an activity gate** — the same hole §5's clock was fixed for was still open
-  in §11. It does **not** pause during combat. §11.
-- **No building restrictions.** Compressed output is a **custom non-placeable item**, which closes
-  the placement laundering route without a build rule. The remaining exposure is narrow and handled
-  by a whitelist audit. §3, §12.
-- **Reseal decay trigger changed from combat-tag to proximity** — as written in v3 it was circular.
-  Flagged open, see §12.
-- **Collections anti-farm unified with the wipe tracker.** The existing bounded cache clears
-  wholesale and is reachable now that building is unrestricted. §14, §17.
+  withdrawn. §4, §5.
+- **Survival clock gains an activity gate**, and does **not** pause during combat. §11.
+- **No building restrictions.** Compressed output is a **custom non-placeable item**. §3, §12.
+- **Collections anti-farm unified with the wipe tracker.** §14, §17.
 - **Wipe mechanics specified**: no drops, batched, clears on zone rotation. §12, §17.
 
 ---
@@ -130,22 +137,41 @@ separate handling.
 resolve it — the counting path reads the custom identity first and falls back to the vanilla
 material, never the reverse.
 
-### Whitelist audit — the only placement rule
+### Cargo containment — the only storage rule
 
-Placing a block removes it from the inventory, which drops `carried` without touching `banked`. If a
-*valuable* material were placeable, that would open two holes at once: ore stashed in the world
-survives death for free with no zone, channel or fee (the route §18 rejects under "safe compressed
-blocks"), and the clamp firing while ore sits in the world would silently destroy paid-for
-protection.
+Whitelisted ore and compressed units **cannot be moved into any inventory other than the player's
+own.** Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers, chest-carrying
+entities, item frames. Cancel the transfer; no message spam beyond a brief actionbar note.
 
-**This does not require a building restriction.** Compressed output is a custom non-placeable item,
-and every ordinary whitelist entry — raw iron/gold/copper, diamond, emerald, coal, lapis, redstone,
-quartz, netherite scrap — is already an item and cannot be placed.
+Without this, a chest is a free bank — dump unbanked ore, die losing nothing, retrieve after
+respawn. No zone, no channel, no fee. Ender chests survive the wipe, and shulkers are the portable
+version.
 
-**What remains is a one-time audit at whitelist definition:** no entry may be a placeable vanilla
-block. In practice that means **ancient debris**, plus **any ore block obtainable intact via Silk
-Touch** off the cubes. Either keep those off the whitelist or make them custom items too. Assert it
-in a unit test so a later whitelist edit cannot reopen it.
+**`carried` must recurse into nested inventories anyway** as a backstop — one missed transfer path
+reopens the hole.
+
+**Manual drops are allowed** so teammates can trade, but player-dropped whitelisted ore despawns in
+~60s. Death drops keep the normal timer so vultures get their window. This falls out of the event
+split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops are spawned by
+`dropItemNaturally` without passing through it.
+
+> **OPEN — workstations are not containers.** "Any inventory other than the player's own" as written
+> also blocks the crafting table, smithing table, enchanting table, anvil and grindstone — so no
+> enchanting with lapis and no netherite upgrades. The property that matters is **persistence, not
+> ownership**: a container holds ore while the player is offline, a workstation returns it on close.
+> Restating the rule as *"any inventory that persists when the player walks away"* carves out
+> workstations and still blocks every route listed above.
+>
+> **That reformulation does not settle furnaces**, which persist and so stay blocked — correctly, a
+> furnace is a stash. So: **what is the intended raw-ore → ingot path?** If the custom compressor
+> (§15) replaces smelting, this is a non-issue and should be stated. If vanilla furnaces are the
+> path, containment breaks the core loop and needs a session-bound smelting station instead.
+
+**The placement audit still applies.** Compressed output stays a custom non-placeable item, and no
+whitelist entry may be a placeable vanilla block — in practice **ancient debris** plus **any ore
+block obtainable intact via Silk Touch**. Placing a block drops `carried` without touching `banked`,
+which would both stash value outside the risk system and silently destroy paid-for protection.
+Assert the audit in a unit test so a later whitelist edit cannot reopen it.
 
 ---
 
@@ -193,15 +219,33 @@ ore-equivalents across raw and compressed forms.
 
 ### The clamp — hook events, do not poll
 
-`banked` must be clamped to `min(banked, carried)` whenever banked ore can leave the inventory. With
-no sell step, the laundering vectors are chests and purchases. **A periodic check has an exploit
-window by construction.** Hook the events instead:
+`banked` must be clamped to `min(banked, carried)` whenever banked ore can leave the inventory.
+**A periodic check has an exploit window by construction** — and so does a hook list that misses a
+route, because the hole is the window between removal and re-acquisition, not the state at death.
+Clamping lazily at death does not work: bank 288, remove it, mine 288 fresh, die, and
+`min(288, 288)` protects ore that was never paid for. The clamp must fire *at removal*.
 
-- `InventoryCloseEvent` — chests and other containers
+Hook the events:
+
 - On purchase — must decrement `banked` directly at the point of spend
 - On death
+- `PlayerDropItemEvent` — §3 legalises manual drops, and a drop removes ore with no container
+  involved
+- `CraftItemEvent` — nine banked ingots become one iron block in the player's own 2×2 grid. The
+  block has no ore-equivalent, because §3's audit keeps placeable vanilla blocks off the whitelist,
+  so `carried` falls and `banked` does not. Uncraft afterwards and the cycle closes
 
-Cheaper than polling and airtight.
+`InventoryCloseEvent` is **no longer needed**: under §3's containment, ore cannot reach a container
+in the first place.
+
+**The trap is inherent to the clamp, so surface it rather than trimming hooks.** Any route that
+reduces `carried` destroys paid-for protection silently — handing a stack to a teammate does it just
+as surely as closing a chest did. Removing a hook does not remove the trap, it converts it into an
+exploit. Fix it where it belongs: an actionbar line whenever protection is reduced
+(`Protection reduced to N`), so the loss is never invisible.
+
+Compression is already safe here and needs no hook, because §3 tracks everything in ore-equivalents
+— see the note there.
 
 Persist banked quantities across logout.
 
@@ -242,6 +286,16 @@ one stack → bank at 5%, permanently.
 - Player is **not** combat-tagged.
 
 The mining condition stops a player sealing into a pocket and idling to earn the discount.
+
+> **OPEN — should the clock reset on entering spawn?** Today it stalls there, which leaves one
+> laundering route open now that §3 has closed chests. A teammate parked one step outside spawn,
+> breaking a single whitelisted block every 30 seconds, reaches the 5% tier at no risk and banks
+> hauls handed over by drop; ducking inside costs nothing because the clock is only paused.
+> Resetting on spawn entry — alongside the existing deposit and death triggers — forces that mule to
+> stand in the open for the full eight minutes holding a fortune, which is §11's bounty target,
+> i.e. content rather than an exploit. **Cost: a player who steps into spawn mid-trip loses their
+> tier.** That is defensible, since entering spawn *is* ending your exposure, and it does not touch
+> the ordinary loop as long as bank zones sit outside spawn (§8) — confirm that before adopting.
 
 ### Combat pauses the clock — reversal of the v3 rule
 
@@ -500,38 +554,34 @@ both would lock players out of a mandatory system with no available counter-play
   gets ringed). Cleared on rotation, per §8.
 - **No-build radius around box entrances**, or a group can wall people out of the game entirely.
 
-### Reseal decay — TEMPORARY, REMOVE WHEN §13 SHIPS
+### Reseal decay — removed
 
-> **This is a stopgap and is explicitly scheduled for deletion.** It exists only so the reseal loop
-> is not unanswerable in the window before counter-play items exist. **Once the suppression
-> consumable in §13 is live and tuned, delete this rule entirely.** Do not build anything that
-> depends on it, do not treat it as a balance lever, and do not extend it.
+**Cut in v5, not deferred.** Both versions failed, in different ways. v3 decayed blocks placed while
+combat-tagged, which was circular: §10 applies the tag only when damage lands, a sealed turtle
+cannot be damaged, so the pre-seal never decayed and an attacker chewing cobble never generated the
+tag that would make it decay. v4's proximity trigger worked but caught every tactical wall thrown up
+in a fight, which is legitimate play the spec spent §12 protecting. **A stopgap that misfires on
+normal play is worse than the gap it covers.**
 
-The narrow problem it addresses: placement is instant and breaking takes a second or two, so an
-attacker can never out-break a resealer. That asymmetry needs an answer. **The correct answer is
-§13** — a counter, not a timer (principle 5). This rule is the placeholder.
+The narrow problem it addressed is real and remains open: placement is instant and breaking takes a
+second or two, so an attacker can never out-break a resealer. **The correct answer is §13** — a
+counter, not a timer (principle 5) — and §19 already puts the suppression consumable first in the
+build order.
 
-**Trigger is proximity, not the combat tag.** *(Changed from v3 — flagged open, see below.)*
+**Partial cover in the meantime, stated precisely.** §5 accrues only while the player has broken a
+whitelisted block in the last ~30 seconds, so a sealed player's fee rate stalls — turtling costs
+them the thing they went out to earn. **This only bites below the cap.** A player already at eight
+minutes and carrying a fortune has no further use for the clock, so sealing costs them nothing at
+all — and that is exactly the player worth sealing against. Do not read the stall as a substitute
+for §13.
 
-- Blocks placed while a non-teammate is within ~10 blocks decay after ~5–8 seconds.
-- Blocks placed otherwise persist until the wipe.
-
-**Why the v3 trigger could not work.** v3 decayed blocks placed *while combat-tagged*, and §10
-applies the tag only when damage lands between players. A sealed turtle cannot be damaged, so:
-blocks placed *before* first blood — the pre-seal, which becomes the optimal opening the moment
-anyone learns the rule — never decayed at all; an attacker breaking blocks deals no damage, so no
-tag was ever applied and the reseal loop ran on permanent blocks; and even a turtle tagged on the
-way in saw the tag expire 15 seconds later while the attacker was still chewing cobble. The rule
-required exactly the contact the wall exists to prevent.
-
-**This does not conflict with §10's damage-landed requirement.** That rule's reasoning is about the
-§5 clock and the banking block; this condition feeds neither and is local to block decay.
-
-> **OPEN — needs a call.** The alternative is to cut this rule and accept bunkering until §13 ships,
-> which is defensible given §19 already puts the suppression consumable first in the build order.
-> What is not an option is keeping the v3 version, which reads as an answer and is not one.
-
-Implementation: read from the wipe tracker (§17), not a second structure.
+> **Optional, if the top-end case needs cover before §13 ships:** decay the *clock*, not the blocks.
+> After ~60s outside spawn with no accrual and no combat tag, the fee tier drifts back toward 25%.
+> Combat continues to **stall** rather than decay, so fighting and repositioning stay safe; sitting
+> sealed does not. No block tracking, no build rule, and it also reaches AFK-parked players and mule
+> relays. **The cost is real:** a player who breaks contact and runs a long way to a zone loses tier
+> for doing what §5 tells them to do, so the grace window has to be generous or the drift slow.
+> Not adopted — recorded as the cheap option if bunkering proves worse than expected in playtest.
 
 ---
 
@@ -543,7 +593,7 @@ Principle 5 in practice. These replace restrictions rather than supplementing th
 the turtle answers it by placing another block. Counters must remove more per action than can be
 replaced, ignore the wall, or attack the placement itself.
 
-### Priority 1 — Suppression consumable *(build first; §12's decay rule is deleted once this lands)*
+### Priority 1 — Suppression consumable *(build first; nothing else covers bunkering since v5)*
 
 A thrown grenade or stackable lingering potion that **prevents block placement in a small radius for
 a few seconds.**
@@ -664,8 +714,9 @@ Regenerating cubes mean `BlockBreakEvent` fires at very high volume. That path m
 - **Exposure and survival clocks are the exception** — they are accumulated counters incremented by
   a task, *not* reconstructed from timestamps, for the reason in §5.
 - **One placed-block tracker, unbounded by design.** Packed longs in a chunk-keyed map, never
-  `Location` objects. It serves three consumers: the wipe (§12), reseal decay (§12), and the
-  collections anti-farm (§14). Cleared on wipe, which is what keeps it bounded in practice.
+  `Location` objects. It serves two consumers: the wipe (§12) and the collections anti-farm (§14).
+  *(v5: reseal decay was the third; it is gone.)* Cleared on wipe, which is what keeps it bounded in
+  practice.
 - **Wipe removal batched across ticks** and drop-free (§12).
 
 ---
@@ -688,7 +739,8 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Fee keyed to fraction of inventory** | Depends on a capacity system that doesn't exist, and is junk-stuffable. |
 | **Fee clock as a stored-timestamp delta** | Ticks while the server sleeps; bank → relog → bank at 5% permanently. |
 | **Fee clock accruing during combat** | v3 rule. Combined with §4's tag block it made being attacked a *discount* — pressure became a reason to wait rather than bank. Replaced by a freeze (§5). |
-| **Reseal decay keyed to the combat tag** | Circular: a sealed player cannot be damaged, so the tag that triggers the decay can never be applied. Replaced by proximity (§12). |
+| **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and workstations are not containers (§3). |
+| **Reseal decay (any trigger)** | v3's combat-tag version was circular; v4's proximity version killed legitimate tactical walls. Cut in v5. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
 
 ---
@@ -707,11 +759,19 @@ on the list is whether §5's freeze makes players avoid fights during the ramp.
 pre-secured) and principle 5 (prefer a counter to a restriction), and say so explicitly in the
 proposal.
 
-**Build order suggestion:** §13's suppression consumable is the highest-leverage item on the list,
-because shipping it deletes §12's temporary decay rule and closes the only tactic currently held shut
-by a stopgap.
+**Build order suggestion:** §13's suppression consumable is the highest-leverage item on the list.
+v5 cut §12's stopgap outright, so bunkering is now uncountered until this ships — that is a known,
+accepted gap, not an oversight.
 
 ### Open questions
 
-- **§12 reseal decay** — proximity trigger, or cut the stopgap entirely and accept bunkering until
-  §13 ships? The v3 version is not an option either way.
+- **§3 — workstations vs. containers.** Restate containment as "any inventory that persists when the
+  player walks away," so enchanting and smithing keep working? Nothing else in the spec depends on
+  the ownership phrasing.
+- **§3 — the raw-ore → ingot path.** Does the §15 compressor replace smelting entirely? If vanilla
+  furnaces are the path, containment blocks the core loop and needs a session-bound station instead.
+  **This one blocks implementation of §3.**
+- **§5 — reset the fee clock on entering spawn?** Closes the mule-relay route left open once §3
+  closed chests. Depends on bank zones sitting outside spawn.
+- **§12 — clock decay**, if bunkering proves worse than expected before §13 lands. Recorded as
+  optional, not adopted.
