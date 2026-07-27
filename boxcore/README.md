@@ -30,7 +30,7 @@ Three ship today:
 |--------|--------------|
 | `skills` | Config-driven skill trees bought with skill points, plus the perk engine that runs their scripted effects. |
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
-| `playtime` | Grants skill points for hours played. |
+| `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 
 ---
 
@@ -58,13 +58,17 @@ Three ship today:
 - 🚫 **Anti-farm** — breaking a block you placed doesn't count, by default.
 - 🏷️ **Item tags** — a collection can track `#logs` instead of listing 11
   materials.
-- ♻️ **Respec** with an optional fee.
+- ♻️ **Respec** for a configurable **item** — a token you obtain rather than a tax
+  on points you already earned.
 - 🔧 **Self-healing config** — delete a node from `trees.yml` and the points
   spent on it come back automatically; lower a `max-level` and levels above it
   are trimmed and refunded; change a `cost` and it's re-charged at the new
   price. Editing the tree on a live server can't leave a player in debt.
-- 🕒 **Playtime points** read from the server's own statistic, so time banked
-  before BoxCore was installed still counts.
+- 🕒 **Playtime is a collection**, read from the server's own statistic (so time
+  banked before BoxCore was installed still counts) and capped by its own last
+  tier — the ceiling is visible in the menu, not implied.
+- 🔒 **Finite by construction** — every point in the plugin comes from a tier,
+  and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
 - 💾 **Async persistence** — profiles are snapshotted on the main thread and
   written on a background thread; saved on quit, on shutdown and on a timer.
@@ -244,7 +248,20 @@ Tiers can also carry their own rewards:
         commands: [ "give %player% diamond_pickaxe 1" ]
 ```
 
-Where collections are counted from is set in `config.yml`:
+A collection can be fed by something other than items — that's how hours
+played sit in the same menu, with the same visible tiers and the same visible
+ceiling:
+
+```yaml
+  playtime:
+    display: "<light_purple>Time Served"
+    category: time
+    source: playtime          # fed by the playtime module, not by items
+    unit: hours               # shown after the amount
+    tiers: [ 1, 5, 10, 25, 50, 100, 175, 275, 400, 550, 750, 1000 ]
+```
+
+Where item collections are counted from is set in `config.yml`:
 
 ```yaml
 collections:
@@ -257,6 +274,26 @@ collections:
     pickup: false    # counts other players' drops as yours
   count-player-placed-blocks: false
 ```
+
+### Respeccing
+
+A respec costs an item rather than skill points, so it's something a player
+obtains — a crate reward, a shop purchase, a boss drop — instead of a tax on
+progress they already made:
+
+```yaml
+skills:
+  allow-respec: true
+  respec-item:
+    item: NETHER_STAR
+    amount: 1
+    # Optional: only items with exactly this display name count, so a plain
+    # nether star can't be used as a token. Blank accepts any of the type.
+    name: ""
+```
+
+Set `item: ""` for free respecs. The item is taken only once the respec is
+certain to go through, so a refused one never eats the token.
 
 ---
 
@@ -288,7 +325,6 @@ name: Steve
 points:
   earned: 24
   spent: 11
-  playtime-granted: 4
 nodes:
   combat.toughness: 3
 collections:
@@ -313,14 +349,20 @@ server**, not a tuned economy. The actual numbers as shipped:
 |---|---|
 | Nodes | **45** across four trees |
 | Points to max everything | **281** (combat 89, gathering 84, wayfarer 73, duelist 35) |
-| Points available from collections, fully maxed | **278** across 217 tiers |
-| Points from playtime | 1 per 5 hours, uncapped |
+| Points from item collections | **175** across 175 tiers |
+| Points from playtime | **12** across 12 tiers (1 hour → 1,000 hours) |
+| **Total earnable, ever** | **187** — 67% of the trees |
 
-Collections alone don't quite buy everything, so playtime is what closes the
-gap — deliberately, since a fully-maxed player should be a long-term fixture
-rather than a two-week project. The top collection tiers are brutal on purpose
-(150,000 cobblestone, 512 ancient debris) while the first few tiers of
-everything come quickly, so early points arrive fast and then slow down.
+**The economy is deliberately finite.** Every point comes from crossing a
+collection tier, each tier pays once, and there are 187 of them — so a player
+who does absolutely everything still ends up 94 points short of owning the
+whole tree. Choosing a build is the point; a respec item is how you change
+your mind.
+
+That includes playtime. It used to be an uncapped trickle, which meant an AFK
+client earned forever; it is now a collection with a last tier at 1,000 hours.
+Early tiers come quickly and then it slows sharply, so the first few points
+arrive fast and the last ones are a genuine commitment.
 
 The strongest nodes (`Executioner`, `Trophy Hunter`, `Last Stand`, `Cave Eyes`,
 `Deep Breath`, `Featherweight`, `Second Chance`, `Headhunter`, `Venom Strike`)
@@ -337,12 +379,13 @@ durability savers, no crafting or enchanting bonuses. Every node either wins
 fights or speeds up the grind that funds them.
 
 If that's too generous, the levers in order of bluntness are: `points-per-tier`
-on individual collections, `playtime.hours-per-point`, and node `cost`/`costs`.
-All three can change on a live server — the refund logic means nobody is left
-in debt.
+on individual collections, the playtime collection's tiers, and node
+`cost`/`costs`. All three can change on a live server — the refund logic means
+nobody is left in debt.
 
-Turn `playtime` off, retune `points-per-tier`, or delete trees wholesale — the
-refund logic means you can rebalance on a live server without wiping anyone.
+Delete the playtime collection to stop paying for time online, retune
+`points-per-tier`, or delete trees wholesale — the refund logic means you can
+rebalance on a live server without wiping anyone.
 
 ---
 

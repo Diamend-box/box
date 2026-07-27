@@ -11,7 +11,9 @@ import com.diamend.boxcore.gui.HubMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
 import com.diamend.boxcore.module.BoxModule;
+import com.diamend.boxcore.skill.RespecCost;
 import com.diamend.boxcore.skill.SkillNode;
+import com.diamend.boxcore.skill.SkillService;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.util.Messages;
@@ -132,13 +134,20 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 messages().sendLiteral(player, "<red>The skills module is disabled.");
                 return;
             }
-            int refunded = skills.service().respec(player);
-            if (refunded < 0) {
-                messages().send(player, "respec-disabled");
-                return;
+            SkillService.RespecResult result = skills.service().respec(player);
+            switch (result.outcome()) {
+                case DISABLED -> messages().send(player, "respec-disabled");
+                case NOTHING_TO_REFUND -> messages().send(player, "respec-nothing");
+                case MISSING_ITEM -> {
+                    RespecCost cost = skills.service().respecCost();
+                    messages().send(player, "respec-needs-item",
+                            "amount", cost.amount(),
+                            "item", cost.displayName(),
+                            "have", result.held());
+                }
+                case DONE -> messages().send(player, "respec-done",
+                        "amount", result.refunded(), "plural", Messages.plural(result.refunded()));
             }
-            messages().send(player, "respec-done",
-                    "amount", refunded, "plural", Messages.plural(refunded));
         });
     }
 

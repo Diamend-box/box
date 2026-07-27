@@ -49,18 +49,23 @@ public class CollectionDetailMenu extends AbstractMenu {
         int reached = collection.tierFor(amount);
 
         List<String> header = new ArrayList<>();
-        header.add("<gray>Gathered: <white>" + Text.number(amount));
+        header.add("<gray>" + (collection.tracksItems() ? "Gathered" : "Total")
+                + ": <white>" + collection.format(amount));
         header.add("<gray>Tier: <white>" + (reached == 0 ? "—" : Text.roman(reached))
                 + "<gray>/<white>" + Text.roman(Math.max(1, collection.tierCount())));
         header.add("");
-        header.add("<gray>Counts these items:");
-        int listed = 0;
-        for (Material material : collection.getMaterials()) {
-            if (listed++ >= 8) {
-                header.add("<dark_gray>…and " + (collection.getMaterials().size() - 8) + " more");
-                break;
+        if (collection.tracksItems()) {
+            header.add("<gray>Counts these items:");
+            int listed = 0;
+            for (Material material : collection.getMaterials()) {
+                if (listed++ >= 8) {
+                    header.add("<dark_gray>…and " + (collection.getMaterials().size() - 8) + " more");
+                    break;
+                }
+                header.add("<dark_gray>• " + Text.prettify(material.name()));
             }
-            header.add("<dark_gray>• " + Text.prettify(material.name()));
+        } else {
+            header.add("<gray>Counted automatically as you play.");
         }
         set(4, Items.text(collection.getIcon(), collection.getDisplay(), header, reached > 0));
 
@@ -70,7 +75,8 @@ public class CollectionDetailMenu extends AbstractMenu {
             boolean current = index == reached;
 
             List<String> lore = new ArrayList<>();
-            lore.add("<gray>Requires: <white>" + Text.number(tier.amount()) + " <gray>gathered");
+            lore.add("<gray>Requires: <white>" + collection.format(tier.amount())
+                    + (collection.tracksItems() ? " <gray>gathered" : ""));
             if (tier.points() > 0) {
                 lore.add("<gray>Reward: <white>" + tier.points() + " <gray>skill point"
                         + Messages.plural(tier.points()));
@@ -86,7 +92,7 @@ public class CollectionDetailMenu extends AbstractMenu {
                 lore.add("<green>✔ Claimed");
             } else if (current) {
                 lore.add("<yellow>» In progress <gray>("
-                        + Text.number(collection.remainingFor(amount)) + " to go)");
+                        + collection.format(collection.remainingFor(amount)) + " to go)");
                 lore.add("<gray>" + Text.progressBar(collection.progress(amount), 20,
                         "<gold>■", "<dark_gray>■"));
             } else {

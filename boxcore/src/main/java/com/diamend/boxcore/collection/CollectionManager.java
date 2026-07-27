@@ -75,7 +75,9 @@ public class CollectionManager {
                 continue;
             }
             ItemCollection collection = read(rawId.toLowerCase(Locale.ROOT), section);
-            if (collection.getMaterials().isEmpty()) {
+            // A collection with another source is fed by a module, so having no
+            // materials is exactly right for it.
+            if (collection.tracksItems() && collection.getMaterials().isEmpty()) {
                 warn("collection '" + collection.getId() + "' tracks no valid items — skipped.");
                 continue;
             }
@@ -83,8 +85,10 @@ public class CollectionManager {
                 warn("collection '" + collection.getId() + "' has no tiers — it will count but never pay out.");
             }
             collections.put(collection.getId(), collection);
-            for (Material material : collection.getMaterials()) {
-                byMaterial.computeIfAbsent(material, key -> new ArrayList<>()).add(collection);
+            if (collection.tracksItems()) {
+                for (Material material : collection.getMaterials()) {
+                    byMaterial.computeIfAbsent(material, key -> new ArrayList<>()).add(collection);
+                }
             }
             if (!categories.containsKey(collection.getCategoryId())) {
                 CollectionCategory implicit = new CollectionCategory(collection.getCategoryId());
@@ -109,6 +113,9 @@ public class CollectionManager {
         ItemCollection collection = new ItemCollection(id);
         collection.setDisplay(section.getString("display", id));
         collection.setCategoryId(section.getString("category", "general").toLowerCase(Locale.ROOT));
+        collection.setSource(section.getString("source", ItemCollection.SOURCE_ITEMS)
+                .toLowerCase(Locale.ROOT));
+        collection.setUnit(section.getString("unit", ""));
 
         for (String entry : section.getStringList("items")) {
             if (entry == null || entry.isBlank()) {
@@ -236,6 +243,34 @@ public class CollectionManager {
 
     public boolean tracks(Material material) {
         return byMaterial.containsKey(material);
+    }
+
+    /**
+     * How much of everything a player has actually gathered.
+     *
+     * <p>Not simply the profile's total: collections fed by a module rather
+     * than by items — hours played, say — would otherwise be added to a figure
+     * labelled "items gathered".
+     */
+    public long itemsCollected(com.diamend.boxcore.data.PlayerProfile profile) {
+        long total = 0;
+        for (Map.Entry<String, Long> entry : profile.getCollections().entrySet()) {
+            ItemCollection collection = collections.get(entry.getKey());
+            if (collection == null || collection.tracksItems()) {
+                total += entry.getValue();
+            }
+        }
+        return total;
+    }
+
+    /** The first collection fed by a named source, or null when none is configured. */
+    public ItemCollection bySource(String source) {
+        for (ItemCollection collection : collections.values()) {
+            if (collection.getSource().equalsIgnoreCase(source)) {
+                return collection;
+            }
+        }
+        return null;
     }
 
     public CollectionCategory category(String id) {

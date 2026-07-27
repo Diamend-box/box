@@ -79,7 +79,8 @@ public class CollectionCategoryMenu extends AbstractMenu {
         }
 
         set(4, Items.text(Material.CHEST, "<gold>Your collections",
-                List.of("<gray>Items gathered: <white>" + Text.number(profile.getTotalCollected()),
+                List.of("<gray>Items gathered: <white>"
+                                + Text.number(collections.collections().itemsCollected(profile)),
                         "<gray>Skill points available: <white>" + profile.getAvailablePoints()), true));
         backButton(18, "Hub");
         closeButton(26);

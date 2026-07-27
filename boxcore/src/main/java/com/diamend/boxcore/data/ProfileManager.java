@@ -117,7 +117,6 @@ public class ProfileManager {
         profile.setName(config.getString("name", ""));
         profile.setPointsEarned(config.getInt("points/earned"));
         profile.setPointsSpent(config.getInt("points/spent"));
-        profile.setPlaytimePointsGranted(config.getInt("points/playtime-granted"));
 
         ConfigurationSection nodes = config.getConfigurationSection("nodes");
         if (nodes != null) {
@@ -142,7 +141,6 @@ public class ProfileManager {
         config.set("name", profile.getName());
         config.set("points/earned", profile.getPointsEarned());
         config.set("points/spent", profile.getPointsSpent());
-        config.set("points/playtime-granted", profile.getPlaytimePointsGranted());
         for (Map.Entry<String, Integer> entry : profile.getNodes().entrySet()) {
             config.set("nodes" + SEPARATOR + entry.getKey(), entry.getValue());
         }

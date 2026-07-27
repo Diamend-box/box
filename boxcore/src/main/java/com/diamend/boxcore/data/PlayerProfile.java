@@ -22,7 +22,6 @@ public class PlayerProfile {
     private String name = "";
     private int pointsEarned;
     private int pointsSpent;
-    private int playtimePointsGranted;
 
     /** Node key ({@code tree.node}) → owned level. */
     private final Map<String, Integer> nodes = new ConcurrentHashMap<>();
@@ -103,15 +102,6 @@ public class PlayerProfile {
         pointsSpent += amount;
         dirty = true;
         return true;
-    }
-
-    public int getPlaytimePointsGranted() {
-        return playtimePointsGranted;
-    }
-
-    public void setPlaytimePointsGranted(int granted) {
-        this.playtimePointsGranted = Math.max(0, granted);
-        dirty = true;
     }
 
     // ------------------------------------------------------------------

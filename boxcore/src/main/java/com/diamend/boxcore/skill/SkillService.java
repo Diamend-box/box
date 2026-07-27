@@ -200,36 +200,66 @@ public class SkillService {
         reconcile(profile);
     }
 
+    /** Why a respec did or didn't happen. */
+    public enum RespecOutcome {
+        DONE,
+        DISABLED,
+        NOTHING_TO_REFUND,
+        MISSING_ITEM
+    }
+
     /**
-     * Refunds every node the player owns.
+     * The outcome of a respec attempt.
      *
-     * @return the number of points handed back, or -1 when respeccing is off
+     * @param outcome  what happened
+     * @param refunded points handed back (0 unless {@link RespecOutcome#DONE})
+     * @param held     how many of the cost item the player had, for the message
      */
-    public int respec(Player player) {
+    public record RespecResult(RespecOutcome outcome, int refunded, int held) {
+
+        public boolean succeeded() {
+            return outcome == RespecOutcome.DONE;
+        }
+    }
+
+    /** What a respec currently costs. Re-read each time so /box reload applies. */
+    public RespecCost respecCost() {
+        return RespecCost.from(plugin.getConfig().getConfigurationSection("skills.respec-item"));
+    }
+
+    /**
+     * Refunds every node the player owns, consuming the configured respec item.
+     *
+     * <p>The item is taken only once the respec is certain to go through, so a
+     * failed respec can never eat the token.
+     */
+    public RespecResult respec(Player player) {
         if (!plugin.getConfig().getBoolean("skills.allow-respec", true)) {
-            return -1;
+            return new RespecResult(RespecOutcome.DISABLED, 0, 0);
         }
         PlayerProfile profile = profiles.get(player.getUniqueId());
         int refunded = profile.getPointsSpent();
         if (refunded <= 0) {
-            return 0;
+            return new RespecResult(RespecOutcome.NOTHING_TO_REFUND, 0, 0);
         }
+        RespecCost cost = respecCost();
+        if (!cost.canAfford(player)) {
+            return new RespecResult(RespecOutcome.MISSING_ITEM, 0, cost.heldBy(player));
+        }
+        if (!cost.take(player)) {
+            // Lost a race with something else emptying the inventory.
+            return new RespecResult(RespecOutcome.MISSING_ITEM, 0, cost.heldBy(player));
+        }
+
         profile.clearNodes();
         profile.setPointsSpent(0);
 
-        int fee = Math.max(0, plugin.getConfig().getInt("skills.respec-cost", 0));
-        if (fee > 0) {
-            // Charge the fee out of the refund so a player can't be left in debt.
-            int charged = Math.min(fee, refunded);
-            profile.setPointsEarned(Math.max(0, profile.getPointsEarned() - charged));
-            refunded -= charged;
-        }
         for (String command : plugin.getConfig().getStringList("skills.respec-commands")) {
             runCommand(player, command);
         }
         effects.apply(player);
         playSound(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.8f, 1.0f);
-        return refunded;
+        return new RespecResult(RespecOutcome.DONE, refunded, 0);
     }
 
     private void runCommand(Player player, String command) {

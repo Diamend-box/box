@@ -1,15 +1,18 @@
 package com.diamend.boxcore;
 
+import com.diamend.boxcore.collection.CollectionTier;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.skill.NodeEffects;
+import com.diamend.boxcore.skill.RespecCost;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillService;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.skill.perk.Perk;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -150,9 +153,19 @@ class BoxCorePluginTest {
         assertEquals(0.08, skills.perks().of(player).value(Perk.LIFESTEAL), 1.0e-9,
                 "unlocking invalidates the cached totals");
 
+        giveRespecItem(player);
         skills.service().respec(player);
         assertEquals(0.0, skills.perks().of(player).value(Perk.LIFESTEAL), 1.0e-9,
                 "a respec takes the perks back too");
+    }
+
+    /** Puts the configured respec cost in the player's inventory. */
+    private void giveRespecItem(PlayerMock player) {
+        SkillsModule skills = plugin.modules().get(SkillsModule.class);
+        RespecCost cost = skills.service().respecCost();
+        if (!cost.isFree()) {
+            player.getInventory().addItem(new ItemStack(cost.material(), cost.amount()));
+        }
     }
 
     @Test
@@ -191,6 +204,90 @@ class BoxCorePluginTest {
         assertNotNull(collections.collections().get("cobblestone"), "cobblestone seeded");
         assertTrue(collections.collections().tracks(Material.COBBLESTONE),
                 "the material index is built");
+    }
+
+    @Test
+    void playtimeIsACollectionWithAVisibleCeiling() {
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+        ItemCollection playtime = collections.collections().get("playtime");
+        assertNotNull(playtime, "hours played are a collection like anything else");
+        assertFalse(playtime.tracksItems(), "it isn't fed by items");
+        assertTrue(playtime.getMaterials().isEmpty());
+        assertEquals("hours", playtime.getUnit());
+        assertTrue(playtime.tierCount() > 0, "and it has a last tier — that's the ceiling");
+
+        // The module resolves it, by id or by source.
+        assertSame(playtime, plugin.playtime().collection());
+        assertSame(playtime, collections.collections().bySource(ItemCollection.SOURCE_PLAYTIME));
+        // A source-driven collection must never be wired into the material index,
+        // or gathering an item would move the playtime counter.
+        for (Material material : Material.values()) {
+            assertFalse(collections.collections().forMaterial(material).contains(playtime),
+                    material + " should not feed the playtime collection");
+        }
+    }
+
+    @Test
+    void recordingHoursPaysTheTiersItCrossed() {
+        PlayerMock player = server.addPlayer();
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+        ItemCollection playtime = collections.collections().get("playtime");
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        int before = profile.getAvailablePoints();
+
+        long hours = playtime.getTiers().get(2).amount();
+        collections.service().set(player, profile, playtime, hours);
+
+        assertEquals(hours, profile.getCollected("playtime"));
+        assertEquals(3, profile.getAwardedTier("playtime"), "three tiers crossed at once");
+        assertEquals(before + 3, profile.getAvailablePoints());
+
+        // Past the last tier the counter keeps climbing but stops paying.
+        long beyond = playtime.getTiers().get(playtime.tierCount() - 1).amount() * 10;
+        collections.service().set(player, profile, playtime, beyond);
+        assertEquals(playtime.tierCount(), profile.getAwardedTier("playtime"));
+        assertEquals(before + playtime.tierCount(), profile.getAvailablePoints(),
+                "the ceiling holds no matter how long someone stays online");
+    }
+
+    @Test
+    void hoursPlayedDontCountAsItemsGathered() {
+        PlayerMock player = server.addPlayer();
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        collections.service().set(player, profile,
+                collections.collections().get("playtime"), 500);
+
+        assertEquals(500, profile.getTotalCollected(), "the raw total counts everything");
+        assertEquals(0, collections.collections().itemsCollected(profile),
+                "but 'items gathered' means items");
+    }
+
+    @Test
+    void everythingEarnableStaysBelowWhatTheTreesCost() {
+        SkillsModule skills = plugin.modules().get(SkillsModule.class);
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+
+        int earnable = 0;
+        for (ItemCollection collection : collections.collections().all()) {
+            for (CollectionTier tier : collection.getTiers()) {
+                earnable += tier.points();
+            }
+        }
+        int cost = 0;
+        for (SkillNode node : skills.trees().nodesByKey().values()) {
+            cost += node.totalCostAt(node.getMaxLevel());
+        }
+
+        // The point of a finite economy: a player has to choose a build rather
+        // than eventually owning every node. If a retune ever makes everything
+        // affordable, that decision quietly disappears — so pin it here.
+        assertTrue(earnable < cost,
+                "every point earnable (" + earnable + ") should be less than the "
+                        + cost + " needed to max every node");
+        assertTrue(earnable > cost / 2,
+                "but not so scarce that a maxed player can't afford half the trees; "
+                        + earnable + " of " + cost);
     }
 
     @Test
@@ -259,12 +356,55 @@ class BoxCorePluginTest {
         skills.service().unlock(player, toughness);
         int spent = profile.getPointsSpent();
         assertTrue(spent > 0, "points were actually spent");
+        giveRespecItem(player);
 
-        int refunded = skills.service().respec(player);
+        SkillService.RespecResult result = skills.service().respec(player);
 
-        assertEquals(spent, refunded, "everything spent comes back");
-        assertEquals(10, profile.getAvailablePoints());
+        assertTrue(result.succeeded());
+        assertEquals(spent, result.refunded(), "everything spent comes back");
+        assertEquals(10, profile.getAvailablePoints(), "and no points are burnt as a fee");
         assertEquals(0, profile.getNodeLevel("combat.toughness"));
+    }
+
+    @Test
+    void respecCostsTheConfiguredItem() {
+        PlayerMock player = server.addPlayer();
+        SkillsModule skills = plugin.modules().get(SkillsModule.class);
+        RespecCost cost = skills.service().respecCost();
+        assertFalse(cost.isFree(), "the shipped config charges an item");
+
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        profile.addPoints(10);
+        SkillNode toughness = skills.trees().getNode("combat.toughness");
+        skills.service().unlock(player, toughness);
+        int spent = profile.getPointsSpent();
+
+        // Empty-handed: refused, and nothing about the player changes.
+        SkillService.RespecResult refused = skills.service().respec(player);
+        assertEquals(SkillService.RespecOutcome.MISSING_ITEM, refused.outcome());
+        assertEquals(0, refused.held());
+        assertEquals(spent, profile.getPointsSpent(), "a refused respec refunds nothing");
+        assertEquals(1, profile.getNodeLevel("combat.toughness"));
+
+        // With one spare, the respec goes through and eats exactly the cost.
+        player.getInventory().addItem(new ItemStack(cost.material(), cost.amount() + 1));
+        assertTrue(skills.service().respec(player).succeeded());
+        assertEquals(0, profile.getPointsSpent());
+        assertEquals(1, cost.heldBy(player), "only the configured amount is taken");
+    }
+
+    @Test
+    void respecWithNothingSpentIsRefusedWithoutEatingTheItem() {
+        PlayerMock player = server.addPlayer();
+        SkillsModule skills = plugin.modules().get(SkillsModule.class);
+        RespecCost cost = skills.service().respecCost();
+        giveRespecItem(player);
+
+        SkillService.RespecResult result = skills.service().respec(player);
+
+        assertEquals(SkillService.RespecOutcome.NOTHING_TO_REFUND, result.outcome());
+        assertEquals(cost.amount(), cost.heldBy(player),
+                "a respec that does nothing must not charge for it");
     }
 
     @Test

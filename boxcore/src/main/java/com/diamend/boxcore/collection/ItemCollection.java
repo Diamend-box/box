@@ -8,15 +8,27 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A tracked collection — one counter fed by one or more materials, with tiers
- * that pay out as the counter grows.
+ * A tracked collection — one counter with tiers that pay out as it grows.
+ *
+ * <p>Most collections are fed by materials the player gathers. A collection can
+ * instead name another {@link #getSource() source}, in which case a module owns
+ * the counter and no materials are needed — that's how hours played get to sit
+ * in the same menu, with the same visible tiers and the same visible ceiling,
+ * as everything else.
  */
 public class ItemCollection {
+
+    /** The default source: materials the player gathers. */
+    public static final String SOURCE_ITEMS = "items";
+    /** Hours played, fed by the playtime module. */
+    public static final String SOURCE_PLAYTIME = "playtime";
 
     private final String id;
     private String display;
     private String categoryId = "general";
     private Material icon;
+    private String source = SOURCE_ITEMS;
+    private String unit = "";
     private final Set<Material> materials = new LinkedHashSet<>();
     private final List<CollectionTier> tiers = new ArrayList<>();
 
@@ -27,6 +39,34 @@ public class ItemCollection {
 
     public String getId() {
         return id;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source == null || source.isBlank() ? SOURCE_ITEMS : source;
+    }
+
+    /** True when this collection counts materials rather than being fed by a module. */
+    public boolean tracksItems() {
+        return SOURCE_ITEMS.equals(source);
+    }
+
+    /** Optional noun for the amount, e.g. {@code hours}. Blank for items. */
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit == null ? "" : unit.trim();
+    }
+
+    /** Formats an amount for display, with the unit when one is set. */
+    public String format(long amount) {
+        String number = com.diamend.boxcore.util.Text.number(amount);
+        return unit.isEmpty() ? number : number + " " + unit;
     }
 
     public String getDisplay() {

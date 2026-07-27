@@ -118,13 +118,22 @@ public class SkillTreeMenu extends AbstractMenu {
                         "<gray>Spent overall: <white>" + profile.getPointsSpent()), true));
         if (plugin.getConfig().getBoolean("skills.allow-respec", true)
                 && player.hasPermission("boxcore.respec")) {
-            int fee = plugin.getConfig().getInt("skills.respec-cost", 0);
-            putIfFree(last - 2, Items.text(Material.GRINDSTONE, "<gold>Respec",
-                    List.of("<gray>Refund every node you own",
-                            "<gray>and get your points back.",
-                            fee > 0 ? "<red>Fee: " + fee + " point" + Messages.plural(fee) : "<gray>No fee.",
-                            "",
-                            "<yellow>Run <white>/box respec"), false));
+            com.diamend.boxcore.skill.RespecCost cost = service.respecCost();
+            List<String> lore = new ArrayList<>(List.of(
+                    "<gray>Refund every node you own",
+                    "<gray>and get your points back."));
+            if (cost.isFree()) {
+                lore.add("<gray>Costs nothing.");
+            } else {
+                int held = cost.heldBy(player);
+                lore.add("<gray>Costs <white>" + cost.amount() + "x " + cost.displayName());
+                lore.add(held >= cost.amount()
+                        ? "<green>✔ You have " + held
+                        : "<red>✖ You have " + held);
+            }
+            lore.add("");
+            lore.add("<yellow>Run <white>/box respec");
+            putIfFree(last - 2, Items.text(Material.GRINDSTONE, "<gold>Respec", lore, false));
         }
         putIfFree(last, Items.text(Material.BARRIER, "<red>Close", List.of(), false));
     }

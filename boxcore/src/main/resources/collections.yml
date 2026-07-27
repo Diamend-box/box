@@ -24,6 +24,12 @@
 #   items            Materials that count toward it. An entry starting
 #                    with '#' is an item tag, e.g. "#logs", "#wool",
 #                    "#blocks/base_stone_overworld".
+#   source           Where the counter comes from. "items" (the default)
+#                    means the materials above. "playtime" means hours
+#                    played, fed by the playtime module — no items
+#                    needed. A collection with a source other than
+#                    "items" is counted for the player automatically.
+#   unit             Optional noun shown after the amount, e.g. "hours".
 #   points-per-tier  Skill points paid for each tier (default 1).
 #   tiers            Either a plain list of amounts:
 #                        tiers: [50, 250, 1000]
@@ -57,6 +63,10 @@ categories:
     display: "<aqua><bold>Fishing</bold>"
     icon: FISHING_ROD
     order: 5
+  time:
+    display: "<light_purple><bold>Time Served</bold>"
+    icon: CLOCK
+    order: 6
 
 collections:
 
@@ -66,94 +76,91 @@ collections:
     category: mining
     icon: COBBLESTONE
     items: [ COBBLESTONE, STONE, COBBLED_DEEPSLATE, DEEPSLATE ]
-    tiers: [ 50, 250, 1000, 5000, 15000, 50000, 150000 ]
+    tiers: [ 50, 250, 1000, 5000, 15000, 50000 ]
 
   coal:
     display: "<dark_gray>Coal"
     category: mining
     icon: COAL
     items: [ COAL ]
-    tiers: [ 50, 200, 750, 2500, 10000, 40000 ]
+    tiers: [ 50, 200, 750, 2500, 10000 ]
 
   iron:
     display: "<white>Iron"
     category: mining
     icon: RAW_IRON
     items: [ RAW_IRON, IRON_INGOT ]
-    tiers: [ 50, 200, 750, 2500, 10000, 40000 ]
+    tiers: [ 50, 200, 750, 2500, 10000 ]
 
   copper:
     display: "<gold>Copper"
     category: mining
     icon: RAW_COPPER
     items: [ RAW_COPPER, COPPER_INGOT ]
-    tiers: [ 50, 250, 1000, 4000, 15000 ]
+    tiers: [ 50, 250, 1000, 4000 ]
 
   gold:
     display: "<yellow>Gold"
     category: mining
     icon: RAW_GOLD
     items: [ RAW_GOLD, GOLD_INGOT, GOLD_NUGGET ]
-    tiers: [ 30, 150, 500, 2000, 8000, 30000 ]
+    tiers: [ 30, 150, 500, 2000, 8000 ]
 
   redstone:
     display: "<red>Redstone"
     category: mining
     icon: REDSTONE
     items: [ REDSTONE ]
-    tiers: [ 100, 500, 2000, 8000, 30000 ]
+    tiers: [ 100, 500, 2000, 8000 ]
 
   lapis:
     display: "<blue>Lapis Lazuli"
     category: mining
     icon: LAPIS_LAZULI
     items: [ LAPIS_LAZULI ]
-    tiers: [ 100, 400, 1500, 6000, 20000 ]
+    tiers: [ 100, 400, 1500, 6000 ]
 
   diamond:
     display: "<aqua>Diamond"
     category: mining
     icon: DIAMOND
     items: [ DIAMOND ]
-    points-per-tier: 2
-    tiers: [ 10, 50, 200, 750, 3000, 10000 ]
+    tiers: [ 10, 50, 200, 750, 3000 ]
 
   emerald:
     display: "<green>Emerald"
     category: mining
     icon: EMERALD
     items: [ EMERALD ]
-    points-per-tier: 2
-    tiers: [ 10, 50, 200, 750, 3000 ]
+    tiers: [ 10, 50, 200, 750 ]
 
   quartz:
     display: "<white>Nether Quartz"
     category: mining
     icon: QUARTZ
     items: [ QUARTZ ]
-    tiers: [ 50, 250, 1000, 4000, 15000 ]
+    tiers: [ 50, 250, 1000, 4000 ]
 
   obsidian:
     display: "<dark_purple>Obsidian"
     category: mining
     icon: OBSIDIAN
     items: [ OBSIDIAN, CRYING_OBSIDIAN ]
-    tiers: [ 10, 50, 250, 1000, 5000 ]
+    tiers: [ 10, 50, 250, 1000 ]
 
   amethyst:
     display: "<light_purple>Amethyst"
     category: mining
     icon: AMETHYST_SHARD
     items: [ AMETHYST_SHARD ]
-    tiers: [ 20, 100, 500, 2000, 8000 ]
+    tiers: [ 20, 100, 500, 2000 ]
 
   ancient_debris:
     display: "<dark_red>Ancient Debris"
     category: mining
     icon: ANCIENT_DEBRIS
     items: [ ANCIENT_DEBRIS, NETHERITE_SCRAP ]
-    points-per-tier: 3
-    tiers: [ 1, 8, 32, 128, 512 ]
+    tiers: [ 1, 8, 32, 128 ]
 
   # ------------------------------ Farming ---------------------------
   wheat:
@@ -161,63 +168,63 @@ collections:
     category: farming
     icon: WHEAT
     items: [ WHEAT ]
-    tiers: [ 50, 250, 1000, 5000, 20000, 75000 ]
+    tiers: [ 50, 250, 1000, 5000, 20000 ]
 
   carrot:
     display: "<gold>Carrot"
     category: farming
     icon: CARROT
     items: [ CARROT ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   potato:
     display: "<yellow>Potato"
     category: farming
     icon: POTATO
     items: [ POTATO ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   pumpkin_melon:
     display: "<gold>Pumpkin and Melon"
     category: farming
     icon: PUMPKIN
     items: [ PUMPKIN, MELON, MELON_SLICE ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   sugar_cane:
     display: "<green>Sugar Cane"
     category: farming
     icon: SUGAR_CANE
     items: [ SUGAR_CANE ]
-    tiers: [ 100, 500, 2000, 10000, 40000 ]
+    tiers: [ 100, 500, 2000, 10000 ]
 
   cactus:
     display: "<dark_green>Cactus"
     category: farming
     icon: CACTUS
     items: [ CACTUS ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   nether_wart:
     display: "<dark_red>Nether Wart"
     category: farming
     icon: NETHER_WART
     items: [ NETHER_WART ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   mushroom:
     display: "<red>Mushroom"
     category: farming
     icon: RED_MUSHROOM
     items: [ RED_MUSHROOM, BROWN_MUSHROOM ]
-    tiers: [ 25, 100, 500, 2000, 8000 ]
+    tiers: [ 25, 100, 500, 2000 ]
 
   sweet_berries:
     display: "<red>Sweet Berries"
     category: farming
     icon: SWEET_BERRIES
     items: [ SWEET_BERRIES, GLOW_BERRIES ]
-    tiers: [ 25, 100, 500, 2000, 8000 ]
+    tiers: [ 25, 100, 500, 2000 ]
 
   # ------------------------------ Combat ----------------------------
   rotten_flesh:
@@ -225,74 +232,70 @@ collections:
     category: combat
     icon: ROTTEN_FLESH
     items: [ ROTTEN_FLESH ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   bone:
     display: "<white>Bone"
     category: combat
     icon: BONE
     items: [ BONE ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   string:
     display: "<white>String"
     category: combat
     icon: STRING
     items: [ STRING ]
-    tiers: [ 50, 250, 1000, 5000, 20000 ]
+    tiers: [ 50, 250, 1000, 5000 ]
 
   gunpowder:
     display: "<gray>Gunpowder"
     category: combat
     icon: GUNPOWDER
     items: [ GUNPOWDER ]
-    tiers: [ 25, 150, 600, 2500, 10000 ]
+    tiers: [ 25, 150, 600, 2500 ]
 
   spider_eye:
     display: "<dark_red>Spider Eye"
     category: combat
     icon: SPIDER_EYE
     items: [ SPIDER_EYE, FERMENTED_SPIDER_EYE ]
-    tiers: [ 25, 150, 600, 2500 ]
+    tiers: [ 25, 150, 600 ]
 
   slimeball:
     display: "<green>Slimeball"
     category: combat
     icon: SLIME_BALL
     items: [ SLIME_BALL, MAGMA_CREAM ]
-    tiers: [ 25, 150, 600, 2500, 10000 ]
+    tiers: [ 25, 150, 600, 2500 ]
 
   blaze_rod:
     display: "<gold>Blaze Rod"
     category: combat
     icon: BLAZE_ROD
     items: [ BLAZE_ROD ]
-    points-per-tier: 2
-    tiers: [ 10, 50, 250, 1000, 4000 ]
+    tiers: [ 10, 50, 250, 1000 ]
 
   ender_pearl:
     display: "<dark_aqua>Ender Pearl"
     category: combat
     icon: ENDER_PEARL
     items: [ ENDER_PEARL ]
-    points-per-tier: 2
-    tiers: [ 10, 50, 250, 1000, 4000 ]
+    tiers: [ 10, 50, 250, 1000 ]
 
   phantom_membrane:
     display: "<gray>Phantom Membrane"
     category: combat
     icon: PHANTOM_MEMBRANE
     items: [ PHANTOM_MEMBRANE ]
-    points-per-tier: 2
-    tiers: [ 5, 25, 100, 500, 2000 ]
+    tiers: [ 5, 25, 100, 500 ]
 
   shulker_shell:
     display: "<light_purple>Shulker Shell"
     category: combat
     icon: SHULKER_SHELL
     items: [ SHULKER_SHELL ]
-    points-per-tier: 3
-    tiers: [ 2, 10, 50, 200, 1000 ]
+    tiers: [ 2, 10, 50, 200 ]
 
   # ----------------------------- Foraging ---------------------------
   logs:
@@ -300,28 +303,28 @@ collections:
     category: foraging
     icon: OAK_LOG
     items: [ "#logs" ]
-    tiers: [ 50, 250, 1000, 5000, 20000, 75000 ]
+    tiers: [ 50, 250, 1000, 5000, 20000 ]
 
   saplings:
     display: "<green>Saplings"
     category: foraging
     icon: OAK_SAPLING
     items: [ "#saplings" ]
-    tiers: [ 25, 100, 500, 2000, 8000 ]
+    tiers: [ 25, 100, 500, 2000 ]
 
   apples:
     display: "<red>Apples"
     category: foraging
     icon: APPLE
     items: [ APPLE ]
-    tiers: [ 10, 50, 250, 1000, 4000 ]
+    tiers: [ 10, 50, 250, 1000 ]
 
   bamboo:
     display: "<green>Bamboo"
     category: foraging
     icon: BAMBOO
     items: [ BAMBOO ]
-    tiers: [ 100, 500, 2000, 10000, 40000 ]
+    tiers: [ 100, 500, 2000, 10000 ]
 
   # ----------------------------- Fishing ----------------------------
   cod:
@@ -329,42 +332,55 @@ collections:
     category: fishing
     icon: COD
     items: [ COD ]
-    tiers: [ 20, 100, 500, 2000, 8000 ]
+    tiers: [ 20, 100, 500, 2000 ]
 
   salmon:
     display: "<red>Salmon"
     category: fishing
     icon: SALMON
     items: [ SALMON ]
-    tiers: [ 20, 100, 500, 2000, 8000 ]
+    tiers: [ 20, 100, 500, 2000 ]
 
   tropical_fish:
     display: "<light_purple>Tropical Fish"
     category: fishing
     icon: TROPICAL_FISH
     items: [ TROPICAL_FISH ]
-    points-per-tier: 2
-    tiers: [ 5, 25, 100, 500, 2000 ]
+    tiers: [ 5, 25, 100, 500 ]
 
   pufferfish:
     display: "<yellow>Pufferfish"
     category: fishing
     icon: PUFFERFISH
     items: [ PUFFERFISH ]
-    points-per-tier: 2
-    tiers: [ 5, 25, 100, 500, 2000 ]
+    tiers: [ 5, 25, 100, 500 ]
 
   ink_sac:
     display: "<dark_gray>Ink Sac"
     category: fishing
     icon: INK_SAC
     items: [ INK_SAC, GLOW_INK_SAC ]
-    tiers: [ 20, 100, 500, 2000, 8000 ]
+    tiers: [ 20, 100, 500, 2000 ]
 
   prismarine:
     display: "<dark_aqua>Prismarine"
     category: fishing
     icon: PRISMARINE_SHARD
     items: [ PRISMARINE_SHARD, PRISMARINE_CRYSTALS ]
-    points-per-tier: 2
-    tiers: [ 10, 50, 250, 1000, 4000 ]
+    tiers: [ 10, 50, 250, 1000 ]
+
+  # -------------------------------------------------------------------
+  #  Time served — hours played, fed by the playtime module.
+  # -------------------------------------------------------------------
+  # This is a collection rather than a per-hour trickle on purpose: the
+  # last tier below is the last skill point playtime will ever pay, and
+  # a player can see that in the menu instead of assuming it runs
+  # forever. Add tiers to raise the ceiling; delete the collection to
+  # stop paying for playtime entirely.
+  playtime:
+    display: "<light_purple>Time Served"
+    category: time
+    icon: CLOCK
+    source: playtime
+    unit: hours
+    tiers: [ 1, 5, 10, 25, 50, 100, 175, 275, 400, 550, 750, 1000 ]

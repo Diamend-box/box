@@ -83,14 +83,15 @@ public class CollectionListMenu extends AbstractMenu {
         CollectionTier next = collection.nextTier(amount);
 
         List<String> lore = new ArrayList<>();
-        lore.add("<gray>Gathered: <white>" + Text.number(amount));
+        lore.add("<gray>" + (collection.tracksItems() ? "Gathered" : "Total")
+                + ": <white>" + collection.format(amount));
         lore.add("<gray>Tier: <white>" + (tier == 0 ? "—" : Text.roman(tier))
                 + "<gray>/<white>" + Text.roman(Math.max(1, collection.tierCount())));
         if (next == null) {
             lore.add("<green>✔ Fully collected");
         } else {
-            lore.add("<gray>Next tier at <white>" + Text.number(next.amount())
-                    + " <dark_gray>(" + Text.number(collection.remainingFor(amount)) + " to go)");
+            lore.add("<gray>Next tier at <white>" + collection.format(next.amount())
+                    + " <dark_gray>(" + collection.format(collection.remainingFor(amount)) + " to go)");
             lore.add("<gray>" + Text.progressBar(collection.progress(amount), 20,
                     "<gold>■", "<dark_gray>■"));
             if (next.points() > 0) {

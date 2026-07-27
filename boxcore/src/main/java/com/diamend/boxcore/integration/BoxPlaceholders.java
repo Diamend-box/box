@@ -81,7 +81,9 @@ public class BoxPlaceholders extends PlaceholderExpansion {
                 return String.valueOf(profile.getNodes().size());
             }
             case "collected" -> {
-                return Text.number(profile.getTotalCollected());
+                CollectionsModule module = plugin.modules().get(CollectionsModule.class);
+                return Text.number(module == null
+                        ? profile.getTotalCollected() : module.collections().itemsCollected(profile));
             }
             default -> {
                 // fall through to the prefixed lookups

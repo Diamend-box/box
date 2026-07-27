@@ -53,7 +53,8 @@ public class CollectionsModule implements BoxModule {
         return new HubEntry(13, Material.CHEST, "<gold><bold>Collections",
                 List.of("<gray>Everything you've ever gathered.", "<gray>Each tier pays out skill points.", ""),
                 player -> {
-                    long total = plugin.profiles().get(player.getUniqueId()).getTotalCollected();
+                    long total = manager.itemsCollected(
+                            plugin.profiles().get(player.getUniqueId()));
                     return List.of(
                             "<gray>Tracked: <white>" + manager.count() + " <gray>collection(s)",
                             "<gray>Gathered: <white>" + com.diamend.boxcore.util.Text.number(total),

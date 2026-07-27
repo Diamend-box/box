@@ -29,9 +29,21 @@ skills:
 
   # Allow players to refund all of their spent points with /box respec.
   allow-respec: true
-  # Skill points burnt as a fee when respeccing (0 = free). The fee is
-  # taken from the refund, never from points the player hasn't spent.
-  respec-cost: 0
+
+  # What a respec costs, as an item the player has to hold in their
+  # inventory. Charging an item rather than skill points means a respec
+  # is something you obtain — a crate reward, a shop purchase, a boss
+  # drop — instead of a tax on the points you already earned.
+  respec-item:
+    # Material to consume. Set to "" for free respecs.
+    item: NETHER_STAR
+    # How many of it a respec costs.
+    amount: 1
+    # Optional: only items with exactly this display name count, so a
+    # plain nether star can't be used as a respec token. Supports colour
+    # codes. Leave blank to accept any item of the right type.
+    name: ""
+
   # Console commands run when a player respecs (e.g. an economy charge).
   # %player% and %uuid% are replaced.
   respec-commands: []
@@ -81,12 +93,16 @@ collections:
 # Playtime → skill points
 # ---------------------------------------------------------------------
 playtime:
-  # Grant points for time played, read from the server's own playtime
-  # statistic (so time played before installing BoxCore still counts).
-  hours-per-point: 5
-  # Never grant more than this many playtime points in total
-  # (0 = no cap).
-  max-points: 0
+  # Hours played are recorded into a collection, so the payout and the
+  # ceiling are the tiers of that collection — see collections.yml. That
+  # keeps the limit visible to players instead of implied.
+  #
+  # Hours are read from the server's own playtime statistic, so time
+  # played before installing BoxCore still counts.
+  #
+  # Which collection to feed. Leave blank to use whichever collection
+  # declares `source: playtime`.
+  collection: playtime
 
 # ---------------------------------------------------------------------
 # Storage
@@ -111,6 +127,8 @@ messages:
   node-maxed: "<yellow>That node is already at its maximum level."
   respec-done: "<green>Refunded <white><amount></white> skill point<plural>."
   respec-disabled: "<red>Respeccing is disabled on this server."
+  respec-needs-item: "<red>A respec costs <white><amount>x <item></white>. You have <white><have></white>."
+  respec-nothing: "<yellow>You haven't spent any skill points yet."
   tier-up: "<aqua><collection></aqua> <gray>collection reached tier <white><tier></white><gray>!"
   # Shown when the Second Chance perk saves a player from a killing blow.
   second-chance: "<gold>Second Chance <gray>pulled you back from the brink."

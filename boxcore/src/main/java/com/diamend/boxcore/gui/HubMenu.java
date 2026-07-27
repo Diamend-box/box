@@ -64,7 +64,12 @@ public class HubMenu extends AbstractMenu {
         lore.add("<gray>Skill points: <white>" + profile.getAvailablePoints()
                 + " <dark_gray>(" + profile.getPointsSpent() + " spent)");
         lore.add("<gray>Nodes unlocked: <white>" + profile.getNodes().size());
-        lore.add("<gray>Items gathered: <white>" + Text.number(profile.getTotalCollected()));
+        com.diamend.boxcore.collection.CollectionsModule collections =
+                plugin.modules().get(com.diamend.boxcore.collection.CollectionsModule.class);
+        if (collections != null) {
+            lore.add("<gray>Items gathered: <white>"
+                    + Text.number(collections.collections().itemsCollected(profile)));
+        }
         if (plugin.getConfig().getBoolean("skills.allow-respec", true)) {
             lore.add("");
             lore.add("<dark_gray>/box respec to refund your points");
