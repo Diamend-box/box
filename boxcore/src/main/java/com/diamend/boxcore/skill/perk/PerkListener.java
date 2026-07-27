@@ -133,7 +133,13 @@ public class PerkListener implements Listener {
         player.setHealth(Math.min(maxHealthOf(player), player.getHealth() + healed));
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    /**
+     * Runs at MONITOR and spawns the bonus loot itself rather than appending to
+     * {@code getDrops()}. Both matter: the drop list is what collections count,
+     * and a perk's bonus loot should be a bonus, not collection progress — the
+     * same rule the ore and log bounties follow.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onKill(EntityDeathEvent event) {
         Player killer = event.getEntity().getKiller();
         if (killer == null) {
@@ -151,14 +157,14 @@ public class PerkListener implements Listener {
         }
 
         double chance = held.chance(Perk.MOB_LOOT);
-        if (chance > 0 && roll(chance)) {
-            List<ItemStack> extra = new ArrayList<>();
-            for (ItemStack drop : event.getDrops()) {
-                if (drop != null && !drop.getType().isAir()) {
-                    extra.add(drop.clone());
-                }
+        if (chance <= 0 || !roll(chance)) {
+            return;
+        }
+        LivingEntity dead = event.getEntity();
+        for (ItemStack drop : new ArrayList<>(event.getDrops())) {
+            if (drop != null && !drop.getType().isAir()) {
+                dead.getWorld().dropItemNaturally(dead.getLocation(), drop.clone());
             }
-            event.getDrops().addAll(extra);
         }
     }
 

@@ -200,10 +200,11 @@ leave it off to take the default; add `per-level: false` to stop it scaling
 | `enchant_discount` | Cheaper enchanting table offers |
 | `self_repair` | Mends the held item every 5 seconds |
 
-Two deliberate interactions worth knowing: `auto_smelt` changes what lands on
-the floor but collections still count the **raw** block drop, and the extra
-items from `ore_bounty` / `log_bounty` don't count toward collections either.
-Collections stay a measure of what you *broke*, not what you were paid for it.
+One deliberate rule runs through all of them: **perk loot is not collection
+progress**. `auto_smelt` changes what lands on the floor but collections still
+count the raw block drop, and the bonus items from `ore_bounty`, `log_bounty`
+and `mob_loot` don't count at all. Collections stay a measure of what you
+broke and killed, not of what your perks paid you for it.
 
 ### A collection
 
