@@ -29,6 +29,16 @@ class PerkMathTest {
     }
 
     @Test
+    void thePerksThatDontFitABoxPvpServerAreGone() {
+        // Powder snow, spoiled food, anvils, durability, crafting and enchanting
+        // are survival-server concerns; none of them decide a box fight.
+        for (String retired : new String[] { "no_freeze", "safe_stomach", "anvil_discount",
+                "tool_saver", "bonus_craft", "enchant_discount", "self_repair" }) {
+            assertNull(Perk.byName(retired), retired + " should no longer resolve");
+        }
+    }
+
+    @Test
     void everyPerkHasADistinctIdAndADescription() {
         for (Perk perk : Perk.values()) {
             assertSame(perk, Perk.byName(perk.id()), perk + " resolves from its own id");
@@ -69,7 +79,8 @@ class PerkMathTest {
         assertEquals("25% chance to double a mob's drops", Perk.MOB_LOOT.describe(0.25));
         assertEquals("Speed II for 6s after a kill", Perk.ADRENALINE.describe(6));
         assertEquals("Survive one killing blow every 15 min", Perk.SECOND_CHANCE.describe(15));
-        assertEquals("Mends +2 durability on your held item every 5s", Perk.SELF_REPAIR.describe(2));
+        assertEquals("+15% damage to other players", Perk.PLAYER_DAMAGE.describe(0.15));
+        assertEquals("Your melee hits poison the target for 3s", Perk.VENOM_STRIKE.describe(3));
         // A flag perk ignores its amount entirely.
         assertEquals(Perk.REPLANT.describe(1), Perk.REPLANT.describe(99));
         assertTrue(Perk.REPLANT.isFlag());

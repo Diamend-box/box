@@ -21,15 +21,41 @@ import java.util.Map;
  */
 public enum Perk {
 
+    // --- Fighting ---------------------------------------------------------
     LIFESTEAL(Kind.PERCENT, Stacking.SUM, 0.04,
             "Heal {} of the melee damage you deal"),
     ADRENALINE(Kind.SECONDS, Stacking.SUM, 3,
             "Speed II for {} after a kill"),
     FINISHER(Kind.PERCENT, Stacking.SUM, 0.08,
             "{} damage to targets below a third health"),
+    PLAYER_DAMAGE(Kind.PERCENT, Stacking.SUM, 0.15,
+            "{} damage to other players"),
+    PROJECTILE_DAMAGE(Kind.PERCENT, Stacking.SUM, 0.08,
+            "{} damage with bows, crossbows and tridents"),
+    VENOM_STRIKE(Kind.SECONDS, Stacking.MAX, 3,
+            "Your melee hits poison the target for {}"),
+    ARROW_SAVER(Kind.CHANCE, Stacking.SUM, 0.15,
+            "{} chance not to spend the arrow"),
     MOB_LOOT(Kind.CHANCE, Stacking.SUM, 0.25,
             "{} chance to double a mob's drops"),
 
+    // --- Staying alive ----------------------------------------------------
+    POTION_POWER(Kind.PERCENT, Stacking.SUM, 0.15,
+            "Your splash potions land {} stronger"),
+    GAPPLE_BOOST(Kind.PERCENT, Stacking.SUM, 0.25,
+            "Golden apple effects last {} longer"),
+    // The cooldown is LAST_BREATH_COOLDOWN_SECONDS in PerkListener — keep the
+    // number in this sentence in step with it.
+    LAST_BREATH(Kind.SECONDS, Stacking.SUM, 4,
+            "Speed II and Resistance I for {} when dropped low (30s cooldown)"),
+    DEBUFF_RESIST(Kind.PERCENT, Stacking.SUM, 0.15,
+            "Harmful potion effects on you are {} shorter"),
+    SECOND_CHANCE(Kind.MINUTES, Stacking.MIN, 15,
+            "Survive one killing blow every {}"),
+    HUNGER_SAVER(Kind.PERCENT, Stacking.SUM, 0.15,
+            "{} less exhaustion from everything you do"),
+
+    // --- Grinding ---------------------------------------------------------
     ORE_BOUNTY(Kind.CHANCE, Stacking.SUM, 0.08,
             "{} chance to double an ore's drops"),
     LOG_BOUNTY(Kind.CHANCE, Stacking.SUM, 0.10,
@@ -40,28 +66,8 @@ public enum Perk {
             "Fully grown crops replant themselves"),
     FISHING_SPEED(Kind.PERCENT, Stacking.SUM, 0.12,
             "Fish bite {} sooner"),
-
-    HUNGER_SAVER(Kind.PERCENT, Stacking.SUM, 0.15,
-            "{} less exhaustion from everything you do"),
-    SECOND_CHANCE(Kind.MINUTES, Stacking.MIN, 15,
-            "Survive one killing blow every {}"),
-    NO_FREEZE(Kind.FLAG, Stacking.MAX, 1,
-            "Powder snow can no longer freeze you"),
-    SAFE_STOMACH(Kind.FLAG, Stacking.MAX, 1,
-            "Bad food can't poison or starve you"),
-
     XP_BOOST(Kind.PERCENT, Stacking.SUM, 0.15,
-            "{} experience from every source"),
-    ANVIL_DISCOUNT(Kind.PERCENT, Stacking.SUM, 0.20,
-            "Anvil repairs cost {} fewer levels"),
-    TOOL_SAVER(Kind.CHANCE, Stacking.SUM, 0.10,
-            "{} chance to spare a point of durability"),
-    BONUS_CRAFT(Kind.CHANCE, Stacking.SUM, 0.10,
-            "{} chance for a bonus item when you craft"),
-    ENCHANT_DISCOUNT(Kind.PERCENT, Stacking.SUM, 0.15,
-            "Enchanting offers cost {} fewer levels"),
-    SELF_REPAIR(Kind.FLAT, Stacking.SUM, 2,
-            "Mends {} durability on your held item every 5s");
+            "{} experience from every source");
 
     /** How a perk's amount reads in lore. */
     public enum Kind {
@@ -162,13 +168,16 @@ public enum Perk {
             }
             map.put("life_steal", LIFESTEAL);
             map.put("vampirism", LIFESTEAL);
+            map.put("bow_damage", PROJECTILE_DAMAGE);
+            map.put("pvp_damage", PLAYER_DAMAGE);
+            map.put("poison_strike", VENOM_STRIKE);
+            map.put("infinity", ARROW_SAVER);
+            map.put("gapple", GAPPLE_BOOST);
             map.put("autosmelt", AUTO_SMELT);
             map.put("smelt_touch", AUTO_SMELT);
             map.put("auto_replant", REPLANT);
             map.put("xp_bonus", XP_BOOST);
             map.put("exp_boost", XP_BOOST);
-            map.put("unbreaking", TOOL_SAVER);
-            map.put("mending", SELF_REPAIR);
             map.put("cheat_death", SECOND_CHANCE);
             index = map;
         }

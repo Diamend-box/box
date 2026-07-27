@@ -6,11 +6,6 @@ import com.diamend.boxcore.skill.NodeEffects;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillTreeManager;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -24,19 +19,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * broken — so walking a player's node map each time would be wasteful. The
  * totals are computed once and thrown away whenever the player's nodes change,
  * which {@code EffectApplier} already knows how to notice.
+ *
+ * <p>This is also where the per-perk cooldowns live, for the perks that fire on
+ * a trigger rather than applying continuously.
  */
 public class PerkService {
-
-    /** How often {@link Perk#SELF_REPAIR} ticks, in server ticks. */
-    private static final long MEND_INTERVAL_TICKS = 100L;
 
     private final ProfileManager profiles;
     private final SkillTreeManager trees;
     private final Map<UUID, PerkSet> cache = new ConcurrentHashMap<>();
-    /** When each player's Second Chance comes off cooldown (epoch millis). */
-    private final Map<UUID, Long> secondChanceReady = new ConcurrentHashMap<>();
-
-    private BukkitTask mendTask;
+    /** Player → perk → when it comes off cooldown (epoch millis). */
+    private final Map<UUID, Map<Perk, Long>> cooldowns = new ConcurrentHashMap<>();
 
     public PerkService(ProfileManager profiles, SkillTreeManager trees) {
         this.profiles = profiles;
@@ -66,7 +59,7 @@ public class PerkService {
     public void forget(UUID uuid) {
         if (uuid != null) {
             cache.remove(uuid);
-            secondChanceReady.remove(uuid);
+            cooldowns.remove(uuid);
         }
     }
 
@@ -88,72 +81,33 @@ public class PerkService {
     }
 
     // ------------------------------------------------------------------
-    // Second Chance
+    // Cooldowns
     // ------------------------------------------------------------------
 
     /**
-     * Claims a player's Second Chance if it's off cooldown, starting the next
-     * cooldown as a side effect.
+     * Claims a triggered perk if it's off cooldown, starting the next cooldown
+     * as a side effect.
      *
-     * @return true when the death should be cancelled
+     * @return true when the perk should fire
      */
-    public boolean useSecondChance(UUID uuid, double cooldownMinutes) {
+    public boolean claim(UUID uuid, Perk perk, long cooldownMillis) {
         long now = System.currentTimeMillis();
-        Long ready = secondChanceReady.get(uuid);
+        Map<Perk, Long> forPlayer = cooldowns.computeIfAbsent(uuid, key -> new ConcurrentHashMap<>());
+        Long ready = forPlayer.get(perk);
         if (ready != null && now < ready) {
             return false;
         }
-        long cooldown = (long) Math.max(1.0, cooldownMinutes) * 60_000L;
-        secondChanceReady.put(uuid, now + cooldown);
+        forPlayer.put(perk, now + Math.max(0L, cooldownMillis));
         return true;
     }
 
-    /** Seconds until a player's Second Chance is ready again, or 0. */
-    public long secondChanceCooldown(UUID uuid) {
-        Long ready = secondChanceReady.get(uuid);
+    /** Seconds until a triggered perk is ready again, or 0. */
+    public long cooldownRemaining(UUID uuid, Perk perk) {
+        Map<Perk, Long> forPlayer = cooldowns.get(uuid);
+        Long ready = forPlayer == null ? null : forPlayer.get(perk);
         if (ready == null) {
             return 0L;
         }
         return Math.max(0L, (ready - System.currentTimeMillis()) / 1000L);
-    }
-
-    // ------------------------------------------------------------------
-    // Self repair
-    // ------------------------------------------------------------------
-
-    /**
-     * Starts the {@link Perk#SELF_REPAIR} timer. It's a timer rather than an
-     * event because there is no "item was used" event that covers every way an
-     * item takes wear.
-     */
-    public void startMending(Plugin plugin) {
-        stop();
-        mendTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                int points = (int) Math.round(of(player).value(Perk.SELF_REPAIR));
-                if (points > 0) {
-                    mend(player.getInventory().getItemInMainHand(), points);
-                }
-            }
-        }, MEND_INTERVAL_TICKS, MEND_INTERVAL_TICKS);
-    }
-
-    public void stop() {
-        if (mendTask != null) {
-            mendTask.cancel();
-            mendTask = null;
-        }
-    }
-
-    private void mend(ItemStack stack, int points) {
-        if (stack == null || stack.getType().isAir() || stack.getType().getMaxDurability() <= 0) {
-            return;
-        }
-        ItemMeta meta = stack.getItemMeta();
-        if (!(meta instanceof Damageable damageable) || damageable.getDamage() <= 0) {
-            return;
-        }
-        damageable.setDamage(Math.max(0, damageable.getDamage() - points));
-        stack.setItemMeta(meta);
     }
 }

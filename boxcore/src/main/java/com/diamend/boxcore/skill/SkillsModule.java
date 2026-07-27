@@ -54,7 +54,6 @@ public class SkillsModule implements BoxModule {
                 new PerkListener(plugin, perkService, plugin.messages()), plugin);
 
         startRefreshTask();
-        perkService.startMending(plugin);
 
         // Catch anyone already online (a /reload, or a module re-enable).
         for (Player player : plugin.getServer().getOnlinePlayers()) {
@@ -70,7 +69,6 @@ public class SkillsModule implements BoxModule {
             refreshTask = null;
         }
         if (perkService != null) {
-            perkService.stop();
             perkService.invalidateAll();
         }
         if (effectApplier != null) {

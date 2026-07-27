@@ -89,6 +89,11 @@ class BoxCorePluginTest {
         assertNull(skills.trees().getNode("gathering.tunnel_rat"), "Tunnel Rat removed");
         assertNull(skills.trees().getNode("gathering.angler"), "Angler removed");
         assertNull(skills.trees().getNode("wayfarer.keen_eye"), "Keen Eye removed");
+        // And the survival-flavoured nodes that a boxpvp server has no use for.
+        assertNull(skills.trees().getTree("artisan"), "the Artisan tree is gone");
+        assertNull(skills.trees().getNode("wayfarer.warm_blooded"), "Warm Blooded removed");
+        assertNull(skills.trees().getNode("wayfarer.iron_stomach"), "Iron Stomach removed");
+        assertNotNull(skills.trees().getTree("duelist"), "the Duelist tree replaced it");
         for (SkillNode node : skills.trees().nodesByKey().values()) {
             for (NodeEffects.PotionBonus potion : node.getEffects().potions()) {
                 assertNotEquals("haste", potion.type().getKey().getKey(),
@@ -162,15 +167,20 @@ class BoxCorePluginTest {
     }
 
     @Test
-    void secondChanceRunsOnACooldown() {
+    void triggeredPerksRunOnTheirOwnCooldowns() {
         PlayerMock player = server.addPlayer();
         SkillsModule skills = plugin.modules().get(SkillsModule.class);
 
-        assertTrue(skills.perks().useSecondChance(player.getUniqueId(), 15),
+        assertTrue(skills.perks().claim(player.getUniqueId(), Perk.SECOND_CHANCE, 900_000L),
                 "the first killing blow is survived");
-        assertFalse(skills.perks().useSecondChance(player.getUniqueId(), 15),
+        assertFalse(skills.perks().claim(player.getUniqueId(), Perk.SECOND_CHANCE, 900_000L),
                 "the second one, straight away, is not");
-        assertTrue(skills.perks().secondChanceCooldown(player.getUniqueId()) > 0);
+        assertTrue(skills.perks().cooldownRemaining(player.getUniqueId(), Perk.SECOND_CHANCE) > 0);
+
+        // Cooldowns are tracked per perk, not per player.
+        assertTrue(skills.perks().claim(player.getUniqueId(), Perk.LAST_BREATH, 30_000L),
+                "a different perk isn't blocked by another one's cooldown");
+        assertEquals(0, skills.perks().cooldownRemaining(player.getUniqueId(), Perk.MOB_LOOT));
     }
 
     @Test

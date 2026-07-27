@@ -37,15 +37,16 @@ Three ship today:
 ## Features
 
 - 🌳 **Skill trees** defined entirely in `trees.yml` — slots, icons, costs,
-  prerequisites, multi-level nodes, per-tree permissions. **44 nodes across four
-  trees** ship as the default.
+  prerequisites, multi-level nodes, per-tree permissions. **45 nodes across four
+  trees** ship as the default, tuned for a boxpvp server.
 - ⚡ **Real effects, not just cosmetics** — nodes grant vanilla **attribute
   modifiers** (health, damage, armour, mining speed, reach, gravity…),
   **permanent potion effects**, **permissions**, and **console commands** on
   unlock. Any mix, on any node.
-- 🎣 **Perks for everything an attribute can't say** — lifesteal, auto-smelt,
-  crop replanting, bonus ore and log drops, cheaper anvils, surviving a killing
-  blow. Nineteen of them, each a one-line entry in `trees.yml`.
+- ⚔️ **Perks for everything an attribute can't say** — lifesteal, bonus damage
+  to players, poison on hit, arrows that don't get spent, stronger splash
+  potions, longer gapples, surviving a killing blow, auto-smelt, bonus ore
+  drops. Twenty of them, each a one-line entry in `trees.yml`.
 - 📈 **Effects scale with level** and their lore is **generated from the actual
   numbers**, so a description can never drift out of sync with what a node does.
 - 📦 **Collections** — every item a player has ever gathered, in categories,
@@ -178,27 +179,40 @@ Perks are the effects vanilla has no attribute for. Give one an `amount` or
 leave it off to take the default; add `per-level: false` to stop it scaling
 (what a cooldown wants).
 
+**Fighting**
+
 | Perk | What it does |
 |------|--------------|
 | `lifesteal` | Heals a share of the melee damage you deal |
 | `adrenaline` | Speed II for N seconds after a kill |
 | `finisher` | Bonus damage to targets below a third health |
+| `player_damage` | Bonus damage to other players |
+| `projectile_damage` | Bonus bow, crossbow and trident damage |
+| `venom_strike` | Your melee hits poison the target for N seconds |
+| `arrow_saver` | Chance not to spend the arrow |
 | `mob_loot` | Chance to double a mob's drops |
+
+**Staying alive**
+
+| Perk | What it does |
+|------|--------------|
+| `potion_power` | Your splash potions land stronger |
+| `gapple_boost` | Golden apple effects last longer |
+| `last_breath` | Speed II + Resistance I when a hit drops you low (30s cooldown) |
+| `debuff_resist` | Incoming harmful potion effects are shorter |
+| `second_chance` | Survive a killing blow; `amount` is the cooldown in minutes |
+| `hunger_saver` | Less exhaustion from everything you do |
+
+**Grinding**
+
+| Perk | What it does |
+|------|--------------|
 | `ore_bounty` | Chance to double an ore's drops |
 | `log_bounty` | Chance for a bonus log |
 | `auto_smelt` | Ores, sand and cobble drop already smelted |
 | `replant` | Fully grown crops replant themselves, one seed from the harvest |
 | `fishing_speed` | Fish bite sooner |
-| `hunger_saver` | Less exhaustion from everything you do |
-| `second_chance` | Survive a killing blow; `amount` is the cooldown in minutes |
-| `no_freeze` | Immune to powder snow |
-| `safe_stomach` | Bad food can't poison or starve you |
 | `xp_boost` | More XP from every source |
-| `anvil_discount` | Cheaper anvil repairs |
-| `tool_saver` | Chance to spare a point of durability |
-| `bonus_craft` | Chance for a bonus crafted item |
-| `enchant_discount` | Cheaper enchanting table offers |
-| `self_repair` | Mends the held item every 5 seconds |
 
 One deliberate rule runs through all of them: **perk loot is not collection
 progress**. `auto_smelt` changes what lands on the floor but collections still
@@ -297,27 +311,30 @@ server**, not a tuned economy. The actual numbers as shipped:
 
 | | |
 |---|---|
-| Nodes | **44** across four trees |
-| Points to max everything | **264** (combat 89, gathering 78, wayfarer 59, artisan 38) |
+| Nodes | **45** across four trees |
+| Points to max everything | **281** (combat 89, gathering 84, wayfarer 73, duelist 35) |
 | Points available from collections, fully maxed | **278** across 217 tiers |
 | Points from playtime | 1 per 5 hours, uncapped |
 
-So maxing every collection just about buys every node, with playtime as the
-slack — but the top collection tiers are deliberately brutal (150,000
-cobblestone, 512 ancient debris) and the first few tiers of everything come
-quickly. Expect early points to arrive fast and a completed tree to be a
-long-term goal rather than a milestone.
+Collections alone don't quite buy everything, so playtime is what closes the
+gap — deliberately, since a fully-maxed player should be a long-term fixture
+rather than a two-week project. The top collection tiers are brutal on purpose
+(150,000 cobblestone, 512 ancient debris) while the first few tiers of
+everything come quickly, so early points arrive fast and then slow down.
 
 The strongest nodes (`Executioner`, `Trophy Hunter`, `Last Stand`, `Cave Eyes`,
-`Deep Breath`, `Featherweight`, `Second Chance`, `Soul of the Forge`) sit behind
-10–12 points already spent in their own tree, so no one rushes straight to a
-capstone.
+`Deep Breath`, `Featherweight`, `Second Chance`, `Headhunter`, `Venom Strike`)
+sit behind 10–12 points already spent in their own tree, so no one rushes
+straight to a capstone.
 
-The four trees are shaped differently on purpose. **Combat** and **Gathering**
+The four trees are shaped for a **boxpvp** server. **Combat** and **Gathering**
 are wide (four parallel lines each) so there's always something affordable;
-**Wayfarer** is the mobility-and-survival tree; **Artisan** is small,
-late-game and entirely made of perks that pay back the points you spend
-elsewhere.
+**Wayfarer** covers mobility and the grit to survive a bad fight; **Duelist**
+is small and late-game, all bows, potions and player-versus-player edges.
+
+Nothing here is a survival-server convenience — no anvil discounts, no
+durability savers, no crafting or enchanting bonuses. Every node either wins
+fights or speeds up the grind that funds them.
 
 If that's too generous, the levers in order of bluntness are: `points-per-tier`
 on individual collections, `playtime.hours-per-point`, and node `cost`/`costs`.

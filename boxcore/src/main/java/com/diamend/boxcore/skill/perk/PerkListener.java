@@ -11,28 +11,25 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.enchantments.EnchantmentOffer;
 import org.bukkit.entity.FishHook;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDropItemEvent;
-import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExhaustionEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
-import org.bukkit.event.inventory.CraftItemEvent;
-import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.event.player.PlayerFishEvent;
-import org.bukkit.event.player.PlayerItemDamageEvent;
-import org.bukkit.inventory.AnvilInventory;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.FurnaceRecipe;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
@@ -62,8 +59,18 @@ import java.util.logging.Level;
  */
 public class PerkListener implements Listener {
 
+    /** How long {@link Perk#LAST_BREATH} waits before it can fire again. */
+    private static final long LAST_BREATH_COOLDOWN_SECONDS = 30L;
+
+    /** Health fraction at or below which "badly hurt" perks trigger. */
+    private static final double HURT_THRESHOLD = 0.34;
+
     /** Crops that replant themselves, and the drop that pays for the seed. */
     private static final Map<Material, Material> REPLANTABLE = replantable();
+
+    /** What {@link Perk#GAPPLE_BOOST} lengthens after a golden apple. */
+    private static final String[] GAPPLE_EFFECTS =
+            { "absorption", "regeneration", "fire_resistance", "resistance" };
 
     /**
      * Block drops {@link Perk#AUTO_SMELT} will run through a furnace recipe.
@@ -78,14 +85,17 @@ public class PerkListener implements Listener {
             "ANCIENT_DEBRIS", "SAND", "RED_SAND", "CLAY_BALL",
             "COBBLESTONE", "COBBLED_DEEPSLATE", "NETHERRACK");
 
+    private static final Set<Material> GOLDEN_APPLES =
+            materials("GOLDEN_APPLE", "ENCHANTED_GOLDEN_APPLE");
+
     private final Plugin plugin;
     private final PerkService perks;
     private final Messages messages;
 
     /** Built on first use: block drop → smelted result. */
     private Map<Material, ItemStack> smelting;
-    /** Built on first use: the potion effects a bad meal can inflict. */
-    private Set<PotionEffectType> foodAilments;
+    /** Built on first use: the potion effects worth shortening or resisting. */
+    private Set<PotionEffectType> harmful;
 
     public PerkListener(Plugin plugin, PerkService perks, Messages messages) {
         this.plugin = plugin;
@@ -94,25 +104,46 @@ public class PerkListener implements Listener {
     }
 
     // ------------------------------------------------------------------
-    // Combat
+    // Dealing damage
     // ------------------------------------------------------------------
 
-    /** Bonus damage against a badly wounded target. Modifies, so not MONITOR. */
+    /**
+     * All the damage-scaling perks, in one pass. They multiply together, so
+     * hitting a wounded player with a bow can stack Finisher, Headhunter and
+     * Marksman — which is the point of specialising.
+     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onFinishingBlow(EntityDamageByEntityEvent event) {
+    public void onDealDamage(EntityDamageByEntityEvent event) {
         Player player = attacker(event);
         if (player == null || !(event.getEntity() instanceof LivingEntity victim)) {
             return;
         }
-        double bonus = perks.of(player).value(Perk.FINISHER);
-        if (bonus <= 0) {
+        PerkSet held = perks.of(player);
+        if (held.isEmpty()) {
             return;
         }
-        double maxHealth = maxHealthOf(victim);
-        if (maxHealth <= 0 || victim.getHealth() / maxHealth > 0.34) {
-            return;
+        double multiplier = 1.0;
+
+        double wounded = held.value(Perk.FINISHER);
+        if (wounded > 0 && healthFraction(victim) <= HURT_THRESHOLD) {
+            multiplier *= 1.0 + wounded;
         }
-        event.setDamage(event.getDamage() * (1.0 + bonus));
+        double versusPlayers = held.value(Perk.PLAYER_DAMAGE);
+        if (versusPlayers > 0 && victim instanceof Player) {
+            multiplier *= 1.0 + versusPlayers;
+        }
+        double ranged = held.value(Perk.PROJECTILE_DAMAGE);
+        if (ranged > 0 && event.getDamager() instanceof Projectile) {
+            multiplier *= 1.0 + ranged;
+        }
+        if (multiplier != 1.0) {
+            event.setDamage(event.getDamage() * multiplier);
+        }
+
+        double venom = held.value(Perk.VENOM_STRIKE);
+        if (venom > 0 && event.getDamager() instanceof Player) {
+            givePotion(victim, "poison", (int) (venom * 20), 0);
+        }
     }
 
     /** Heals a share of the damage a melee hit actually landed. */
@@ -133,6 +164,17 @@ public class PerkListener implements Listener {
         player.setHealth(Math.min(maxHealthOf(player), player.getHealth() + healed));
     }
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onShoot(EntityShootBowEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        double chance = perks.of(player).chance(Perk.ARROW_SAVER);
+        if (chance > 0 && roll(chance)) {
+            event.setConsumeItem(false);
+        }
+    }
+
     /**
      * Runs at MONITOR and spawns the bonus loot itself rather than appending to
      * {@code getDrops()}. Both matter: the drop list is what collections count,
@@ -151,9 +193,8 @@ public class PerkListener implements Listener {
         }
 
         double seconds = held.value(Perk.ADRENALINE);
-        PotionEffectType speed = Registries.potionEffect("speed");
-        if (seconds > 0 && speed != null) {
-            killer.addPotionEffect(new PotionEffect(speed, (int) (seconds * 20), 1, true, true, true));
+        if (seconds > 0) {
+            givePotion(killer, "speed", (int) (seconds * 20), 1);
         }
 
         double chance = held.chance(Perk.MOB_LOOT);
@@ -169,7 +210,152 @@ public class PerkListener implements Listener {
     }
 
     // ------------------------------------------------------------------
-    // Gathering
+    // Taking damage
+    // ------------------------------------------------------------------
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        PerkSet held = perks.of(player);
+        if (held.isEmpty()) {
+            return;
+        }
+        double remaining = player.getHealth() - event.getFinalDamage();
+
+        if (held.has(Perk.SECOND_CHANCE) && remaining <= 0
+                && perks.claim(player.getUniqueId(), Perk.SECOND_CHANCE,
+                        (long) held.value(Perk.SECOND_CHANCE) * 60_000L)) {
+            event.setCancelled(true);
+            surviveKillingBlow(player);
+            return;
+        }
+
+        double burst = held.value(Perk.LAST_BREATH);
+        if (burst <= 0 || remaining <= 0) {
+            return;
+        }
+        // Only when this hit is what put them in trouble — otherwise every
+        // subsequent hit in the same fight would re-arm it.
+        double max = maxHealthOf(player);
+        boolean wasSafe = max <= 0 || player.getHealth() / max > HURT_THRESHOLD;
+        if (!wasSafe || remaining / max > HURT_THRESHOLD) {
+            return;
+        }
+        if (perks.claim(player.getUniqueId(), Perk.LAST_BREATH,
+                LAST_BREATH_COOLDOWN_SECONDS * 1000L)) {
+            givePotion(player, "speed", (int) (burst * 20), 1);
+            givePotion(player, "resistance", (int) (burst * 20), 0);
+        }
+    }
+
+    private void surviveKillingBlow(Player player) {
+        player.setFireTicks(0);
+        player.setFreezeTicks(0);
+        if (player.getHealth() < 4.0) {
+            player.setHealth(Math.min(4.0, maxHealthOf(player)));
+        }
+        givePotion(player, "regeneration", 200, 1);
+        givePotion(player, "absorption", 600, 0);
+        givePotion(player, "resistance", 100, 1);
+        messages.send(player, "second-chance");
+        try {
+            player.getWorld().playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
+        } catch (Throwable ignored) {
+            // Feedback only.
+        }
+    }
+
+    /**
+     * Shortens incoming debuffs.
+     *
+     * <p>The event can only be cancelled, not edited, so a shortened copy is
+     * added in its place. Effects we add ourselves arrive with cause
+     * {@code PLUGIN} and are skipped, which is also what stops this recursing.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDebuff(EntityPotionEffectEvent event) {
+        if (!(event.getEntity() instanceof Player player)
+                || event.getCause() == EntityPotionEffectEvent.Cause.PLUGIN) {
+            return;
+        }
+        PotionEffect incoming = event.getNewEffect();
+        if (incoming == null || !harmful().contains(incoming.getType())) {
+            return;
+        }
+        if (incoming.getDuration() <= 0 || incoming.getDuration() == PotionEffect.INFINITE_DURATION) {
+            return;
+        }
+        double shorter = perks.of(player).value(Perk.DEBUFF_RESIST);
+        if (shorter <= 0) {
+            return;
+        }
+        int duration = (int) Math.max(1, incoming.getDuration() * Math.max(0.05, 1.0 - shorter));
+        event.setCancelled(true);
+        player.addPotionEffect(new PotionEffect(incoming.getType(), duration,
+                incoming.getAmplifier(), incoming.isAmbient(), incoming.hasParticles(),
+                incoming.hasIcon()));
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSplash(PotionSplashEvent event) {
+        if (!(event.getEntity().getShooter() instanceof Player thrower)) {
+            return;
+        }
+        double stronger = perks.of(thrower).value(Perk.POTION_POWER);
+        if (stronger <= 0) {
+            return;
+        }
+        for (LivingEntity affected : event.getAffectedEntities()) {
+            double intensity = event.getIntensity(affected);
+            event.setIntensity(affected, Math.min(1.0, intensity * (1.0 + stronger)));
+        }
+    }
+
+    /** Stretches the effects a golden apple just granted. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEat(PlayerItemConsumeEvent event) {
+        if (!GOLDEN_APPLES.contains(event.getItem().getType())) {
+            return;
+        }
+        Player player = event.getPlayer();
+        double longer = perks.of(player).value(Perk.GAPPLE_BOOST);
+        if (longer <= 0) {
+            return;
+        }
+        // The effects aren't applied until after the event, so extend next tick.
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            for (String name : GAPPLE_EFFECTS) {
+                PotionEffectType type = Registries.potionEffect(name);
+                PotionEffect active = type == null ? null : player.getPotionEffect(type);
+                if (active == null || active.getDuration() == PotionEffect.INFINITE_DURATION) {
+                    continue;
+                }
+                player.addPotionEffect(new PotionEffect(type,
+                        (int) (active.getDuration() * (1.0 + longer)), active.getAmplifier(),
+                        active.isAmbient(), active.hasParticles(), active.hasIcon()));
+            }
+        });
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onExhaustion(EntityExhaustionEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        double saved = perks.of(player).value(Perk.HUNGER_SAVER);
+        if (saved <= 0) {
+            return;
+        }
+        event.setExhaustion((float) (event.getExhaustion() * Math.max(0.0, 1.0 - saved)));
+    }
+
+    // ------------------------------------------------------------------
+    // Grinding
     // ------------------------------------------------------------------
 
     /**
@@ -285,83 +471,6 @@ public class PerkListener implements Listener {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Survival
-    // ------------------------------------------------------------------
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onExhaustion(EntityExhaustionEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
-            return;
-        }
-        double saved = perks.of(player).value(Perk.HUNGER_SAVER);
-        if (saved <= 0) {
-            return;
-        }
-        event.setExhaustion((float) (event.getExhaustion() * Math.max(0.0, 1.0 - saved)));
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onDamage(EntityDamageEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
-            return;
-        }
-        PerkSet held = perks.of(player);
-        if (held.isEmpty()) {
-            return;
-        }
-        if (held.has(Perk.NO_FREEZE) && event.getCause() == EntityDamageEvent.DamageCause.FREEZE) {
-            event.setCancelled(true);
-            player.setFreezeTicks(0);
-            return;
-        }
-        if (!held.has(Perk.SECOND_CHANCE) || event.getFinalDamage() < player.getHealth()) {
-            return;
-        }
-        if (!perks.useSecondChance(player.getUniqueId(), held.value(Perk.SECOND_CHANCE))) {
-            return;
-        }
-        event.setCancelled(true);
-        surviveKillingBlow(player);
-    }
-
-    private void surviveKillingBlow(Player player) {
-        player.setFireTicks(0);
-        player.setFreezeTicks(0);
-        if (player.getHealth() < 4.0) {
-            player.setHealth(Math.min(4.0, maxHealthOf(player)));
-        }
-        givePotion(player, "regeneration", 200, 1);
-        givePotion(player, "absorption", 600, 0);
-        givePotion(player, "resistance", 100, 1);
-        messages.send(player, "second-chance");
-        try {
-            player.getWorld().playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
-        } catch (Throwable ignored) {
-            // Feedback only.
-        }
-    }
-
-    /** Stops rotten flesh and friends from doing what they normally do. */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onFoodEffect(EntityPotionEffectEvent event) {
-        if (!(event.getEntity() instanceof Player player)
-                || event.getCause() != EntityPotionEffectEvent.Cause.FOOD) {
-            return;
-        }
-        PotionEffect incoming = event.getNewEffect();
-        if (incoming == null || !ailments().contains(incoming.getType())) {
-            return;
-        }
-        if (perks.of(player).has(Perk.SAFE_STOMACH)) {
-            event.setCancelled(true);
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // Artisan
-    // ------------------------------------------------------------------
-
     @EventHandler(priority = EventPriority.HIGH)
     public void onExperience(PlayerExpChangeEvent event) {
         if (event.getAmount() <= 0) {
@@ -372,79 +481,6 @@ public class PerkListener implements Listener {
             return;
         }
         event.setAmount((int) Math.round(event.getAmount() * (1.0 + bonus)));
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onToolWear(PlayerItemDamageEvent event) {
-        double chance = perks.of(event.getPlayer()).chance(Perk.TOOL_SAVER);
-        if (chance > 0 && roll(chance)) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onCraft(CraftItemEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player) || event.getRecipe() == null) {
-            return;
-        }
-        double chance = perks.of(player).chance(Perk.BONUS_CRAFT);
-        if (chance <= 0 || !roll(chance)) {
-            return;
-        }
-        ItemStack result = event.getRecipe().getResult();
-        if (result == null || result.getType().isAir()) {
-            return;
-        }
-        ItemStack bonus = result.clone();
-        // Next tick: the crafting grid is still being settled during the event.
-        plugin.getServer().getScheduler().runTask(plugin, () -> give(player, bonus));
-    }
-
-    // AnvilInventory's cost accessors are soft-deprecated in favour of AnvilView,
-    // which not every 1.21.x build exposes; the inventory route works on all of them.
-    @SuppressWarnings("deprecation")
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPrepareAnvil(PrepareAnvilEvent event) {
-        ItemStack result = event.getResult();
-        if (result == null || result.getType().isAir()) {
-            return;
-        }
-        HumanEntity viewer = event.getView().getPlayer();
-        if (!(viewer instanceof Player player)) {
-            return;
-        }
-        double discount = perks.of(player).value(Perk.ANVIL_DISCOUNT);
-        if (discount <= 0) {
-            return;
-        }
-        int cost = event.getInventory().getRepairCost();
-        if (cost <= 1) {
-            return;
-        }
-        int reduced = Math.max(1, (int) Math.floor(cost * Math.max(0.05, 1.0 - discount)));
-        // The client is told the cost after the event returns, so set it again
-        // on the next tick or the anvil UI keeps showing the old price.
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            if (player.getOpenInventory().getTopInventory() instanceof AnvilInventory open) {
-                open.setRepairCost(reduced);
-                player.updateInventory();
-            }
-        });
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPrepareEnchant(PrepareItemEnchantEvent event) {
-        double discount = perks.of(event.getEnchanter()).value(Perk.ENCHANT_DISCOUNT);
-        if (discount <= 0) {
-            return;
-        }
-        for (EnchantmentOffer offer : event.getOffers()) {
-            if (offer == null) {
-                continue;
-            }
-            offer.setCost(Math.max(1,
-                    (int) Math.floor(offer.getCost() * Math.max(0.05, 1.0 - discount))));
-        }
     }
 
     // ------------------------------------------------------------------
@@ -460,7 +496,7 @@ public class PerkListener implements Listener {
         if (event.getDamager() instanceof Player player) {
             return player;
         }
-        if (event.getDamager() instanceof org.bukkit.entity.Projectile projectile
+        if (event.getDamager() instanceof Projectile projectile
                 && projectile.getShooter() instanceof Player shooter) {
             return shooter;
         }
@@ -476,16 +512,15 @@ public class PerkListener implements Listener {
         return instance == null ? entity.getHealth() : instance.getValue();
     }
 
-    private void givePotion(Player player, String effect, int ticks, int amplifier) {
-        PotionEffectType type = Registries.potionEffect(effect);
-        if (type != null) {
-            player.addPotionEffect(new PotionEffect(type, ticks, amplifier, true, true, true));
-        }
+    private static double healthFraction(LivingEntity entity) {
+        double max = maxHealthOf(entity);
+        return max <= 0 ? 1.0 : entity.getHealth() / max;
     }
 
-    private void give(Player player, ItemStack stack) {
-        for (ItemStack leftover : player.getInventory().addItem(stack).values()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+    private void givePotion(LivingEntity target, String effect, int ticks, int amplifier) {
+        PotionEffectType type = Registries.potionEffect(effect);
+        if (type != null && ticks > 0) {
+            target.addPotionEffect(new PotionEffect(type, ticks, amplifier, true, true, true));
         }
     }
 
@@ -561,18 +596,20 @@ public class PerkListener implements Listener {
         return List.of(recipe.getInput().getType());
     }
 
-    private Set<PotionEffectType> ailments() {
-        if (foodAilments != null) {
-            return foodAilments;
+    private Set<PotionEffectType> harmful() {
+        if (harmful != null) {
+            return harmful;
         }
         Set<PotionEffectType> set = new HashSet<>();
-        for (String name : new String[] { "poison", "hunger", "nausea", "wither" }) {
+        for (String name : new String[] { "poison", "wither", "slowness", "weakness",
+                "mining_fatigue", "blindness", "nausea", "hunger", "levitation", "darkness",
+                "unluck", "glowing" }) {
             PotionEffectType type = Registries.potionEffect(name);
             if (type != null) {
                 set.add(type);
             }
         }
-        foodAilments = set;
+        harmful = set;
         return set;
     }
 

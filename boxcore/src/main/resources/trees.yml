@@ -55,27 +55,33 @@
 #                 Amounts default to something sensible per perk, so
 #                 "- type: auto_smelt" on its own is valid.
 #
-#                 Available perks:
+#                 Available perks — fighting:
 #                   lifesteal          heal a share of melee damage dealt
 #                   adrenaline         Speed II for N seconds after a kill
 #                   finisher           bonus damage to wounded targets
+#                   player_damage      bonus damage to other players
+#                   projectile_damage  bonus bow/crossbow/trident damage
+#                   venom_strike       melee hits poison for N seconds
+#                   arrow_saver        chance not to spend the arrow
 #                   mob_loot           chance to double a mob's drops
+#
+#                 Available perks — staying alive:
+#                   potion_power       your splash potions land stronger
+#                   gapple_boost       golden apple effects last longer
+#                   last_breath        Speed II + Resistance I for N
+#                                      seconds when dropped low
+#                   debuff_resist      incoming debuffs are shorter
+#                   second_chance      survive a killing blow (cooldown,
+#                                      in minutes, is the amount)
+#                   hunger_saver       less exhaustion from everything
+#
+#                 Available perks — grinding:
 #                   ore_bounty         chance to double an ore's drops
 #                   log_bounty         chance for a bonus log
 #                   auto_smelt         ores/sand/cobble drop smelted
 #                   replant            grown crops replant themselves
 #                   fishing_speed      fish bite sooner
-#                   hunger_saver       less exhaustion from everything
-#                   second_chance      survive a killing blow (cooldown,
-#                                      in minutes, is the amount)
-#                   no_freeze          immune to powder snow
-#                   safe_stomach       bad food can't poison you
 #                   xp_boost           more XP from every source
-#                   anvil_discount     cheaper anvil repairs
-#                   tool_saver         chance to spare durability
-#                   bonus_craft        chance for a bonus crafted item
-#                   enchant_discount   cheaper enchanting table offers
-#                   self_repair        mends the held item over time
 #   permissions:  permission nodes granted while the skill is owned.
 #   commands:     console commands run once, when the node is unlocked.
 #                 %player% and %uuid% are replaced.
@@ -538,6 +544,20 @@ trees:
           perks:
             - type: auto_smelt
 
+      scholar:
+        slot: 34
+        icon: BOOKSHELF
+        display: "<gold>Scholar"
+        description:
+          - "<gray>Every ore and every mob teaches"
+          - "<gray>you a little more."
+        cost: 2
+        max-level: 3
+        effects:
+          perks:
+            - type: xp_boost
+              amount: 0.15
+
   # -------------------------------------------------------------------
   #  WAYFARER — 9 nodes, 59 points to max
   # -------------------------------------------------------------------
@@ -659,131 +679,137 @@ trees:
               amount: 15
               per-level: false
 
-      # --- Survivalist line -----------------------------------------
-      warm_blooded:
+      # --- Grit line ------------------------------------------------
+      last_breath:
         slot: 14
-        icon: CAMPFIRE
-        display: "<gold>Warm Blooded"
+        icon: REDSTONE_BLOCK
+        display: "<gold>Last Breath"
         description:
-          - "<gray>Powder snow is just snow."
-        cost: 2
-        max-level: 1
-        effects:
-          perks:
-            - type: no_freeze
-
-      iron_stomach:
-        slot: 23
-        icon: ROTTEN_FLESH
-        display: "<gold>Iron Stomach"
-        description:
-          - "<gray>You'll eat anything, and it"
-          - "<gray>never seems to bother you."
+          - "<gray>Dropping low kicks something"
+          - "<gray>loose. Long enough to fight"
+          - "<gray>back, or to run."
         cost: 4
-        max-level: 1
-        requires: [ "warm_blooded" ]
+        max-level: 2
         effects:
           perks:
-            - type: safe_stomach
+            - type: last_breath
+              amount: 4
+
+      iron_will:
+        slot: 23
+        icon: MILK_BUCKET
+        display: "<gold>Iron Will"
+        description:
+          - "<gray>Poison and slowness wash off"
+          - "<gray>you faster than most."
+        cost: 4
+        max-level: 3
+        requires: [ "last_breath" ]
+        effects:
+          perks:
+            - type: debuff_resist
+              amount: 0.15
+
 
   # -------------------------------------------------------------------
-  #  ARTISAN — 6 nodes, 38 points to max
+  #  DUELIST — 6 nodes, 35 points to max
   # -------------------------------------------------------------------
-  artisan:
-    display: "<gold><bold>Artisan</bold>"
-    icon: SMITHING_TABLE
+  duelist:
+    display: "<dark_purple><bold>Duelist</bold>"
+    icon: BOW
     description:
-      - "<gray>Make your gear, and your"
-      - "<gray>levels, go further."
+      - "<gray>Bows, potions and the small"
+      - "<gray>edges that win box fights."
     rows: 6
     order: 4
     nodes:
 
-      # --- Upkeep line ----------------------------------------------
-      scholar:
+      # --- Ranged line ----------------------------------------------
+      marksman:
         slot: 10
-        icon: BOOKSHELF
-        display: "<green>Scholar"
+        icon: BOW
+        display: "<light_purple>Marksman"
         description:
-          - "<gray>Everything you do teaches"
-          - "<gray>you a little more."
+          - "<gray>Every shot lands heavier."
         cost: 2
         max-level: 3
         effects:
           perks:
-            - type: xp_boost
-              amount: 0.15
+            - type: projectile_damage
+              amount: 0.08
 
-      repair_adept:
+      barrage:
         slot: 19
-        icon: ANVIL
-        display: "<green>Repair Adept"
+        icon: ARROW
+        display: "<light_purple>Barrage"
         description:
-          - "<gray>You argue the anvil down."
+          - "<gray>Your quiver outlasts everyone"
+          - "<gray>else's."
         cost: 3
         max-level: 2
-        requires: [ "scholar" ]
+        requires: [ "marksman:2" ]
         effects:
           perks:
-            - type: anvil_discount
-              amount: 0.20
-
-      sturdy_tools:
-        slot: 28
-        icon: NETHERITE_SCRAP
-        display: "<green>Sturdy Tools"
-        description:
-          - "<gray>Your gear wears down slower"
-          - "<gray>than anyone else's."
-        cost: 4
-        max-level: 2
-        requires: [ "repair_adept" ]
-        effects:
-          perks:
-            - type: tool_saver
-              amount: 0.10
-
-      # --- Craft line -----------------------------------------------
-      bulk_crafter:
-        slot: 12
-        icon: CRAFTING_TABLE
-        display: "<aqua>Bulk Crafter"
-        description:
-          - "<gray>Sometimes the bench gives you"
-          - "<gray>one more than you asked for."
-        cost: 3
-        max-level: 2
-        effects:
-          perks:
-            - type: bonus_craft
-              amount: 0.10
-
-      enchanters_insight:
-        slot: 21
-        icon: ENCHANTING_TABLE
-        display: "<aqua>Enchanter's Insight"
-        description:
-          - "<gray>The table asks less of you."
-        cost: 3
-        max-level: 2
-        requires: [ "bulk_crafter" ]
-        effects:
-          perks:
-            - type: enchant_discount
+            - type: arrow_saver
               amount: 0.15
 
-      soul_of_the_forge:
-        slot: 30
-        icon: NETHERITE_UPGRADE_SMITHING_TEMPLATE
-        display: "<aqua>Soul of the Forge"
+      headhunter:
+        slot: 28
+        icon: PLAYER_HEAD
+        display: "<light_purple>Headhunter"
         description:
-          - "<gray>Whatever you're holding slowly"
-          - "<gray>mends itself in your hand."
-        cost: 6
+          - "<gray>Mobs were never the point."
+        cost: 5
         max-level: 1
-        requires: [ "enchanters_insight" ]
+        requires: [ "barrage" ]
         requires-points: 10
         effects:
           perks:
-            - type: self_repair
-              amount: 2
+            - type: player_damage
+              amount: 0.15
+
+      # --- Apothecary line ------------------------------------------
+      apothecary:
+        slot: 12
+        icon: SPLASH_POTION
+        display: "<aqua>Apothecary"
+        description:
+          - "<gray>You throw a better potion"
+          - "<gray>than anyone on the server."
+        cost: 3
+        max-level: 2
+        effects:
+          perks:
+            - type: potion_power
+              amount: 0.15
+
+      second_helping:
+        slot: 21
+        icon: ENCHANTED_GOLDEN_APPLE
+        display: "<aqua>Second Helping"
+        description:
+          - "<gray>You get more out of a gapple"
+          - "<gray>than it should give."
+        cost: 3
+        max-level: 2
+        requires: [ "apothecary" ]
+        effects:
+          perks:
+            - type: gapple_boost
+              amount: 0.25
+
+      venom_strike:
+        slot: 30
+        icon: SPIDER_EYE
+        display: "<aqua>Venom Strike"
+        description:
+          - "<gray>Whatever you hit keeps"
+          - "<gray>bleeding after you stop."
+        cost: 6
+        max-level: 1
+        requires: [ "second_helping" ]
+        requires-points: 10
+        effects:
+          perks:
+            - type: venom_strike
+              amount: 3
