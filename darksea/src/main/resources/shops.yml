@@ -27,7 +27,8 @@
 # ---------------------------------------------------------------------------
 
 
-# The black market's shelf rotates once per sea reset. It is priced off the
+# The black market's shelf rotates on its own clock (see rotation-hours). It
+# is priced off the
 # refugee's honest numbers rather than written out separately: it charges
 # 'markup' times what he charges, and pays 'salvage-rate' times what he pays.
 # That difference is the entire reason to walk the extra thirty blocks.
@@ -38,7 +39,14 @@ black-market:
   # How many pool lines show at once. Fewer slots than pool entries is the
   # point — Hullpiercer arrows are in here rather than guaranteed, so the
   # cycles where he has them matter.
-  slots: 5
+  slots: 7
+
+  # How often the shelf rerolls, in hours. This is his own clock, not the sea
+  # reset: on the six-hour reset cycle a player with a two-hour session saw
+  # exactly one shelf and never had a reason to walk back. The GUI shows the
+  # countdown. Prices below are the honest base — players pay 'markup' times
+  # these.
+  rotation-hours: 2
 
   pool:
     - {item: hullpiercer_arrow, amount: 2, price: 90}
@@ -53,6 +61,13 @@ black-market:
     # there is anything underwater worth diving for.
     - {item: gillwater_philter, amount: 2, price: 30}
     - {item: dark_sea_boat, price: 55}
+    - {item: hullpiercer_arrow, amount: 4, price: 165}
+    - {item: chainshot_arrow, amount: 16, price: 80}
+    - {item: sea_salve, amount: 4, price: 80}
+    - {item: tidal_draught, price: 32}
+    - {item: "vanilla:ENDER_PEARL", amount: 4, price: 70}
+    - {item: "vanilla:GOLDEN_CARROT", amount: 16, price: 100}
+    - {item: "vanilla:ARROW", amount: 32, price: 20}
 
 
 # What the old boat expert charges for each rumour about the Heart, in order.

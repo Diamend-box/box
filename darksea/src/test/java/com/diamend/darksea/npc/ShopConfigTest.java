@@ -197,6 +197,7 @@ class ShopConfigTest {
         assertEquals(original.markup(), reloaded.markup(), 1e-9);
         assertEquals(original.salvageRate(), reloaded.salvageRate(), 1e-9);
         assertEquals(original.slots(), reloaded.slots());
+        assertEquals(original.rotationHours(), reloaded.rotationHours(), 1e-9);
         assertEquals(original.clueCosts(), reloaded.clueCosts());
         assertEquals(original.rotatingPool(), reloaded.rotatingPool());
         assertEquals(original.salvage(), reloaded.salvage());

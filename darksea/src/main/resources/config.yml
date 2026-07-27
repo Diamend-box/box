@@ -512,6 +512,8 @@ messages:
   shop-wake-title: "<color:#c9a227>Wake a Relic</color>"
   shop-wake-empty: "<gray>Hold a dormant relic in your main hand."
   shop-wake-holding: "<gray>{name} <dark_gray>— {cost} Chronons"
+  shop-rotation-title: "<color:#b39ddb>New Stock Soon</color>"
+  shop-rotation-lore: "<gray>He turns his shelf over in <white>{time}</white>."
   shop-clue-title: "<color:#7fb2c4>What He's Heard</color>"
   shop-clue-next: "<gray>Rumour {n} <dark_gray>— {cost} Chronons"
   shop-clue-exhausted: "<gray>He's told you everything he knows."

@@ -63,7 +63,8 @@ public final class ShopMenuService implements Listener {
         Inventory inv = menu.getInventory();
         inv.clear();
         NpcType type = menu.type();
-        long rotation = plugin.npcs().registry().rotation();
+        long rotation = MarketClock.index(System.currentTimeMillis(),
+                plugin.shopStock().rotationMillis());
 
         int buySlot = 0;
         int sellSlot = SELL_ROW_START;
@@ -96,6 +97,10 @@ public final class ShopMenuService implements Listener {
             menu.put(actionSlot, ShopMenu.Action.BUY_CLUE);
         }
 
+        if (type.rotatesStock()) {
+            inv.setItem(ACTION_ROW_START + 7, rotationClock());
+        }
+
         // The purse, always in the same corner.
         inv.setItem(MENU_SIZE - 1, purse(player));
     }
@@ -122,6 +127,26 @@ public final class ShopMenuService implements Listener {
                     "amount", String.valueOf(offer.amount()))));
         }
         meta.lore(lore);
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
+    /**
+     * The countdown to the next shelf. Drawn only for a rotating board, and
+     * only as a label — it carries no {@code ShopMenu} entry, so clicking it
+     * does nothing. It is a snapshot taken when the menu is drawn rather than
+     * a ticking display: a shop GUI is open for seconds, not hours, and
+     * redrawing every second to animate a number would be a repeating task
+     * per open inventory for no gain.
+     */
+    private ItemStack rotationClock() {
+        ItemStack stack = new ItemStack(Material.CLOCK);
+        ItemMeta meta = stack.getItemMeta();
+        String remaining = MarketClock.format(MarketClock.millisUntilNext(
+                System.currentTimeMillis(), plugin.shopStock().rotationMillis()));
+        meta.displayName(line(plugin.messages().component("shop-rotation-title")));
+        meta.lore(List.of(line(plugin.messages().component("shop-rotation-lore",
+                "time", remaining))));
         stack.setItemMeta(meta);
         return stack;
     }

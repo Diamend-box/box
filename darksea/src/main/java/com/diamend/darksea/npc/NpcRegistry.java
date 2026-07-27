@@ -20,9 +20,11 @@ import java.util.logging.Logger;
  * the outpost whenever it's ready, walk to each doorway, run
  * {@code /ds npc create <type>}.
  *
- * <p>The file also carries the shop rotation counter, bumped by every sea
- * reset — it lives here rather than with the islands because it must survive
- * a full reset, which wipes the island registry outright.
+ * <p>The black market's shelf is not seeded from here. It used to be, off a
+ * counter bumped by every sea reset; it now runs on wall time via
+ * {@link MarketClock}, which needs nothing persisted at all. Placements do
+ * live here rather than with the islands, because they must survive a full
+ * reset — that wipes the island registry outright.
  */
 public final class NpcRegistry {
 
@@ -38,7 +40,6 @@ public final class NpcRegistry {
     private final File file;
     private final Logger log;
     private final Map<String, Placement> placements = new LinkedHashMap<>();
-    private long rotation;
 
     public NpcRegistry(File file, Logger log) {
         this.file = file;
@@ -47,12 +48,10 @@ public final class NpcRegistry {
 
     public void load() {
         placements.clear();
-        rotation = 0L;
         if (!file.exists()) {
             return;
         }
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        rotation = yaml.getLong("rotation", 0L);
         ConfigurationSection root = yaml.getConfigurationSection("npcs");
         if (root == null) {
             return;
@@ -72,12 +71,11 @@ public final class NpcRegistry {
                     sec.getDouble("x"), sec.getDouble("y"), sec.getDouble("z"),
                     (float) sec.getDouble("yaw")));
         }
-        log.info("Loaded " + placements.size() + " NPC placements (rotation " + rotation + ")");
+        log.info("Loaded " + placements.size() + " NPC placements");
     }
 
     public void save() {
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("rotation", rotation);
         ConfigurationSection root = yaml.createSection("npcs");
         for (Placement placement : placements.values()) {
             ConfigurationSection sec = root.createSection(placement.id());
@@ -136,18 +134,4 @@ public final class NpcRegistry {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Shop rotation
-    // ------------------------------------------------------------------
-
-    /** The current rotation counter — the black market's shelf seed. */
-    public long rotation() {
-        return rotation;
-    }
-
-    /** Called by every sea reset: the black market gets new stock. */
-    public void bumpRotation() {
-        rotation++;
-        save();
-    }
 }

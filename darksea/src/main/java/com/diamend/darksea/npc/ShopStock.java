@@ -28,6 +28,9 @@ import java.util.Set;
  */
 public final class ShopStock {
 
+    /** How often the black market's shelf rerolls when shops.yml is silent. */
+    public static final double DEFAULT_ROTATION_HOURS = 2.0;
+
     /** Prefix marking an offer whose id is a vanilla Material name. */
     public static final String VANILLA = ShopOffer.VANILLA;
 
@@ -38,6 +41,7 @@ public final class ShopStock {
     private final double markup;
     private final double salvageRate;
     private final int slots;
+    private final double rotationHours;
     private final List<Integer> clueCosts;
 
     public ShopStock(Map<String, List<ShopOffer>> fixed,
@@ -48,6 +52,19 @@ public final class ShopStock {
                      double salvageRate,
                      int slots,
                      List<Integer> clueCosts) {
+        this(fixed, rotatingPool, salvage, takesSalvage, markup, salvageRate,
+                slots, DEFAULT_ROTATION_HOURS, clueCosts);
+    }
+
+    public ShopStock(Map<String, List<ShopOffer>> fixed,
+                     List<ShopOffer> rotatingPool,
+                     List<ShopOffer> salvage,
+                     Set<String> takesSalvage,
+                     double markup,
+                     double salvageRate,
+                     int slots,
+                     double rotationHours,
+                     List<Integer> clueCosts) {
         Map<String, List<ShopOffer>> copy = new LinkedHashMap<>();
         fixed.forEach((key, value) -> copy.put(key, List.copyOf(value)));
         this.fixed = Map.copyOf(copy);
@@ -57,6 +74,7 @@ public final class ShopStock {
         this.markup = markup;
         this.salvageRate = salvageRate;
         this.slots = slots;
+        this.rotationHours = rotationHours;
         this.clueCosts = List.copyOf(clueCosts);
     }
 
@@ -71,8 +89,8 @@ public final class ShopStock {
     // ------------------------------------------------------------------
 
     /**
-     * The board for an NPC. {@code rotation} is the sea's reset counter; only
-     * the black market reads it, and it reads it as a seed, so the same reset
+     * The board for an NPC. {@code rotation} is the black market's clock
+     * index; only he reads it, and he reads it as a seed, so the same interval
      * always yields the same shelf — a restart mid-cycle doesn't reroll it.
      */
     public List<ShopOffer> offers(NpcType type, long rotation) {
@@ -89,7 +107,7 @@ public final class ShopStock {
 
     /**
      * The rotating shelf: {@link #slots} lines drawn from the pool without
-     * repeats, seeded on the reset counter.
+     * repeats, seeded on the clock index from {@link MarketClock}.
      *
      * <p>Hullpiercer arrows sit in the pool rather than being guaranteed. They
      * are the only reason to check the black market's shelf at all, and a
@@ -205,17 +223,17 @@ public final class ShopStock {
         Map<String, List<ShopOffer>> copy = new LinkedHashMap<>(fixed);
         copy.put(npcId, List.copyOf(lines));
         return new ShopStock(copy, rotatingPool, salvage, takesSalvage,
-                markup, salvageRate, slots, clueCosts);
+                markup, salvageRate, slots, rotationHours, clueCosts);
     }
 
     public ShopStock withPool(List<ShopOffer> lines) {
         return new ShopStock(fixed, lines, salvage, takesSalvage,
-                markup, salvageRate, slots, clueCosts);
+                markup, salvageRate, slots, rotationHours, clueCosts);
     }
 
     public ShopStock withSalvage(List<ShopOffer> lines) {
         return new ShopStock(fixed, rotatingPool, lines, takesSalvage,
-                markup, salvageRate, slots, clueCosts);
+                markup, salvageRate, slots, rotationHours, clueCosts);
     }
 
     /** Turns an NPC's standing salvage offer on or off. */
@@ -227,19 +245,35 @@ public final class ShopStock {
             copy.remove(npcId);
         }
         return new ShopStock(fixed, rotatingPool, salvage, copy,
-                markup, salvageRate, slots, clueCosts);
+                markup, salvageRate, slots, rotationHours, clueCosts);
     }
 
     /** The black market's three dials, clamped to values that can't break a board. */
     public ShopStock withMarketSettings(double newMarkup, double newSalvageRate, int newSlots) {
         return new ShopStock(fixed, rotatingPool, salvage, takesSalvage,
                 Math.max(0.01, newMarkup), Math.max(0.01, newSalvageRate),
-                Math.max(0, newSlots), clueCosts);
+                Math.max(0, newSlots), rotationHours, clueCosts);
     }
 
     public ShopStock withClueCosts(List<Integer> costs) {
         return new ShopStock(fixed, rotatingPool, salvage, takesSalvage,
-                markup, salvageRate, slots, costs);
+                markup, salvageRate, slots, rotationHours, costs);
+    }
+
+    /** Hours between shelf rerolls. */
+    public double rotationHours() {
+        return rotationHours;
+    }
+
+    /** That interval in milliseconds, floored so a shelf can never flicker. */
+    public long rotationMillis() {
+        return MarketClock.intervalMillis(rotationHours);
+    }
+
+    /** This snapshot with a different reroll interval. */
+    public ShopStock withRotationHours(double hours) {
+        return new ShopStock(fixed, rotatingPool, salvage, takesSalvage,
+                markup, salvageRate, slots, hours, clueCosts);
     }
 
     public List<Integer> clueCosts() {

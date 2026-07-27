@@ -25,6 +25,7 @@ import java.util.logging.Logger;
  *   markup: 1.6          # what it charges, against the refugee's prices
  *   salvage-rate: 1.5    # what it pays, against the refugee's prices
  *   slots: 5             # rotating lines shown per cycle
+ *   rotation-hours: 2    # how often the shelf rerolls
  *   pool:                # the rotating shelf, drawn from without repeats
  *     - {item: hullpiercer_arrow, amount: 2, price: 90}
  * clue-costs: [40, 120, 300, 750]
@@ -53,6 +54,7 @@ public final class ShopConfig {
         double markup = 1.0;
         double salvageRate = 1.0;
         int slots = 0;
+        double rotationHours = ShopStock.DEFAULT_ROTATION_HOURS;
         List<ShopOffer> pool = List.of();
         ConfigurationSection market = root.getConfigurationSection("black-market");
         if (market == null) {
@@ -61,6 +63,7 @@ public final class ShopConfig {
             markup = Math.max(0.01, market.getDouble("markup", 1.0));
             salvageRate = Math.max(0.01, market.getDouble("salvage-rate", 1.0));
             slots = Math.max(0, market.getInt("slots", 0));
+            rotationHours = market.getDouble("rotation-hours", ShopStock.DEFAULT_ROTATION_HOURS);
             pool = parseOffers(market, "pool", ShopOffer.Kind.BUY, "black-market.pool", log);
         }
 
@@ -108,7 +111,7 @@ public final class ShopConfig {
         }
 
         return new ShopStock(fixed, pool, salvage, takesSalvage,
-                markup, salvageRate, slots, clueCosts);
+                markup, salvageRate, slots, rotationHours, clueCosts);
     }
 
     // ------------------------------------------------------------------
@@ -131,6 +134,7 @@ public final class ShopConfig {
         yaml.set("black-market.markup", stock.markup());
         yaml.set("black-market.salvage-rate", stock.salvageRate());
         yaml.set("black-market.slots", stock.slots());
+        yaml.set("black-market.rotation-hours", stock.rotationHours());
         yaml.set("black-market.pool", toMaps(stock.rotatingPool()));
         yaml.set("clue-costs", stock.clueCosts());
         yaml.set("salvage", toMaps(stock.salvage()));
