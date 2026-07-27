@@ -7,6 +7,7 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
+import com.diamend.boxcore.skill.perk.Perk;
 import com.diamend.boxcore.util.Text;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
@@ -23,6 +24,7 @@ import java.util.Locale;
  *   %boxcore_nodes%                       nodes unlocked
  *   %boxcore_node_&lt;tree.node&gt;%      owned level of one node
  *   %boxcore_tree_&lt;tree&gt;%           points spent in one tree
+ *   %boxcore_perk_&lt;perk&gt;%           total of one perk (or true/false)
  *   %boxcore_collected%                   items gathered overall
  *   %boxcore_collection_&lt;id&gt;%       amount gathered
  *   %boxcore_tier_&lt;id&gt;%             collection tier reached
@@ -94,6 +96,14 @@ public class BoxPlaceholders extends PlaceholderExpansion {
         if (query.startsWith("tree_") && skills != null) {
             SkillTree tree = skills.trees().getTree(query.substring(5));
             return tree == null ? "" : String.valueOf(skills.service().pointsSpentIn(profile, tree));
+        }
+        if (query.startsWith("perk_") && skills != null) {
+            Perk perk = Perk.byName(query.substring(5));
+            if (perk == null) {
+                return "";
+            }
+            double value = skills.perks().of(player.getUniqueId()).value(perk);
+            return perk.isFlag() ? String.valueOf(value > 0) : Text.amount(value, false);
         }
 
         CollectionsModule collections = plugin.modules().get(CollectionsModule.class);

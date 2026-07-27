@@ -19,6 +19,9 @@
 #  Node options
 # ---------------------------------------------------------------------
 #   slot            GUI slot (0-based). Must fit inside `rows`.
+#                   The shipped trees use four columns — 10/19/28/37,
+#                   12/21/30/39, 14/23/32/41 and 16/25/34/43 — which
+#                   leaves the bottom row free for the menu footer.
 #   icon            Material for the node.
 #   locked-icon     Optional material shown before it's unlocked.
 #   display         Node name.
@@ -45,6 +48,34 @@
 #                 - effect: haste
 #                   amplifier: 0            # 0 = level I
 #                   amplifier-per-level: 1  # +1 per node level
+#   perks:        scripted effects that no attribute can express.
+#                 - type: lifesteal
+#                   amount: 0.04            # per node level
+#                   per-level: false        # optional: don't scale
+#                 Amounts default to something sensible per perk, so
+#                 "- type: auto_smelt" on its own is valid.
+#
+#                 Available perks:
+#                   lifesteal          heal a share of melee damage dealt
+#                   adrenaline         Speed II for N seconds after a kill
+#                   finisher           bonus damage to wounded targets
+#                   mob_loot           chance to double a mob's drops
+#                   ore_bounty         chance to double an ore's drops
+#                   log_bounty         chance for a bonus log
+#                   auto_smelt         ores/sand/cobble drop smelted
+#                   replant            grown crops replant themselves
+#                   fishing_speed      fish bite sooner
+#                   hunger_saver       less exhaustion from everything
+#                   second_chance      survive a killing blow (cooldown,
+#                                      in minutes, is the amount)
+#                   no_freeze          immune to powder snow
+#                   safe_stomach       bad food can't poison you
+#                   xp_boost           more XP from every source
+#                   anvil_discount     cheaper anvil repairs
+#                   tool_saver         chance to spare durability
+#                   bonus_craft        chance for a bonus crafted item
+#                   enchant_discount   cheaper enchanting table offers
+#                   self_repair        mends the held item over time
 #   permissions:  permission nodes granted while the skill is owned.
 #   commands:     console commands run once, when the node is unlocked.
 #                 %player% and %uuid% are replaced.
@@ -52,6 +83,8 @@
 
 trees:
 
+  # -------------------------------------------------------------------
+  #  COMBAT — 15 nodes, 89 points to max
   # -------------------------------------------------------------------
   combat:
     display: "<red><bold>Combat</bold>"
@@ -62,8 +95,9 @@ trees:
     order: 1
     nodes:
 
+      # --- Bulwark line ---------------------------------------------
       toughness:
-        slot: 11
+        slot: 10
         icon: RED_DYE
         display: "<red>Toughness"
         description:
@@ -75,7 +109,7 @@ trees:
             max_health: 2.0
 
       thick_skin:
-        slot: 20
+        slot: 19
         icon: IRON_CHESTPLATE
         display: "<red>Thick Skin"
         description:
@@ -89,7 +123,7 @@ trees:
             armor_toughness: 0.5
 
       rooted:
-        slot: 29
+        slot: 28
         icon: NETHERITE_INGOT
         display: "<red>Rooted"
         description:
@@ -102,7 +136,7 @@ trees:
             knockback_resistance: 0.1
 
       last_stand:
-        slot: 38
+        slot: 37
         icon: TOTEM_OF_UNDYING
         display: "<red>Last Stand"
         description:
@@ -119,8 +153,9 @@ trees:
             - effect: resistance
               amplifier: 0
 
+      # --- Blade line -----------------------------------------------
       ferocity:
-        slot: 13
+        slot: 12
         icon: IRON_SWORD
         display: "<gold>Ferocity"
         description:
@@ -132,7 +167,7 @@ trees:
             attack_damage: 0.5
 
       swift_strikes:
-        slot: 22
+        slot: 21
         icon: SUGAR
         display: "<gold>Swift Strikes"
         description:
@@ -145,7 +180,7 @@ trees:
             attack_speed: 0.2
 
       wide_arc:
-        slot: 31
+        slot: 30
         icon: NETHERITE_SWORD
         display: "<gold>Wide Arc"
         description:
@@ -159,7 +194,7 @@ trees:
             sweeping_damage_ratio: 0.15
 
       executioner:
-        slot: 40
+        slot: 39
         icon: DIAMOND_AXE
         display: "<gold>Executioner"
         description:
@@ -173,8 +208,68 @@ trees:
             attack_damage: 2.0
             entity_interaction_range: 0.5
 
+      # --- Predator line --------------------------------------------
+      bloodthirst:
+        slot: 14
+        icon: REDSTONE
+        display: "<dark_red>Bloodthirst"
+        description:
+          - "<gray>Every blow you land feeds you."
+        cost: 2
+        max-level: 3
+        effects:
+          perks:
+            - type: lifesteal
+              amount: 0.04
+
+      adrenaline:
+        slot: 23
+        icon: RABBIT_FOOT
+        display: "<dark_red>Adrenaline"
+        description:
+          - "<gray>A kill sends you flying into"
+          - "<gray>the next fight."
+        cost: 3
+        max-level: 2
+        requires: [ "bloodthirst:2" ]
+        effects:
+          perks:
+            - type: adrenaline
+              amount: 3
+
+      finisher:
+        slot: 32
+        icon: IRON_AXE
+        display: "<dark_red>Finisher"
+        description:
+          - "<gray>You know when something is"
+          - "<gray>about to drop."
+        cost: 3
+        max-level: 3
+        requires: [ "adrenaline" ]
+        effects:
+          perks:
+            - type: finisher
+              amount: 0.08
+
+      trophy_hunter:
+        slot: 41
+        icon: SKELETON_SKULL
+        display: "<dark_red>Trophy Hunter"
+        description:
+          - "<gray>Nothing you kill goes to waste."
+        cost: 5
+        max-level: 1
+        requires: [ "finisher:2" ]
+        requires-points: 12
+        effects:
+          perks:
+            - type: mob_loot
+              amount: 0.25
+
+      # --- Resilience line ------------------------------------------
       fire_walker:
-        slot: 15
+        slot: 16
         icon: BLAZE_POWDER
         display: "<yellow>Fire Walker"
         description:
@@ -188,7 +283,7 @@ trees:
               operation: add_scalar
 
       blast_braced:
-        slot: 24
+        slot: 25
         icon: TNT
         display: "<yellow>Blast Braced"
         description:
@@ -203,7 +298,7 @@ trees:
               operation: add_scalar
 
       second_wind:
-        slot: 33
+        slot: 34
         icon: GOLDEN_APPLE
         display: "<yellow>Second Wind"
         description:
@@ -218,6 +313,8 @@ trees:
               amplifier: 0
 
   # -------------------------------------------------------------------
+  #  GATHERING — 14 nodes, 78 points to max
+  # -------------------------------------------------------------------
   gathering:
     display: "<green><bold>Gathering</bold>"
     icon: DIAMOND_PICKAXE
@@ -227,8 +324,9 @@ trees:
     order: 2
     nodes:
 
+      # --- Mining line ----------------------------------------------
       prospector:
-        slot: 11
+        slot: 10
         icon: IRON_PICKAXE
         display: "<aqua>Prospector"
         description:
@@ -242,7 +340,7 @@ trees:
               operation: add_scalar
 
       deep_delver:
-        slot: 20
+        slot: 19
         icon: AMETHYST_SHARD
         display: "<aqua>Deep Delver"
         description:
@@ -256,38 +354,39 @@ trees:
             mining_efficiency: 0.5
             block_interaction_range: 0.5
 
-      tunnel_rat:
-        slot: 29
-        icon: GLOWSTONE_DUST
-        display: "<aqua>Tunnel Rat"
+      vein_sense:
+        slot: 28
+        icon: RAW_IRON
+        display: "<aqua>Vein Sense"
         description:
-          - "<gray>Permanent Haste — no beacon needed."
-        cost: 4
-        max-level: 2
+          - "<gray>Some seams give up twice"
+          - "<gray>what they should."
+        cost: 3
+        max-level: 3
         requires: [ "deep_delver:2" ]
         effects:
-          potions:
-            - effect: haste
-              amplifier: 0
-              amplifier-per-level: 1
+          perks:
+            - type: ore_bounty
+              amount: 0.08
 
       cave_eyes:
-        slot: 38
+        slot: 37
         icon: SPIDER_EYE
         display: "<aqua>Cave Eyes"
         description:
           - "<gray>You stop needing torches."
         cost: 5
         max-level: 1
-        requires: [ "tunnel_rat" ]
+        requires: [ "vein_sense" ]
         requires-points: 12
         effects:
           potions:
             - effect: night_vision
               amplifier: 0
 
+      # --- Farming line ---------------------------------------------
       green_thumb:
-        slot: 13
+        slot: 12
         icon: WHEAT
         display: "<green>Green Thumb"
         description:
@@ -303,21 +402,35 @@ trees:
               amount: 0.25
               operation: add_scalar
 
+      replanter:
+        slot: 21
+        icon: WHEAT_SEEDS
+        display: "<green>Replanter"
+        description:
+          - "<gray>Harvest a grown crop and one"
+          - "<gray>seed goes straight back in."
+        cost: 3
+        max-level: 1
+        requires: [ "green_thumb:2" ]
+        effects:
+          perks:
+            - type: replant
+
       long_arms:
-        slot: 22
+        slot: 30
         icon: BAMBOO
         display: "<green>Long Arms"
         description:
           - "<gray>Place and break from further away."
         cost: 3
         max-level: 2
-        requires: [ "green_thumb:2" ]
+        requires: [ "replanter" ]
         effects:
           attributes:
             block_interaction_range: 1.0
 
       surefooted:
-        slot: 31
+        slot: 39
         icon: LEATHER_BOOTS
         display: "<green>Surefooted"
         description:
@@ -333,33 +446,36 @@ trees:
               amount: 0.5
               operation: add_scalar
 
-      angler:
-        slot: 15
+      # --- Sea line -------------------------------------------------
+      steady_hand:
+        slot: 14
         icon: FISHING_ROD
-        display: "<blue>Angler"
+        display: "<blue>Steady Hand"
         description:
-          - "<gray>The sea is kinder to you."
+          - "<gray>You have a knack for knowing"
+          - "<gray>exactly when to cast."
         cost: 2
         max-level: 3
         effects:
-          attributes:
-            luck: 1.0
+          perks:
+            - type: fishing_speed
+              amount: 0.12
 
       lungs_of_iron:
-        slot: 24
+        slot: 23
         icon: PUFFERFISH
         display: "<blue>Lungs of Iron"
         description:
           - "<gray>Stay under far longer."
         cost: 2
         max-level: 3
-        requires: [ "angler" ]
+        requires: [ "steady_hand" ]
         effects:
           attributes:
             oxygen_bonus: 1.0
 
       current_rider:
-        slot: 33
+        slot: 32
         icon: HEART_OF_THE_SEA
         display: "<blue>Current Rider"
         description:
@@ -378,7 +494,7 @@ trees:
               operation: add_scalar
 
       deep_breath:
-        slot: 42
+        slot: 41
         icon: CONDUIT
         display: "<blue>Deep Breath"
         description:
@@ -394,19 +510,50 @@ trees:
             - effect: conduit_power
               amplifier: 0
 
+      # --- Woodcutting line -----------------------------------------
+      lumberjack:
+        slot: 16
+        icon: OAK_LOG
+        display: "<gold>Lumberjack"
+        description:
+          - "<gray>Trees give you a little extra."
+        cost: 2
+        max-level: 3
+        effects:
+          perks:
+            - type: log_bounty
+              amount: 0.10
+
+      kiln_touch:
+        slot: 25
+        icon: BLAST_FURNACE
+        display: "<gold>Kiln Touch"
+        description:
+          - "<gray>Your pickaxe runs hot enough"
+          - "<gray>to skip the furnace entirely."
+        cost: 5
+        max-level: 1
+        requires: [ "lumberjack:2" ]
+        effects:
+          perks:
+            - type: auto_smelt
+
+  # -------------------------------------------------------------------
+  #  WAYFARER — 9 nodes, 59 points to max
   # -------------------------------------------------------------------
   wayfarer:
     display: "<aqua><bold>Wayfarer</bold>"
     icon: COMPASS
     description:
       - "<gray>Move further, fall softer,"
-      - "<gray>carry more home."
+      - "<gray>survive the road."
     rows: 6
     order: 3
     nodes:
 
+      # --- Movement line --------------------------------------------
       fleet_footed:
-        slot: 11
+        slot: 10
         icon: FEATHER
         display: "<white>Fleet Footed"
         description:
@@ -420,7 +567,7 @@ trees:
               operation: add_scalar
 
       spring_step:
-        slot: 20
+        slot: 19
         icon: SLIME_BALL
         display: "<white>Spring Step"
         description:
@@ -433,7 +580,7 @@ trees:
             jump_strength: 0.05
 
       cats_landing:
-        slot: 29
+        slot: 28
         icon: PHANTOM_MEMBRANE
         display: "<white>Cat's Landing"
         description:
@@ -450,7 +597,7 @@ trees:
               operation: add_scalar
 
       featherweight:
-        slot: 38
+        slot: 37
         icon: ELYTRA
         display: "<white>Featherweight"
         description:
@@ -466,28 +613,177 @@ trees:
               operation: add_scalar
             safe_fall_distance: 4.0
 
-      keen_eye:
-        slot: 15
-        icon: SPYGLASS
-        display: "<light_purple>Keen Eye"
+      # --- Endurance line -------------------------------------------
+      marathoner:
+        slot: 12
+        icon: COOKED_BEEF
+        display: "<light_purple>Marathoner"
         description:
-          - "<gray>Fortune favours you."
-        cost: 3
-        max-level: 2
+          - "<gray>Running, swimming and swinging"
+          - "<gray>all cost you less food."
+        cost: 2
+        max-level: 3
         effects:
-          attributes:
-            luck: 1.0
+          perks:
+            - type: hunger_saver
+              amount: 0.15
 
       trailblazer:
-        slot: 24
+        slot: 21
         icon: MAP
         display: "<light_purple>Trailblazer"
         description:
           - "<gray>A permanent scout's pace."
         cost: 5
         max-level: 1
-        requires: [ "keen_eye" ]
+        requires: [ "marathoner:2" ]
         effects:
           potions:
             - effect: speed
               amplifier: 0
+
+      second_chance:
+        slot: 30
+        icon: TOTEM_OF_UNDYING
+        display: "<light_purple>Second Chance"
+        description:
+          - "<gray>The road doesn't get to keep you."
+          - "<gray>Once in a while, anyway."
+        cost: 8
+        max-level: 1
+        requires: [ "trailblazer" ]
+        requires-points: 12
+        effects:
+          perks:
+            - type: second_chance
+              amount: 15
+              per-level: false
+
+      # --- Survivalist line -----------------------------------------
+      warm_blooded:
+        slot: 14
+        icon: CAMPFIRE
+        display: "<gold>Warm Blooded"
+        description:
+          - "<gray>Powder snow is just snow."
+        cost: 2
+        max-level: 1
+        effects:
+          perks:
+            - type: no_freeze
+
+      iron_stomach:
+        slot: 23
+        icon: ROTTEN_FLESH
+        display: "<gold>Iron Stomach"
+        description:
+          - "<gray>You'll eat anything, and it"
+          - "<gray>never seems to bother you."
+        cost: 4
+        max-level: 1
+        requires: [ "warm_blooded" ]
+        effects:
+          perks:
+            - type: safe_stomach
+
+  # -------------------------------------------------------------------
+  #  ARTISAN — 6 nodes, 38 points to max
+  # -------------------------------------------------------------------
+  artisan:
+    display: "<gold><bold>Artisan</bold>"
+    icon: SMITHING_TABLE
+    description:
+      - "<gray>Make your gear, and your"
+      - "<gray>levels, go further."
+    rows: 6
+    order: 4
+    nodes:
+
+      # --- Upkeep line ----------------------------------------------
+      scholar:
+        slot: 10
+        icon: BOOKSHELF
+        display: "<green>Scholar"
+        description:
+          - "<gray>Everything you do teaches"
+          - "<gray>you a little more."
+        cost: 2
+        max-level: 3
+        effects:
+          perks:
+            - type: xp_boost
+              amount: 0.15
+
+      repair_adept:
+        slot: 19
+        icon: ANVIL
+        display: "<green>Repair Adept"
+        description:
+          - "<gray>You argue the anvil down."
+        cost: 3
+        max-level: 2
+        requires: [ "scholar" ]
+        effects:
+          perks:
+            - type: anvil_discount
+              amount: 0.20
+
+      sturdy_tools:
+        slot: 28
+        icon: NETHERITE_SCRAP
+        display: "<green>Sturdy Tools"
+        description:
+          - "<gray>Your gear wears down slower"
+          - "<gray>than anyone else's."
+        cost: 4
+        max-level: 2
+        requires: [ "repair_adept" ]
+        effects:
+          perks:
+            - type: tool_saver
+              amount: 0.10
+
+      # --- Craft line -----------------------------------------------
+      bulk_crafter:
+        slot: 12
+        icon: CRAFTING_TABLE
+        display: "<aqua>Bulk Crafter"
+        description:
+          - "<gray>Sometimes the bench gives you"
+          - "<gray>one more than you asked for."
+        cost: 3
+        max-level: 2
+        effects:
+          perks:
+            - type: bonus_craft
+              amount: 0.10
+
+      enchanters_insight:
+        slot: 21
+        icon: ENCHANTING_TABLE
+        display: "<aqua>Enchanter's Insight"
+        description:
+          - "<gray>The table asks less of you."
+        cost: 3
+        max-level: 2
+        requires: [ "bulk_crafter" ]
+        effects:
+          perks:
+            - type: enchant_discount
+              amount: 0.15
+
+      soul_of_the_forge:
+        slot: 30
+        icon: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+        display: "<aqua>Soul of the Forge"
+        description:
+          - "<gray>Whatever you're holding slowly"
+          - "<gray>mends itself in your hand."
+        cost: 6
+        max-level: 1
+        requires: [ "enchanters_insight" ]
+        requires-points: 10
+        effects:
+          perks:
+            - type: self_repair
+              amount: 2

@@ -1,5 +1,6 @@
 package com.diamend.boxcore.skill;
 
+import com.diamend.boxcore.skill.perk.Perk;
 import com.diamend.boxcore.util.Items;
 import com.diamend.boxcore.util.Registries;
 import org.bukkit.Material;
@@ -225,8 +226,49 @@ public class SkillTreeManager {
             node.getEffects().potions().add(new NodeEffects.PotionBonus(type, amplifier, perLevel));
         }
 
+        for (Object raw : effects.getList("perks", List.of())) {
+            String name;
+            double amount = Double.NaN;
+            boolean perLevel = true;
+            if (raw instanceof Map<?, ?> map) {
+                Object type = map.get("type") != null ? map.get("type") : map.get("perk");
+                name = type == null ? null : String.valueOf(type);
+                if (map.get("amount") != null) {
+                    amount = doubleOf(map.get("amount"), Double.NaN);
+                }
+                if (map.get("per-level") != null) {
+                    perLevel = Boolean.parseBoolean(String.valueOf(map.get("per-level")).trim());
+                }
+            } else {
+                name = raw == null ? null : String.valueOf(raw);
+            }
+            Perk perk = Perk.byName(name);
+            if (perk == null) {
+                warn("node '" + node.key() + "' uses unknown perk '" + name + "' — ignored.");
+                continue;
+            }
+            if (Double.isNaN(amount)) {
+                amount = perk.defaultAmount();
+            }
+            node.getEffects().perks().add(new NodeEffects.PerkBonus(perk, amount, perLevel));
+        }
+
         node.getEffects().permissions().addAll(effects.getStringList("permissions"));
         node.getEffects().commands().addAll(effects.getStringList("commands"));
+    }
+
+    private static double doubleOf(Object value, double fallback) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value != null) {
+            try {
+                return Double.parseDouble(String.valueOf(value).trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static int intOf(Object value, int fallback) {

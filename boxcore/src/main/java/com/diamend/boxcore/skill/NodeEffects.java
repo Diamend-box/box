@@ -1,5 +1,6 @@
 package com.diamend.boxcore.skill;
 
+import com.diamend.boxcore.skill.perk.Perk;
 import com.diamend.boxcore.util.Registries;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.attribute.Attribute;
@@ -13,10 +14,11 @@ import java.util.Map;
 
 /**
  * What a skill node actually does. A node may carry any mix of attribute
- * modifiers, permanent potion effects, permissions and one-shot commands.
+ * modifiers, permanent potion effects, perks, permissions and one-shot
+ * commands.
  *
- * <p>Attribute amounts and potion amplifiers scale with the node's level;
- * permissions and commands do not.
+ * <p>Attribute amounts, potion amplifiers and perk amounts scale with the
+ * node's level; permissions and commands do not.
  */
 public class NodeEffects {
 
@@ -37,8 +39,23 @@ public class NodeEffects {
         }
     }
 
+    /**
+     * One perk grant.
+     *
+     * @param perk     what it does
+     * @param amount   how much of it, per node level unless {@code perLevel} is off
+     * @param perLevel whether the amount multiplies with the node's level
+     */
+    public record PerkBonus(Perk perk, double amount, boolean perLevel) {
+
+        public double amountFor(int level) {
+            return perLevel ? amount * Math.max(1, level) : amount;
+        }
+    }
+
     private final List<AttributeBonus> attributes = new ArrayList<>();
     private final List<PotionBonus> potions = new ArrayList<>();
+    private final List<PerkBonus> perks = new ArrayList<>();
     private final List<String> permissions = new ArrayList<>();
     private final List<String> commands = new ArrayList<>();
 
@@ -50,6 +67,10 @@ public class NodeEffects {
         return potions;
     }
 
+    public List<PerkBonus> perks() {
+        return perks;
+    }
+
     public List<String> permissions() {
         return permissions;
     }
@@ -59,7 +80,8 @@ public class NodeEffects {
     }
 
     public boolean isEmpty() {
-        return attributes.isEmpty() && potions.isEmpty() && permissions.isEmpty() && commands.isEmpty();
+        return attributes.isEmpty() && potions.isEmpty() && perks.isEmpty()
+                && permissions.isEmpty() && commands.isEmpty();
     }
 
     /**
@@ -77,6 +99,9 @@ public class NodeEffects {
         for (PotionBonus bonus : potions) {
             lines.add("<gray>» <white>" + Registries.displayName(bonus.type())
                     + " " + Text.roman(bonus.amplifierFor(shown) + 1));
+        }
+        for (PerkBonus bonus : perks) {
+            lines.add("<gray>» <aqua>" + bonus.perk().describe(bonus.amountFor(shown)));
         }
         for (String permission : permissions) {
             lines.add("<gray>» <white>Grants <gray>" + permission);

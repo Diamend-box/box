@@ -120,6 +120,23 @@ public final class Text {
         return (shown >= 0 ? "+" : "") + number + (percent ? "%" : "");
     }
 
+    /** Formats a proportion as an unsigned probability, e.g. {@code 12%}. */
+    public static String percent(double fraction) {
+        return round(fraction * 100.0) + "%";
+    }
+
+    /** Formats a duration in seconds, e.g. {@code 6s}. */
+    public static String seconds(double value) {
+        return round(value) + "s";
+    }
+
+    /** Renders a number without a trailing {@code .0}, to one decimal place. */
+    private static String round(double value) {
+        return Math.abs(value - Math.rint(value)) < 1.0e-6
+                ? String.valueOf((long) Math.rint(value))
+                : trimZeros(String.format(Locale.ROOT, "%.1f", value));
+    }
+
     private static String trimZeros(String value) {
         return value.contains(".")
                 ? value.replaceAll("0+$", "").replaceAll("\\.$", "")

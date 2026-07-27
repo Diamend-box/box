@@ -2,6 +2,7 @@ package com.diamend.boxcore.skill;
 
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.data.ProfileManager;
+import com.diamend.boxcore.skill.perk.PerkService;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.attribute.Attribute;
@@ -38,16 +39,19 @@ public class EffectApplier {
     private final Plugin plugin;
     private final SkillTreeManager trees;
     private final ProfileManager profiles;
+    private final PerkService perks;
 
     /** Permission grants are held open per player and rebuilt on every pass. */
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
     /** What we last gave each player, so we know what to take away. */
     private final Map<UUID, Set<PotionEffectType>> appliedPotions = new HashMap<>();
 
-    public EffectApplier(Plugin plugin, SkillTreeManager trees, ProfileManager profiles) {
+    public EffectApplier(Plugin plugin, SkillTreeManager trees, ProfileManager profiles,
+                         PerkService perks) {
         this.plugin = plugin;
         this.trees = trees;
         this.profiles = profiles;
+        this.perks = perks;
     }
 
     private String namespace() {
@@ -60,6 +64,9 @@ public class EffectApplier {
             return;
         }
         PlayerProfile profile = profiles.get(player.getUniqueId());
+        // Perks come from the same nodes, so this pass is exactly when their
+        // cached totals go stale.
+        perks.invalidate(player.getUniqueId());
 
         Map<Attribute, Map<AttributeModifier.Operation, Double>> attributeTotals = new LinkedHashMap<>();
         Map<PotionEffectType, Integer> potionTotals = new LinkedHashMap<>();
@@ -237,6 +244,7 @@ public class EffectApplier {
             player.removePotionEffect(type);
         }
         appliedPotions.remove(uuid);
+        perks.forget(uuid);
         PermissionAttachment attachment = attachments.remove(uuid);
         if (attachment != null) {
             try {

@@ -28,7 +28,7 @@ Three ship today:
 
 | Module | What it does |
 |--------|--------------|
-| `skills` | Config-driven skill trees bought with skill points. |
+| `skills` | Config-driven skill trees bought with skill points, plus the perk engine that runs their scripted effects. |
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Grants skill points for hours played. |
 
@@ -37,11 +37,15 @@ Three ship today:
 ## Features
 
 - 🌳 **Skill trees** defined entirely in `trees.yml` — slots, icons, costs,
-  prerequisites, multi-level nodes, per-tree permissions.
+  prerequisites, multi-level nodes, per-tree permissions. **44 nodes across four
+  trees** ship as the default.
 - ⚡ **Real effects, not just cosmetics** — nodes grant vanilla **attribute
   modifiers** (health, damage, armour, mining speed, reach, gravity…),
   **permanent potion effects**, **permissions**, and **console commands** on
   unlock. Any mix, on any node.
+- 🎣 **Perks for everything an attribute can't say** — lifesteal, auto-smelt,
+  crop replanting, bonus ore and log drops, cheaper anvils, surviving a killing
+  blow. Nineteen of them, each a one-line entry in `trees.yml`.
 - 📈 **Effects scale with level** and their lore is **generated from the actual
   numbers**, so a description can never drift out of sync with what a node does.
 - 📦 **Collections** — every item a player has ever gathered, in categories,
@@ -149,9 +153,13 @@ trees:
               amount: 0.05
               operation: add_scalar         # percent of the base value
           potions:
-            - effect: haste
+            - effect: regeneration
               amplifier: 0
               amplifier-per-level: 1
+          perks:
+            - type: lifesteal
+              amount: 0.04                  # per level
+            - type: auto_smelt              # amount optional
           permissions: [ "myserver.perk.fly" ]
           commands: [ "give %player% diamond 1" ]
 ```
@@ -163,6 +171,39 @@ today won't break on the next rename.
 
 Operations: `add_number` (flat, the default), `add_scalar` (percent of the
 attribute's base) and `multiply_scalar_1` (percent of the running total).
+
+### Perks
+
+Perks are the effects vanilla has no attribute for. Give one an `amount` or
+leave it off to take the default; add `per-level: false` to stop it scaling
+(what a cooldown wants).
+
+| Perk | What it does |
+|------|--------------|
+| `lifesteal` | Heals a share of the melee damage you deal |
+| `adrenaline` | Speed II for N seconds after a kill |
+| `finisher` | Bonus damage to targets below a third health |
+| `mob_loot` | Chance to double a mob's drops |
+| `ore_bounty` | Chance to double an ore's drops |
+| `log_bounty` | Chance for a bonus log |
+| `auto_smelt` | Ores, sand and cobble drop already smelted |
+| `replant` | Fully grown crops replant themselves, one seed from the harvest |
+| `fishing_speed` | Fish bite sooner |
+| `hunger_saver` | Less exhaustion from everything you do |
+| `second_chance` | Survive a killing blow; `amount` is the cooldown in minutes |
+| `no_freeze` | Immune to powder snow |
+| `safe_stomach` | Bad food can't poison or starve you |
+| `xp_boost` | More XP from every source |
+| `anvil_discount` | Cheaper anvil repairs |
+| `tool_saver` | Chance to spare a point of durability |
+| `bonus_craft` | Chance for a bonus crafted item |
+| `enchant_discount` | Cheaper enchanting table offers |
+| `self_repair` | Mends the held item every 5 seconds |
+
+Two deliberate interactions worth knowing: `auto_smelt` changes what lands on
+the floor but collections still count the **raw** block drop, and the extra
+items from `ore_bounty` / `log_bounty` don't count toward collections either.
+Collections stay a measure of what you *broke*, not what you were paid for it.
 
 ### A collection
 
@@ -215,6 +256,7 @@ With PlaceholderAPI installed:
 | `%boxcore_nodes%` | Nodes unlocked |
 | `%boxcore_node_<tree.node>%` | Owned level of one node |
 | `%boxcore_tree_<tree>%` | Points spent in one tree |
+| `%boxcore_perk_<perk>%` | Total of one perk (`true`/`false` for on-off perks) |
 | `%boxcore_collected%` | Items gathered overall |
 | `%boxcore_collection_<id>%` | Amount gathered |
 | `%boxcore_tier_<id>%` | Collection tier reached |
@@ -254,18 +296,27 @@ server**, not a tuned economy. The actual numbers as shipped:
 
 | | |
 |---|---|
-| Points to max every node in every tree | **171** (combat 63, gathering 63, wayfarer 45) |
+| Nodes | **44** across four trees |
+| Points to max everything | **264** (combat 89, gathering 78, wayfarer 59, artisan 38) |
 | Points available from collections, fully maxed | **278** across 217 tiers |
 | Points from playtime | 1 per 5 hours, uncapped |
 
-So a player who maxes every collection can eventually buy every node — but the
-top collection tiers are deliberately brutal (150,000 cobblestone, 512 ancient
-debris), and the first few tiers of everything come quickly. Expect early
-points to arrive fast and the last third of a tree to be a long-term goal.
+So maxing every collection just about buys every node, with playtime as the
+slack — but the top collection tiers are deliberately brutal (150,000
+cobblestone, 512 ancient debris) and the first few tiers of everything come
+quickly. Expect early points to arrive fast and a completed tree to be a
+long-term goal rather than a milestone.
 
-The strongest nodes (`Executioner`, `Featherweight`, `Deep Breath`, `Cave Eyes`,
-`Last Stand`) additionally sit behind 12 points already spent in their own tree,
-so they can't be rushed first.
+The strongest nodes (`Executioner`, `Trophy Hunter`, `Last Stand`, `Cave Eyes`,
+`Deep Breath`, `Featherweight`, `Second Chance`, `Soul of the Forge`) sit behind
+10–12 points already spent in their own tree, so no one rushes straight to a
+capstone.
+
+The four trees are shaped differently on purpose. **Combat** and **Gathering**
+are wide (four parallel lines each) so there's always something affordable;
+**Wayfarer** is the mobility-and-survival tree; **Artisan** is small,
+late-game and entirely made of perks that pay back the points you spend
+elsewhere.
 
 If that's too generous, the levers in order of bluntness are: `points-per-tier`
 on individual collections, `playtime.hours-per-point`, and node `cost`/`costs`.

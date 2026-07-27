@@ -4,6 +4,8 @@ import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.gui.TreePickerMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
+import com.diamend.boxcore.skill.perk.PerkListener;
+import com.diamend.boxcore.skill.perk.PerkService;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -18,6 +20,7 @@ public class SkillsModule implements BoxModule {
 
     private final BoxCorePlugin plugin;
     private SkillTreeManager treeManager;
+    private PerkService perkService;
     private EffectApplier effectApplier;
     private SkillService service;
     private BukkitTask refreshTask;
@@ -40,14 +43,18 @@ public class SkillsModule implements BoxModule {
     public void enable() {
         this.treeManager = new SkillTreeManager(plugin);
         this.treeManager.load();
-        this.effectApplier = new EffectApplier(plugin, treeManager, plugin.profiles());
+        this.perkService = new PerkService(plugin.profiles(), treeManager);
+        this.effectApplier = new EffectApplier(plugin, treeManager, plugin.profiles(), perkService);
         this.service = new SkillService(plugin, treeManager, plugin.profiles(), effectApplier,
                 plugin.messages());
 
         plugin.getServer().getPluginManager().registerEvents(
                 new SkillListener(plugin, plugin.profiles(), service, effectApplier), plugin);
+        plugin.getServer().getPluginManager().registerEvents(
+                new PerkListener(plugin, perkService, plugin.messages()), plugin);
 
         startRefreshTask();
+        perkService.startMending(plugin);
 
         // Catch anyone already online (a /reload, or a module re-enable).
         for (Player player : plugin.getServer().getOnlinePlayers()) {
@@ -62,6 +69,10 @@ public class SkillsModule implements BoxModule {
             refreshTask.cancel();
             refreshTask = null;
         }
+        if (perkService != null) {
+            perkService.stop();
+            perkService.invalidateAll();
+        }
         if (effectApplier != null) {
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 effectApplier.clear(player);
@@ -72,6 +83,8 @@ public class SkillsModule implements BoxModule {
     @Override
     public void reload() {
         treeManager.load();
+        // The trees the totals were computed from just changed underneath them.
+        perkService.invalidateAll();
         if (refreshTask != null) {
             refreshTask.cancel();
         }
@@ -133,5 +146,9 @@ public class SkillsModule implements BoxModule {
 
     public EffectApplier effects() {
         return effectApplier;
+    }
+
+    public PerkService perks() {
+        return perkService;
     }
 }

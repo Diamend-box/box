@@ -37,8 +37,8 @@ skills:
   respec-commands: []
 
   # Re-apply permanent potion effects on this interval (seconds) so other
-  # plugins clearing effects can't strip a player's unlocked perks.
-  # Set to 0 to only apply on join/respawn/unlock.
+  # plugins clearing effects (or a bucket of milk) can't strip an effect a
+  # player paid for. Set to 0 to only apply on join/respawn/unlock.
   effect-refresh-seconds: 30
 
   # Show an action-bar summary of a node's effects when it is unlocked.
@@ -112,3 +112,5 @@ messages:
   respec-done: "<green>Refunded <white><amount></white> skill point<plural>."
   respec-disabled: "<red>Respeccing is disabled on this server."
   tier-up: "<aqua><collection></aqua> <gray>collection reached tier <white><tier></white><gray>!"
+  # Shown when the Second Chance perk saves a player from a killing blow.
+  second-chance: "<gold>Second Chance <gray>pulled you back from the brink."
