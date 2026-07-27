@@ -383,4 +383,4 @@ collections:
     icon: CLOCK
     source: playtime
     unit: hours
-    tiers: [ 1, 5, 10, 25, 50, 100, 175, 275, 400, 550, 750, 1000 ]
+    tiers: [ 1, 2, 5, 8, 12, 17, 25, 35, 45, 60, 80, 100 ]

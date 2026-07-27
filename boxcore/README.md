@@ -258,7 +258,7 @@ ceiling:
     category: time
     source: playtime          # fed by the playtime module, not by items
     unit: hours               # shown after the amount
-    tiers: [ 1, 5, 10, 25, 50, 100, 175, 275, 400, 550, 750, 1000 ]
+    tiers: [ 1, 2, 5, 8, 12, 17, 25, 35, 45, 60, 80, 100 ]
 ```
 
 Where item collections are counted from is set in `config.yml`:
@@ -350,7 +350,7 @@ server**, not a tuned economy. The actual numbers as shipped:
 | Nodes | **45** across four trees |
 | Points to max everything | **281** (combat 89, gathering 84, wayfarer 73, duelist 35) |
 | Points from item collections | **175** across 175 tiers |
-| Points from playtime | **12** across 12 tiers (1 hour → 1,000 hours) |
+| Points from playtime | **12** across 12 tiers (1 hour → 100 hours) |
 | **Total earnable, ever** | **187** — 67% of the trees |
 
 **The economy is deliberately finite.** Every point comes from crossing a
@@ -360,9 +360,10 @@ whole tree. Choosing a build is the point; a respec item is how you change
 your mind.
 
 That includes playtime. It used to be an uncapped trickle, which meant an AFK
-client earned forever; it is now a collection with a last tier at 1,000 hours.
-Early tiers come quickly and then it slows sharply, so the first few points
-arrive fast and the last ones are a genuine commitment.
+client earned forever; it is now a collection with a last tier at 100 hours.
+Early tiers come quickly and then it slows, so the first few points arrive in
+an evening and the last ones take a few weeks — after which time online pays
+nothing and only gathering does.
 
 The strongest nodes (`Executioner`, `Trophy Hunter`, `Last Stand`, `Cave Eyes`,
 `Deep Breath`, `Featherweight`, `Second Chance`, `Headhunter`, `Venom Strike`)
