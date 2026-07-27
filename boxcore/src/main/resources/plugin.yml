@@ -1,0 +1,36 @@
+name: BoxCore
+version: '${project.version}'
+main: com.diamend.boxcore.BoxCorePlugin
+api-version: '1.21'
+softdepend: [PlaceholderAPI]
+author: diamend
+description: Utility and progression core for the Box server — skill trees, collections and more.
+website: https://github.com/diamend-box/box
+
+commands:
+  box:
+    description: Open the BoxCore hub and manage its modules.
+    usage: |
+      /box                          - Open the BoxCore hub
+      /box skills [tree]            - Open your skill trees
+      /box collections [category]   - Open your collections
+      /box points                   - Show your skill points
+      /box respec                   - Refund every unlocked node
+      /box modules                  - List loaded modules (admin)
+      /box points <give|take|set> <player> <n> - Adjust points (admin)
+      /box unlock <player> <tree.node>         - Force-unlock a node (admin)
+      /box collection set <player> <id> <n>    - Set a collection amount (admin)
+      /box reset <player>                      - Wipe a player's BoxCore data (admin)
+      /box reload                              - Reload configuration from disk (admin)
+    aliases: [boxcore, bx]
+
+permissions:
+  boxcore.use:
+    description: Allows opening the BoxCore hub, skill trees and collections.
+    default: true
+  boxcore.respec:
+    description: Allows refunding your own skill points.
+    default: true
+  boxcore.admin:
+    description: Allows granting points, unlocking nodes and editing player data.
+    default: op

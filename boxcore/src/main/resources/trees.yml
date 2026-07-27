@@ -1,0 +1,493 @@
+# =====================================================================
+#  BoxCore — skill trees
+# =====================================================================
+# Everything here is hot-reloadable with /box reload. Players keep the
+# nodes they own; if you delete or rename a node, the points that were
+# spent on it are handed back automatically.
+#
+# ---------------------------------------------------------------------
+#  Tree options
+# ---------------------------------------------------------------------
+#   display      Menu title / hub name.
+#   icon         Material shown in the tree picker.
+#   description  Lore lines for the tree picker.
+#   rows         GUI height, 1-6 (default 6 = 54 slots, 0-53).
+#   order        Sort order in the picker (low first).
+#   permission   Optional permission needed to see/use the tree.
+#
+# ---------------------------------------------------------------------
+#  Node options
+# ---------------------------------------------------------------------
+#   slot            GUI slot (0-based). Must fit inside `rows`.
+#   icon            Material for the node.
+#   locked-icon     Optional material shown before it's unlocked.
+#   display         Node name.
+#   description     Lore lines (shown above the generated effect list).
+#   cost            Skill points per level (default 1).
+#   costs           Per-level costs, e.g. [1, 2, 3] — overrides `cost`.
+#   max-level       How many times it can be taken (default 1).
+#   requires        Prerequisite nodes in this tree. "id" means level 1,
+#                   "id:3" means at least level 3 of that node.
+#   requires-points Points that must already be spent in this tree.
+#   requires-permission  Optional permission gate for a single node.
+#
+# ---------------------------------------------------------------------
+#  Node effects
+# ---------------------------------------------------------------------
+#   attributes:   vanilla attributes, scaled by the node's level.
+#                 Short form  ->  max_health: 2.0        (ADD_NUMBER)
+#                 Long form   ->  movement_speed:
+#                                   amount: 0.05
+#                                   operation: add_scalar
+#                 Operations: add_number (flat), add_scalar (percent of
+#                 base), multiply_scalar_1 (percent of the total).
+#   potions:      permanent, hidden potion effects.
+#                 - effect: haste
+#                   amplifier: 0            # 0 = level I
+#                   amplifier-per-level: 1  # +1 per node level
+#   permissions:  permission nodes granted while the skill is owned.
+#   commands:     console commands run once, when the node is unlocked.
+#                 %player% and %uuid% are replaced.
+# =====================================================================
+
+trees:
+
+  # -------------------------------------------------------------------
+  combat:
+    display: "<red><bold>Combat</bold>"
+    icon: IRON_SWORD
+    description:
+      - "<gray>Hit harder, live longer."
+    rows: 6
+    order: 1
+    nodes:
+
+      toughness:
+        slot: 11
+        icon: RED_DYE
+        display: "<red>Toughness"
+        description:
+          - "<gray>Extra hearts, plain and simple."
+        cost: 1
+        max-level: 5
+        effects:
+          attributes:
+            max_health: 2.0
+
+      thick_skin:
+        slot: 20
+        icon: IRON_CHESTPLATE
+        display: "<red>Thick Skin"
+        description:
+          - "<gray>Armour you carry with you."
+        cost: 2
+        max-level: 4
+        requires: [ "toughness:2" ]
+        effects:
+          attributes:
+            armor: 1.0
+            armor_toughness: 0.5
+
+      rooted:
+        slot: 29
+        icon: NETHERITE_INGOT
+        display: "<red>Rooted"
+        description:
+          - "<gray>Harder to shove around."
+        cost: 3
+        max-level: 2
+        requires: [ "thick_skin:2" ]
+        effects:
+          attributes:
+            knockback_resistance: 0.1
+
+      last_stand:
+        slot: 38
+        icon: TOTEM_OF_UNDYING
+        display: "<red>Last Stand"
+        description:
+          - "<gray>A permanent buffer of absorption"
+          - "<gray>and a little damage resistance."
+        cost: 5
+        max-level: 1
+        requires: [ "rooted" ]
+        requires-points: 12
+        effects:
+          attributes:
+            max_absorption: 4.0
+          potions:
+            - effect: resistance
+              amplifier: 0
+
+      ferocity:
+        slot: 13
+        icon: IRON_SWORD
+        display: "<gold>Ferocity"
+        description:
+          - "<gray>More damage per swing."
+        cost: 1
+        max-level: 5
+        effects:
+          attributes:
+            attack_damage: 0.5
+
+      swift_strikes:
+        slot: 22
+        icon: SUGAR
+        display: "<gold>Swift Strikes"
+        description:
+          - "<gray>Your sword recharges faster."
+        cost: 2
+        max-level: 3
+        requires: [ "ferocity:2" ]
+        effects:
+          attributes:
+            attack_speed: 0.2
+
+      wide_arc:
+        slot: 31
+        icon: NETHERITE_SWORD
+        display: "<gold>Wide Arc"
+        description:
+          - "<gray>Sweeping attacks carry more"
+          - "<gray>of your damage to the crowd."
+        cost: 3
+        max-level: 2
+        requires: [ "swift_strikes:2" ]
+        effects:
+          attributes:
+            sweeping_damage_ratio: 0.15
+
+      executioner:
+        slot: 40
+        icon: DIAMOND_AXE
+        display: "<gold>Executioner"
+        description:
+          - "<gray>Reach a little further, hit a"
+          - "<gray>lot harder."
+        costs: [ 6 ]
+        requires: [ "wide_arc" ]
+        requires-points: 12
+        effects:
+          attributes:
+            attack_damage: 2.0
+            entity_interaction_range: 0.5
+
+      fire_walker:
+        slot: 15
+        icon: BLAZE_POWDER
+        display: "<yellow>Fire Walker"
+        description:
+          - "<gray>Burn for a much shorter time."
+        cost: 2
+        max-level: 3
+        effects:
+          attributes:
+            burning_time:
+              amount: -0.15
+              operation: add_scalar
+
+      blast_braced:
+        slot: 24
+        icon: TNT
+        display: "<yellow>Blast Braced"
+        description:
+          - "<gray>Creepers move you less."
+        cost: 2
+        max-level: 3
+        requires: [ "fire_walker" ]
+        effects:
+          attributes:
+            explosion_knockback_resistance:
+              amount: 0.15
+              operation: add_scalar
+
+      second_wind:
+        slot: 33
+        icon: GOLDEN_APPLE
+        display: "<yellow>Second Wind"
+        description:
+          - "<gray>Your body knits itself back"
+          - "<gray>together over time."
+        cost: 4
+        max-level: 1
+        requires: [ "blast_braced:2" ]
+        effects:
+          potions:
+            - effect: regeneration
+              amplifier: 0
+
+  # -------------------------------------------------------------------
+  gathering:
+    display: "<green><bold>Gathering</bold>"
+    icon: DIAMOND_PICKAXE
+    description:
+      - "<gray>Mine, farm and fish faster."
+    rows: 6
+    order: 2
+    nodes:
+
+      prospector:
+        slot: 11
+        icon: IRON_PICKAXE
+        display: "<aqua>Prospector"
+        description:
+          - "<gray>Blocks break faster in your hands."
+        cost: 1
+        max-level: 5
+        effects:
+          attributes:
+            block_break_speed:
+              amount: 0.1
+              operation: add_scalar
+
+      deep_delver:
+        slot: 20
+        icon: AMETHYST_SHARD
+        display: "<aqua>Deep Delver"
+        description:
+          - "<gray>Mining efficiency underground,"
+          - "<gray>and a longer reach to the wall."
+        cost: 2
+        max-level: 3
+        requires: [ "prospector:2" ]
+        effects:
+          attributes:
+            mining_efficiency: 0.5
+            block_interaction_range: 0.5
+
+      tunnel_rat:
+        slot: 29
+        icon: GLOWSTONE_DUST
+        display: "<aqua>Tunnel Rat"
+        description:
+          - "<gray>Permanent Haste — no beacon needed."
+        cost: 4
+        max-level: 2
+        requires: [ "deep_delver:2" ]
+        effects:
+          potions:
+            - effect: haste
+              amplifier: 0
+              amplifier-per-level: 1
+
+      cave_eyes:
+        slot: 38
+        icon: SPIDER_EYE
+        display: "<aqua>Cave Eyes"
+        description:
+          - "<gray>You stop needing torches."
+        cost: 5
+        max-level: 1
+        requires: [ "tunnel_rat" ]
+        requires-points: 12
+        effects:
+          potions:
+            - effect: night_vision
+              amplifier: 0
+
+      green_thumb:
+        slot: 13
+        icon: WHEAT
+        display: "<green>Green Thumb"
+        description:
+          - "<gray>Work the fields at speed."
+        cost: 1
+        max-level: 4
+        effects:
+          attributes:
+            block_break_speed:
+              amount: 0.05
+              operation: add_scalar
+            movement_efficiency:
+              amount: 0.25
+              operation: add_scalar
+
+      long_arms:
+        slot: 22
+        icon: BAMBOO
+        display: "<green>Long Arms"
+        description:
+          - "<gray>Place and break from further away."
+        cost: 3
+        max-level: 2
+        requires: [ "green_thumb:2" ]
+        effects:
+          attributes:
+            block_interaction_range: 1.0
+
+      surefooted:
+        slot: 31
+        icon: LEATHER_BOOTS
+        display: "<green>Surefooted"
+        description:
+          - "<gray>Step up full blocks and stop"
+          - "<gray>crawling while sneaking."
+        cost: 3
+        max-level: 1
+        requires: [ "long_arms" ]
+        effects:
+          attributes:
+            step_height: 0.5
+            sneaking_speed:
+              amount: 0.5
+              operation: add_scalar
+
+      angler:
+        slot: 15
+        icon: FISHING_ROD
+        display: "<blue>Angler"
+        description:
+          - "<gray>The sea is kinder to you."
+        cost: 2
+        max-level: 3
+        effects:
+          attributes:
+            luck: 1.0
+
+      lungs_of_iron:
+        slot: 24
+        icon: PUFFERFISH
+        display: "<blue>Lungs of Iron"
+        description:
+          - "<gray>Stay under far longer."
+        cost: 2
+        max-level: 3
+        requires: [ "angler" ]
+        effects:
+          attributes:
+            oxygen_bonus: 1.0
+
+      current_rider:
+        slot: 33
+        icon: HEART_OF_THE_SEA
+        display: "<blue>Current Rider"
+        description:
+          - "<gray>Swim, and mine underwater,"
+          - "<gray>like you were born to it."
+        cost: 4
+        max-level: 2
+        requires: [ "lungs_of_iron:2" ]
+        effects:
+          attributes:
+            water_movement_efficiency:
+              amount: 0.3
+              operation: add_scalar
+            submerged_mining_speed:
+              amount: 0.5
+              operation: add_scalar
+
+      deep_breath:
+        slot: 42
+        icon: CONDUIT
+        display: "<blue>Deep Breath"
+        description:
+          - "<gray>You simply stop drowning."
+        cost: 6
+        max-level: 1
+        requires: [ "current_rider" ]
+        requires-points: 12
+        effects:
+          potions:
+            - effect: water_breathing
+              amplifier: 0
+            - effect: conduit_power
+              amplifier: 0
+
+  # -------------------------------------------------------------------
+  wayfarer:
+    display: "<aqua><bold>Wayfarer</bold>"
+    icon: COMPASS
+    description:
+      - "<gray>Move further, fall softer,"
+      - "<gray>carry more home."
+    rows: 6
+    order: 3
+    nodes:
+
+      fleet_footed:
+        slot: 11
+        icon: FEATHER
+        display: "<white>Fleet Footed"
+        description:
+          - "<gray>Flat-out movement speed."
+        cost: 2
+        max-level: 5
+        effects:
+          attributes:
+            movement_speed:
+              amount: 0.04
+              operation: add_scalar
+
+      spring_step:
+        slot: 20
+        icon: SLIME_BALL
+        display: "<white>Spring Step"
+        description:
+          - "<gray>Jump noticeably higher."
+        cost: 3
+        max-level: 3
+        requires: [ "fleet_footed:2" ]
+        effects:
+          attributes:
+            jump_strength: 0.05
+
+      cats_landing:
+        slot: 29
+        icon: PHANTOM_MEMBRANE
+        display: "<white>Cat's Landing"
+        description:
+          - "<gray>Fall further before it hurts,"
+          - "<gray>and hurt less when it does."
+        cost: 3
+        max-level: 3
+        requires: [ "spring_step" ]
+        effects:
+          attributes:
+            safe_fall_distance: 2.0
+            fall_damage_multiplier:
+              amount: -0.15
+              operation: add_scalar
+
+      featherweight:
+        slot: 38
+        icon: ELYTRA
+        display: "<white>Featherweight"
+        description:
+          - "<gray>Gravity loosens its grip on you."
+        cost: 6
+        max-level: 1
+        requires: [ "cats_landing:2" ]
+        requires-points: 12
+        effects:
+          attributes:
+            gravity:
+              amount: -0.1
+              operation: add_scalar
+            safe_fall_distance: 4.0
+
+      keen_eye:
+        slot: 15
+        icon: SPYGLASS
+        display: "<light_purple>Keen Eye"
+        description:
+          - "<gray>Fortune favours you."
+        cost: 3
+        max-level: 2
+        effects:
+          attributes:
+            luck: 1.0
+
+      trailblazer:
+        slot: 24
+        icon: MAP
+        display: "<light_purple>Trailblazer"
+        description:
+          - "<gray>A permanent scout's pace."
+        cost: 5
+        max-level: 1
+        requires: [ "keen_eye" ]
+        effects:
+          potions:
+            - effect: speed
+              amplifier: 0

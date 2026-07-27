@@ -1,0 +1,114 @@
+# =====================================================================
+#  BoxCore configuration
+# =====================================================================
+# BoxCore is a modular utility plugin: each feature below is a module
+# that can be switched off without touching the rest of the plugin.
+# More modules will be added over time — new ones appear here with an
+# "enabled" toggle and are automatically added to the /box hub.
+#
+# Skill trees live in  trees.yml
+# Collections live in  collections.yml
+#
+# All text supports MiniMessage (<green>, <gradient:#a:#b>…) and classic
+# '&' colour codes, mixed freely.
+
+modules:
+  skills:
+    enabled: true
+  collections:
+    enabled: true
+  playtime:
+    enabled: true
+
+# ---------------------------------------------------------------------
+# Skill trees
+# ---------------------------------------------------------------------
+skills:
+  # Points every player starts with the first time they join.
+  starting-points: 0
+
+  # Allow players to refund all of their spent points with /box respec.
+  allow-respec: true
+  # Skill points burnt as a fee when respeccing (0 = free). The fee is
+  # taken from the refund, never from points the player hasn't spent.
+  respec-cost: 0
+  # Console commands run when a player respecs (e.g. an economy charge).
+  # %player% and %uuid% are replaced.
+  respec-commands: []
+
+  # Re-apply permanent potion effects on this interval (seconds) so other
+  # plugins clearing effects can't strip a player's unlocked perks.
+  # Set to 0 to only apply on join/respawn/unlock.
+  effect-refresh-seconds: 30
+
+  # Show an action-bar summary of a node's effects when it is unlocked.
+  unlock-feedback: true
+
+# ---------------------------------------------------------------------
+# Collections (Hypixel SkyBlock style)
+# ---------------------------------------------------------------------
+collections:
+  # Where collection progress is counted from. Turning a source off stops
+  # it contributing entirely.
+  sources:
+    # Mining/chopping/digging: counts what the block actually drops, so
+    # Silk Touch and Fortune are respected.
+    block-break: true
+    # Player kills: counts the mob's drops.
+    entity-kill: true
+    # Fishing: counts what was reeled in.
+    fishing: true
+    # Right-click harvesting (sweet berries, cave vines…).
+    harvest: true
+    # Crafting the item. Off by default — crafting usually consumes items
+    # that were already counted when they were gathered.
+    craft: false
+    # Picking an item up off the floor. Off by default: it double-counts
+    # anything you mined or farmed yourself, and counts other players'
+    # drops as your own.
+    pickup: false
+
+  # When false, breaking a block that a player placed doesn't count
+  # (stops place-and-break farming).
+  count-player-placed-blocks: false
+
+  # Notify the player when they reach a new collection tier.
+  announce-tiers: true
+  # Also show a title on screen for the tier-up.
+  tier-title: false
+
+# ---------------------------------------------------------------------
+# Playtime → skill points
+# ---------------------------------------------------------------------
+playtime:
+  # Grant points for time played, read from the server's own playtime
+  # statistic (so time played before installing BoxCore still counts).
+  hours-per-point: 5
+  # Never grant more than this many playtime points in total
+  # (0 = no cap).
+  max-points: 0
+
+# ---------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------
+# Save all online players' data to disk every X minutes (crash safety
+# net). 0 disables periodic saving; data is always saved on quit and on
+# shutdown.
+autosave-minutes: 5
+
+# ---------------------------------------------------------------------
+# Messages
+# ---------------------------------------------------------------------
+messages:
+  prefix: "<gradient:#5ee7df:#b490ca><bold>Box</bold></gradient> <dark_gray>»</dark_gray> "
+  no-permission: "<red>You don't have permission to do that."
+  players-only: "<red>Only players can use that."
+  unknown-player: "<red>Never seen a player called <white><name></white>."
+  point-earned: "<green>+<amount> skill point<plural> <gray>(<source>)"
+  node-unlocked: "<green>Unlocked <white><node></white><gray>!"
+  node-cant-afford: "<red>You need <white><cost></white> point<plural> for that — you have <white><have></white>."
+  node-locked: "<red>Locked: <gray><reason>"
+  node-maxed: "<yellow>That node is already at its maximum level."
+  respec-done: "<green>Refunded <white><amount></white> skill point<plural>."
+  respec-disabled: "<red>Respeccing is disabled on this server."
+  tier-up: "<aqua><collection></aqua> <gray>collection reached tier <white><tier></white><gray>!"
