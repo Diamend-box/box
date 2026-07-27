@@ -47,7 +47,10 @@ black-market:
     - {item: harpoon_gun, price: 150}
     - {item: tidal_draught, amount: 2, price: 60}
     - {item: sea_salve, amount: 2, price: 45}
-    - {item: deepsight_tonic, amount: 2, price: 30}
+    # No Deepsight Tonic here on purpose: Night Vision competes with a client
+    # brightness setting, so the line can never be worth its price to anyone
+    # who knows about it. The Gillwater Philter stays until we know whether
+    # there is anything underwater worth diving for.
     - {item: gillwater_philter, amount: 2, price: 30}
     - {item: dark_sea_boat, price: 55}
 
