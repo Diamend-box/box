@@ -1,6 +1,7 @@
 package com.diamend.boxcore.data;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
@@ -95,8 +96,17 @@ public class ProfileManager {
         if (!file.exists()) {
             return profile;
         }
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        // The separator has to be set *before* parsing: loading walks the YAML
+        // tree calling set() with each raw key, so a key holding a dot would be
+        // re-nested on the way in even if we fixed the separator afterwards.
+        YamlConfiguration config = new YamlConfiguration();
         config.options().pathSeparator(SEPARATOR);
+        try {
+            config.load(file);
+        } catch (IOException | InvalidConfigurationException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Could not read BoxCore profile for " + uuid, ex);
+            return profile;
+        }
         profile.setName(config.getString("name", ""));
         profile.setPointsEarned(config.getInt("points/earned"));
         profile.setPointsSpent(config.getInt("points/spent"));

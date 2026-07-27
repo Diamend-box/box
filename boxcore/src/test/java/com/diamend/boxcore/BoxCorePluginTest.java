@@ -172,6 +172,10 @@ class BoxCorePluginTest {
         plugin.profiles().saveNow(profile);
         plugin.profiles().unload(player.getUniqueId());
 
+        String stored = readProfileFile(player.getUniqueId());
+        assertTrue(stored.contains("combat.toughness: 2"),
+                "the dotted key should be written flat, not nested; file was:\n" + stored);
+
         PlayerProfile reloaded = plugin.profiles().loadDetached(player.getUniqueId());
 
         assertEquals(7, reloaded.getPointsEarned());
@@ -180,6 +184,15 @@ class BoxCorePluginTest {
         assertEquals(2, reloaded.getNodes().size(), "both dotted keys came back whole");
         assertEquals(1234, reloaded.getCollected("cobblestone"));
         assertEquals(3, reloaded.getAwardedTier("cobblestone"));
+    }
+
+    private String readProfileFile(java.util.UUID uuid) {
+        try {
+            return java.nio.file.Files.readString(
+                    new java.io.File(plugin.profiles().folder(), uuid + ".yml").toPath());
+        } catch (java.io.IOException ex) {
+            throw new AssertionError("profile file was not written", ex);
+        }
     }
 
     @Test

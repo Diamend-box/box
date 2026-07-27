@@ -250,13 +250,27 @@ owing them.
 ## Balance notes
 
 The shipped trees and collections are a **starting point sized for a survival
-server**, not a tuned economy:
+server**, not a tuned economy. The actual numbers as shipped:
 
-- A full clear of every tree costs roughly 90 skill points.
-- Playtime alone pays 1 point per 5 hours, so collections are meant to be the
-  main source.
-- The strongest nodes (`Executioner`, `Featherweight`, `Deep Breath`) are gated
-  behind 12 points spent in their tree, so they can't be rushed first.
+| | |
+|---|---|
+| Points to max every node in every tree | **171** (combat 63, gathering 63, wayfarer 45) |
+| Points available from collections, fully maxed | **278** across 217 tiers |
+| Points from playtime | 1 per 5 hours, uncapped |
+
+So a player who maxes every collection can eventually buy every node — but the
+top collection tiers are deliberately brutal (150,000 cobblestone, 512 ancient
+debris), and the first few tiers of everything come quickly. Expect early
+points to arrive fast and the last third of a tree to be a long-term goal.
+
+The strongest nodes (`Executioner`, `Featherweight`, `Deep Breath`, `Cave Eyes`,
+`Last Stand`) additionally sit behind 12 points already spent in their own tree,
+so they can't be rushed first.
+
+If that's too generous, the levers in order of bluntness are: `points-per-tier`
+on individual collections, `playtime.hours-per-point`, and node `cost`/`costs`.
+All three can change on a live server — the refund logic means nobody is left
+in debt.
 
 Turn `playtime` off, retune `points-per-tier`, or delete trees wholesale — the
 refund logic means you can rebalance on a live server without wiping anyone.
