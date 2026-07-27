@@ -30,23 +30,34 @@ public final class Registries {
     }
 
     /**
-     * Folds a config-written name down to a comparable form: lower-cased, no
-     * namespace, dots and dashes as underscores, and without the legacy
-     * {@code generic_}/{@code player_}/{@code zombie_} attribute prefixes.
+     * Folds a config-written name down to a comparable form: trimmed,
+     * lower-cased, no namespace, dots and dashes as underscores.
+     *
+     * <p>This is the right function for names that aren't attributes — it
+     * leaves the name otherwise intact, so something legitimately called
+     * {@code player_damage} survives.
      */
-    public static String normalize(String name) {
+    public static String simplify(String name) {
         if (name == null) {
             return "";
         }
         String value = name.trim().toLowerCase(Locale.ROOT).replace('.', '_').replace('-', '_');
         int colon = value.indexOf(':');
-        if (colon >= 0) {
-            value = value.substring(colon + 1);
-        }
+        return colon >= 0 ? value.substring(colon + 1) : value;
+    }
+
+    /**
+     * {@link #simplify} plus dropping the legacy
+     * {@code generic_}/{@code player_}/{@code zombie_} attribute prefixes.
+     *
+     * <p>Attributes only: the prefixes are Mojang's old attribute namespacing,
+     * and stripping them from anything else quietly mangles the name.
+     */
+    public static String normalize(String name) {
+        String value = simplify(name);
         for (String prefix : new String[] { "generic_", "player_", "zombie_", "horse_" }) {
             if (value.startsWith(prefix)) {
-                value = value.substring(prefix.length());
-                break;
+                return value.substring(prefix.length());
             }
         }
         return value;

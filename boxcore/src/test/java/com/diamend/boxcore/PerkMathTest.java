@@ -39,6 +39,17 @@ class PerkMathTest {
     }
 
     @Test
+    void aPerkNamedAfterALegacyAttributePrefixStillResolves() {
+        // Registries.normalize() strips generic_/player_/zombie_/horse_ because
+        // those were Mojang's old attribute prefixes. Perk names must not go
+        // through it, or player_damage silently folds to damage and the node
+        // that uses it loads with no effect at all.
+        assertSame(Perk.PLAYER_DAMAGE, Perk.byName("player_damage"));
+        assertEquals("player_damage", Perk.PLAYER_DAMAGE.id());
+        assertNull(Perk.byName("damage"), "the stripped form is not a perk");
+    }
+
+    @Test
     void everyPerkHasADistinctIdAndADescription() {
         for (Perk perk : Perk.values()) {
             assertSame(perk, Perk.byName(perk.id()), perk + " resolves from its own id");

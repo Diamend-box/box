@@ -157,7 +157,9 @@ public enum Perk {
      * loader reports as a config warning.
      */
     public static Perk byName(String name) {
-        String key = Registries.normalize(name);
+        // simplify(), not normalize(): the latter strips legacy attribute
+        // prefixes, which would turn player_damage into damage.
+        String key = Registries.simplify(name);
         if (key.isEmpty()) {
             return null;
         }
