@@ -17,8 +17,8 @@ those exist.** Discard older copies.
   version killed legitimate tactical walls. §12, §18.
 - **Clamp hooks revised.** `InventoryCloseEvent` is dropped — containment makes it redundant — but
   drop and craft are added, because both remove ore with no container involved. §4.
-- **Three questions opened**: workstations vs. containers, the raw→ingot path, and whether the fee
-  clock resets on entering spawn. §3, §19.
+- **Two questions opened**: workstations vs. containers, and whether the fee clock resets on
+  entering spawn. §3, §5, §19. A third — the raw→ingot path — is answered: smelting is an NPC.
 
 **Changes in v4** (retained for history):
 
@@ -155,17 +155,19 @@ reopens the hole.
 split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops are spawned by
 `dropItemNaturally` without passing through it.
 
+**Smelting is an NPC, so furnaces are not on the ore path** and can stay blocked with no cost. The
+NPC's interface must sit on the workstation side of the line below, and must *behave* like one — if
+it holds ore across a logout it is a free bank with extra steps.
+
 > **OPEN — workstations are not containers.** "Any inventory other than the player's own" as written
-> also blocks the crafting table, smithing table, enchanting table, anvil and grindstone — so no
-> enchanting with lapis and no netherite upgrades. The property that matters is **persistence, not
-> ownership**: a container holds ore while the player is offline, a workstation returns it on close.
-> Restating the rule as *"any inventory that persists when the player walks away"* carves out
-> workstations and still blocks every route listed above.
+> also blocks the crafting table, smithing table, enchanting table, anvil and grindstone. Concretely:
+> no enchanting with lapis, no netherite upgrades, and no diamond pickaxe, since a pickaxe needs the
+> 3×3 grid and only the 2×2 counts as the player's own.
 >
-> **That reformulation does not settle furnaces**, which persist and so stay blocked — correctly, a
-> furnace is a stash. So: **what is the intended raw-ore → ingot path?** If the custom compressor
-> (§15) replaces smelting, this is a non-issue and should be stated. If vanilla furnaces are the
-> path, containment breaks the core loop and needs a session-bound smelting station instead.
+> The property that matters is **persistence, not ownership**: a container holds ore while the player
+> is offline; a workstation cannot, and returns everything on close. Restating the rule as *"any
+> inventory that persists when the player walks away"* carves out workstations and the smelting NPC
+> while still blocking every route listed above.
 
 **The placement audit still applies.** Compressed output stays a custom non-placeable item, and no
 whitelist entry may be a placeable vanilla block — in practice **ancient debris** plus **any ore
@@ -287,15 +289,21 @@ one stack → bank at 5%, permanently.
 
 The mining condition stops a player sealing into a pocket and idling to earn the discount.
 
-> **OPEN — should the clock reset on entering spawn?** Today it stalls there, which leaves one
-> laundering route open now that §3 has closed chests. A teammate parked one step outside spawn,
-> breaking a single whitelisted block every 30 seconds, reaches the 5% tier at no risk and banks
-> hauls handed over by drop; ducking inside costs nothing because the clock is only paused.
-> Resetting on spawn entry — alongside the existing deposit and death triggers — forces that mule to
-> stand in the open for the full eight minutes holding a fortune, which is §11's bounty target,
-> i.e. content rather than an exploit. **Cost: a player who steps into spawn mid-trip loses their
-> tier.** That is defensible, since entering spawn *is* ending your exposure, and it does not touch
-> the ordinary loop as long as bank zones sit outside spawn (§8) — confirm that before adopting.
+> **OPEN — should the clock reset on entering spawn?** Today it only stalls there, which leaves one
+> laundering route open now that §3 has closed chests.
+>
+> B stands five blocks outside spawn and breaks one whitelisted block every 30 seconds — enough to
+> keep the clock legal, no risk taken. Eight minutes later B is at 5%. A mines deep in the box, walks
+> over and drops the whole haul to B (§3 allows manual drops for trading), and B banks it at 5%.
+> Anything dangerous appears, B steps into spawn, the clock pauses, B walks back out at the same
+> tier. **B bought the maximum discount without ever being exposed**, which is the one thing the fee
+> curve exists to prevent.
+>
+> Resetting on spawn entry — alongside the existing deposit and death triggers — forces B to stand in
+> the open for the full eight minutes holding a fortune, which is §11's bounty target: content
+> rather than an exploit. **Cost: ducking into spawn mid-trip loses your tier**, including for a
+> chased player who escapes there. Defensible, since entering spawn *is* ending your exposure.
+> Depends on bank zones sitting outside spawn (§8) — confirm before adopting.
 
 ### Combat pauses the clock — reversal of the v3 rule
 
@@ -766,12 +774,10 @@ accepted gap, not an oversight.
 ### Open questions
 
 - **§3 — workstations vs. containers.** Restate containment as "any inventory that persists when the
-  player walks away," so enchanting and smithing keep working? Nothing else in the spec depends on
-  the ownership phrasing.
-- **§3 — the raw-ore → ingot path.** Does the §15 compressor replace smelting entirely? If vanilla
-  furnaces are the path, containment blocks the core loop and needs a session-bound station instead.
-  **This one blocks implementation of §3.**
+  player walks away," so enchanting, smithing, crafting and the smelting NPC keep working? Nothing
+  else in the spec depends on the ownership phrasing.
 - **§5 — reset the fee clock on entering spawn?** Closes the mule-relay route left open once §3
   closed chests. Depends on bank zones sitting outside spawn.
+- ~~**§3 — the raw-ore → ingot path.**~~ **Answered:** smelting is an NPC, not a vanilla furnace.
 - **§12 — clock decay**, if bunkering proves worse than expected before §13 lands. Recorded as
   optional, not adopted.
