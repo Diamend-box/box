@@ -286,6 +286,26 @@ class BoxCorePluginTest {
         assertEquals(3, reloaded.getAwardedTier("cobblestone"));
     }
 
+    @Test
+    void aQueuedSaveIsNeverReadAroundOrHalfRead() {
+        PlayerMock player = server.addPlayer();
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        profile.addPoints(9);
+        profile.setNodeLevel("combat.ferocity", 3);
+        profile.setCollected("cobblestone", 4321);
+
+        // unload() hands the write to the background thread and drops the cache
+        // entry, so this read goes to disk with a write still in flight. It has
+        // to see the finished file — reading a truncated one would look like a
+        // player with no progress, and saving that back would make it true.
+        plugin.profiles().unload(player.getUniqueId());
+        PlayerProfile reloaded = plugin.profiles().loadDetached(player.getUniqueId());
+
+        assertEquals(9, reloaded.getPointsEarned());
+        assertEquals(3, reloaded.getNodeLevel("combat.ferocity"));
+        assertEquals(4321, reloaded.getCollected("cobblestone"));
+    }
+
     private String readProfileFile(java.util.UUID uuid) {
         try {
             return java.nio.file.Files.readString(

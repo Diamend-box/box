@@ -7,14 +7,20 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 /**
@@ -92,6 +98,7 @@ public class ProfileManager {
 
     private PlayerProfile read(UUID uuid) {
         PlayerProfile profile = new PlayerProfile(uuid);
+        awaitPendingWrites();
         File file = fileFor(uuid);
         if (!file.exists()) {
             return profile;
@@ -147,18 +154,66 @@ public class ProfileManager {
         return config;
     }
 
+    /**
+     * Writes a profile via a temporary file and an atomic rename.
+     *
+     * <p>Saving straight over the real file would truncate it first, so anything
+     * reading it during the write — a rejoin, an admin command on an offline
+     * player — could see an empty or half-written profile and take it for a
+     * player with no progress. Renaming into place means a reader always sees
+     * one whole version or the other, and a crash mid-save can't destroy a
+     * profile either.
+     */
     private void write(YamlConfiguration config, File file, UUID uuid) {
+        File temporary = new File(file.getParentFile(), file.getName() + ".tmp");
         try {
-            config.save(file);
+            config.save(temporary);
+            try {
+                Files.move(temporary.toPath(), file.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                // Some filesystems can't do it in one step; the copy is still
+                // whole by the time it lands.
+                Files.move(temporary.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Could not save BoxCore profile for " + uuid, ex);
+            if (temporary.exists() && !temporary.delete()) {
+                plugin.getLogger().warning("Left a stray profile temp file at " + temporary);
+            }
+        }
+    }
+
+    /**
+     * Blocks until every queued write has finished.
+     *
+     * <p>The write executor is single-threaded, so a task submitted now runs
+     * strictly after everything already queued. Reads need that barrier: a
+     * profile that was just unloaded still has its write in flight, and reading
+     * around it would hand back stale data that the next save would then commit
+     * over the top of the real thing.
+     */
+    private void awaitPendingWrites() {
+        if (io.isShutdown()) {
+            return;
+        }
+        try {
+            io.submit(() -> {
+            }).get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | TimeoutException | RejectedExecutionException ex) {
+            plugin.getLogger().log(Level.WARNING,
+                    "Timed out waiting for pending BoxCore profile writes", ex);
         }
     }
 
     /** Snapshots on this thread, writes in the background. */
     public void save(UUID uuid) {
         PlayerProfile profile = cache.get(uuid);
-        if (profile == null) {
+        // A clean profile is already on disk exactly as it stands; queueing a
+        // second identical write only widens the window for a read to race it.
+        if (profile == null || !profile.isDirty()) {
             return;
         }
         YamlConfiguration config = snapshot(profile);
