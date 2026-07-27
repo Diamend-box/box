@@ -61,8 +61,12 @@ public class CollectionService {
         if (player != null) {
             awardTiers(player, profile, collection, Math.max(0, amount));
         } else {
-            // Offline: record the tier so they aren't paid twice when they return.
-            profile.setAwardedTier(collection.getId(), collection.tierFor(Math.max(0, amount)));
+            // Offline players can't be paid, so mark the tiers as settled — but
+            // never move the marker backwards, or lowering someone's total and
+            // letting them re-gather would pay the same tiers a second time.
+            profile.setAwardedTier(collection.getId(), Math.max(
+                    profile.getAwardedTier(collection.getId()),
+                    collection.tierFor(Math.max(0, amount))));
         }
     }
 
