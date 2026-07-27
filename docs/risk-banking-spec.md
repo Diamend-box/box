@@ -8,17 +8,22 @@ those exist.** Discard older copies.
 
 **Changes in v5:**
 
-- **Cargo containment.** Whitelisted ore and compressed units cannot be moved into any *persistent*
-  inventory. A chest was a free bank — dump, die losing nothing, retrieve. Closed at the transfer,
-  not by banning containers. §3.
+- **Cargo containment.** *Unbanked* ore cannot be moved into any inventory but the player's own. A
+  chest was a free bank — dump, die losing nothing, retrieve. Closed at the transfer, not by banning
+  containers. Banked ore may leave and **spends its protection 1:1** doing so, which makes the
+  deposit fee a general toll on ore leaving your person. §3.
+- **Ore must clear the bank before it becomes gear**, since the rule keys on banked status rather
+  than inventory type. §3.
+- **The fee clock resets on entering spawn** rather than pausing, closing the mule relay that §3
+  left as the last laundering route. §5.
 - **Manual drops stay legal** so teammates can trade, with a ~60s despawn on player-dropped
   whitelisted ore. Death drops keep the normal timer. §3.
 - **Reseal decay removed outright**, not deferred. v3's trigger was circular and v4's proximity
   version killed legitimate tactical walls. §12, §18.
 - **Clamp hooks revised.** `InventoryCloseEvent` is dropped — containment makes it redundant — but
   drop and craft are added, because both remove ore with no container involved. §4.
-- **Two questions opened**: workstations vs. containers, and whether the fee clock resets on
-  entering spawn. §3, §5, §19. A third — the raw→ingot path — is answered: smelting is an NPC.
+- **All three v5 questions answered** in the same revision: smelting is an NPC, containment keys on
+  banked status rather than inventory type, and the clock resets in spawn.
 
 **Changes in v4** (retained for history):
 
@@ -139,13 +144,24 @@ material, never the reverse.
 
 ### Cargo containment — the only storage rule
 
-Whitelisted ore and compressed units **cannot be moved into any inventory other than the player's
-own.** Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers, chest-carrying
-entities, item frames. Cancel the transfer; no message spam beyond a brief actionbar note.
+**Unbanked** whitelisted ore and compressed units cannot be moved into any inventory other than the
+player's own. Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers,
+chest-carrying entities, item frames. Cancel the transfer; no message spam beyond a brief actionbar
+note.
 
 Without this, a chest is a free bank — dump unbanked ore, die losing nothing, retrieve after
 respawn. No zone, no channel, no fee. Ender chests survive the wipe, and shulkers are the portable
 version.
+
+**Banked ore may leave, and leaving spends its protection 1:1.** Ore is fungible and §4 tracks
+quantities rather than tagging items, so "is *this* stack banked" has no answer — the rule has to be
+arithmetic. A transfer of N ore-equivalents out of the inventory is permitted only while
+`banked ≥ N`, and it **decrements `banked` by N** as it goes.
+
+That decrement is not optional bookkeeping. Without it: carry 300 with 100 banked, move 100 into a
+chest, and the clamp stays quiet because 100 ≤ 200 — one fee has bought protection on 100 in the
+chest *and* 100 still on your person. With it, the fee reads as a toll on ore leaving you, a chest
+holds only ore that has already paid, and there is nothing to launder.
 
 **`carried` must recurse into nested inventories anyway** as a backstop — one missed transfer path
 reopens the hole.
@@ -156,18 +172,23 @@ split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops
 `dropItemNaturally` without passing through it.
 
 **Smelting is an NPC, so furnaces are not on the ore path** and can stay blocked with no cost. The
-NPC's interface must sit on the workstation side of the line below, and must *behave* like one — if
-it holds ore across a logout it is a free bank with extra steps.
+NPC still has to obey the rule above — it may hand back ingots for banked ore, and it must never
+hold ore across a logout, or it is a free bank with extra steps.
 
-> **OPEN — workstations are not containers.** "Any inventory other than the player's own" as written
-> also blocks the crafting table, smithing table, enchanting table, anvil and grindstone. Concretely:
-> no enchanting with lapis, no netherite upgrades, and no diamond pickaxe, since a pickaxe needs the
-> 3×3 grid and only the 2×2 counts as the player's own.
->
-> The property that matters is **persistence, not ownership**: a container holds ore while the player
-> is offline; a workstation cannot, and returns everything on close. Restating the rule as *"any
-> inventory that persists when the player walks away"* carves out workstations and the smelting NPC
-> while still blocking every route listed above.
+**Consequence: ore must clear the bank before it becomes gear.** The rule keys on banked status
+rather than on what kind of inventory it is, so the crafting table, smithing table, enchanting table
+and anvil are all covered — unbanked diamonds cannot enter a 3×3 grid, and a diamond pickaxe needs
+one. The legal path is bank first, then craft, and the 1:1 spend above makes that come out right:
+three banked diamonds go in, `banked` drops by three diamonds of ore-equivalent, the pickaxe is
+gear and carries no ore-equivalent of its own. The deposit fee becomes a general toll on turning ore
+into anything, which is principle 3 stated in one rule rather than three.
+
+> **Watch the early game (principle 4).** A new player with three diamonds pays 25%, and §6's
+> rounding can take a whole diamond, leaving them unable to afford the pickaxe they mined for. That
+> is a hard block on progression, which principle 3's scope carve-out exempts. If it bites in
+> playtest, the cheap fixes in order of preference are: a zero-fee floor for very small deposits in
+> §6, or exempting non-persistent workstations from the rule entirely — a crafting table cannot hold
+> ore across a logout, so allowing it costs nothing.
 
 **The placement audit still applies.** Compressed output stays a custom non-placeable item, and no
 whitelist entry may be a placeable vanilla block — in practice **ancient debris** plus **any ore
@@ -236,9 +257,12 @@ Hook the events:
 - `CraftItemEvent` — nine banked ingots become one iron block in the player's own 2×2 grid. The
   block has no ore-equivalent, because §3's audit keeps placeable vanilla blocks off the whitelist,
   so `carried` falls and `banked` does not. Uncraft afterwards and the cycle closes
+- **On transfer out of the inventory** — `InventoryClickEvent`, `InventoryDragEvent`,
+  `InventoryMoveItemEvent`. This is the same hook §3 uses to cancel unbanked transfers, doing double
+  duty: cancel if unbanked, decrement `banked` by the transferred amount if not
 
-`InventoryCloseEvent` is **no longer needed**: under §3's containment, ore cannot reach a container
-in the first place.
+`InventoryCloseEvent` is **not** the right hook for that last one. Close fires too late to tell how
+much moved and in which direction, and §3 needs the decision at the transfer anyway to cancel it.
 
 **The trap is inherent to the clamp, so surface it rather than trimming hooks.** Any route that
 reduces `carried` destroys paid-for protection silently — handing a stack to a teammate does it just
@@ -273,6 +297,7 @@ reserved for this and nothing else.
   (principle 4).
 - **Reset to zero on any deposit**, including partial.
 - **Reset to zero on death.** Otherwise dying grants a cheap banking window on the next haul.
+- **Reset to zero on entering spawn.** Not a pause — a reset. See the accrual rule below.
 
 ### Accrual rule — this is not a timestamp delta
 
@@ -289,21 +314,27 @@ one stack → bank at 5%, permanently.
 
 The mining condition stops a player sealing into a pocket and idling to earn the discount.
 
-> **OPEN — should the clock reset on entering spawn?** Today it only stalls there, which leaves one
-> laundering route open now that §3 has closed chests.
->
-> B stands five blocks outside spawn and breaks one whitelisted block every 30 seconds — enough to
-> keep the clock legal, no risk taken. Eight minutes later B is at 5%. A mines deep in the box, walks
-> over and drops the whole haul to B (§3 allows manual drops for trading), and B banks it at 5%.
-> Anything dangerous appears, B steps into spawn, the clock pauses, B walks back out at the same
-> tier. **B bought the maximum discount without ever being exposed**, which is the one thing the fee
-> curve exists to prevent.
->
-> Resetting on spawn entry — alongside the existing deposit and death triggers — forces B to stand in
-> the open for the full eight minutes holding a fortune, which is §11's bounty target: content
-> rather than an exploit. **Cost: ducking into spawn mid-trip loses your tier**, including for a
-> chased player who escapes there. Defensible, since entering spawn *is* ending your exposure.
-> Depends on bank zones sitting outside spawn (§8) — confirm before adopting.
+### Spawn resets the clock — it does not pause it
+
+**Pausing in spawn left a mule relay open.** B stands five blocks outside spawn and breaks one
+whitelisted block every 30 seconds — enough to keep the clock legal, no risk taken. Eight minutes
+later B is at 5%. A mines deep in the box, walks over and drops the whole haul to B (§3 allows manual
+drops for trading), and B banks it at 5%. Anything dangerous appears, B steps into spawn, the clock
+pauses, B walks back out at the same tier. **B bought the maximum discount without ever being
+exposed**, which is the one thing the fee curve exists to prevent. It became the last laundering
+route once §3 closed chests.
+
+Under a reset, B has to stand in the open for the full eight minutes holding a fortune — which is
+§11's bounty target, so the relay becomes content rather than an exploit.
+
+- **This is the one place a reset is right and a pause is not.** Combat freezes the clock because a
+  pinned player is still exposed (§5's reversal above). Spawn is the opposite: entering it *is*
+  ending your exposure, so there is no progress left to preserve.
+- **Cost, accepted:** ducking into spawn mid-trip loses your tier, including for a chased player who
+  escapes there. Surviving with the haul is the compensation.
+- **Requires bank zones to sit outside spawn** (§8). If a zone were ever placed inside, the reset
+  would fire on the way in — harmless, since depositing resets it anyway, but confirm rather than
+  assume.
 
 ### Combat pauses the clock — reversal of the v3 rule
 
@@ -747,7 +778,8 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Fee keyed to fraction of inventory** | Depends on a capacity system that doesn't exist, and is junk-stuffable. |
 | **Fee clock as a stored-timestamp delta** | Ticks while the server sleeps; bank → relog → bank at 5% permanently. |
 | **Fee clock accruing during combat** | v3 rule. Combined with §4's tag block it made being attacked a *discount* — pressure became a reason to wait rather than bank. Replaced by a freeze (§5). |
-| **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and workstations are not containers (§3). |
+| **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and banked ore moves freely at the cost of its protection (§3). |
+| **Pausing the fee clock in spawn** | Let a parked mule reach 5% at no risk and bank other players' hauls. Replaced by a reset (§5). Note this is the *opposite* call to combat, which pauses — a pinned player is still exposed, a player in spawn is not. |
 | **Reseal decay (any trigger)** | v3's combat-tag version was circular; v4's proximity version killed legitimate tactical walls. Cut in v5. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
 
@@ -773,11 +805,11 @@ accepted gap, not an oversight.
 
 ### Open questions
 
-- **§3 — workstations vs. containers.** Restate containment as "any inventory that persists when the
-  player walks away," so enchanting, smithing, crafting and the smelting NPC keep working? Nothing
-  else in the spec depends on the ownership phrasing.
-- **§5 — reset the fee clock on entering spawn?** Closes the mule-relay route left open once §3
-  closed chests. Depends on bank zones sitting outside spawn.
-- ~~**§3 — the raw-ore → ingot path.**~~ **Answered:** smelting is an NPC, not a vanilla furnace.
+None blocking. Two things are parked pending playtest rather than pending a decision:
+
+- **§6 — the early-game gear toll.** Ore must be banked before it can be crafted, so a new player's
+  first pickaxe pays the 25% bracket and rounding may make it unaffordable. Fixes are ranked in §3.
 - **§12 — clock decay**, if bunkering proves worse than expected before §13 lands. Recorded as
   optional, not adopted.
+
+**Confirm before building §5:** bank zones sit outside spawn.
