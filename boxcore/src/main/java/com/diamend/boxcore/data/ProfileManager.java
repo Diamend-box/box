@@ -26,6 +26,16 @@ import java.util.logging.Level;
  */
 public class ProfileManager {
 
+    /**
+     * Path separator for the stored files.
+     *
+     * <p>Node keys are {@code tree.node}, and the default separator is a dot —
+     * so {@code set("nodes." + key, …)} would silently nest
+     * {@code combat.toughness} into {@code nodes → combat → toughness} and read
+     * back as nothing. Switching the separator keeps dotted keys literal.
+     */
+    private static final char SEPARATOR = '/';
+
     private final Plugin plugin;
     private final File folder;
     private final Map<UUID, PlayerProfile> cache = new ConcurrentHashMap<>();
@@ -86,10 +96,11 @@ public class ProfileManager {
             return profile;
         }
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        config.options().pathSeparator(SEPARATOR);
         profile.setName(config.getString("name", ""));
-        profile.setPointsEarned(config.getInt("points.earned"));
-        profile.setPointsSpent(config.getInt("points.spent"));
-        profile.setPlaytimePointsGranted(config.getInt("points.playtime-granted"));
+        profile.setPointsEarned(config.getInt("points/earned"));
+        profile.setPointsSpent(config.getInt("points/spent"));
+        profile.setPlaytimePointsGranted(config.getInt("points/playtime-granted"));
 
         ConfigurationSection nodes = config.getConfigurationSection("nodes");
         if (nodes != null) {
@@ -100,8 +111,8 @@ public class ProfileManager {
         ConfigurationSection collections = config.getConfigurationSection("collections");
         if (collections != null) {
             for (String key : collections.getKeys(false)) {
-                profile.setCollected(key, collections.getLong(key + ".amount"));
-                profile.setAwardedTier(key, collections.getInt(key + ".tier"));
+                profile.setCollected(key, collections.getLong(key + SEPARATOR + "amount"));
+                profile.setAwardedTier(key, collections.getInt(key + SEPARATOR + "tier"));
             }
         }
         profile.markClean();
@@ -110,17 +121,18 @@ public class ProfileManager {
 
     private YamlConfiguration snapshot(PlayerProfile profile) {
         YamlConfiguration config = new YamlConfiguration();
+        config.options().pathSeparator(SEPARATOR);
         config.set("name", profile.getName());
-        config.set("points.earned", profile.getPointsEarned());
-        config.set("points.spent", profile.getPointsSpent());
-        config.set("points.playtime-granted", profile.getPlaytimePointsGranted());
+        config.set("points/earned", profile.getPointsEarned());
+        config.set("points/spent", profile.getPointsSpent());
+        config.set("points/playtime-granted", profile.getPlaytimePointsGranted());
         for (Map.Entry<String, Integer> entry : profile.getNodes().entrySet()) {
-            config.set("nodes." + entry.getKey(), entry.getValue());
+            config.set("nodes" + SEPARATOR + entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, Long> entry : profile.getCollections().entrySet()) {
-            config.set("collections." + entry.getKey() + ".amount", entry.getValue());
-            config.set("collections." + entry.getKey() + ".tier",
-                    profile.getAwardedTier(entry.getKey()));
+            String base = "collections" + SEPARATOR + entry.getKey() + SEPARATOR;
+            config.set(base + "amount", entry.getValue());
+            config.set(base + "tier", profile.getAwardedTier(entry.getKey()));
         }
         return config;
     }

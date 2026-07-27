@@ -65,15 +65,8 @@ public class EffectApplier {
         Map<PotionEffectType, Integer> potionTotals = new LinkedHashMap<>();
         Set<String> permissions = new HashSet<>();
 
-        for (Map.Entry<String, Integer> owned : profile.getNodes().entrySet()) {
-            SkillNode node = trees.getNode(owned.getKey());
-            if (node == null) {
-                continue; // node removed from trees.yml; SkillService reconciles the points
-            }
-            int level = Math.min(owned.getValue(), node.getMaxLevel());
-            if (level <= 0) {
-                continue;
-            }
+        for (SkillNode node : ownedNodes(profile)) {
+            int level = level(profile, node);
             for (NodeEffects.AttributeBonus bonus : node.getEffects().attributes()) {
                 attributeTotals
                         .computeIfAbsent(bonus.attribute(), key -> new LinkedHashMap<>())
@@ -88,6 +81,46 @@ public class EffectApplier {
         applyAttributes(player, attributeTotals);
         applyPotions(player, potionTotals);
         applyPermissions(player, permissions);
+    }
+
+    /**
+     * Re-applies only the potion effects.
+     *
+     * <p>This is what the periodic refresh uses. Attribute modifiers stay
+     * applied until something removes them, so re-sending them every cycle
+     * would be pure packet churn — potions are the ones another plugin (or a
+     * bucket of milk) can quietly strip.
+     */
+    public void refreshPotions(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        PlayerProfile profile = profiles.get(player.getUniqueId());
+        Map<PotionEffectType, Integer> potionTotals = new LinkedHashMap<>();
+        for (SkillNode node : ownedNodes(profile)) {
+            for (NodeEffects.PotionBonus bonus : node.getEffects().potions()) {
+                potionTotals.merge(bonus.type(), bonus.amplifierFor(level(profile, node)), Math::max);
+            }
+        }
+        applyPotions(player, potionTotals);
+    }
+
+    /** The nodes a profile owns that still exist in the loaded trees. */
+    private List<SkillNode> ownedNodes(PlayerProfile profile) {
+        List<SkillNode> owned = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : profile.getNodes().entrySet()) {
+            SkillNode node = trees.getNode(entry.getKey());
+            // A node deleted from trees.yml simply stops granting anything;
+            // SkillService.reconcile hands its points back on the next pass.
+            if (node != null && entry.getValue() > 0) {
+                owned.add(node);
+            }
+        }
+        return owned;
+    }
+
+    private int level(PlayerProfile profile, SkillNode node) {
+        return Math.min(profile.getNodeLevel(node.key()), node.getMaxLevel());
     }
 
     private void applyAttributes(Player player,
@@ -212,11 +245,5 @@ public class EffectApplier {
                 // Already detached.
             }
         }
-    }
-
-    /** Drops bookkeeping for a player who has left (their entity is gone). */
-    public void forget(UUID uuid) {
-        appliedPotions.remove(uuid);
-        attachments.remove(uuid);
     }
 }

@@ -162,7 +162,11 @@ class BoxCorePluginTest {
         PlayerMock player = server.addPlayer();
         PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
         profile.addPoints(7);
+        // Node keys are "tree.node". The dot must survive as part of the key
+        // rather than being read as a YAML path separator — otherwise every
+        // unlocked node silently vanishes on relog.
         profile.setNodeLevel("combat.toughness", 2);
+        profile.setNodeLevel("combat.ferocity", 1);
         profile.setCollected("cobblestone", 1234);
         profile.setAwardedTier("cobblestone", 3);
         plugin.profiles().saveNow(profile);
@@ -172,6 +176,8 @@ class BoxCorePluginTest {
 
         assertEquals(7, reloaded.getPointsEarned());
         assertEquals(2, reloaded.getNodeLevel("combat.toughness"));
+        assertEquals(1, reloaded.getNodeLevel("combat.ferocity"));
+        assertEquals(2, reloaded.getNodes().size(), "both dotted keys came back whole");
         assertEquals(1234, reloaded.getCollected("cobblestone"));
         assertEquals(3, reloaded.getAwardedTier("cobblestone"));
     }

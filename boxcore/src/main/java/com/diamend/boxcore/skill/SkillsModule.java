@@ -95,7 +95,7 @@ public class SkillsModule implements BoxModule {
         long ticks = seconds * 20L;
         refreshTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : plugin.getServer().getOnlinePlayers()) {
-                effectApplier.apply(player);
+                effectApplier.refreshPotions(player);
             }
         }, ticks, ticks);
     }
