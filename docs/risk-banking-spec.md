@@ -896,8 +896,13 @@ proposal.
 
 ### Carried assumptions to confirm
 
-- **Bank zones sit outside spawn** (§8), which §5's reset depends on.
-- **§3's value table prices effort, not rarity** — §6, §9 and §14 all read it.
+- ~~**Bank zones sit outside spawn** (§8), which §5's reset depends on.~~ **Confirmed.** §5's spawn
+  reset is safe to build as written. Keep it true: moving a bank zone inside the spawn region later
+  would pin the fee at 25% for everyone using it, with no error and no symptom other than a
+  percentage nobody can explain.
+- **§3's value table prices effort, not rarity** — §6, §9 and §14 all read it. **Still open: the
+  table has no numbers yet.** It is the one set of numbers that cannot be tuned in isolation
+  afterwards, because those three sections all read it at once.
 
 ### Deliberate inconsistencies — do not "fix" these
 
