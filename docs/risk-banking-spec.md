@@ -131,16 +131,25 @@ ore-equivalents. **Still route them through one shared accessor rather than thre
 because the value is uniform and the *counting* is not: compression, custom items and the whitelist
 check all live behind it, and three call sites that each reimplement that will diverge.
 
-**What flat costs, stated plainly.** Volume becomes value. Coal and redstone are fast, common and
-now worth exactly what diamond is worth, so they inflate every ore-gated threshold in the system —
-§9's drop floor, §8's announcement threshold, §6's fee base. A player who fills up on the cheapest
-thing in the box carries a "large" haul by every measure the plugin has.
+**Thresholds are not a problem, and it is worth saying why.** The obvious objection is that a
+player carrying 200 coal now trips §9's drop floor, §8's announcement and a fat §6 fee as if they
+were carrying 200 diamonds. That objection imports a value ranking from vanilla that does not exist
+here. There is no sell step, no second currency, and gear is priced in banked ore from a menu —
+200 coal *buys exactly what 200 diamonds buys*. Treating it as a large haul is not the system
+mis-measuring; it is the system measuring correctly, and every consumer stays consistent with every
+other. Do not "fix" this.
 
-That is accepted, and it is not the disaster the weighted version would have you believe: the box
-decides what you swing at, not the player, so there is no build that farms coal exclusively unless
-the box lets it. **The lever if it does go wrong is the whitelist, not a weight table** — dropping a
-material off the whitelist removes it from the risk system entirely, which is one config line and
-has no calibration to get wrong. Reach for that before reintroducing per-material weights (§18).
+**The one place flat has real teeth is items per block, not items per material.** Value is set here,
+but *income* is set by the box, and vanilla drop tables are not uniform: lapis yields 4–9 per block
+and redstone 4–5, where coal, diamond, emerald, quartz, raw iron and raw gold yield 1. Equal block
+frequency therefore means several times the income, and no amount of flatness in this table changes
+that, because the disparity is upstream of it.
+
+**The lever is box composition, which is already yours to set.** A block that yields six items
+belongs at roughly a sixth of the frequency of one that yields one. That is the correct place to fix
+it: it is one number in the generator, it costs nothing, and it leaves this table — read by three
+sections — alone. A weight table is the wrong tool (§18); a whitelist removal is the blunt fallback
+if a material turns out to be unfixable by ratio alone.
 
 ### Ore-equivalents
 
@@ -878,7 +887,7 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Pausing the fee clock in spawn** | Let a parked mule reach 5% at no risk and bank other players' hauls. Replaced by a reset (§5). Note this is the *opposite* call to combat, which pauses — a pinned player is still exposed, a player in spawn is not. |
 | **Reseal decay (any trigger)** | The combat-tag version was circular; the proximity version killed legitimate tactical walls. Cut. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
-| **Per-material ore value weights** | Every whitelisted ore counts 1 (§3). A weight table is four sections deep, has no correct answer without play data, and its only real job — stopping cheap high-volume ore from dominating ore-gated thresholds — is done more cheaply by removing that ore from the whitelist. Do not reintroduce it to fix a coal problem; try the whitelist first. |
+| **Per-material ore value weights** | Every whitelisted ore counts 1 (§3). With no sell step and gear priced in banked ore, materials have no distinguishable worth to encode. The one real disparity is vanilla multi-drop yield (lapis 4–9 per block, redstone 4–5, the rest 1), and that is an *income* problem fixed by block frequency in the generator — upstream of this table, and free. Do not reintroduce weights to fix a yield imbalance. |
 
 ---
 
@@ -912,8 +921,10 @@ proposal.
   percentage nobody can explain.
 - ~~**§3's value table prices effort, not rarity** — §6, §9 and §14 all read it.~~ **Resolved: there
   is no value table.** Every whitelisted ore counts 1 (§3), so there are no weights to calibrate and
-  nothing left blocking a start. If volume-farming of cheap ore becomes a problem in playtest, the
-  fix is a whitelist removal, not a weight table (§18).
+  nothing left blocking a start.
+- **Box block ratios account for vanilla multi-drop yield** (§3). Lapis and redstone produce several
+  items per block where everything else produces one, so equal block frequency is not equal income.
+  This is a generator setting, not a plugin one — nothing in the plugin can detect or correct it.
 
 ### Deliberate inconsistencies — do not "fix" these
 
