@@ -89,7 +89,7 @@ the fee is unavoidable, and carrying ore back to spawn to dodge it accomplishes 
 principle 3, because the fee was already paid at deposit, and there is no reason to force a walk to
 spawn for a transaction that carries no risk either way.
 
-This is the rule that keeps ore off the workstation path, the same way §3 keeps it off the furnace
+This is the rule that keeps ore off the workstation path, the same way §3 keeps it off the smelting
 path. Nothing needs a special case for crafting tables, smithing tables, anvils or enchanting
 tables, because unbanked ore has no reason to go into any of them. It also makes the early game a
 pricing decision rather than a rounding accident: a starter pickaxe costs whatever you set it to,
@@ -129,6 +129,10 @@ assumes one ore-equivalent is worth roughly one ore-equivalent of player time. A
 rarity alone makes the cheapest whitelist entry the best value per swing, which distorts §6's fee,
 §9's drop floor and §14's collection pacing at once.
 
+**Coal has no floor under it.** With furnaces disabled it has no vanilla utility at all, so nothing
+props its weight up from below — its number has to come from mining effort alone. Do not carry over
+a burn-value intuition from vanilla; here coal is worth exactly what it costs to swing at.
+
 ### Ore-equivalents
 
 **Track everything in ore-equivalents, not materials.** One compressed iron unit counts as nine iron
@@ -151,7 +155,7 @@ material, never the reverse.
 ### Cargo containment
 
 **Unbanked whitelisted ore and compressed units cannot be moved into any inventory other than the
-player's own.** Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers,
+player's own.** Blocks chests, ender chests, shulkers (placed or held), hoppers,
 chest-carrying entities, item frames. Cancel the transfer; no message spam beyond a brief actionbar
 note.
 
@@ -199,17 +203,25 @@ ore-equivalent again would mean smelting *strips* protection you paid for and ha
 cargo in exchange — you would pay the fee twice to end up somewhere worse. Smelted output is
 post-bank material, the same class as gear bought from §2's menu.
 
-A vanilla furnace reaches the same place by the same economics — banked ore in, 1:1 spend, output
-free — so the NPC is a convenience, not a loophole and not the only path.
-
 **Manual drops are allowed** so teammates can trade, but player-dropped whitelisted ore despawns in
 ~60s. Death drops keep the normal timer so vultures get their window. This falls out of the event
 split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops are spawned by
 `dropItemNaturally` without passing through it.
 
-**Smelting is an NPC**, so furnaces are not on the ore path and can stay blocked at no cost. The NPC
-obeys the same rule: it may hand back ingots for banked ore, and it must never hold ore across a
-logout, or it is a free bank with extra steps.
+#### The smelting NPC is the only smelter
+
+**Furnaces are disabled server-wide.** There is no vanilla smelting path, supported or otherwise —
+do not build against one. The NPC is the sole route from raw ore to ingots, which makes its two
+rules load-bearing rather than incidental:
+
+- **Banked-ore input only.** Unbanked ore cannot be handed to it. If it accepted unbanked input it
+  would be a fee-free conversion from at-risk cargo into post-bank material — the §2 crafting hole
+  reopened at a different counter.
+- **It must never hold ore across a logout.** Input is consumed and output returned within the same
+  interaction; no queue, no pending slot, no "come back when it's done." If the NPC ever stores,
+  it is the one remaining free bank in the design, and every other rule in §3 is decoration.
+
+Neither rule has a fallback path to absorb a mistake, because there is no second smelter.
 
 **Net effect: ore only becomes anything through the bank.** Gear comes from §2's menu, smelting from
 the NPC, and both take banked ore. The deposit fee is a general toll on ore turning into value,
@@ -534,8 +546,20 @@ is:
 
 1. `setKeepInventory(true)`, `setKeepLevel(true)`
 2. Compute the droppable pool from `carried − banked` in ore-equivalents over whitelisted materials
-3. **Remove those items from the player's inventory directly**
+3. **Remove those items directly, from every inventory the counting path in step 2 reads** — main
+   inventory, hotbar, offhand, and the player's own 2×2 crafting grid, which §3 rules is part of the
+   player's own inventory and which `carried` therefore counts
 4. Spawn them with `dropItemNaturally`
+
+**Removal and counting must cover the same surface.** If step 2 counts the 2×2 grid and step 3 does
+not clear it, the droppable pool promises ore the removal cannot deliver: the player drops less than
+was computed, or — worse, depending on how the shortfall is handled — keeps the difference and gets
+a free stash slot that survives death. Four ore is small, but it is a permanent, reliable, zero-cost
+one, and it is exactly the kind of hole that becomes a known trick. Derive both from one list of
+inventory surfaces rather than writing the set out twice.
+
+Vanilla drops the crafting grid on death; here `keepInventory` is on, so nothing is dropped for us
+and the grid is only emptied if step 3 empties it.
 
 ---
 
