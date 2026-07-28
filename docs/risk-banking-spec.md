@@ -2,9 +2,21 @@
 
 **Platform:** Paper 1.21.4, Minehut free plan.
 
-**Status:** v5. Supersedes all previous versions. Earlier drafts contained coins, a sell step,
+**Status:** v6. Supersedes all previous versions. Earlier drafts contained coins, a sell step,
 carry-capacity upgrades, box depletion, schematic refills and per-player build caps — **none of
 those exist.** Discard older copies.
+
+**Changes in v6:**
+
+- **Ore is never a crafting ingredient.** Gear, upgrades and consumables are bought from a menu with
+  banked ore. This deletes the workstation problem rather than regulating it, and turns the early
+  game into a pricing decision instead of a rounding accident. §2, §3, §18.
+- **The fee is paid from the cheapest ore anywhere in the inventory**, not just the deposit's own
+  materials, which is what turned rounding into a lost diamond. §6.
+- **Two v5 relief valves withdrawn as wrong** — a zero-fee floor and a workstation exemption. §3,
+  §18.
+- **Two questions opened**: buying while combat-tagged, and whether enchanting and anvil repair
+  move into the menu. §2, §19.
 
 **Changes in v5:**
 
@@ -24,6 +36,8 @@ those exist.** Discard older copies.
   drop and craft are added, because both remove ore with no container involved. §4.
 - **All three v5 questions answered** in the same revision: smelting is an NPC, containment keys on
   banked status rather than inventory type, and the clock resets in spawn.
+- **Ore must clear the bank before it becomes anything** — the consequence of keying containment on
+  banked status. Superseded in v6 by removing ore from crafting altogether. §3.
 
 **Changes in v4** (retained for history):
 
@@ -102,9 +116,30 @@ This is load-bearing. If ore could be spent unbanked, buying an upgrade would it
 at-risk ore into permanent progress with no fee, no channel, no zone. Making banking mandatory means
 the fee is unavoidable, and carrying ore back to spawn to dodge it accomplishes nothing.
 
-**Where upgrades are bought:** anywhere, at any time, via command or menu. Safe under principle 3
-because the fee has already been paid at deposit. There is no reason to force a walk to spawn for a
-transaction that carries no risk either way.
+**Where gear and upgrades come from:** a menu, purchasable anywhere with banked ore. **Ore is never
+a crafting ingredient.** Pickaxes, armour and consumables are bought, not crafted.
+
+This keeps ore off the workstation path entirely, the same way §3 keeps it off the furnace path.
+Nothing needs a rule about crafting tables, smithing tables, anvils or enchanting tables, because
+unbanked ore has nowhere to go in them. It also makes the early game a pricing decision rather than
+a rounding accident — a starter pickaxe costs whatever you set it to, instead of costing three
+diamonds minus whatever the fee rounding takes.
+
+Safe under principle 3 because the fee was already paid at deposit. There is no reason to force a
+walk to spawn for a transaction that carries no risk either way.
+
+> **OPEN — can you buy while combat-tagged?** §4 blocks *banking* while tagged; the symmetric rule
+> for spending is not stated anywhere, and "anywhere, at any time" currently implies yes. That makes
+> §13's consumables instantly restockable mid-fight from banked ore, so a fight is decided by bank
+> balance rather than by what you brought — and §13 is explicitly built as an ore sink whose cost is
+> supposed to bite. **Recommend blocking purchases while combat-tagged**, or at minimum consumables.
+> Gear is already permanently safe (§9), so the restriction costs almost nothing elsewhere.
+
+> **Two whitelist entries are still vanilla ingredients.** Lapis is consumed by the enchanting
+> table, and anvil repairs consume ingots and diamonds. Neither is *crafting gear*, so §2's rule
+> does not reach them. Either move enchanting and repair into the menu too, or accept that both run
+> on banked ore under §3's 1:1 spend — which is consistent, just worth choosing on purpose rather
+> than discovering.
 
 **Ore-typed upgrade costs.** Upgrades should require *specific materials*, not a generic quantity. A
 node costing three different ore types forces movement around the chamber instead of letting a
@@ -175,20 +210,15 @@ split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops
 NPC still has to obey the rule above — it may hand back ingots for banked ore, and it must never
 hold ore across a logout, or it is a free bank with extra steps.
 
-**Consequence: ore must clear the bank before it becomes gear.** The rule keys on banked status
-rather than on what kind of inventory it is, so the crafting table, smithing table, enchanting table
-and anvil are all covered — unbanked diamonds cannot enter a 3×3 grid, and a diamond pickaxe needs
-one. The legal path is bank first, then craft, and the 1:1 spend above makes that come out right:
-three banked diamonds go in, `banked` drops by three diamonds of ore-equivalent, the pickaxe is
-gear and carries no ore-equivalent of its own. The deposit fee becomes a general toll on turning ore
-into anything, which is principle 3 stated in one rule rather than three.
+**Consequence: ore only becomes gear through the bank.** Gear is bought from §2's menu with banked
+ore, so there is no second path. The deposit fee is a general toll on ore turning into anything,
+which is principle 3 stated in one rule rather than three. Workstations need no special handling —
+ore is not an ingredient in anything.
 
-> **Watch the early game (principle 4).** A new player with three diamonds pays 25%, and §6's
-> rounding can take a whole diamond, leaving them unable to afford the pickaxe they mined for. That
-> is a hard block on progression, which principle 3's scope carve-out exempts. If it bites in
-> playtest, the cheap fixes in order of preference are: a zero-fee floor for very small deposits in
-> §6, or exempting non-persistent workstations from the rule entirely — a crafting table cannot hold
-> ore across a logout, so allowing it costs nothing.
+*(Two fixes previously ranked here are withdrawn, both wrong. A zero-fee floor reopens §6's spam
+exploit: a free deposit makes the rate irrelevant, so players bank every stack at zero risk.
+Exempting workstations is worse — unbanked ore into crafted gear converts at-risk cargo into
+permanently safe value with no fee, principle 3 straight through.)*
 
 **The placement audit still applies.** Compressed output stays a custom non-placeable item, and no
 whitelist entry may be a placeable vanilla block — in practice **ancient debris** plus **any ore
@@ -396,10 +426,31 @@ Rounding is not a detail here — partial deposits make any error trivially repe
 1. Compute the deposit's total value once, in value terms, using §3's table.
 2. Apply the fee rate to that total.
 3. **Round up on the total.**
-4. **Destroy from the lowest-value material present**, working upward if the lowest is insufficient.
+4. **Destroy from the lowest-value ore available anywhere in the player's inventory**, banked or
+   unbanked, working upward if the lowest is insufficient. If any of it comes from banked ore,
+   decrement `banked` accordingly.
 
-Mixed hauls then pay their fee in cheap ore rather than expensive ore, and single-item deposits
-self-punish.
+Drawing only from the deposit's own materials means a single-material deposit has nothing cheaper to
+pay with, which is what turns rounding into a lost diamond. Widening the pool costs nothing — the
+fee value is identical either way — and it makes expensive-ore deposits pay in iron whenever iron is
+on hand.
+
+**Tie-break: draw unbanked before banked** at the same value tier. Identical value destroyed either
+way, but it leaves the player's protected total intact, and there is no reason to prefer the version
+that quietly eats protection they paid for. Whatever is destroyed must appear in the deposit
+summary — this is the §4 trap again, and the answer is the same: make it visible.
+
+> **The fee currency is now the player's choice, so §3's table has to be effort-calibrated.** Under
+> the old rule a diamond-only deposit paid in diamonds. Under this one, a player who keeps coal on
+> hand always pays in coal. That is value-neutral *only if* one ore-equivalent costs roughly the
+> same effort to acquire in every material. If the cheapest whitelist entry is easier to mine per
+> ore-equivalent than the rest — which is the normal case, since rarity and effort are not the same
+> curve — then cheap ore becomes universal fee-fodder and the real cost of the fee collapses.
+>
+> **Narrower alternative if calibration proves hard:** widen the pool only for the *rounding
+> remainder*, and take the whole part of the fee from the deposit's own materials. The problem this
+> step solves is a sub-unit rounding artefact, so a sub-unit fix is sufficient and leaves no room to
+> shop for a fee currency.
 
 ---
 
@@ -779,6 +830,8 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Fee clock as a stored-timestamp delta** | Ticks while the server sleeps; bank → relog → bank at 5% permanently. |
 | **Fee clock accruing during combat** | v3 rule. Combined with §4's tag block it made being attacked a *discount* — pressure became a reason to wait rather than bank. Replaced by a freeze (§5). |
 | **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and banked ore moves freely at the cost of its protection (§3). |
+| **Crafting gear from ore** | Unbanked ore → crafted gear is a free cash-out into permanently safe value. Gear is bought with banked ore instead (§2), which removes the workstation problem rather than regulating it. |
+| **Zero-fee floor for small deposits** | Considered as an early-game relief valve and withdrawn. A free deposit makes the rate irrelevant, so every stack gets banked at zero risk — §6's spam case by another door. |
 | **Pausing the fee clock in spawn** | Let a parked mule reach 5% at no risk and bank other players' hauls. Replaced by a reset (§5). Note this is the *opposite* call to combat, which pauses — a pinned player is still exposed, a player in spawn is not. |
 | **Reseal decay (any trigger)** | v3's combat-tag version was circular; v4's proximity version killed legitimate tactical walls. Cut in v5. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
@@ -805,10 +858,16 @@ accepted gap, not an oversight.
 
 ### Open questions
 
-None blocking. Two things are parked pending playtest rather than pending a decision:
+- **§2 — can you buy while combat-tagged?** Recommend no, at least for consumables. Unanswered, and
+  it decides whether §13's sink has teeth.
+- **§2 — enchanting and anvil repair.** Menu them, or accept they run on banked lapis and ingots.
+- ~~**§6 — the early-game gear toll.**~~ **Closed in v6.** Ore is no longer a crafting ingredient;
+  starter gear is priced in the §2 menu.
 
-- **§6 — the early-game gear toll.** Ore must be banked before it can be crafted, so a new player's
-  first pickaxe pays the 25% bracket and rounding may make it unaffordable. Fixes are ranked in §3.
+Parked pending playtest rather than a decision:
+
+- **§3/§6 — ore-equivalent calibration.** §6 step 4 lets players choose the fee currency, so the
+  table has to price effort rather than rarity. Narrower fallback recorded in §6.
 - **§12 — clock decay**, if bunkering proves worse than expected before §13 lands. Recorded as
   optional, not adopted.
 
