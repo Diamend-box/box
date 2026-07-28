@@ -1019,6 +1019,39 @@ Both the startup ledger and the warning buffer are Bukkit-free
 (`com.diamend.darksea.diag`), so their behaviour is unit-tested and locally
 compilable like the rest of the pure cores.
 
+### Three things the review pass found (Jul 28)
+
+**The outpost emptied itself.** The NPCs are non-persistent villagers on
+purpose — nothing of them is written into the world's entity data, the registry
+is the truth. But a non-persistent entity is not *saved* when its chunk
+unloads, it is gone, and they were only ever spawned in `onEnable`. So the
+shopkeepers vanished the first time nobody stood near the outpost long enough
+for the chunk to unload, and stayed gone until a restart or a manual
+`/ds npc respawn`. `NpcService` now respawns from the registry on
+`ChunkLoadEvent`, deferred a tick so it is not spawning entities inside the
+chunk load itself. The chunk lookup floors rather than truncates, which matters
+on the negative side of spawn, and that is what `NpcRegistryChunkTest` pins.
+
+**nodes.yml was written once per block mined.** That file holds every vein's
+full block list — around 1,500 positions — so saving it is a whole-file YAML
+dump on the main thread. Extraction called it after every single block, to
+persist a `first-mined` field that had not changed since the first one. It now
+saves only when the clock actually starts: thirteen writes across a full sweep
+instead of roughly a thousand.
+
+**The crack overlay cleared in the wrong world.** A channel ends when the
+player stops being where they were, and one way to do that is to take the
+portal out — at which point the cleanup read the world off the *player*, so it
+cleared the overlay at those coordinates in the Dark Sea rather than on the
+block in the caves that was actually cracked. It now uses the world the channel
+started in.
+
+Also checked and deliberately left alone: the mob spawner's per-island scan is
+O(islands²) in a trivial sum, but there are 34 islands, so that is about 1,150
+cheap operations every five seconds — not worth the churn. Vein lookup by
+position was already indexed rather than scanned. The shop and boat GUIs cancel
+first and verify the clicked inventory's holder before acting.
+
 **Not done, and known:** the three cave crystals still have no sink anywhere —
 no shop, no recipe, no upgrade. `ores.yml` says in as many words that they are
 upgrade material for work that does not exist yet, and a tester who grinds the

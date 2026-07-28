@@ -23,9 +23,11 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * The outpost's people. Every NPC is an ordinary villager that has been
@@ -34,10 +36,16 @@ import java.util.Objects;
  * screen. Right-clicking one opens {@link ShopMenuService}'s board instead.
  *
  * <p>They are deliberately not persistent entities. Nothing is written into
- * the world's entity data; the registry is the truth and every server start
- * re-spawns them from it. That means a corrupted or duplicated villager is
- * always one restart away from being fixed, and it is why placement can be a
- * runtime command rather than part of the home island's schematic.
+ * the world's entity data; the registry is the truth, and both server start
+ * and chunk load re-spawn them from it. That means a corrupted or duplicated
+ * villager is always one restart away from being fixed, and it is why
+ * placement can be a runtime command rather than part of the home island's
+ * schematic.
+ *
+ * <p>The chunk-load half is not optional. A non-persistent entity is not
+ * saved when its chunk unloads — it is gone — so without
+ * {@link #onChunkLoad} the outpost empties itself the first time nobody
+ * stands near it for a while.
  */
 public final class NpcService implements Listener {
 
@@ -219,6 +227,47 @@ public final class NpcService implements Listener {
     }
 
     /** Invulnerable already covers most of it; this covers the void and /kill. */
+    /**
+     * Puts the outpost's people back when their chunk returns.
+     *
+     * <p>The NPCs are non-persistent by design — nothing of them is written
+     * into the world's entity data — but that has a consequence the rest of
+     * this class was missing: a non-persistent entity is not saved when its
+     * chunk unloads, it is simply gone. Spawning them only in {@code onEnable}
+     * therefore meant the shopkeepers disappeared the first time nobody stood
+     * near the outpost for long enough, and stayed gone until a restart or a
+     * manual {@code /ds npc respawn}.
+     *
+     * <p>Respawning is deferred a tick: spawning an entity inside the chunk
+     * load itself is exactly the reentrancy Paper complains about.
+     */
+    @EventHandler
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
+        Chunk chunk = event.getChunk();
+        List<NpcRegistry.Placement> here = registry.inChunk(
+                chunk.getWorld().getName(), chunk.getX(), chunk.getZ());
+        if (here.isEmpty()) {
+            return;   // the overwhelmingly common case, and the cheap one
+        }
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (!chunk.isLoaded()) {
+                return;   // streamed straight back out; the next load will do it
+            }
+            Set<String> standing = new HashSet<>();
+            for (Entity entity : chunk.getEntities()) {
+                String id = idOf(entity);
+                if (id != null) {
+                    standing.add(id);
+                }
+            }
+            for (NpcRegistry.Placement placement : here) {
+                if (!standing.contains(placement.id())) {
+                    spawn(placement);
+                }
+            }
+        });
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
         if (idOf(event.getEntity()) != null) {

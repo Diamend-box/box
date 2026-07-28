@@ -237,7 +237,7 @@ public final class ExtractionChannel implements Listener {
             }
             channel.idleTicks++;
             channel.elapsedTicks++;
-            Block block = blockOf(player, channel);
+            Block block = blockOf(channel);
             player.sendBlockDamage(block.getLocation(), channel.progress());
             if (channel.elapsedTicks >= channel.totalTicks) {
                 complete(player, channel, block);
@@ -321,11 +321,24 @@ public final class ExtractionChannel implements Listener {
 
     /** Wipes the crack overlay so a partly-worked block does not look damaged. */
     private void clear(Player player, Channel channel) {
-        player.sendBlockDamage(blockOf(player, channel).getLocation(), 0.0f);
+        if (channel.anchor.getWorld() == null) {
+            return;   // the caves went away under us — shutdown, or a world unload
+        }
+        player.sendBlockDamage(blockOf(channel).getLocation(), 0.0f);
     }
 
-    private Block blockOf(Player player, Channel channel) {
-        return player.getWorld().getBlockAt(channel.target.x(), channel.target.y(),
+    /**
+     * The block being worked, in the world the channel started in.
+     *
+     * <p>Not the player's current world: a channel ends precisely when the
+     * player stops being where they were, and one way to do that is to take
+     * the portal out. Reading the world off the player then cleared the crack
+     * overlay at those coordinates in the Dark Sea instead of in the caves,
+     * which both missed the block that was actually cracked and poked at a
+     * chunk on the other side of the server for nothing.
+     */
+    private Block blockOf(Channel channel) {
+        return channel.anchor.getWorld().getBlockAt(channel.target.x(), channel.target.y(),
                 channel.target.z());
     }
 }

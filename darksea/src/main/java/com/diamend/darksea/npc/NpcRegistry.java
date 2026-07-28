@@ -97,6 +97,35 @@ public final class NpcRegistry {
         return List.copyOf(placements.values());
     }
 
+    /**
+     * The placements standing in one chunk.
+     *
+     * <p>Used on chunk load to put back NPCs the unload took with them, so it
+     * runs for every chunk the server streams in and stays a handful of
+     * comparisons against a five-entry registry.
+     */
+    public List<Placement> inChunk(String worldName, int chunkX, int chunkZ) {
+        List<Placement> found = new ArrayList<>();
+        for (Placement placement : placements.values()) {
+            if (placement.world().equals(worldName)
+                    && chunkOf(placement.x()) == chunkX
+                    && chunkOf(placement.z()) == chunkZ) {
+                found.add(placement);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * A world coordinate's chunk coordinate, dividing the way Minecraft does.
+     *
+     * <p>Floor, not truncation: {@code (int) -0.5} is 0 and would put anything
+     * in the negative half of chunk -1 into chunk 0 instead.
+     */
+    public static int chunkOf(double coordinate) {
+        return Math.floorDiv((int) Math.floor(coordinate), 16);
+    }
+
     public Placement get(String id) {
         return placements.get(id.toLowerCase(Locale.ROOT));
     }

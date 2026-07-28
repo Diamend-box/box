@@ -261,8 +261,16 @@ public final class NodeService extends BukkitRunnable implements Listener {
 
         // First touch only. Every later block out of this vein leaves the
         // deadline where it is, so working a vein never delays its return.
-        node.touch(System.currentTimeMillis());
-        registry.save();
+        //
+        // And only then is there anything to write. nodes.yml holds every
+        // vein's full block list — some 1,500 positions — so saving it is a
+        // whole-file YAML dump on the main thread. Doing that per block meant
+        // one dump every mine-seconds per miner, to persist a field that had
+        // not changed since the first block. Now it happens once per vein per
+        // cycle: thirteen writes across a full sweep instead of a thousand.
+        if (node.touch(System.currentTimeMillis())) {
+            registry.save();
+        }
 
         ItemStack drop = DarkSeaItems.create(type.dropId(), type.dropAmount());
         if (drop == null) {
