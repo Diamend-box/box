@@ -2,11 +2,17 @@
 
 **Platform:** Paper 1.21.4, Minehut free plan.
 
-**Status:** v7, consolidated. This is a full rewrite rather than another patch layer: every decision
-from v1–v6 is folded in and the revision history is gone. Nothing carries over from older copies —
-earlier drafts contained coins, a sell step, carry-capacity upgrades, box depletion, schematic
-refills, per-player build caps, ore as a crafting ingredient and a reseal decay rule. **None of
-those exist.** Discard older copies.
+**Status: v7 — official. Design is closed pending playtest.** Build against this document. Every
+decision from v1–v6 is folded in and the revision history is gone; nothing carries over from older
+copies. Earlier drafts contained coins, a sell step, carry-capacity upgrades, box depletion,
+schematic refills, per-player build caps, ore as a crafting ingredient, vanilla furnaces on the ore
+path and a reseal decay rule. **None of those exist.** Discard older copies.
+
+Closed does not mean finished. **Numbers stay open** — see below, and expect them to move. **Rules
+are closed** until playtest produces a reason to reopen one, and that reason should be something
+observed, not something argued: the holes in §18 were all found by argument once already. Two things
+still block a clean start and are cheap to settle before any code is written — the carried
+assumptions in §19.
 
 **How to read this.** Where a rule has a non-obvious reason, the reason is written next to it. That
 is deliberate: several rules here look arbitrary or look like they contradict a neighbouring rule,
