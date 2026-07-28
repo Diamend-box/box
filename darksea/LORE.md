@@ -1,8 +1,11 @@
 # DarkSea — Canon
 
-The story the sea tells, as decided by Wyatt (Jul 18, 2026). Everything
-below is the reference for mob names, island decoration, loot flavor and
-future bosses.
+The story the sea tells, as decided by Wyatt (Jul 18 → Jul 28, 2026).
+Everything below is the reference for mob names, island decoration, loot
+flavor and future bosses.
+
+Sections marked **not yet built** are settled canon with no world behind
+them yet — write to them, but nothing in game says them out loud.
 
 ## The Naxome
 
@@ -84,9 +87,29 @@ center is calm at all.
 
 Their money survived with them. The **Chronon** — "the Naxome minted time
 itself" — turns up in every wreck and ruin, and the refugees still honor
-it: today they charge it to wake relics, and a proper goods trader on the
-home island is planned on the same coin. Some islands hoard more than
-others; a rich district drowns rich.
+it: today they charge it to wake relics, and the harbor's traders deal in
+nothing else. Some islands hoard more than others; a rich district drowns
+rich.
+
+### The five at the harbor (built Jul 24)
+
+The outpost is not a shop menu with faces on it — it is the last five
+useful people of a dead nation, and each of them does the one thing they
+did before.
+
+| Who | What they were, and are |
+| --- | --- |
+| **The refugee trader** | Quartermaster of the flight inward. Sells the honest baseline and takes salvage off your hands at an honest rate — the only one out here who isn't working an angle. |
+| **The artificer** | The Naxome's relic-keeper. Waking a dormant relic is *his* craft and nobody else's, and he pays for the ones you'd rather not carry — always at half what it would cost to wake them, so a sold relic can never fund another's waking. |
+| **The black market dealer** | A refugee who noticed the desperate don't haggle. Charges 1.6× and pays 1.5×, and his shelf turns over every two hours because what he sells came off a body that morning. The only source of hullpiercer arrows. |
+| **The old boat expert** | Kept the harbor's hulls afloat when there was a harbor. Sells naval kit — and, for enough Chronons, four things he's heard about the Undrowned Heart, the last of which he'll only draw on the table with a finger. |
+| **The apothecary** | Tonics against the plague, and food that is actually food. She is not curing anything and says so. |
+
+Two rules the refugees hold to, and the tests enforce: **nothing that ends
+a run is for sale** — not the Heart, not the Soulwake Compass, not the
+Vector — and the artificer never pays more for a relic than half its
+waking. The harbor makes a run cheaper to attempt. It never makes one
+skippable.
 
 ## What the dead left behind (Loot 2.0 relics)
 
@@ -123,6 +146,13 @@ monolith. Rare to find, worse to walk, worth it: throne vault, undercroft,
 reliquary, crypt, cistern — more hidden caches than any island in the sea,
 two of them true vaults.
 
+A castle's vaults are still **sealed**, and the seal is mechanical rather
+than magical — the harbor lords trusted a bar and a lever over a lock, and
+the lever is always the far side of the garrison from the treasury. Throw
+it and the castle opens for good. It does not re-seal when the sea turns
+over; what has been opened has been opened, and only the sea being remade
+from nothing puts the bars back.
+
 ## Arms of the drowned and the damned (decided Jul 19)
 
 The cursed drop what their bodies became; the Order wears its rank; the
@@ -145,3 +175,117 @@ here is enchanted; the sea doesn't work that way.
   Core keeps its treasures more often than not.
 - Chest finds: **Naxian Boarding Axe**, **Harborguard Pike**, and the
   **Ceremonial Blade of the Order** — meant for altars, works in a fight.
+
+## Where the rings stop being rings (decided Jul 21)
+
+Past the Abyssal Reaches the map's own vocabulary gives out. There are no
+islands out there and no ruins, because the Naxome never lived that far
+and nothing since has wanted to.
+
+**The Sunless Trench** is the approach — water the Order breeds in.
+Survivable, but only in the best kit the sea can give you: full tier-4
+plate and a hull under a shield, and even then it stings. It is where the
+Core nests stop being a rare find and become the landscape. Most of what
+the reef hasn't taken out there is a drowned fortress or a dead volcano,
+and neither is an improvement.
+
+**The Devouring Rim** is not survivable. Armor is not ignored out there
+because the plague is stronger; it is ignored because whatever the Order
+is reseeding the Mariphage *toward* is close enough to the Rim that the
+water stops behaving like water. Nothing keeps it out. You cross it by
+out-eating it — golden apples, the whole way, bleeding — or you don't
+cross it.
+
+And there is exactly one reason to. The **Undrowned Heart** lies past the
+Rim, at one place, kept rather than sunk. What it does is refuse a killing
+blow: attune it once and it will spend itself standing between you and the
+end, over and over, as long as it isn't asked twice inside two and a half
+minutes. The refugees don't sell it and won't confirm it exists. The old
+boat expert's four rumours are the only trail, and the last one is a line
+drawn on a table.
+
+## The caves under the cultists (decided Jul 25)
+
+Roughly three thousand blocks out, past every ring the refugees have a
+name for, there is one **cultist landfall** — a black ziggurat on an
+island the generator did not make and cannot make twice. It is the
+Order's own beachhead, and it is the door.
+
+The pad at its top is not a portal in the vanilla sense. It doesn't search
+for a counterpart or build one where it fails to find it. It goes to one
+room, and one room comes back, because the Order built it to reach one
+place.
+
+Under it: a sealed dark, red-lit, with no sky and no weather and bedrock
+in every direction the world can be pushed. This is where the Mariphage
+comes *out of the ground* — and that is the whole point of the caves.
+The sea is where the plague is spreading. Down here is where it is
+*growing*, and the Order is standing over it with buckets.
+
+### The crystal family
+
+The three crystals are one growth at three depths of infection, not three
+minerals:
+
+| Crystal | Reads as | What it is |
+| --- | --- | --- |
+| **Emberglass** | warm gold | The rock's first fever. Common, shallow, still mostly stone. |
+| **Voidbloom** | pale violet | Past fever. The infection has started making decisions about shape. |
+| **Godspore** | sick green | The god's own growth, surfacing. Rare, and the only one that looks like it is going somewhere. |
+
+Each grows as a **geode**: a bright core in a calcite rind studded with
+amethyst, visible across a whole cavern — which is exactly what a thing
+worth fighting over should be. The rind is part of the organism and does
+not break. A worked-out geode is not a hole; it is a socket, waiting.
+
+And it does refill. Take one block and the whole growth begins coming
+back on its own clock, whole, on schedule — chipping at it doesn't stall
+it and can't be farmed faster. Budding amethyst in the godspore rind is
+deliberate canon: it is the one thing in the world you can watch regrow,
+so the regrowth is something the rock is observably doing rather than a
+rule the plugin is enforcing.
+
+Crystal is **not money**. No trader on the home island will touch it, and
+that is a refugee decision, not an oversight — it is the plague in solid
+form, and they fled the plague. Chronons are earned in the Dark Sea. What
+crystal is *for* is upgrade material for the road inward, and that road
+is not built yet.
+
+The caves' own rules follow from what they are: **PvP is on** — a geode is
+contested ground, and standing still in the open where everyone can see
+you is the price of taking one — but **the caves do not take your gear
+when you die.** A materials run is not a second extraction run stacked on
+the sea's, and nothing down there is loot in the sense the sea means it.
+
+## The road inward — not yet built
+
+Settled canon, no world behind it yet. The sequence, in order:
+
+1. **The cultist base.** The caves are a work-site; somewhere in them the
+   Order actually lives. Invading it is the first thing that is about
+   people rather than rock.
+2. **The temple.** What the base is built around, and the first place the
+   thing beneath the Abyssal Reaches is addressed by name rather than
+   served in silence.
+3. **The inner Mariphage.** Through the temple and into the plague's own
+   place — void and a star sky, nothing underfoot that the god didn't put
+   there. Not a deeper cave. A different kind of somewhere.
+4. **The tower.** Climbed, not sailed. The last thing the Order made, and
+   the only one they made pointing up.
+5. **The Mariphage god.** The primordial power the Order has been feeding
+   this whole time — the cause the Cores were only ever the spread of.
+   Everything before now has been the disease. This is the thing that has
+   it.
+6. **Rebirth.** What beating it buys: begin again, keeping almost nothing.
+   Inventory and ender chest go. The Undrowned Heart is the one thing that
+   stays, because it is the one thing that was never really yours — it was
+   kept, and now it keeps you. In exchange the world gives up more of
+   itself to you each time round: every block and every kill pays 25%
+   better, forever, with Chronons deliberately excluded so the sea's
+   economy can't be rebirthed into meaninglessness. One perk chosen per
+   rebirth, permanently.
+
+The base and the temple are hand-built spaces, not generated ones — the
+Order does not scatter. That is why they come last: everything before them
+is a thing the world can be told to make, and these two are things
+somebody has to build.
