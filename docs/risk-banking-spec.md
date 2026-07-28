@@ -433,10 +433,14 @@ wipe tracker and delete the bounded set.**
 - **64 raw items make one unit** — a full stack becomes a single item. One compression level, not a
   ladder of them; the bound is which ores compress and how late they unlock, both config.
 - A **capacity** tool: it lets a player stay out longer, and nothing else.
-- **Output is a custom, non-placeable item** — the raw ore itself carrying a persistent-data tag.
-  Load-bearing: it closes §3's placement laundering route without a building restriction, since raw
-  ores are items and only their `_BLOCK` forms are placeable. Do not replace it with vanilla storage
-  blocks.
+- **Output is a custom, non-placeable item** carrying a persistent-data tag. Load-bearing: it closes
+  §3's placement laundering route without a building restriction. Do not replace it with vanilla
+  storage blocks.
+- **Each ore's compressed form is skinnable** — its own material, name, lore, model data and glint,
+  all config. **The material is presentation only.** What a unit is worth, and which ore it is worth
+  it in, are stored on the item and read from there; re-skinning an ore never changes what existing
+  units count as. **A skin may not be a placeable block**, or the laundering route reopens through
+  the skin.
 - **Never let code merge stacks by material alone.** A compressed unit and a raw item are the same
   material and differ only in metadata, so a merge that ignores metadata multiplies ore by 64. Vanilla
   compares metadata and is safe; our own inventory code has to be written not to need that guarantee.
