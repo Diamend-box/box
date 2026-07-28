@@ -347,13 +347,32 @@ class CompressorTest {
         assertNull(compressor().createUnit(Material.DIRT, 1), "only whitelisted ore");
     }
 
+    /**
+     * Runs a command and reports what actually went wrong. Bukkit wraps
+     * anything a command throws in a CommandException whose message names only
+     * the plugin, which turns a one-line bug into a guessing game.
+     */
+    private static void run(PlayerMock player, String command) {
+        try {
+            player.performCommand(command);
+        } catch (RuntimeException ex) {
+            Throwable cause = ex;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            StackTraceElement[] frames = cause.getStackTrace();
+            throw new AssertionError("/" + command + " threw " + cause
+                    + (frames.length > 0 ? " at " + frames[0] : ""), cause);
+        }
+    }
+
     @Test
     void theGiveCommandHandsOverRealCompressedOre() {
         PlayerMock player = server.addPlayer();
         player.setOp(true);
         player.getInventory().clear();
 
-        assertTrue(player.performCommand("box give diamond 3"));
+        run(player, "box give diamond 3");
         assertEquals(3L * compressor().ratio(),
                 plugin.ores().carried(player, Material.DIAMOND),
                 "three units, worth a stack apiece");
@@ -366,7 +385,7 @@ class CompressorTest {
         PlayerMock player = server.addPlayer();
         player.getInventory().clear();
 
-        assertTrue(player.performCommand("box give diamond 3"));
+        run(player, "box give diamond 3");
         assertEquals(0, plugin.ores().carried(player, Material.DIAMOND),
                 "no admin permission, no ore");
     }
