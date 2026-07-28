@@ -99,11 +99,11 @@ The alternative — letting players craft gear from ore — is a free cash-out. 
 permanently safe value (§9 protects all gear) with no fee, no channel and no zone. See §18.
 
 **Accepted, not open:** two vanilla systems still consume whitelist entries — the enchanting table
-takes lapis, and anvil repair takes ingots and diamonds. Neither is *crafting gear*, so this section
-does not reach them, and both run on banked ore under §3's 1:1 spend. That is consistent with
-everything else here and is small enough to leave alone. Likewise, purchases are **not** blocked
-while combat-tagged; the theoretical cost is instant mid-fight restock of §13 consumables, judged
-not worth a rule.
+takes lapis, and anvil repair takes diamonds. Neither is *crafting gear*, so this section does not
+reach them, and both run on banked ore under §3's 1:1 spend. (Anvil repair with *ingots* costs
+nothing extra: smelted output is post-bank material and carries no ore-equivalent, per §3.) Small
+enough to leave alone. Likewise, purchases are **not** blocked while combat-tagged; the theoretical
+cost is instant mid-fight restock of §13 consumables, judged not worth a rule.
 
 **Ore-typed upgrade costs.** Upgrades should require *specific materials*, not a generic quantity. A
 node costing three different ore types forces movement around the chamber instead of letting a
@@ -171,6 +171,36 @@ holds only ore that has already paid, and there is nothing to launder.
 
 **`carried` must recurse into nested inventories** as a backstop — one missed transfer path reopens
 the hole.
+
+#### Where the boundary actually falls
+
+- **The player's own 2×2 crafting grid counts as the player's own inventory.** Unbanked ore may be
+  placed in it, and **`carried` must count what is sitting there.** If it did not, staging a craft
+  would look like removal and fire §4's clamp, destroying protection for nothing — the silent-loss
+  trap in its purest form.
+- **This is what makes §4's `CraftItemEvent` hook load-bearing.** Ore reaches the 2×2 grid without
+  passing any transfer hook, so the craft is the only place the removal can be caught. The live case
+  is quartz: four nether quartz make a quartz block in a 2×2, the block has no ore-equivalent
+  (§3's audit keeps placeable blocks off the whitelist), so `carried` falls and `banked` does not.
+- **A crafting table's 3×3 grid is *not* the player's own inventory.** Unbanked ore cannot enter it
+  at all, and banked ore entering it spends protection 1:1 at the transfer hook. Every 3×3 storage
+  block recipe — nine ingots to an iron block and the rest — is therefore already accounted for
+  before the craft happens.
+
+#### Smelted output carries no ore-equivalent
+
+**The whitelist is raw forms only** — raw iron/gold/copper, diamond, emerald, coal, lapis, redstone,
+quartz, netherite scrap. Ingots and other smelted output are **not** whitelisted, carry no
+ore-equivalent, do not drop on death (§9), and are not subject to containment.
+
+This is consistent rather than generous. The smelter only accepts banked ore, so the input has
+already paid its fee, and 1:1 spend consumed the protection on the way in. Making the output carry
+ore-equivalent again would mean smelting *strips* protection you paid for and hands you at-risk
+cargo in exchange — you would pay the fee twice to end up somewhere worse. Smelted output is
+post-bank material, the same class as gear bought from §2's menu.
+
+A vanilla furnace reaches the same place by the same economics — banked ore in, 1:1 spend, output
+free — so the NPC is a convenience, not a loophole and not the only path.
 
 **Manual drops are allowed** so teammates can trade, but player-dropped whitelisted ore despawns in
 ~60s. Death drops keep the normal timer so vultures get their window. This falls out of the event
@@ -259,10 +289,12 @@ Hook:
 - **On death**
 - **`PlayerDropItemEvent`** — §3 legalises manual drops, and a drop removes ore with no container
   involved
-- **`CraftItemEvent`** — nine banked ingots become one iron block in the player's own 2×2 grid. The
-  block has no ore-equivalent, because §3's audit keeps placeable vanilla blocks off the whitelist,
-  so `carried` falls and `banked` does not. Uncraft afterwards and the cycle closes. Ore is not a
-  gear ingredient (§2), but vanilla storage blocks are still craftable and this closes that door
+- **`CraftItemEvent`** — four quartz become a quartz block in the player's own 2×2 grid, which no
+  transfer hook sees (§3). The block has no ore-equivalent, because §3's audit keeps placeable
+  vanilla blocks off the whitelist, so `carried` falls and `banked` does not. Uncraft afterwards and
+  the cycle closes. Ore is not a gear ingredient (§2), but vanilla storage blocks are still
+  craftable and this closes that door. 3×3 recipes need a crafting table, which is not the player's
+  own inventory, so those are already caught by the transfer hook below
 - **On transfer out of the inventory** — `InventoryClickEvent`, `InventoryDragEvent`,
   `InventoryMoveItemEvent`. Same hook §3 uses to cancel unbanked transfers, doing double duty:
   cancel if unbanked, decrement `banked` by the transferred amount if not
@@ -353,19 +385,28 @@ not "fix" the inconsistency.
 escapes there. Surviving with the haul is the compensation. **Requires bank zones to sit outside
 spawn** (§8) — confirm rather than assume.
 
-### What denial looks like now
+### Denial is real, and that is the intended answer
 
-A camped player cannot split off a sliver to cash out at a good rate, because §4 blocks depositing
-under a tag entirely. The cost of being camped lands in two places instead:
+**Be accurate about this.** §10's tag lasts ~15 seconds and refreshes on every hit, and §4 blocks
+deposits while tagged. A player willing to land one hit every fifteen seconds **can stop you banking
+indefinitely.** Do not describe this as a soft cost or a rate penalty — it is a block, and it holds
+for as long as they keep connecting.
 
-1. **Death risk.** You hold the whole haul and cannot cash any of it out until you break contact.
-2. **A frozen clock.** Sustained harassment holds your fee where it is. Someone willing to hit you
-   once every fifteen seconds cannot stop you banking, but they can keep you at 25% for as long as
-   they are willing to stand in the open next to a zone that broadcasts — and be vultured for it.
+The mechanic is correct as it stands, because **landing repeated hits is a fight, not a passive
+denial.** The attacker has to stay on you, in the open, next to a zone that broadcasts (§8), taking
+every counter-attack and every third party the broadcast attracts. The answer is principle 5's
+answer: kill them, or escape them using §12's cover and §16's movement. Denial that requires the
+denier to keep winning a fight is content.
 
-That second one is the soft version of denial: a cost, not a block (principle 4), with answers
-available (principle 5 — shield, disengage, §12 cover, or kill them), and it emerges from the freeze
-rule rather than needing code of its own.
+Principle 4 is not violated. That principle governs what the *system* forbids, not what another
+player imposes on you — and a player-imposed block always has a player-side answer.
+
+The cost of being camped therefore lands in three places:
+
+1. **You cannot bank at all** while they keep the tag alive.
+2. **Death risk.** You hold the whole haul the entire time.
+3. **A frozen clock.** Your fee stays where it was when the fight started, so a long harassment does
+   not improve your rate the way quiet mining would.
 
 **Watch in playtest:** during the 0–8 minute ramp there is a mild incentive to disengage rather than
 fight, since fighting stalls the discount. It is bounded — at cap, combat costs nothing — and §11's
@@ -385,40 +426,41 @@ Rounding is not a detail here — partial deposits make any error trivially repe
 1. Compute the deposit's total value once, in value terms, using §3's table.
 2. Apply the fee rate to that total.
 3. **Round up on the total.**
-4. **Draw the fee proportionally from every whitelisted ore type the player holds** — each type
-   contributes in proportion to its share of the player's total ore-equivalents, banked and unbanked
-   alike.
+4. **Draw the fee proportionally from the deposit's own materials** — each material in the deposit
+   contributes in proportion to its share of the deposit's ore-equivalents.
 
-### Why proportional
+### Why proportional, and why only the deposit
 
-Drawing only from the deposit's own materials means a single-material deposit has nothing cheaper to
-pay with, which is what turns rounding into a lost diamond.
+Drawing from a *single* material — whichever is cheapest, or whichever the deposit happens to be
+made of — hands the player the choice of fee currency, and they will always pick the cheapest. That
+is value-neutral only if §3's table prices effort perfectly in every material; where it does not, a
+coal buffer becomes universal fee-fodder and the real cost of the fee quietly collapses.
+Proportional draw removes the choice: holding coal does not shield diamonds, it just means coal pays
+its share. A mis-calibrated table then costs accuracy instead of opening an exploit, which is the
+difference between a tuning problem and a bug.
 
-Drawing from the *cheapest* ore on hand fixes that but hands the player the choice of fee currency,
-and they will always pick the cheapest. That is value-neutral only if §3's table prices effort
-perfectly in every material; where it does not, a coal buffer becomes universal fee-fodder and the
-real cost of the fee quietly collapses.
+**The pool is the deposit, not the player's holdings.** Widening it to everything carried was
+considered and cut: with banked ore in the pool, a player holding 1,000 banked ore and depositing 10
+iron pays a fee sourced almost entirely from ore they had already protected. Every small deposit
+would erode paid-for protection, and the optimal play would be to never hold banked ore at all.
 
-**Proportional draw removes the choice.** Holding coal does not shield diamonds — it just means coal
-pays its share. A mis-calibrated table then costs accuracy instead of opening an exploit, which is
-the difference between a tuning problem and a bug.
+**The fee therefore never touches previously banked ore.** It is taken out of the material being
+deposited, before that material becomes protected — which is the only version where the fee is
+unambiguously a cut of the transaction rather than a levy on the balance.
 
 ### Mechanics
 
-- **Target per material:** `fee × (that material's ore-equivalents held ÷ total ore-equivalents
-  held)`.
+- **Target per material:** `fee × (that material's ore-equivalents in the deposit ÷ the deposit's
+  total ore-equivalents)`.
 - **Largest-remainder allocation** so the destroyed total equals the fee exactly, with no drift and
   no chance of destroying more than was charged.
-- **Within a material, take unbanked before banked.** Identical value destroyed either way, but it
-  leaves the player's protected total intact, and there is no reason to prefer the version that eats
-  protection they paid for. **If banked ore is touched, decrement `banked` accordingly.**
-- **Show what was destroyed** in the deposit summary. This is §4's trap again and the answer is the
-  same: make it visible (principle 7).
+- **Show what was destroyed** in the deposit summary (principle 7).
 
-**Single-material holdings are the remaining edge.** A player carrying nothing but diamonds still
-pays a whole diamond on a small deposit, because there is nothing else to draw from. Accepted:
-under §2 nothing is gated behind that diamond — gear is priced in the menu, not paid for in ore
-directly — so it costs value, never progress.
+**Single-material deposits are the remaining edge.** A one-diamond deposit has nothing cheaper to
+pay with, so granularity forces a whole diamond. Accepted for two reasons: single-item deposits
+self-punishing is the intended behaviour that stops round-down spam, and under §2 nothing is gated
+behind that diamond — gear is priced in the menu, not paid for in ore directly — so it costs value,
+never progress.
 
 ---
 
@@ -788,6 +830,7 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Crafting gear from ore** | Unbanked ore → crafted gear is a free cash-out into permanently safe value. Gear is bought with banked ore instead (§2), which removes the workstation problem rather than regulating it. |
 | **Zero-fee floor for small deposits** | Considered as early-game relief and withdrawn. A free deposit makes the rate irrelevant, so every stack gets banked at zero risk — §6's spam case by another door. Early-game relief belongs in §2's pricing. |
 | **Paying the fee from the cheapest ore on hand** | Lets the player choose the fee currency, so a coal buffer pays for everything and the fee's real cost depends entirely on §3's table being perfectly effort-calibrated. Replaced by proportional draw (§6). |
+| **Drawing the fee from everything the player holds** | Sources the fee mostly from already-banked ore, so every small deposit erodes paid-for protection and the optimal play becomes never holding banked ore. The pool is the deposit (§6). |
 | **Carry-capacity upgrades as a readable system** | Not being built. Nothing in fee, drop or clock math may depend on a capacity value. |
 | **Safe compressed blocks** | A second protection route bypassing the bank. |
 | **Fee keyed to fraction of inventory** | Depends on a capacity system that doesn't exist, and is junk-stuffable. |
