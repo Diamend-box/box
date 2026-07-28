@@ -3,11 +3,16 @@ package com.diamend.darksea.command;
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.armor.SeaArmor;
 import com.diamend.darksea.config.DarkSeaSettings;
+import com.diamend.darksea.diag.LogTail;
+import com.diamend.darksea.diag.StartupReport;
 import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.config.Messages;
 import com.diamend.darksea.island.IslandInstance;
+import com.diamend.darksea.npc.MarketClock;
 import com.diamend.darksea.npc.NpcRegistry;
 import com.diamend.darksea.npc.NpcType;
+import com.diamend.darksea.npc.ShopStock;
+import com.diamend.darksea.world.cultist.NodeRegistry;
 import com.diamend.darksea.zone.Zone;
 import com.diamend.darksea.zone.ZoneManager;
 import org.bukkit.Bukkit;
@@ -67,6 +72,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "npc" -> npc(sender, args);
             case "shop" -> shop(sender);
+            case "diag" -> diag(sender, args);
             case "reload" -> {
                 if (requireAdmin(sender)) {
                     plugin.reloadAll();
@@ -98,6 +104,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds give item <id> [count] [player]", "grant any registry item (weapons, relics, chronons...)", "darksea.admin");
         helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
         helpLine(sender, "/ds boat damage [amount]", "test tool: hull-damage the boat you're in", "darksea.admin");
+        helpLine(sender, "/ds diag [warnings]", "what came up, what didn't, and what it warned about", "darksea.admin");
         helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
     }
 
@@ -623,6 +630,93 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
      * shops.yml, so this is a convenience rather than a second source of
      * truth: hand-editing the file and reloading does exactly the same thing.
      */
+    /**
+     * /ds diag — the console log for someone who does not have the console.
+     *
+     * <p>Startup runs every step behind a catch (see {@code DarkSeaPlugin}),
+     * which means the plugin can be up and a feature can be silently missing.
+     * This is where that shows: which steps failed and why, then the live
+     * counts worth eyeballing on a first boot — did the worlds create, did the
+     * islands place, did the NPCs come back, did the crystal veins get built —
+     * and finally the warnings the config loaders swallowed.
+     */
+    private void diag(CommandSender sender, String[] args) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        Messages msg = plugin.messages();
+        LogTail tail = plugin.logTail();
+
+        if (args.length >= 2 && args[1].equalsIgnoreCase("warnings")) {
+            msg.sendBare(sender, "diag-warn-header",
+                    "warnings", String.valueOf(tail.warningCount()),
+                    "severes", String.valueOf(tail.severeCount()));
+            List<LogTail.Entry> entries = tail.entries();
+            if (entries.isEmpty()) {
+                msg.sendBare(sender, "diag-none");
+                return;
+            }
+            for (LogTail.Entry entry : entries) {
+                msg.sendBare(sender, entry.severe() ? "diag-severe" : "diag-warning",
+                        "message", entry.message());
+            }
+            return;
+        }
+
+        StartupReport report = plugin.startup();
+        msg.sendBare(sender, "diag-header");
+        msg.sendBare(sender, report.healthy() ? "diag-startup-ok" : "diag-startup-degraded",
+                "summary", report.summary());
+        for (StartupReport.Step failure : report.failures()) {
+            msg.sendBare(sender, "diag-step-failed",
+                    "step", failure.name(), "detail", failure.detail());
+        }
+
+        // Worlds. "missing" here means the step that creates it failed or the
+        // server unloaded it since — either way nothing in that world works.
+        diagLine(sender, "sea world", worldState(plugin.settings().worldName()));
+        diagLine(sender, "caves world", worldState(plugin.settings().cultist().worldName()));
+
+        diagLine(sender, "islands placed", String.valueOf(plugin.registry().all().size()));
+        diagLine(sender, "npc placements", String.valueOf(plugin.npcs().registry().all().size()));
+
+        // Crystal veins: total, and how many are sitting spent waiting to
+        // regrow. All-spent on a fresh boot means the regrow timer is not
+        // running, which is a failed step above rather than a tuning problem.
+        List<NodeRegistry.Node> nodes = plugin.nodes().registry().all();
+        long spent = nodes.stream().filter(node -> node.firstMined() > 0L).count();
+        diagLine(sender, "crystal veins", nodes.size() + " placed, " + spent + " regrowing"
+                + " (" + plugin.oreTables().totalVeins() + " configured)");
+
+        // Shops, plus the black market's own clock — the one number that is
+        // wrong in an obvious way if wall-time handling is off.
+        ShopStock stock = plugin.shopStock();
+        long interval = MarketClock.intervalMillis(stock.rotationHours());
+        diagLine(sender, "shop lines", stock.lineCount() + " fixed, "
+                + stock.rotatingPool().size() + " in the market pool");
+        diagLine(sender, "next rotation",
+                MarketClock.format(MarketClock.millisUntilNext(System.currentTimeMillis(), interval)));
+
+        diagLine(sender, "warnings logged", tail.warningCount() + " warning, "
+                + tail.severeCount() + " severe");
+        if (!tail.clean()) {
+            msg.sendBare(sender, "diag-warn-hint");
+        }
+    }
+
+    private void diagLine(CommandSender sender, String label, String value) {
+        plugin.messages().sendBare(sender, "diag-line", "label", label, "value", value);
+    }
+
+    /** Loaded / missing, with the world's configured name, for the diag list. */
+    private String worldState(String name) {
+        World world = Bukkit.getWorld(name);
+        if (world == null) {
+            return name + " (MISSING)";
+        }
+        return name + " (" + world.getPlayers().size() + " players)";
+    }
+
     private void shop(CommandSender sender) {
         if (!requireAdmin(sender)) {
             return;
@@ -671,6 +765,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 options.add("give");
                 options.add("npc");
                 options.add("shop");
+                options.add("diag");
                 options.add("reload");
             }
         } else if (args.length == 2) {
@@ -684,6 +779,11 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     }
                 }
                 case "relic" -> options.add("revive");
+                case "diag" -> {
+                    if (admin) {
+                        options.add("warnings");
+                    }
+                }
                 case "bounty" -> {
                     for (Player online : Bukkit.getOnlinePlayers()) {
                         options.add(online.getName());

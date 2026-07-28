@@ -486,6 +486,21 @@ messages:
 
   reload-done: "<green>Configuration reloaded. (World shape and task intervals need a restart.)"
 
+  # --- /ds diag -------------------------------------------------------
+  # Startup runs every step behind a catch, so the plugin can be enabled and
+  # a feature can still be missing. These lines are how you find that out
+  # from inside the game, without console access.
+  diag-header: "<dark_aqua><bold>DarkSea diagnostics</bold>"
+  diag-startup-ok: "<green>✔ {summary}"
+  diag-startup-degraded: "<red>✖ {summary}"
+  diag-step-failed: "<red>  ✖ <white>{step}</white> <gray>— {detail}"
+  diag-line: "<gray>{label} <dark_gray>— <white>{value}"
+  diag-warn-header: "<dark_aqua><bold>DarkSea warnings</bold> <gray>({warnings} warning, {severes} severe)"
+  diag-warning: "<yellow>  ! <gray>{message}"
+  diag-severe: "<red>  ✖ <gray>{message}"
+  diag-warn-hint: "<gray>Run <white>/ds diag warnings</white> for the messages themselves."
+  diag-none: "<gray>Nothing logged above INFO."
+
   help-header: "<dark_aqua><bold>DarkSea commands</bold>"
   help-line: "<gray>{usage} <dark_gray>— {description}"
 

@@ -976,6 +976,58 @@ that has to be one fixed room.
 
 ---
 
+## Surviving the first boot — BUILT (Jul 28)
+
+Nothing in this plugin has ever run on a real server. Every green build is
+MockBukkit; that proves the pure cores and proves nothing about whether a world
+creates, a villager survives a chunk unload, or a GUI opens. The first real
+startup is therefore the single most informative thing left to do, and it gets
+one shot on a day with people waiting.
+
+Two changes so that shot is worth taking.
+
+**Startup no longer fails all-or-nothing.** Paper disables an entire plugin
+when `onEnable` throws, so until now one unreachable schematic or one caves
+world that would not create took the whole Dark Sea down with it. Every startup
+step — each listener registration, each config load, world creation, NPC
+spawning, the portal pad, the crystal veins, every repeating task — now runs
+behind a catch. A step that throws is logged with its stack trace, recorded,
+and skipped. The cost of a failure is that one feature for the session instead
+of the plugin.
+
+The exception is deliberate: an unusable `config.yml` still disables the
+plugin. Without zones there is no sea to be in and every listener below would
+be deciding rules against nothing.
+
+**`/ds diag` is the console for someone without a console.** It prints:
+
+- the startup summary, and every failed step with the exception that caused it
+- whether both worlds are actually loaded, and how many players are in each
+- islands placed, NPC placements registered
+- crystal veins placed vs configured, and how many are mid-regrow
+- shop line counts and the black market's next rotation
+- how many warnings and errors the plugin has logged
+
+`/ds diag warnings` then prints the messages themselves. This matters more than
+it sounds: every config loader here warns-and-skips rather than throwing, so
+"shops.yml loaded" and "shops.yml loaded, minus four lines you meant to have"
+look identical from in game. The warnings are kept in a bounded in-memory
+buffer (last 40) attached to the plugin logger before anything else runs, and
+cleared by `/ds reload` so the list after a reload describes that reload.
+
+Both the startup ledger and the warning buffer are Bukkit-free
+(`com.diamend.darksea.diag`), so their behaviour is unit-tested and locally
+compilable like the rest of the pure cores.
+
+**Not done, and known:** the three cave crystals still have no sink anywhere —
+no shop, no recipe, no upgrade. `ores.yml` says in as many words that they are
+upgrade material for work that does not exist yet, and a tester who grinds the
+caves will end up holding a stack of nothing. That is a design decision (what
+the crystals are *for*) rather than a bug to patch, so it is Wyatt's call, not
+something to invent under a deadline.
+
+---
+
 ## Return-day checklist
 
 1. Upgrade the Minehut plan (6 GB).
@@ -987,6 +1039,10 @@ that has to be one fixed room.
    `view-distance`), restart.
 6. If using the Mythic pack: copy `mythicmobs-pack/` contents into
    `plugins/MythicMobs/`, restart.
+6b. **`/ds diag` before anything else.** It says whether every startup step
+   actually completed — the plugin now stays enabled through a failure, so
+   "it loaded" is no longer proof that it all loaded. Follow with
+   `/ds diag warnings` if the count is non-zero.
 7. `/ds reset full confirm` → brand-new layout with the new shapes and loot.
 8. Note: the **timed sea reset ships enabled** (6h soft cycle,
    `reset.auto` in config). Turn it off or re-time it there if it gets in

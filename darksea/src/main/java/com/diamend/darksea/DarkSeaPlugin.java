@@ -10,6 +10,8 @@ import com.diamend.darksea.command.DarkSeaCommand;
 import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.config.Messages;
 import com.diamend.darksea.data.PlayerDataStore;
+import com.diamend.darksea.diag.LogTail;
+import com.diamend.darksea.diag.StartupReport;
 import com.diamend.darksea.island.IslandPlacer;
 import com.diamend.darksea.island.IslandRegistry;
 import com.diamend.darksea.item.ConsumableService;
@@ -44,12 +46,15 @@ import com.diamend.darksea.zone.ExposureTask;
 import com.diamend.darksea.zone.ZoneManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.event.Listener;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 
 /**
  * DarkSea — an Arcane Odyssey-inspired Dark Sea: one safe island in an
@@ -65,6 +70,12 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private volatile Map<String, List<MobDrops.Line>> mobDrops;
     private volatile ShopStock shopStock;
     private volatile OreTables oreTables;
+
+    /** What each startup step did — read back by {@code /ds diag}. */
+    private final StartupReport startup = new StartupReport();
+
+    /** Every warning this plugin has logged, so diag can show them in game. */
+    private final LogTail logTail = new LogTail();
 
     private Messages messages;
     private IslandRegistry registry;
@@ -91,30 +102,40 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
-        saveResourceIfAbsent("mobs.yml");
-        saveResourceIfAbsent("loot.yml");
-        saveResourceIfAbsent("shops.yml");
-        saveResourceIfAbsent("ores.yml");
-        createDirectories();
+        // Attached before anything else runs, so a warning from the very first
+        // config parse is still readable in game an hour later.
+        getLogger().addHandler(logTail);
 
+        step("config-files", () -> {
+            saveDefaultConfig();
+            saveResourceIfAbsent("mobs.yml");
+            saveResourceIfAbsent("loot.yml");
+            saveResourceIfAbsent("shops.yml");
+            saveResourceIfAbsent("ores.yml");
+            createDirectories();
+        });
+
+        // The one genuinely fatal step. Without zones there is no sea to be in,
+        // and every listener below would be deciding rules against nothing.
         try {
             settings = DarkSeaSettings.load(getConfig(), getLogger());
             zoneManager = new ZoneManager(settings.zones());
-        } catch (IllegalStateException ex) {
+            startup.ok("settings", 0L);
+        } catch (RuntimeException ex) {
+            startup.failed("settings", describe(ex), 0L);
             getLogger().severe("Unusable configuration: " + ex.getMessage());
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
         messages = new Messages(settings.messages());
-        lootTables = loadLootTables();
-        mobDrops = loadMobDrops();
-        shopStock = loadShopStock();
-        oreTables = loadOreTables();
+        lootTables = stepGet("loot.yml", this::loadLootTables, LootTables.empty());
+        mobDrops = stepGet("mobs.yml", this::loadMobDrops, Map.<String, List<MobDrops.Line>>of());
+        shopStock = stepGet("shops.yml", this::loadShopStock, ShopStock.empty());
+        oreTables = stepGet("ores.yml", this::loadOreTables, OreTables.empty());
 
         registry = new IslandRegistry(new File(getDataFolder(), "islands.yml"), getLogger());
-        registry.load();
+        step("islands.yml", registry::load);
         dataStore = new PlayerDataStore(new File(getDataFolder(), "playerdata"), getLogger());
         protection = new ProtectionService();
         boat = new BoatService(this, dataStore);
@@ -137,54 +158,138 @@ public final class DarkSeaPlugin extends JavaPlugin {
         vaults = new VaultService(this);
         ChestRefillService chestRefill = new ChestRefillService(this, registry);
 
-        getServer().getPluginManager().registerEvents(protection, this);
-        getServer().getPluginManager().registerEvents(boat, this);
-        getServer().getPluginManager().registerEvents(boatMenu, this);
-        getServer().getPluginManager().registerEvents(chestRefill, this);
-        getServer().getPluginManager().registerEvents(exposureTask, this);
-        getServer().getPluginManager().registerEvents(relics, this);
-        getServer().getPluginManager().registerEvents(new ConsumableService(this), this);
-        getServer().getPluginManager().registerEvents(new SoulwakeService(this), this);
-        getServer().getPluginManager().registerEvents(new UndrownedHeartService(this), this);
-        getServer().getPluginManager().registerEvents(new NaxCombatListener(this), this);
-        getServer().getPluginManager().registerEvents(new SeaGuardListener(this), this);
-        getServer().getPluginManager().registerEvents(naval, this);
-        getServer().getPluginManager().registerEvents(new NavalWeaponListener(this, naval), this);
-        getServer().getPluginManager().registerEvents(runLoot, this);
-        getServer().getPluginManager().registerEvents(bounty, this);
-        getServer().getPluginManager().registerEvents(new MobDropService(this), this);
-        getServer().getPluginManager().registerEvents(npcs, this);
-        getServer().getPluginManager().registerEvents(shops, this);
-        getServer().getPluginManager().registerEvents(shopEditor, this);
-        getServer().getPluginManager().registerEvents(nodes, this);
-        getServer().getPluginManager().registerEvents(extraction, this);
-        getServer().getPluginManager().registerEvents(portals, this);
-        getServer().getPluginManager().registerEvents(vaults, this);
+        // Each listener registered as its own step. A feature whose constructor
+        // throws is then a feature that is missing, not a plugin that is gone.
+        listener("protection", () -> protection);
+        listener("boat", () -> boat);
+        listener("boat-menu", () -> boatMenu);
+        listener("chest-refill", () -> chestRefill);
+        listener("exposure", () -> exposureTask);
+        listener("relics", () -> relics);
+        listener("consumables", () -> new ConsumableService(this));
+        listener("soulwake", () -> new SoulwakeService(this));
+        listener("undrowned-heart", () -> new UndrownedHeartService(this));
+        listener("nax-combat", () -> new NaxCombatListener(this));
+        listener("sea-guard", () -> new SeaGuardListener(this));
+        listener("naval", () -> naval);
+        listener("naval-weapons", () -> new NavalWeaponListener(this, naval));
+        listener("run-loot", () -> runLoot);
+        listener("bounty", () -> bounty);
+        listener("mob-drops", () -> new MobDropService(this));
+        listener("npcs", () -> npcs);
+        listener("shops", () -> shops);
+        listener("shop-editor", () -> shopEditor);
+        listener("nodes", () -> nodes);
+        listener("extraction", () -> extraction);
+        listener("portals", () -> portals);
+        listener("vaults", () -> vaults);
 
-        PluginCommand command = getCommand("darksea");
-        DarkSeaCommand executor = new DarkSeaCommand(this);
-        command.setExecutor(executor);
-        command.setTabCompleter(executor);
+        // Guarded like the rest, but called out if it fails: with no command
+        // there is no /ds diag either, and whoever is testing is flying blind.
+        step("command", () -> {
+            PluginCommand command = getCommand("darksea");
+            if (command == null) {
+                throw new IllegalStateException("plugin.yml declares no 'darksea' command");
+            }
+            DarkSeaCommand executor = new DarkSeaCommand(this);
+            command.setExecutor(executor);
+            command.setTabCompleter(executor);
+        });
 
-        worldService.init();
-        npcs.spawnAll();
-        placer.maybeQueueLandfall(getServer().getConsoleSender(), null);
-        portals.installReturnPad(worldService.caves());
-        nodes.placeAllIfEmpty(worldService.caves());
-        nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
-                NodeService.REGROW_PERIOD_TICKS);
-        extraction.start();
+        // World creation first. Everything below it needs a world to act on, so
+        // if this is the step that failed, expect the next few to fail with it —
+        // that cascade is in the diag output rather than hidden behind a stack
+        // trace from whichever one happened to throw first.
+        step("world-init", worldService::init);
+        step("npc-spawn", npcs::spawnAll);
+        step("landfall", () -> placer.maybeQueueLandfall(getServer().getConsoleSender(), null));
+        step("portal-pad", () -> portals.installReturnPad(worldService.caves()));
+        step("ore-nodes", () -> nodes.placeAllIfEmpty(worldService.caves()));
 
-        int interval = settings.exposure().checkIntervalTicks();
-        exposureTask.runTaskTimer(this, interval, interval);
-        mobSpawner.runTaskTimer(this, 100L, settings.mobSpawning().scanIntervalTicks());
-        relics.runTaskTimer(this, 20L, 20L);
-        hud.start();
-        new SeaResetScheduler(this).runTaskTimer(this,
-                SeaResetScheduler.TICK_PERIOD, SeaResetScheduler.TICK_PERIOD);
+        step("node-timer", () -> nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
+                NodeService.REGROW_PERIOD_TICKS));
+        step("extraction", extraction::start);
+        step("exposure-timer", () -> {
+            int interval = settings.exposure().checkIntervalTicks();
+            exposureTask.runTaskTimer(this, interval, interval);
+        });
+        step("mob-spawner", () ->
+                mobSpawner.runTaskTimer(this, 100L, settings.mobSpawning().scanIntervalTicks()));
+        step("relic-timer", () -> relics.runTaskTimer(this, 20L, 20L));
+        step("naval-hud", hud::start);
+        step("reset-scheduler", () -> new SeaResetScheduler(this).runTaskTimer(this,
+                SeaResetScheduler.TICK_PERIOD, SeaResetScheduler.TICK_PERIOD));
 
         getLogger().info("DarkSea enabled — " + settings.zones().size() + " zones, "
                 + registry.all().size() + " islands registered");
+        getLogger().info(startup.summary());
+        if (!startup.healthy()) {
+            getLogger().severe("DarkSea came up degraded. Run /ds diag in game for the detail.");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Guarded startup
+    //
+    // Paper disables a whole plugin when onEnable throws, which used to mean
+    // one unreachable schematic or one world that would not create took the
+    // entire Dark Sea down with it. Each step now runs behind a catch: a
+    // failure costs that one feature for the session and is recorded for
+    // /ds diag, rather than costing the plugin.
+    // ------------------------------------------------------------------
+
+    /** Runs a startup step, recording whether it worked. Never throws. */
+    private void step(String name, Runnable body) {
+        long start = System.nanoTime();
+        try {
+            body.run();
+            startup.ok(name, elapsedMillis(start));
+        } catch (Throwable ex) {
+            startup.failed(name, describe(ex), elapsedMillis(start));
+            getLogger().log(Level.SEVERE,
+                    "DarkSea startup step '" + name + "' failed — continuing without it", ex);
+        }
+    }
+
+    /**
+     * The same, for a step that produces something. On failure the fallback is
+     * used, so a broken shops.yml gives empty boards rather than a null
+     * dereference in the first player's GUI.
+     */
+    private <T> T stepGet(String name, Supplier<T> body, T fallback) {
+        long start = System.nanoTime();
+        try {
+            T value = body.get();
+            startup.ok(name, elapsedMillis(start));
+            return value;
+        } catch (Throwable ex) {
+            startup.failed(name, describe(ex), elapsedMillis(start));
+            getLogger().log(Level.SEVERE,
+                    "DarkSea startup step '" + name + "' failed — using empty defaults", ex);
+            return fallback;
+        }
+    }
+
+    /**
+     * Registers one listener as its own step. The factory is called inside the
+     * guard on purpose — a listener that throws does so in its constructor far
+     * more often than in {@code registerEvents}.
+     */
+    private void listener(String name, Supplier<Listener> factory) {
+        step("listener:" + name, () ->
+                getServer().getPluginManager().registerEvents(factory.get(), this));
+    }
+
+    private static long elapsedMillis(long startNanos) {
+        return Math.round((System.nanoTime() - startNanos) / 1_000_000.0);
+    }
+
+    /** Exception type and message, short enough for a chat line. */
+    private static String describe(Throwable ex) {
+        String message = ex.getMessage();
+        String text = ex.getClass().getSimpleName()
+                + (message == null || message.isBlank() ? "" : ": " + message);
+        return text.length() <= 160 ? text : text.substring(0, 157) + "...";
     }
 
     @Override
@@ -206,6 +311,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         if (bounty != null) {
             bounty.save();
         }
+        getLogger().removeHandler(logTail);
     }
 
     /**
@@ -213,6 +319,9 @@ public final class DarkSeaPlugin extends JavaPlugin {
      * sets. World shape and task intervals are startup-only.
      */
     public void reloadAll() {
+        // Cleared first so the warning list after a reload describes this
+        // reload, not a mix of it and whatever startup complained about.
+        logTail.reset();
         reloadConfig();
         DarkSeaSettings loaded = DarkSeaSettings.load(getConfig(), getLogger());
         this.settings = loaded;
@@ -274,6 +383,16 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public DarkSeaSettings settings() {
         return settings;
+    }
+
+    /** What each startup step did. Backs {@code /ds diag}. */
+    public StartupReport startup() {
+        return startup;
+    }
+
+    /** The plugin's retained warnings. Backs {@code /ds diag warnings}. */
+    public LogTail logTail() {
+        return logTail;
     }
 
     public Messages messages() {
