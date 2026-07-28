@@ -2,6 +2,7 @@ package com.diamend.boxcore.boost;
 
 import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.data.PlayerProfile;
+import com.diamend.boxcore.gui.BoostMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
 import com.diamend.boxcore.util.Durations;
@@ -62,6 +63,7 @@ public class BoostsModule implements BoxModule {
 
     private final BoxCorePlugin plugin;
     private final BoostItems items;
+    private final BoostNotifier notifier;
 
     /** Server-wide boosts. Copy-on-write: read every block break, written rarely. */
     private final List<Boost> global = new CopyOnWriteArrayList<>();
@@ -79,10 +81,15 @@ public class BoostsModule implements BoxModule {
     public BoostsModule(BoxCorePlugin plugin) {
         this.plugin = plugin;
         this.items = new BoostItems(plugin);
+        this.notifier = new BoostNotifier(plugin, this);
     }
 
     public BoostItems items() {
         return items;
+    }
+
+    public BoostNotifier notifier() {
+        return notifier;
     }
 
     @Override
@@ -102,6 +109,7 @@ public class BoostsModule implements BoxModule {
         plugin.getServer().getPluginManager().registerEvents(new BoostListener(plugin, this), plugin);
         task = plugin.getServer().getScheduler()
                 .runTaskTimer(plugin, this::tick, checkTicks, checkTicks);
+        notifier.start();
     }
 
     @Override
@@ -110,12 +118,14 @@ public class BoostsModule implements BoxModule {
             task.cancel();
             task = null;
         }
+        notifier.stop();
         saveGlobal();
     }
 
     @Override
     public void reload() {
         loadConfig();
+        notifier.start();
     }
 
     // ------------------------------------------------------------------
@@ -328,6 +338,16 @@ public class BoostsModule implements BoxModule {
      * player's own — and the result is clamped to the configured ceiling.
      */
     public double multiplier(Player player, BoostType type) {
+        return multiplierFor(profileOf(player), type);
+    }
+
+    /**
+     * The same figure for a profile rather than an online player, so a
+     * placeholder can answer for someone who has logged off.
+     *
+     * @param profile the player's profile, or null for the global boosts alone
+     */
+    public double multiplierFor(PlayerProfile profile, BoostType type) {
         long now = System.currentTimeMillis();
         double total = 1.0;
         for (Boost boost : global) {
@@ -335,18 +355,60 @@ public class BoostsModule implements BoxModule {
                 total *= boost.multiplier();
             }
         }
-        if (player != null) {
-            PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        return Math.min(total * personal(profile, type, now), maxMultiplier);
+    }
+
+    /** Only the profile's own boosts, uncapped — the "yours" half of a display. */
+    public double personalMultiplier(PlayerProfile profile, BoostType type) {
+        return personal(profile, type, System.currentTimeMillis());
+    }
+
+    private double personal(PlayerProfile profile, BoostType type, long now) {
+        double total = 1.0;
+        if (profile != null) {
             for (Boost boost : profile.activeBoosts(type, now)) {
                 total *= boost.multiplier();
             }
         }
-        return Math.min(total, maxMultiplier);
+        return total;
     }
 
     /** The global-only multiplier, for display and for offline senders. */
     public double globalMultiplier(BoostType type) {
-        return multiplier(null, type);
+        return multiplierFor(null, type);
+    }
+
+    /**
+     * How long until the first boost of this type ends, counting the player's
+     * own and the server-wide ones together.
+     *
+     * <p>It is the <em>soonest</em> rather than the longest because that is the
+     * moment the number on screen changes, which is what a countdown is for.
+     *
+     * @return millis remaining, or 0 when nothing of this type is running
+     */
+    public long remainingFor(PlayerProfile profile, BoostType type) {
+        long now = System.currentTimeMillis();
+        long soonest = Long.MAX_VALUE;
+        for (Boost boost : global) {
+            if (boost.type() == type && boost.isActive(now)) {
+                soonest = Math.min(soonest, boost.remainingMillis(now));
+            }
+        }
+        if (profile != null) {
+            for (Boost boost : profile.activeBoosts(type, now)) {
+                soonest = Math.min(soonest, boost.remainingMillis(now));
+            }
+        }
+        return soonest == Long.MAX_VALUE ? 0 : soonest;
+    }
+
+    public long remaining(Player player, BoostType type) {
+        return remainingFor(profileOf(player), type);
+    }
+
+    private PlayerProfile profileOf(Player player) {
+        return player == null ? null : plugin.profiles().get(player.getUniqueId());
     }
 
     /** Applies this player's multiplier to an amount of items. */
@@ -565,27 +627,15 @@ public class BoostsModule implements BoxModule {
 
     /** One line per running boost, for chat and menus. */
     public List<String> summaryFor(Player player) {
-        long now = System.currentTimeMillis();
+        PlayerProfile profile = profileOf(player);
         List<String> lines = new ArrayList<>();
         for (BoostType type : BoostType.values()) {
-            double total = multiplier(player, type);
+            double total = multiplierFor(profile, type);
             if (total <= 1.0) {
                 continue;
             }
-            long soonest = Long.MAX_VALUE;
-            for (Boost boost : global) {
-                if (boost.type() == type && boost.isActive(now)) {
-                    soonest = Math.min(soonest, boost.remainingMillis(now));
-                }
-            }
-            if (player != null) {
-                for (Boost boost : plugin.profiles()
-                        .get(player.getUniqueId()).activeBoosts(type, now)) {
-                    soonest = Math.min(soonest, boost.remainingMillis(now));
-                }
-            }
             lines.add("<gray>" + type.display() + ": <white>" + Text.decimal(total)
-                    + "x <dark_gray>(" + Durations.format(soonest) + " left)");
+                    + "x <dark_gray>(" + Durations.format(remainingFor(profile, type)) + " left)");
         }
         return lines;
     }
@@ -604,19 +654,11 @@ public class BoostsModule implements BoxModule {
                     } else {
                         lines.addAll(active);
                     }
+                    lines.add("");
+                    lines.add("<yellow>Click to open");
                     return lines;
                 },
-                player -> {
-                    List<String> active = summaryFor(player);
-                    if (active.isEmpty()) {
-                        plugin.messages().send(player, "boost-none");
-                        return;
-                    }
-                    plugin.messages().sendLiteral(player, "<gray>Boosts running:");
-                    for (String line : active) {
-                        plugin.messages().sendPlain(player, "  " + line);
-                    }
-                });
+                player -> new BoostMenu(plugin, this).open(player));
     }
 
     @Override

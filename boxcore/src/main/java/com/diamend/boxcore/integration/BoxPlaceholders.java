@@ -1,6 +1,8 @@
 package com.diamend.boxcore.integration;
 
 import com.diamend.boxcore.BoxCorePlugin;
+import com.diamend.boxcore.boost.BoostType;
+import com.diamend.boxcore.boost.BoostsModule;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
@@ -8,6 +10,7 @@ import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.skill.perk.Perk;
+import com.diamend.boxcore.util.Durations;
 import com.diamend.boxcore.util.Text;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
@@ -29,7 +32,15 @@ import java.util.Locale;
  *   %boxcore_collection_&lt;id&gt;%       amount gathered
  *   %boxcore_tier_&lt;id&gt;%             collection tier reached
  *   %boxcore_progress_&lt;id&gt;%         percent toward the next tier
+ *   %boxcore_boost_&lt;type&gt;%          multiplier in effect, e.g. 2.5
+ *   %boxcore_boost_&lt;type&gt;_time%     time until it changes, e.g. 12m 30s
+ *   %boxcore_boost_global_&lt;type&gt;%   the server-wide part alone
+ *   %boxcore_boost_active%                true when anything is boosting
  * </pre>
+ *
+ * <p>The boost placeholders read 1 rather than an empty string when nothing is
+ * running, so a scoreboard line like {@code x%boxcore_boost_drops%} always says
+ * something true instead of collapsing to {@code x}.
  */
 public class BoxPlaceholders extends PlaceholderExpansion {
 
@@ -108,6 +119,10 @@ public class BoxPlaceholders extends PlaceholderExpansion {
             return perk.isFlag() ? String.valueOf(value > 0) : Text.amount(value, false);
         }
 
+        if (query.startsWith("boost_")) {
+            return boost(profile, query.substring(6));
+        }
+
         CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
         if (collections == null) {
             return "";
@@ -130,5 +145,40 @@ public class BoxPlaceholders extends PlaceholderExpansion {
             return String.valueOf(Math.round(progress * 100.0));
         }
         return "";
+    }
+
+    /** Everything after {@code boost_}: {@code drops}, {@code global_drops_time}, {@code active}. */
+    private String boost(PlayerProfile profile, String query) {
+        BoostsModule boosts = plugin.boosts();
+        if (boosts == null) {
+            return "";
+        }
+        if (query.equals("active")) {
+            for (BoostType type : BoostType.values()) {
+                if (boosts.multiplierFor(profile, type) > 1.0) {
+                    return "true";
+                }
+            }
+            return "false";
+        }
+
+        String rest = query;
+        boolean globalOnly = rest.startsWith("global_");
+        if (globalOnly) {
+            rest = rest.substring(7);
+        }
+        boolean wantsTime = rest.endsWith("_time");
+        if (wantsTime) {
+            rest = rest.substring(0, rest.length() - 5);
+        }
+
+        BoostType type = BoostType.parse(rest);
+        if (type == null) {
+            return "";
+        }
+        PlayerProfile whose = globalOnly ? null : profile;
+        return wantsTime
+                ? Durations.format(boosts.remainingFor(whose, type))
+                : Text.decimal(boosts.multiplierFor(whose, type));
     }
 }

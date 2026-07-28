@@ -7,6 +7,7 @@ import com.diamend.boxcore.collection.CollectionCategory;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
+import com.diamend.boxcore.gui.BoostMenu;
 import com.diamend.boxcore.gui.CollectionCategoryMenu;
 import com.diamend.boxcore.gui.CollectionListMenu;
 import com.diamend.boxcore.gui.HubMenu;
@@ -521,6 +522,10 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
     private void showBoosts(CommandSender sender, BoostsModule boosts) {
         Player player = sender instanceof Player self ? self : null;
+        if (player != null) {
+            new BoostMenu(plugin, boosts).open(player);
+            return;
+        }
         List<String> active = boosts.summaryFor(player);
         if (active.isEmpty()) {
             messages().send(sender, "boost-none");

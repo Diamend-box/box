@@ -222,6 +222,26 @@ boosts:
   # Announce global boosts in chat when they start.
   announce: true
 
+  # Telling players what's running. A boost that ends silently reads as the
+  # server quietly taking something back, so this is on by default.
+  notify:
+    # A live line above the hotbar while any boost is running, showing the
+    # multiplier and how long is left. Other plugins that write to the
+    # actionbar will take turns with it.
+    actionbar: true
+
+    # Chat warning before a boost ends, and a line when it does.
+    chat: true
+
+    # How long before the end to warn. 0 turns the warning off but keeps
+    # the "it ended" line. A boost shorter than this never warns — being
+    # told a 30s boost has 60s left would be nonsense.
+    warn-seconds: 60
+
+    # How often to refresh the actionbar and check for expiry, in ticks.
+    # 20 is once a second, which is what a countdown needs. Minimum 10.
+    interval-ticks: 20
+
   # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
   # Turn this off to boost every block's drops, cobblestone included.
   drops:
@@ -313,3 +333,7 @@ messages:
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."
+  boost-ending: "<yellow>Your <white><multiplier>x <type></white> boost ends in <white><time></white>."
+  boost-ended: "<gray>Your <white><multiplier>x <type></white> boost has ended."
+  boost-global-ending: "<yellow>The server-wide <white><multiplier>x <type></white> boost ends in <white><time></white>."
+  boost-global-ended: "<gray>The server-wide <white><multiplier>x <type></white> boost has ended."

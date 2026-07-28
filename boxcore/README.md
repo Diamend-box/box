@@ -86,6 +86,11 @@ Three ship today:
   schedule, or from a consumable item players right-click. They multiply
   together and are clamped by a configured ceiling; every boost expires on the
   wall clock, so one survives a relog and a global one survives a restart.
+  `/box boost` opens a menu showing what's running for you and what the server
+  is running, with live countdowns and a row of the boost items you're carrying
+  that you can click to start. An actionbar line keeps the multiplier and the
+  time left on screen while it runs, and a boost never ends silently — there's a
+  warning before, and a line when it does.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -126,7 +131,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
 | `/box compress [on\|off]` | Toggle your auto-compressor | `boxcore.use` |
-| `/box boost` | Show the boosts running for you | `boxcore.use` |
+| `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
@@ -340,6 +345,10 @@ With PlaceholderAPI installed:
 | `%boxcore_collection_<id>%` | Amount gathered |
 | `%boxcore_tier_<id>%` | Collection tier reached |
 | `%boxcore_progress_<id>%` | Percent toward the next tier |
+| `%boxcore_boost_<type>%` | Multiplier in effect (`drops` or `collections`), e.g. `2.5` |
+| `%boxcore_boost_<type>_time%` | Time until it changes, e.g. `12m 30s` |
+| `%boxcore_boost_global_<type>%` | The server-wide part alone |
+| `%boxcore_boost_active%` | `true` when anything is boosting them |
 
 ---
 

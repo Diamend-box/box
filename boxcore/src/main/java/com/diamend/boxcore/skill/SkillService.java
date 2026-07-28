@@ -1,5 +1,6 @@
 package com.diamend.boxcore.skill;
 
+import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.data.ProfileManager;
 import com.diamend.boxcore.util.Messages;
@@ -183,6 +184,11 @@ public class SkillService {
             player.sendActionBar(Text.parse("<green>" + Text.plain(name) + "<gray> — <white>"
                     + profile.getAvailablePoints() + "<gray> point"
                     + Messages.plural(profile.getAvailablePoints()) + " left"));
+            // A boost countdown ticking every second would wipe this out before
+            // it could be read, so ask it to wait its turn.
+            if (plugin instanceof BoxCorePlugin box && box.boosts() != null) {
+                box.boosts().notifier().hold(player, 3000L);
+            }
         }
         playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.4f);
         return check;
