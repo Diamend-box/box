@@ -1,6 +1,8 @@
 package com.diamend.boxcore.collection;
 
 import com.diamend.boxcore.BoxCorePlugin;
+import com.diamend.boxcore.boost.BoostType;
+import com.diamend.boxcore.boost.BoostsModule;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.util.Text;
 import net.kyori.adventure.text.Component;
@@ -31,7 +33,14 @@ public class CollectionService {
         this.collections = collections;
     }
 
-    /** Credits an amount of a material to every collection that tracks it. */
+    /**
+     * Credits an amount of a material to every collection that tracks it.
+     *
+     * <p>This is where a collections boost is applied, and the only place: it
+     * covers mining, kills, fishing and harvesting alike, and it deliberately
+     * does not cover {@link #set}, so an admin setting a total gets the number
+     * they typed rather than a boosted one.
+     */
     public void add(Player player, Material material, int amount) {
         if (player == null || amount <= 0 || material == null) {
             return;
@@ -40,9 +49,16 @@ public class CollectionService {
         if (tracked.isEmpty()) {
             return;
         }
+        long credited = boosted(player, amount);
         for (ItemCollection collection : tracked) {
-            addTo(player, collection, amount);
+            addTo(player, collection, credited);
         }
+    }
+
+    /** Applies the player's collections boost, when the module is running. */
+    private long boosted(Player player, long amount) {
+        BoostsModule boosts = plugin.boosts();
+        return boosts == null ? amount : boosts.boosted(player, BoostType.COLLECTIONS, amount);
     }
 
     /** Credits an amount directly to one collection. */

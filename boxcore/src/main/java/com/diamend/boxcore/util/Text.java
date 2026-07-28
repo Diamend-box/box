@@ -120,6 +120,15 @@ public final class Text {
         return (shown >= 0 ? "+" : "") + number + (percent ? "%" : "");
     }
 
+    /**
+     * A plain number with no sign and no trailing {@code .0}: {@code 2},
+     * {@code 1.5}. Used for multipliers, where {@link #amount} would render a
+     * misleading {@code +2}.
+     */
+    public static String decimal(double value) {
+        return round(value);
+    }
+
     /** Formats a proportion as an unsigned probability, e.g. {@code 12%}. */
     public static String percent(double fraction) {
         return round(fraction * 100.0) + "%";

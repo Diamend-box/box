@@ -21,6 +21,8 @@ modules:
     enabled: true
   compressor:
     enabled: true
+  boosts:
+    enabled: true
 
 # ---------------------------------------------------------------------
 # Skill trees
@@ -189,6 +191,82 @@ compressor:
     NETHERITE_SCRAP: { collection: ancient_debris, tier: 3 }
 
 # ---------------------------------------------------------------------
+# Boosts
+# ---------------------------------------------------------------------
+# Temporary multipliers, running server-wide or for one player. Two types:
+#
+#   drops        multiplies how much ore a broken block actually drops
+#   collections  multiplies how much everything counts toward collections
+#   all          both at once
+#
+# The two are independent on purpose. Collections are credited from what a
+# block naturally drops rather than from the items that land on the floor,
+# so a drops boost gives more ore without inflating collection progress,
+# and neither quietly compounds into the other.
+boosts:
+  # Boosts multiply together: a 2x global and a 2x personal boost make 4x.
+  # This is the hard ceiling no combination can pass. Raise it on purpose.
+  max-multiplier: 8.0
+
+  # Announce global boosts in chat when they start.
+  announce: true
+
+  # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
+  # Turn this off to boost every block's drops, cobblestone included.
+  drops:
+    ores-only: true
+
+  # How often (in ticks) to expire finished boosts and open scheduled
+  # windows. 100 ticks is five seconds, which is plenty.
+  check-ticks: 100
+
+  # Timezone for the schedule below, e.g. "Europe/London", "America/New_York".
+  # Leave blank to use whatever the machine running the server is set to.
+  timezone: ""
+
+  # Recurring global boosts that start on their own. A window that is
+  # already open when the server starts is picked back up, so a restart
+  # mid-event doesn't cancel it.
+  #
+  # schedule:
+  #   - days: [FRIDAY, SATURDAY, SUNDAY]
+  #     start: "18:00"       # HH:mm, in the timezone above
+  #     duration: 4h         # 90s, 30m, 2h30m, 1d
+  #     type: all            # drops, collections or all
+  #     multiplier: 2.0
+  schedule: []
+
+  # Boost items players can right-click to start their own boost. Give one
+  # with /box boost item <id> [player] [amount] — sell it, put it in a
+  # crate, hand it out as a reward.
+  #
+  # What an item does is written onto the item when it is created, so
+  # re-tuning an entry here changes items made from now on and never
+  # silently rewrites one already sitting in someone's ender chest.
+  #
+  # The optional 'item:' block skins it, exactly like the compressor's:
+  # material, name, lore, model-data and glow are all optional, and both
+  # colour codes (&a, &l, &#ff8800) and MiniMessage tags work. <multiplier>,
+  # <duration> and <type> are replaced in name and lore.
+  items:
+    drops-2x:
+      type: drops
+      multiplier: 2.0
+      duration: 30m
+      item:
+        material: EXPERIENCE_BOTTLE
+        name: "&d&l2x Drops Boost &7(30m)"
+        glow: true
+    collections-2x:
+      type: collections
+      multiplier: 2.0
+      duration: 30m
+      item:
+        material: EXPERIENCE_BOTTLE
+        name: "&b&l2x Collections Boost &7(30m)"
+        glow: true
+
+# ---------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------
 # Save all online players' data to disk every X minutes (crash safety
@@ -221,3 +299,6 @@ messages:
   compressor-expanded: "<aqua>Expanded <white><amount></white> compressed <ore><plural><gray> — won't re-compress for <white><seconds></white>s."
   compressor-no-room: "<red>Not enough inventory space to expand that."
   compressor-status: "<aqua>Auto-compressor <gray>is <white><state></white> <dark_gray>(<unlocked>/<total> ores unlocked)"
+  boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
+  boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
+  boost-none: "<gray>No boosts are running right now."

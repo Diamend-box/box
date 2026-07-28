@@ -1,9 +1,15 @@
 package com.diamend.boxcore.data;
 
+import com.diamend.boxcore.boost.Boost;
+import com.diamend.boxcore.boost.BoostType;
+
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Everything BoxCore stores about one player: their skill-point ledger, the
@@ -32,6 +38,15 @@ public class PlayerProfile {
 
     /** Whether the auto-compressor runs for this player. */
     private volatile boolean compressorEnabled = true;
+
+    /**
+     * Boosts this player is personally running.
+     *
+     * <p>Kept on the profile rather than in memory because they expire on the
+     * wall clock: a thirty-minute boost has to keep running across a relog or a
+     * restart, or every server hiccup would quietly refund itself.
+     */
+    private final List<Boost> boosts = new CopyOnWriteArrayList<>();
 
     private volatile boolean dirty;
 
@@ -208,6 +223,62 @@ public class PlayerProfile {
     public void setCompressorEnabled(boolean enabled) {
         if (enabled != this.compressorEnabled) {
             this.compressorEnabled = enabled;
+            dirty = true;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Boosts
+    // ------------------------------------------------------------------
+
+    /** Every stored boost, expired ones included. */
+    public List<Boost> getBoosts() {
+        return Collections.unmodifiableList(boosts);
+    }
+
+    /** Boosts of a type that are still running at {@code now}. */
+    public List<Boost> activeBoosts(BoostType type, long now) {
+        List<Boost> active = new ArrayList<>();
+        for (Boost boost : boosts) {
+            if (boost.type() == type && boost.isActive(now)) {
+                active.add(boost);
+            }
+        }
+        return active;
+    }
+
+    public void addBoost(Boost boost) {
+        if (boost != null) {
+            boosts.add(boost);
+            dirty = true;
+        }
+    }
+
+    public void setBoosts(List<Boost> replacement) {
+        boosts.clear();
+        if (replacement != null) {
+            boosts.addAll(replacement);
+        }
+        dirty = true;
+    }
+
+    /**
+     * Drops boosts that have run out.
+     *
+     * @return true when something was actually removed, so callers can avoid
+     *         marking a profile dirty every time they look at it
+     */
+    public boolean pruneBoosts(long now) {
+        boolean removed = boosts.removeIf(boost -> !boost.isActive(now));
+        if (removed) {
+            dirty = true;
+        }
+        return removed;
+    }
+
+    public void clearBoosts() {
+        if (!boosts.isEmpty()) {
+            boosts.clear();
             dirty = true;
         }
     }

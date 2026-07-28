@@ -32,6 +32,7 @@ Three ship today:
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 | `compressor` | Folds full stacks of raw ore into single items, unlocked per ore by that ore's collection tier. |
+| `boosts` | Temporary multipliers on ore drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
 
 ---
 
@@ -75,6 +76,11 @@ Three ship today:
   compressed form can be given its own material, name, lore, model data and
   glow — what it's worth lives on the item, so re-skinning never changes it.
   `/box give <ore> [units]` mints one to check a skin without mining for it.
+- ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
+  running server-wide or for one player. Start them by command, on a recurring
+  schedule, or from a consumable item players right-click. They multiply
+  together and are clamped by a configured ceiling; every boost expires on the
+  wall clock, so one survives a relog and a global one survives a restart.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -115,10 +121,15 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
 | `/box compress [on\|off]` | Toggle your auto-compressor | `boxcore.use` |
+| `/box boost` | Show the boosts running for you | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
 | `/box give <ore> [units] [player]` | Give compressed ore, for testing | `boxcore.admin` |
+| `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
+| `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
+| `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |
+| `/box boost clear [global\|<player>]` | End boosts early | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
 | `/box modules` | List modules and their state | `boxcore.admin` |
 | `/box reload` | Re-read every config | `boxcore.admin` |

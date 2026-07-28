@@ -1,6 +1,8 @@
 package com.diamend.boxcore.command;
 
 import com.diamend.boxcore.BoxCorePlugin;
+import com.diamend.boxcore.boost.BoostType;
+import com.diamend.boxcore.boost.BoostsModule;
 import com.diamend.boxcore.collection.CollectionCategory;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
@@ -18,6 +20,7 @@ import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillService;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
+import com.diamend.boxcore.util.Durations;
 import com.diamend.boxcore.util.Messages;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Bukkit;
@@ -67,6 +70,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "respec" -> respec(sender);
             case "compress", "compressor" -> compress(sender, args);
             case "give", "givecompressed" -> giveCompressed(sender, args);
+            case "boost", "boosts" -> boost(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
             case "modules" -> modules(sender);
@@ -432,6 +436,231 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 + "<green> ore) to <white>" + target.getName() + "<green>.");
     }
 
+    // ------------------------------------------------------------------
+    // Boosts
+    // ------------------------------------------------------------------
+
+    /**
+     * {@code /box boost} — see what is running; the rest is staff-only.
+     *
+     * <pre>
+     * /box boost                                   what's running for you
+     * /box boost global &lt;type&gt; &lt;mult&gt; &lt;duration&gt;    server-wide
+     * /box boost player &lt;name&gt; &lt;type&gt; &lt;mult&gt; &lt;dur&gt;  one player
+     * /box boost item &lt;id&gt; [player] [amount]        hand over a boost item
+     * /box boost clear [global|&lt;player&gt;]            end them early
+     * </pre>
+     */
+    private void boost(CommandSender sender, String[] args) {
+        BoostsModule boosts = plugin.boosts();
+        if (boosts == null) {
+            messages().sendLiteral(sender, "<red>Boosts are disabled on this server.");
+            return;
+        }
+        if (args.length < 2) {
+            showBoosts(sender, boosts);
+            return;
+        }
+        if (!sender.hasPermission(ADMIN)) {
+            messages().send(sender, "no-permission");
+            return;
+        }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "global", "server" -> boostGlobal(sender, boosts, args);
+            case "player", "give" -> boostPlayer(sender, boosts, args);
+            case "item" -> boostItem(sender, boosts, args);
+            case "clear", "stop" -> boostClear(sender, boosts, args);
+            default -> messages().sendLiteral(sender,
+                    "<red>Use global, player, item or clear.");
+        }
+    }
+
+    private void showBoosts(CommandSender sender, BoostsModule boosts) {
+        Player player = sender instanceof Player self ? self : null;
+        List<String> active = boosts.summaryFor(player);
+        if (active.isEmpty()) {
+            messages().send(sender, "boost-none");
+            return;
+        }
+        messages().sendLiteral(sender, "<gray>Boosts running:");
+        for (String line : active) {
+            messages().sendPlain(sender, "  " + line);
+        }
+    }
+
+    private void boostGlobal(CommandSender sender, BoostsModule boosts, String[] args) {
+        if (args.length < 5) {
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box boost global <type> <multiplier> <duration>");
+            return;
+        }
+        List<BoostType> types = BoostsModule.typesFor(args[2]);
+        if (types.isEmpty()) {
+            messages().sendLiteral(sender, boostTypeError(args[2]));
+            return;
+        }
+        double multiplier = parseMultiplier(sender, args[3], boosts);
+        if (multiplier <= 0) {
+            return;
+        }
+        long duration = parseDuration(sender, args[4]);
+        if (duration <= 0) {
+            return;
+        }
+        for (BoostType type : types) {
+            boosts.addGlobal(type, multiplier, duration, "admin");
+        }
+        messages().sendLiteral(sender, "<green>Started a <white>" + Text.decimal(multiplier)
+                + "x<green> global boost for <white>" + Durations.format(duration) + "<green>.");
+    }
+
+    private void boostPlayer(CommandSender sender, BoostsModule boosts, String[] args) {
+        if (args.length < 6) {
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box boost player <name> <type> <multiplier> <duration>");
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[2]);
+        if (target == null) {
+            messages().send(sender, "unknown-player", "name", args[2]);
+            return;
+        }
+        List<BoostType> types = BoostsModule.typesFor(args[3]);
+        if (types.isEmpty()) {
+            messages().sendLiteral(sender, boostTypeError(args[3]));
+            return;
+        }
+        double multiplier = parseMultiplier(sender, args[4], boosts);
+        if (multiplier <= 0) {
+            return;
+        }
+        long duration = parseDuration(sender, args[5]);
+        if (duration <= 0) {
+            return;
+        }
+        for (BoostType type : types) {
+            boosts.addPlayer(target, type, multiplier, duration, "admin");
+        }
+        messages().send(target, "boost-activated",
+                "type", types.size() > 1 ? "everything" : types.get(0).display(),
+                "multiplier", Text.decimal(multiplier),
+                "duration", Durations.format(duration));
+        messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
+                + "<green> a <white>" + Text.decimal(multiplier) + "x<green> boost for <white>"
+                + Durations.format(duration) + "<green>.");
+    }
+
+    private void boostItem(CommandSender sender, BoostsModule boosts, String[] args) {
+        if (args.length < 3) {
+            messages().sendLiteral(sender, "<red>Usage: /box boost item <id> [player] [amount]"
+                    + (boosts.itemIds().isEmpty() ? "" : " <dark_gray>— "
+                            + String.join(", ", boosts.itemIds())));
+            return;
+        }
+        Player target;
+        if (args.length >= 4) {
+            target = Bukkit.getPlayerExact(args[3]);
+            if (target == null) {
+                messages().send(sender, "unknown-player", "name", args[3]);
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            messages().sendLiteral(sender, "<red>Name a player: /box boost item <id> <player>");
+            return;
+        }
+        int amount = 1;
+        if (args.length >= 5) {
+            try {
+                amount = Math.max(1, Math.min(Integer.parseInt(args[4]), 36 * 64));
+            } catch (NumberFormatException ex) {
+                messages().sendLiteral(sender, "<red><white>" + args[4] + "</white> isn't a number.");
+                return;
+            }
+        }
+        ItemStack item = boosts.createItem(args[2], amount);
+        if (item == null) {
+            messages().sendLiteral(sender, "<red>No boost item called <white>" + args[2]
+                    + "<red>. Configured: <white>"
+                    + (boosts.itemIds().isEmpty() ? "none" : String.join(", ", boosts.itemIds()))
+                    + "<red>.");
+            return;
+        }
+        for (ItemStack leftover : target.getInventory().addItem(item).values()) {
+            target.getWorld().dropItemNaturally(target.getLocation(), leftover);
+        }
+        messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
+                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>.");
+    }
+
+    private void boostClear(CommandSender sender, BoostsModule boosts, String[] args) {
+        if (args.length < 3 || args[2].equalsIgnoreCase("global")) {
+            int cleared = boosts.clearGlobal();
+            messages().sendLiteral(sender, "<green>Ended <white>" + cleared
+                    + "<green> global boost(s).");
+            return;
+        }
+        // Online only: a boost runs on the wall clock and is worth nothing to
+        // someone who isn't here, and reaching for an offline profile just to
+        // clear one would pull it into the cache with nothing to write it back.
+        Player target = Bukkit.getPlayerExact(args[2]);
+        if (target == null) {
+            messages().send(sender, "unknown-player", "name", args[2]);
+            return;
+        }
+        int cleared = boosts.clearPlayer(target.getUniqueId());
+        messages().sendLiteral(sender, "<green>Ended <white>" + cleared
+                + "<green> boost(s) for <white>" + target.getName() + "<green>.");
+    }
+
+    private String boostTypeError(String given) {
+        return "<red><white>" + given + "</white> isn't a boost type. Use <white>"
+                + String.join(", ", boostTypeNames()) + "<red>.";
+    }
+
+    private List<String> boostTypeNames() {
+        List<String> names = new ArrayList<>();
+        for (BoostType type : BoostType.values()) {
+            names.add(type.id());
+        }
+        names.add("all");
+        return names;
+    }
+
+    /** Parses a multiplier, complaining about anything that would do nothing. */
+    private double parseMultiplier(CommandSender sender, String text, BoostsModule boosts) {
+        double multiplier;
+        try {
+            multiplier = Double.parseDouble(text.toLowerCase(Locale.ROOT).replace("x", "").trim());
+        } catch (NumberFormatException ex) {
+            messages().sendLiteral(sender, "<red><white>" + text + "</white> isn't a number.");
+            return 0;
+        }
+        if (multiplier <= 1.0) {
+            messages().sendLiteral(sender,
+                    "<red>A multiplier of <white>" + Text.decimal(multiplier)
+                            + "x</white> would do nothing. Use more than 1.");
+            return 0;
+        }
+        if (multiplier > boosts.maxMultiplier()) {
+            messages().sendLiteral(sender, "<red>The cap is <white>"
+                    + Text.decimal(boosts.maxMultiplier())
+                    + "x<red> (boosts.max-multiplier).");
+            return 0;
+        }
+        return multiplier;
+    }
+
+    private long parseDuration(CommandSender sender, String text) {
+        long millis = Durations.parse(text);
+        if (millis <= 0) {
+            messages().sendLiteral(sender, "<red><white>" + text
+                    + "</white> isn't a duration. Try <white>30m<red>, <white>2h<red> or <white>1d<red>.");
+        }
+        return millis;
+    }
+
     /** Whitelisted ores by the short name the give command accepts. */
     private List<String> oreNames() {
         List<String> names = new ArrayList<>();
@@ -449,12 +678,17 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box points <gray>— show your skill points");
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
         messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— toggle the auto-compressor");
+        messages().sendPlain(sender, "  <white>/box boost <gray>— show the boosts running for you");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
             messages().sendPlain(sender, "  <white>/box collection set <player> <id> <amount>");
             messages().sendPlain(sender, "  <white>/box give <ore> [units] [player] "
                     + "<gray>— compressed ore, for testing");
+            messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
+            messages().sendPlain(sender, "  <white>/box boost player <name> <type> <mult> <duration>");
+            messages().sendPlain(sender, "  <white>/box boost item <id> [player] [amount]");
+            messages().sendPlain(sender, "  <white>/box boost clear [global|<player>]");
             messages().sendPlain(sender, "  <white>/box reset <player>");
             messages().sendPlain(sender, "  <white>/box modules <gray>— list loaded modules");
             messages().sendPlain(sender, "  <white>/box reload");
@@ -511,7 +745,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission(ADMIN);
 
         if (args.length == 1) {
-            options.addAll(List.of("skills", "collections", "points", "respec", "compress"));
+            options.addAll(List.of("skills", "collections", "points", "respec", "compress", "boost"));
             if (admin) {
                 options.addAll(List.of("give", "unlock", "collection", "reset", "modules", "reload"));
             }
@@ -530,6 +764,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 case "give", "givecompressed" -> {
                     if (admin) {
                         options.addAll(oreNames());
+                    }
+                }
+                case "boost", "boosts" -> {
+                    if (admin) {
+                        options.addAll(List.of("global", "player", "item", "clear"));
                     }
                 }
                 case "skills", "tree", "trees" -> {
@@ -568,6 +807,44 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 }
             }
             return filter(options, args[1]);
+        }
+
+        if (admin && (sub.equals("boost") || sub.equals("boosts"))) {
+            BoostsModule boosts = plugin.boosts();
+            String mode = args[1].toLowerCase(Locale.ROOT);
+            if (args.length == 3) {
+                return switch (mode) {
+                    case "global", "server" -> filter(boostTypeNames(), args[2]);
+                    case "player", "give" -> filter(onlineNames(), args[2]);
+                    case "item" -> filter(boosts == null
+                            ? List.<String>of() : new ArrayList<>(boosts.itemIds()), args[2]);
+                    case "clear", "stop" -> {
+                        List<String> targets = new ArrayList<>(List.of("global"));
+                        targets.addAll(onlineNames());
+                        yield filter(targets, args[2]);
+                    }
+                    default -> List.of();
+                };
+            }
+            if (args.length == 4) {
+                return switch (mode) {
+                    case "global", "server" -> filter(List.of("2", "3", "1.5"), args[3]);
+                    case "player", "give" -> filter(boostTypeNames(), args[3]);
+                    case "item" -> filter(onlineNames(), args[3]);
+                    default -> List.of();
+                };
+            }
+            if (args.length == 5) {
+                return switch (mode) {
+                    case "global", "server" -> filter(List.of("30m", "1h", "2h"), args[4]);
+                    case "player", "give" -> filter(List.of("2", "3", "1.5"), args[4]);
+                    default -> List.of();
+                };
+            }
+            if (args.length == 6 && (mode.equals("player") || mode.equals("give"))) {
+                return filter(List.of("30m", "1h", "2h"), args[5]);
+            }
+            return List.of();
         }
 
         if (args.length == 3 && admin && (sub.equals("give") || sub.equals("givecompressed"))) {

@@ -453,6 +453,27 @@ wipe tracker and delete the bounded set.**
 
 ---
 
+## 15a. Boosts
+
+- **Two independent types.** `drops` multiplies how much ore a broken block actually yields;
+  `collections` multiplies how much everything counts toward collections. Neither implies the other.
+- **They do not compound behind your back.** Collections are credited from the block's natural drops,
+  not from the items that land on the floor, so doubling drops does not also double collections. If
+  you want both, grant both — deliberately.
+- **Boosts multiply together** (2× global × 2× personal = 4×), which is explosive by construction, so
+  a configured **hard ceiling** clamps every combination. It is the only thing standing between an
+  event and an accident.
+- **Everything expires on the wall clock**, never on a countdown. A personal boost survives a relog
+  and a global one survives a restart — a server hiccup must not silently refund or cancel an event.
+- **Four ways in:** admin command, recurring schedule windows, a consumable item, and the API.
+- **A boost item carries its own terms.** What it grants is written onto the item, not looked up by
+  id, so re-tuning config never rewrites or voids one already sitting in someone's ender chest. Same
+  rule as §15's compressed ore, for the same reason.
+- **Boosts are yield, not safety.** Nothing here touches the death tax or what drops on death. A
+  boosted player carrying more ore is carrying more risk, which is the intended trade.
+
+---
+
 ## 16. Coverless arena
 
 **Movement speed is the dominant stat.** With little natural cover, escaping is close to a pure

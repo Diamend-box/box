@@ -1,5 +1,7 @@
 package com.diamend.boxcore.data;
 
+import com.diamend.boxcore.boost.Boost;
+import com.diamend.boxcore.boost.BoostType;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -132,8 +134,35 @@ public class ProfileManager {
             }
         }
         profile.setCompressorEnabled(config.getBoolean("compressor/enabled", true));
+        profile.setBoosts(readBoosts(config));
+        // Boosts run on the wall clock, so anything that ran out while the
+        // player was away is already over by the time we read it back.
+        profile.pruneBoosts(System.currentTimeMillis());
         profile.markClean();
         return profile;
+    }
+
+    private List<Boost> readBoosts(ConfigurationSection config) {
+        List<Boost> boosts = new ArrayList<>();
+        ConfigurationSection section = config.getConfigurationSection("boosts");
+        if (section == null) {
+            return boosts;
+        }
+        for (String key : section.getKeys(false)) {
+            ConfigurationSection entry = section.getConfigurationSection(key);
+            if (entry == null) {
+                continue;
+            }
+            BoostType type = BoostType.parse(entry.getString("type"));
+            if (type == null) {
+                continue;
+            }
+            boosts.add(new Boost(type,
+                    entry.getDouble("multiplier", 1.0),
+                    entry.getLong("expires"),
+                    entry.getString("source", "")));
+        }
+        return boosts;
     }
 
     private YamlConfiguration snapshot(PlayerProfile profile) {
@@ -151,6 +180,19 @@ public class ProfileManager {
             config.set(base + "tier", profile.getAwardedTier(entry.getKey()));
         }
         config.set("compressor" + SEPARATOR + "enabled", profile.isCompressorEnabled());
+
+        long now = System.currentTimeMillis();
+        int index = 0;
+        for (Boost boost : profile.getBoosts()) {
+            if (!boost.isActive(now)) {
+                continue;
+            }
+            String base = "boosts" + SEPARATOR + index++ + SEPARATOR;
+            config.set(base + "type", boost.type().id());
+            config.set(base + "multiplier", boost.multiplier());
+            config.set(base + "expires", boost.expiresAt());
+            config.set(base + "source", boost.source());
+        }
         return config;
     }
 

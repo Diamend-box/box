@@ -59,6 +59,7 @@ class BoxCorePluginTest {
         assertTrue(plugin.modules().isActive("collections"), "collections module active");
         assertTrue(plugin.modules().isActive("playtime"), "playtime module active");
         assertTrue(plugin.modules().isActive("compressor"), "compressor module active");
+        assertTrue(plugin.modules().isActive("boosts"), "boosts module active");
     }
 
     @Test
