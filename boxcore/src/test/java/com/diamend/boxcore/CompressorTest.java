@@ -171,6 +171,81 @@ class CompressorTest {
     }
 
     // ------------------------------------------------------------------
+    // Custom skins
+    // ------------------------------------------------------------------
+
+    @Test
+    void aSkinnedUnitStillCountsAsItsSourceOre() {
+        // The material is only how it renders. What it is worth, and what it is
+        // worth it *in*, is stored on the item.
+        CompressedOre compressed = plugin.ores().compressed();
+        ItemStack unit = compressed.create(Material.COAL,
+                new CompressedOre.Appearance(Material.PAPER, "<gold>Coal Briquette", null, 0, false),
+                64, 2);
+        assertNotNull(unit);
+        assertEquals(Material.PAPER, unit.getType(), "it renders as the skin");
+        assertEquals(Material.COAL, plugin.ores().oreKey(unit), "but it counts as coal");
+        assertEquals(128, plugin.ores().equivalents(unit));
+    }
+
+    @Test
+    void expandingASkinnedUnitHandsBackTheOreNotTheSkin() {
+        PlayerMock player = server.addPlayer();
+        maxCollections(player);
+        player.getInventory().clear();
+        player.getInventory().setItemInMainHand(plugin.ores().compressed().create(Material.COAL,
+                new CompressedOre.Appearance(Material.PAPER, null, null, 0, false), 64, 1));
+
+        assertEquals(1, compressor().expand(player, 1));
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.COAL),
+                "expanding must give coal, not paper");
+        assertEquals(0, compressor().rawCount(player.getInventory(), Material.PAPER));
+    }
+
+    @Test
+    void twoOresSharingASkinDoNotMerge() {
+        // Both skinned as paper at the same ratio, so a merge that only looked
+        // at material and ratio would silently turn coal into diamonds.
+        PlayerMock player = server.addPlayer();
+        maxCollections(player);
+        player.getInventory().clear();
+        CompressedOre compressed = plugin.ores().compressed();
+        CompressedOre.Appearance skin =
+                new CompressedOre.Appearance(Material.PAPER, null, null, 0, false);
+        player.getInventory().setItem(0, compressed.create(Material.COAL, skin, 64, 1));
+        player.getInventory().setItem(1, compressed.create(Material.DIAMOND, skin, 64, 1));
+
+        assertEquals(64, plugin.ores().carried(player, Material.COAL));
+        assertEquals(64, plugin.ores().carried(player, Material.DIAMOND));
+        assertFalse(compressed.sameKind(
+                        player.getInventory().getItem(0), player.getInventory().getItem(1)),
+                "same skin and ratio, different ore — never the same kind");
+    }
+
+    @Test
+    void aPlaceableSkinIsRefused() {
+        // Placing a block moves ore out of the inventory without anything
+        // counting it, which is the route the custom item exists to close.
+        assertEquals(List.of(), compressor().placeableSkins(),
+                "no configured skin may be a placeable block");
+    }
+
+    @Test
+    void oldUnitsWithoutASourceTagKeepTheirValue() {
+        // Stacks written before the source ore was recorded separately meant
+        // "the material I am"; they must not read as worthless.
+        ItemStack legacy = new ItemStack(Material.COAL, 1);
+        org.bukkit.inventory.meta.ItemMeta meta = legacy.getItemMeta();
+        meta.getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey(plugin, "compressed"),
+                org.bukkit.persistence.PersistentDataType.INTEGER, 64);
+        legacy.setItemMeta(meta);
+
+        assertEquals(Material.COAL, plugin.ores().oreKey(legacy));
+        assertEquals(64, plugin.ores().equivalents(legacy));
+    }
+
+    // ------------------------------------------------------------------
     // Gating
     // ------------------------------------------------------------------
 

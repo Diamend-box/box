@@ -71,7 +71,9 @@ Three ship today:
 - 📦 **Auto-compressor** — a full stack of raw ore folds into one item, unlocked
   per ore type by that ore's own collection tier. A compressed unit is worth
   exactly the stack it came from, so it buys time in the box rather than value;
-  right-click to expand one back for an anvil or an enchanting table.
+  right-click to expand one back for an anvil or an enchanting table. Each ore's
+  compressed form can be given its own material, name, lore, model data and
+  glow — what it's worth lives on the item, so re-skinning never changes it.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).

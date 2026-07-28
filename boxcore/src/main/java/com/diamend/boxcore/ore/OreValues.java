@@ -87,14 +87,27 @@ public final class OreValues {
     }
 
     /**
-     * What one item of this stack is worth, in ore-equivalents.
+     * Which whitelisted ore a stack counts as, or null when it counts as none.
      *
-     * <p>The compressed tag is read before the vanilla material, never the
-     * reverse: a compressed unit is still {@code RAW_IRON} underneath, so
-     * checking the material first would price a whole stack at one.
+     * <p>The compressed tag is read before the item's material, never the
+     * reverse. A compressed unit's material is only its skin — a server owner
+     * can make compressed coal look like anything — so the material answers
+     * "how does this render", not "what is this".
      */
+    public Material oreKey(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return null;
+        }
+        if (compressed.isCompressed(item)) {
+            Material source = compressed.sourceOre(item);
+            return isOre(source) ? source : null;
+        }
+        return isOre(item.getType()) ? item.getType() : null;
+    }
+
+    /** What one item of this stack is worth, in ore-equivalents. */
     public long unitValue(ItemStack item) {
-        if (item == null || item.getType().isAir() || !isOre(item.getType())) {
+        if (oreKey(item) == null) {
             return 0;
         }
         int ratio = compressed.ratio(item);
@@ -132,9 +145,13 @@ public final class OreValues {
     }
 
     private void accumulate(Map<Material, Long> totals, ItemStack item) {
+        Material key = oreKey(item);
+        if (key == null) {
+            return;
+        }
         long value = equivalents(item);
         if (value > 0) {
-            totals.merge(item.getType(), value, Long::sum);
+            totals.merge(key, value, Long::sum);
         }
     }
 

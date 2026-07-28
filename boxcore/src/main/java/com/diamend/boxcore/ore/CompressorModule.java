@@ -6,6 +6,7 @@ import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
+import com.diamend.boxcore.util.Items;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -42,8 +43,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CompressorModule implements BoxModule {
 
-    /** One unlockable ore: which collection gates it, and at which tier. */
-    public record OreUnlock(Material material, String collectionId, int tier) {
+    /** One unlockable ore: what gates it, and how its compressed form looks. */
+    public record OreUnlock(Material material,
+                            String collectionId,
+                            int tier,
+                            CompressedOre.Appearance appearance) {
     }
 
     private static final int VANILLA_STACK = 64;
@@ -123,8 +127,61 @@ public class CompressorModule implements BoxModule {
             String collectionId = entry == null ? key.toLowerCase(Locale.ROOT)
                     : entry.getString("collection", key.toLowerCase(Locale.ROOT));
             int tier = entry == null ? 0 : entry.getInt("tier", 0);
-            unlocks.put(material, new OreUnlock(material, collectionId, Math.max(0, tier)));
+            unlocks.put(material, new OreUnlock(material, collectionId, Math.max(0, tier),
+                    readAppearance(entry, material)));
         }
+    }
+
+    /**
+     * Reads the optional {@code item:} block describing how an ore's compressed
+     * form should look. Anything left out falls back to the built-in look.
+     */
+    private CompressedOre.Appearance readAppearance(ConfigurationSection entry, Material ore) {
+        ConfigurationSection item = entry == null ? null : entry.getConfigurationSection("item");
+        if (item == null) {
+            return CompressedOre.Appearance.defaultFor(ore);
+        }
+        Material skin = Items.material(item.getString("material"), ore);
+        if (skin.isBlock()) {
+            // A placeable skin reopens the route the custom item exists to
+            // close: place the block and the ore leaves the inventory without
+            // anything counting it. Refuse the skin rather than the ore.
+            plugin.getLogger().warning("compressor.ores." + ore.name()
+                    + ".item.material is a placeable block (" + skin.name()
+                    + "); falling back to " + ore.name() + ".");
+            skin = ore;
+        }
+        List<String> lore = item.isList("lore") ? item.getStringList("lore") : null;
+        return new CompressedOre.Appearance(
+                skin,
+                item.getString("name"),
+                lore == null || lore.isEmpty() ? null : lore,
+                Math.max(0, item.getInt("model-data", 0)),
+                item.getBoolean("glow", false));
+    }
+
+    /** How this ore's compressed form should look, defaulting when unconfigured. */
+    public CompressedOre.Appearance appearanceFor(Material ore) {
+        OreUnlock unlock = unlocks.get(ore);
+        return unlock == null || unlock.appearance() == null
+                ? CompressedOre.Appearance.defaultFor(ore)
+                : unlock.appearance();
+    }
+
+    /**
+     * Configured compressed skins that can be placed as a block. Always empty
+     * in a working configuration — asserted in a test, because a placeable skin
+     * silently reopens the laundering route the custom item exists to close.
+     */
+    public List<Material> placeableSkins() {
+        List<Material> placeable = new ArrayList<>();
+        for (OreUnlock unlock : unlocks.values()) {
+            Material skin = unlock.appearance().materialOr(unlock.material());
+            if (skin.isBlock()) {
+                placeable.add(skin);
+            }
+        }
+        return placeable;
     }
 
     // ------------------------------------------------------------------
@@ -229,7 +286,8 @@ public class CompressorModule implements BoxModule {
         if (units <= 0) {
             return 0;
         }
-        ItemStack compressed = plugin.ores().compressed().create(material, ratio, units);
+        ItemStack compressed = plugin.ores().compressed()
+                .create(material, appearanceFor(material), ratio, units);
         if (compressed == null) {
             return 0;
         }
@@ -256,7 +314,6 @@ public class CompressorModule implements BoxModule {
         PlayerInventory inventory = player.getInventory();
         ItemStack[] contents = inventory.getStorageContents();
         int max = stack.getType().getMaxStackSize();
-        int kind = compressed.ratio(stack);
         int remaining = stack.getAmount();
 
         for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
@@ -264,7 +321,7 @@ public class CompressorModule implements BoxModule {
             if (item == null || item.getType() != stack.getType()) {
                 continue;
             }
-            if (compressed.ratio(item) != kind) {
+            if (!compressed.sameKind(item, stack)) {
                 continue;
             }
             int room = max - item.getAmount();
@@ -347,7 +404,14 @@ public class CompressorModule implements BoxModule {
         // Read everything off the held stack before touching it. Emptying an
         // ItemStack turns it into AIR, so a material read afterwards would come
         // back as nothing and the raw ore would never be handed over.
-        Material material = held.getType();
+        //
+        // The ore is the tagged source, not the item's material: a compressed
+        // unit may be skinned as anything, and expanding it must hand back the
+        // ore it is worth rather than the thing it looks like.
+        Material material = compressed.sourceOre(held);
+        if (material == null) {
+            return 0;
+        }
         int heldUnits = held.getAmount();
         int maxStack = material.getMaxStackSize();
 
@@ -368,7 +432,7 @@ public class CompressorModule implements BoxModule {
         int remaining = heldUnits - affordable;
         inventory.setItemInMainHand(remaining <= 0
                 ? null
-                : plugin.ores().compressed().create(material, itemRatio, remaining));
+                : compressed.create(material, appearanceFor(material), itemRatio, remaining));
 
         // Hand the ore back a stack at a time. An ItemStack larger than the
         // material's stack size is not something every inventory path handles.

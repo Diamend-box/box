@@ -151,6 +151,26 @@ compressor:
   # collection id from collections.yml; 'tier' is how many of its tiers the
   # player must have reached. tier: 0 means always available.
   # Removing an entry makes that ore uncompressible.
+  #
+  # Each ore may also carry an optional 'item:' block describing how its
+  # compressed form looks. Everything in it is optional:
+  #
+  #   item:
+  #     material: COAL        # what it renders as (default: the ore itself)
+  #     name: "<dark_gray><bold>Coal Briquette"
+  #     lore:
+  #       - "<gray>A stack of coal, pressed flat."
+  #       - "<dark_gray>Worth <ratio> <ore>."
+  #     model-data: 1001      # for a resource pack; 0 = none
+  #     glow: true
+  #
+  # <ratio>, <ore> and <Ore> are replaced in name and lore.
+  #
+  # What a compressed unit is *worth* is stored on the item, not read from
+  # its material, so re-skinning one never changes its value. One limit:
+  # the material cannot be a placeable block, because placing it would move
+  # ore out of the inventory without anything counting it. A block here is
+  # refused with a warning and the ore's own item used instead.
   ores:
     COAL:            { collection: coal,           tier: 1 }
     RAW_IRON:        { collection: iron,           tier: 1 }
