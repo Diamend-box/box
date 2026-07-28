@@ -80,6 +80,9 @@ Three ship today:
   right-click to expand one back for an anvil or an enchanting table. Each ore's
   compressed form can be given its own material, name, lore, model data and
   glow — what it's worth lives on the item, so re-skinning never changes it.
+  `/box compress` opens a page listing every compressible ore: the ones you've
+  earned, and for the rest which collection tier unlocks them and how far off
+  you are, with a locked ore's icon opening the collection that gates it.
   `/box give <ore> [units]` mints one to check a skin without mining for it.
 - ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
   running server-wide or for one player. Start them by command, on a recurring
@@ -130,7 +133,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box collections [category]` | Open the collections | `boxcore.use` |
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
-| `/box compress [on\|off]` | Toggle your auto-compressor | `boxcore.use` |
+| `/box compress [on\|off]` | Open the compressor menu, or toggle it directly | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
@@ -349,6 +352,10 @@ With PlaceholderAPI installed:
 | `%boxcore_boost_<type>_time%` | Time until it changes, e.g. `12m 30s` |
 | `%boxcore_boost_global_<type>%` | The server-wide part alone |
 | `%boxcore_boost_active%` | `true` when anything is boosting them |
+| `%boxcore_compressor_enabled%` | `true`/`false` — their own auto-compress toggle |
+| `%boxcore_compressor_unlocked%` | How many ores they can compress |
+| `%boxcore_compressor_total%` | How many ores this server compresses |
+| `%boxcore_compressor_ratio%` | Raw ore per compressed unit |
 
 ---
 

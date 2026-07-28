@@ -10,6 +10,7 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.BoostMenu;
 import com.diamend.boxcore.gui.CollectionCategoryMenu;
 import com.diamend.boxcore.gui.CollectionListMenu;
+import com.diamend.boxcore.gui.CompressorMenu;
 import com.diamend.boxcore.gui.HubMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
@@ -385,30 +386,36 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendLiteral(sender, "<green>Reloaded configuration and modules.");
     }
 
-    /** {@code /box compress [on|off]} — per-player auto-compressor toggle. */
+    /**
+     * {@code /box compress [on|off]} — the compressor menu, or the toggle
+     * directly.
+     *
+     * <p>Bare {@code /box compress} opens the menu rather than flipping the
+     * toggle: which ores are unlocked and what unlocks the rest is the question
+     * players actually have, and {@code on}/{@code off} still answers the other
+     * one in one line.
+     */
     private void compress(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             messages().send(sender, "players-only");
             return;
         }
-        com.diamend.boxcore.ore.CompressorModule compressor = plugin.compressor();
+        CompressorModule compressor = plugin.compressor();
         if (compressor == null) {
             messages().sendLiteral(sender, "<red>The auto-compressor is disabled on this server.");
             return;
         }
-        boolean enabled;
-        if (args.length >= 2) {
-            String choice = args[1].toLowerCase(Locale.ROOT);
-            if (choice.equals("on") || choice.equals("off")) {
-                enabled = choice.equals("on");
-                compressor.setEnabled(player, enabled);
-            } else {
-                messages().sendLiteral(sender, "<red>Usage: /box compress [on|off]");
-                return;
-            }
-        } else {
-            enabled = compressor.toggle(player);
+        if (args.length < 2) {
+            new CompressorMenu(plugin, compressor).open(player);
+            return;
         }
+        String choice = args[1].toLowerCase(Locale.ROOT);
+        if (!choice.equals("on") && !choice.equals("off")) {
+            messages().sendLiteral(sender, "<red>Usage: /box compress [on|off]");
+            return;
+        }
+        boolean enabled = choice.equals("on");
+        compressor.setEnabled(player, enabled);
         messages().send(player, enabled ? "compressor-on" : "compressor-off");
     }
 
@@ -726,7 +733,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box collections [category] <gray>— open your collections");
         messages().sendPlain(sender, "  <white>/box points <gray>— show your skill points");
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
-        messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— toggle the auto-compressor");
+        messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— open the compressor (or toggle it)");
         messages().sendPlain(sender, "  <white>/box boost <gray>— show the boosts running for you");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");

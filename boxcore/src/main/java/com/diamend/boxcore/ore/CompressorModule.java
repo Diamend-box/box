@@ -4,6 +4,7 @@ import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
+import com.diamend.boxcore.gui.CompressorMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
 import com.diamend.boxcore.util.Items;
@@ -198,6 +199,14 @@ public class CompressorModule implements BoxModule {
 
     /** Whether this player has earned the compressor for a given ore. */
     public boolean isUnlocked(Player player, Material material) {
+        return isUnlockedFor(profileOf(player), material);
+    }
+
+    /**
+     * The same question asked of a profile rather than an online player, so a
+     * placeholder can answer it for someone who has logged off.
+     */
+    public boolean isUnlockedFor(PlayerProfile profile, Material material) {
         OreUnlock unlock = unlocks.get(material);
         if (unlock == null) {
             return false;
@@ -205,21 +214,75 @@ public class CompressorModule implements BoxModule {
         if (unlock.tier() <= 0) {
             return true;
         }
-        return collectionTier(player, unlock.collectionId()) >= unlock.tier();
+        return tierOf(profile, unlock.collectionId()) >= unlock.tier();
     }
 
     /** The tier this player has reached in a collection, or 0. */
     public int collectionTier(Player player, String collectionId) {
-        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
-        if (collections == null) {
+        return tierOf(profileOf(player), collectionId);
+    }
+
+    private int tierOf(PlayerProfile profile, String collectionId) {
+        ItemCollection collection = collectionFor(collectionId);
+        if (profile == null || collection == null) {
             return 0;
         }
-        ItemCollection collection = collections.collections().get(collectionId);
-        if (collection == null) {
-            return 0;
-        }
-        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
         return collection.tierFor(profile.getCollected(collectionId));
+    }
+
+    private PlayerProfile profileOf(Player player) {
+        return player == null ? null : plugin.profiles().get(player.getUniqueId());
+    }
+
+    /** How many ores a profile has unlocked. */
+    public int unlockedCount(PlayerProfile profile) {
+        int count = 0;
+        for (Material material : unlocks.keySet()) {
+            if (isUnlockedFor(profile, material)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** What gates one ore, or null when this server doesn't compress it. */
+    public OreUnlock unlock(Material ore) {
+        return unlocks.get(ore);
+    }
+
+    /**
+     * The collection that gates an ore, or null when collections are off or the
+     * config names one that doesn't exist.
+     */
+    public ItemCollection collectionFor(String collectionId) {
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+        return collections == null ? null : collections.collections().get(collectionId);
+    }
+
+    /** How much of a gating collection this player has gathered. */
+    public long collected(Player player, String collectionId) {
+        return plugin.profiles().get(player.getUniqueId()).getCollected(collectionId);
+    }
+
+    /**
+     * Compressed units of one ore the player is carrying.
+     *
+     * <p>Counted by the ore tagged on the item rather than by its material: a
+     * compressed unit may be skinned as anything, so the skin cannot be trusted
+     * to say which ore it stands for.
+     */
+    public long compressedUnits(Player player, Material ore) {
+        if (player == null || ore == null) {
+            return 0;
+        }
+        CompressedOre compressed = plugin.ores().compressed();
+        long total = 0;
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (item != null && compressed.isCompressed(item) && compressed.sourceOre(item) == ore) {
+                total += item.getAmount();
+            }
+        }
+        return total;
     }
 
     public List<Material> unlockedFor(Player player) {
@@ -557,12 +620,11 @@ public class CompressorModule implements BoxModule {
                     lines.add(isEnabledFor(player)
                             ? "<green>Enabled <dark_gray>(/box compress)"
                             : "<red>Disabled <dark_gray>(/box compress)");
+                    lines.add("");
+                    lines.add("<yellow>Click to open");
                     return lines;
                 },
-                player -> plugin.messages().send(player, "compressor-status",
-                        "state", isEnabledFor(player) ? "enabled" : "disabled",
-                        "unlocked", unlockedFor(player).size(),
-                        "total", unlocks.size()));
+                player -> new CompressorMenu(plugin, this).open(player));
     }
 
     @Override

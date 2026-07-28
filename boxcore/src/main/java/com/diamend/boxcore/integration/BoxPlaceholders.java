@@ -6,6 +6,7 @@ import com.diamend.boxcore.boost.BoostsModule;
 import com.diamend.boxcore.collection.CollectionsModule;
 import com.diamend.boxcore.collection.ItemCollection;
 import com.diamend.boxcore.data.PlayerProfile;
+import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
@@ -36,6 +37,10 @@ import java.util.Locale;
  *   %boxcore_boost_&lt;type&gt;_time%     time until it changes, e.g. 12m 30s
  *   %boxcore_boost_global_&lt;type&gt;%   the server-wide part alone
  *   %boxcore_boost_active%                true when anything is boosting
+ *   %boxcore_compressor_enabled%          true/false, their own toggle
+ *   %boxcore_compressor_unlocked%         ores they can compress
+ *   %boxcore_compressor_total%            ores this server compresses
+ *   %boxcore_compressor_ratio%            raw ore per compressed unit
  * </pre>
  *
  * <p>The boost placeholders read 1 rather than an empty string when nothing is
@@ -122,6 +127,9 @@ public class BoxPlaceholders extends PlaceholderExpansion {
         if (query.startsWith("boost_")) {
             return boost(profile, query.substring(6));
         }
+        if (query.startsWith("compressor_")) {
+            return compressor(profile, query.substring(11));
+        }
 
         CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
         if (collections == null) {
@@ -180,5 +188,20 @@ public class BoxPlaceholders extends PlaceholderExpansion {
         return wantsTime
                 ? Durations.format(boosts.remainingFor(whose, type))
                 : Text.decimal(boosts.multiplierFor(whose, type));
+    }
+
+    /** Everything after {@code compressor_}. */
+    private String compressor(PlayerProfile profile, String query) {
+        CompressorModule module = plugin.compressor();
+        if (module == null) {
+            return "";
+        }
+        return switch (query) {
+            case "enabled" -> String.valueOf(profile.isCompressorEnabled());
+            case "unlocked" -> String.valueOf(module.unlockedCount(profile));
+            case "total" -> String.valueOf(module.unlocks().size());
+            case "ratio" -> String.valueOf(module.ratio());
+            default -> "";
+        };
     }
 }
