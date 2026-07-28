@@ -30,6 +30,9 @@ public class PlayerProfile {
     /** Collection id → highest tier already paid out. */
     private final Map<String, Integer> collectionTiers = new ConcurrentHashMap<>();
 
+    /** Whether the auto-compressor runs for this player. */
+    private volatile boolean compressorEnabled = true;
+
     private volatile boolean dirty;
 
     public PlayerProfile(UUID uuid) {
@@ -192,6 +195,21 @@ public class PlayerProfile {
         collections.clear();
         collectionTiers.clear();
         dirty = true;
+    }
+
+    // ------------------------------------------------------------------
+    // Auto-compressor
+    // ------------------------------------------------------------------
+
+    public boolean isCompressorEnabled() {
+        return compressorEnabled;
+    }
+
+    public void setCompressorEnabled(boolean enabled) {
+        if (enabled != this.compressorEnabled) {
+            this.compressorEnabled = enabled;
+            dirty = true;
+        }
     }
 
     // ------------------------------------------------------------------

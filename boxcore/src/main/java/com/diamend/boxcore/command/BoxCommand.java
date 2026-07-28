@@ -61,6 +61,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "collections", "collection", "coll" -> collections(sender, args);
             case "points", "point" -> points(sender, args);
             case "respec" -> respec(sender);
+            case "compress", "compressor" -> compress(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
             case "modules" -> modules(sender);
@@ -325,8 +326,36 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             return;
         }
         plugin.reloadConfig();
+        plugin.ores().load(plugin.getConfig());
         plugin.modules().reloadAll();
         messages().sendLiteral(sender, "<green>Reloaded configuration and modules.");
+    }
+
+    /** {@code /box compress [on|off]} — per-player auto-compressor toggle. */
+    private void compress(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            messages().send(sender, "players-only");
+            return;
+        }
+        com.diamend.boxcore.ore.CompressorModule compressor = plugin.compressor();
+        if (compressor == null) {
+            messages().sendLiteral(sender, "<red>The auto-compressor is disabled on this server.");
+            return;
+        }
+        boolean enabled;
+        if (args.length >= 2) {
+            String choice = args[1].toLowerCase(Locale.ROOT);
+            if (choice.equals("on") || choice.equals("off")) {
+                enabled = choice.equals("on");
+                compressor.setEnabled(player, enabled);
+            } else {
+                messages().sendLiteral(sender, "<red>Usage: /box compress [on|off]");
+                return;
+            }
+        } else {
+            enabled = compressor.toggle(player);
+        }
+        messages().send(player, enabled ? "compressor-on" : "compressor-off");
     }
 
     private void help(CommandSender sender) {
@@ -336,6 +365,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box collections [category] <gray>— open your collections");
         messages().sendPlain(sender, "  <white>/box points <gray>— show your skill points");
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
+        messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— toggle the auto-compressor");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
@@ -396,7 +426,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission(ADMIN);
 
         if (args.length == 1) {
-            options.addAll(List.of("skills", "collections", "points", "respec"));
+            options.addAll(List.of("skills", "collections", "points", "respec", "compress"));
             if (admin) {
                 options.addAll(List.of("unlock", "collection", "reset", "modules", "reload"));
             }
@@ -409,6 +439,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2) {
             switch (sub) {
+                case "compress", "compressor" -> {
+                    return filter(List.of("on", "off"), args[1]);
+                }
                 case "skills", "tree", "trees" -> {
                     if (skills != null) {
                         for (SkillTree tree : skills.trees().trees()) {

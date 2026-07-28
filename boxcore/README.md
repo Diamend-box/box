@@ -31,6 +31,7 @@ Three ship today:
 | `skills` | Config-driven skill trees bought with skill points, plus the perk engine that runs their scripted effects. |
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
+| `compressor` | Folds full stacks of raw ore into single items, unlocked per ore by that ore's collection tier. |
 
 ---
 
@@ -67,6 +68,10 @@ Three ship today:
 - 🕒 **Playtime is a collection**, read from the server's own statistic (so time
   banked before BoxCore was installed still counts) and capped by its own last
   tier — the ceiling is visible in the menu, not implied.
+- 📦 **Auto-compressor** — a full stack of raw ore folds into one item, unlocked
+  per ore type by that ore's own collection tier. A compressed unit is worth
+  exactly the stack it came from, so it buys time in the box rather than value;
+  right-click to expand one back for an anvil or an enchanting table.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -106,6 +111,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box collections [category]` | Open the collections | `boxcore.use` |
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
+| `/box compress [on\|off]` | Toggle your auto-compressor | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |

@@ -8,6 +8,8 @@ import com.diamend.boxcore.gui.GuiListener;
 import com.diamend.boxcore.listener.ConnectionListener;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.ModuleManager;
+import com.diamend.boxcore.ore.CompressorModule;
+import com.diamend.boxcore.ore.OreValues;
 import com.diamend.boxcore.playtime.PlaytimeModule;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.util.Messages;
@@ -29,10 +31,12 @@ public class BoxCorePlugin extends JavaPlugin {
     private ProfileManager profiles;
     private Messages messages;
     private ModuleManager modules;
+    private OreValues ores;
 
     private SkillsModule skillsModule;
     private CollectionsModule collectionsModule;
     private PlaytimeModule playtimeModule;
+    private CompressorModule compressorModule;
 
     private BukkitTask autosaveTask;
 
@@ -46,6 +50,7 @@ public class BoxCorePlugin extends JavaPlugin {
         this.profiles = new ProfileManager(this);
         this.messages = new Messages(this);
         this.modules = new ModuleManager(this);
+        this.ores = new OreValues(this);
 
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
@@ -53,9 +58,11 @@ public class BoxCorePlugin extends JavaPlugin {
         this.skillsModule = new SkillsModule(this);
         this.collectionsModule = new CollectionsModule(this);
         this.playtimeModule = new PlaytimeModule(this);
+        this.compressorModule = new CompressorModule(this);
         modules.register(skillsModule);
         modules.register(collectionsModule);
         modules.register(playtimeModule);
+        modules.register(compressorModule);
         modules.enableAll();
 
         registerCommand();
@@ -179,5 +186,18 @@ public class BoxCorePlugin extends JavaPlugin {
 
     public PlaytimeModule playtime() {
         return modules.isActive("playtime") ? playtimeModule : null;
+    }
+
+    public CompressorModule compressor() {
+        return modules.isActive("compressor") ? compressorModule : null;
+    }
+
+    /**
+     * The shared ore-value accessor. Lives on the plugin rather than inside the
+     * compressor module because everything that counts ore reads it, and a
+     * disabled module must not take the counting path down with it.
+     */
+    public OreValues ores() {
+        return ores;
     }
 }

@@ -19,6 +19,8 @@ modules:
     enabled: true
   playtime:
     enabled: true
+  compressor:
+    enabled: true
 
 # ---------------------------------------------------------------------
 # Skill trees
@@ -105,6 +107,63 @@ playtime:
   collection: playtime
 
 # ---------------------------------------------------------------------
+# Ore
+# ---------------------------------------------------------------------
+ore:
+  # Which raw items count as ore. Raw forms only: smelted output (ingots)
+  # is deliberately not here, and nothing on this list may be a placeable
+  # block — placing one would move ore somewhere nothing counts it. That
+  # rules out ANCIENT_DEBRIS in particular; use NETHERITE_SCRAP instead.
+  # Leave the list empty to use the built-in default, which is this one.
+  whitelist:
+    - RAW_IRON
+    - RAW_GOLD
+    - RAW_COPPER
+    - DIAMOND
+    - EMERALD
+    - COAL
+    - LAPIS_LAZULI
+    - REDSTONE
+    - QUARTZ
+    - NETHERITE_SCRAP
+
+# ---------------------------------------------------------------------
+# Auto-compressor
+# ---------------------------------------------------------------------
+# Folds full stacks of raw ore into single items so a player can stay out
+# longer before inventory space forces them back. A compressed unit is
+# worth exactly what it was folded from, so this buys time, never safety.
+compressor:
+  # How many raw items make one compressed unit. 64 means a full stack
+  # becomes a single item.
+  ratio: 64
+
+  # After expanding a unit by hand, don't re-compress that player for this
+  # many seconds — otherwise ore expanded to use in an anvil or enchanting
+  # table gets folded straight back up before they reach one.
+  expand-grace-seconds: 30
+
+  # How often (in ticks) to sweep players who have gained items. Only
+  # players who actually picked something up are looked at.
+  sweep-ticks: 20
+
+  # Which ores compress, and what unlocks them. 'collection' is the
+  # collection id from collections.yml; 'tier' is how many of its tiers the
+  # player must have reached. tier: 0 means always available.
+  # Removing an entry makes that ore uncompressible.
+  ores:
+    COAL:            { collection: coal,           tier: 1 }
+    RAW_IRON:        { collection: iron,           tier: 1 }
+    RAW_COPPER:      { collection: copper,         tier: 1 }
+    REDSTONE:        { collection: redstone,       tier: 2 }
+    LAPIS_LAZULI:    { collection: lapis,          tier: 2 }
+    RAW_GOLD:        { collection: gold,           tier: 2 }
+    QUARTZ:          { collection: quartz,         tier: 2 }
+    DIAMOND:         { collection: diamond,        tier: 3 }
+    EMERALD:         { collection: emerald,        tier: 3 }
+    NETHERITE_SCRAP: { collection: ancient_debris, tier: 3 }
+
+# ---------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------
 # Save all online players' data to disk every X minutes (crash safety
@@ -132,3 +191,8 @@ messages:
   tier-up: "<aqua><collection></aqua> <gray>collection reached tier <white><tier></white><gray>!"
   # Shown when the Second Chance perk saves a player from a killing blow.
   second-chance: "<gold>Second Chance <gray>pulled you back from the brink."
+  compressor-on: "<green>Auto-compressor <white>enabled<green>."
+  compressor-off: "<yellow>Auto-compressor <white>disabled<yellow>."
+  compressor-expanded: "<aqua>Expanded <white><amount></white> compressed <ore><plural><gray> — won't re-compress for <white><seconds></white>s."
+  compressor-no-room: "<red>Not enough inventory space to expand that."
+  compressor-status: "<aqua>Auto-compressor <gray>is <white><state></white> <dark_gray>(<unlocked>/<total> ores unlocked)"

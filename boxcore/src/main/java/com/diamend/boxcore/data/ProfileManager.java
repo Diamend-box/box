@@ -131,6 +131,7 @@ public class ProfileManager {
                 profile.setAwardedTier(key, collections.getInt(key + SEPARATOR + "tier"));
             }
         }
+        profile.setCompressorEnabled(config.getBoolean("compressor/enabled", true));
         profile.markClean();
         return profile;
     }
@@ -149,6 +150,7 @@ public class ProfileManager {
             config.set(base + "amount", entry.getValue());
             config.set(base + "tier", profile.getAwardedTier(entry.getKey()));
         }
+        config.set("compressor" + SEPARATOR + "enabled", profile.isCompressorEnabled());
         return config;
     }
 

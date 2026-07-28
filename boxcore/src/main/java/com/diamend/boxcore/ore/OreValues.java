@@ -1,0 +1,155 @@
+package com.diamend.boxcore.ore;
+
+import org.bukkit.Material;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.plugin.Plugin;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * The one place the question "how much ore is this?" is answered.
+ *
+ * <p>Everything that needs an ore count goes through here rather than counting
+ * items inline. The value itself is trivial — every whitelisted raw item is
+ * worth one — but the *counting* is not: compression, custom items and the
+ * whitelist check all live behind this, and separate call sites reimplementing
+ * that will drift apart.
+ *
+ * <p>Amounts are reported in <em>ore-equivalents</em>, not item counts, so a
+ * compressed unit reads as the stack it was folded from. That is what lets
+ * compression stay invisible to anything counting ore: a player who compresses
+ * their inventory is holding exactly as much as they were a moment before.
+ *
+ * <p>The whitelist is raw forms only. Smelted output carries no ore-equivalent,
+ * and no entry may be a placeable block — {@code ANCIENT_DEBRIS} is the trap
+ * there, since placing a block would move ore out of the counted world
+ * entirely. {@link #placeableEntries()} exists so a test can hold that line.
+ */
+public final class OreValues {
+
+    /** Raw forms only: no ingots, and nothing that can be placed as a block. */
+    private static final List<Material> DEFAULT_WHITELIST = List.of(
+            Material.RAW_IRON,
+            Material.RAW_GOLD,
+            Material.RAW_COPPER,
+            Material.DIAMOND,
+            Material.EMERALD,
+            Material.COAL,
+            Material.LAPIS_LAZULI,
+            Material.REDSTONE,
+            Material.QUARTZ,
+            Material.NETHERITE_SCRAP);
+
+    private final CompressedOre compressed;
+    private final Set<Material> whitelist = new LinkedHashSet<>();
+
+    public OreValues(Plugin plugin) {
+        this.compressed = new CompressedOre(plugin);
+        load(plugin.getConfig());
+    }
+
+    /** Re-reads the whitelist; called on {@code /box reload}. */
+    public void load(FileConfiguration config) {
+        whitelist.clear();
+        List<String> configured = config == null
+                ? List.of()
+                : config.getStringList("ore.whitelist");
+        if (configured.isEmpty()) {
+            whitelist.addAll(DEFAULT_WHITELIST);
+            return;
+        }
+        for (String name : configured) {
+            Material material = Material.matchMaterial(name.trim().toUpperCase(Locale.ROOT));
+            if (material != null && !material.isAir()) {
+                whitelist.add(material);
+            }
+        }
+        if (whitelist.isEmpty()) {
+            whitelist.addAll(DEFAULT_WHITELIST);
+        }
+    }
+
+    public boolean isOre(Material material) {
+        return material != null && whitelist.contains(material);
+    }
+
+    public Set<Material> whitelist() {
+        return Collections.unmodifiableSet(whitelist);
+    }
+
+    /**
+     * What one item of this stack is worth, in ore-equivalents.
+     *
+     * <p>The compressed tag is read before the vanilla material, never the
+     * reverse: a compressed unit is still {@code RAW_IRON} underneath, so
+     * checking the material first would price a whole stack at one.
+     */
+    public long unitValue(ItemStack item) {
+        if (item == null || item.getType().isAir() || !isOre(item.getType())) {
+            return 0;
+        }
+        int ratio = compressed.ratio(item);
+        return ratio > 0 ? ratio : 1;
+    }
+
+    /** What a whole stack is worth, in ore-equivalents. */
+    public long equivalents(ItemStack item) {
+        long unit = unitValue(item);
+        return unit == 0 ? 0 : unit * item.getAmount();
+    }
+
+    /**
+     * Everything the player is carrying, in ore-equivalents per material.
+     *
+     * <p>Covers the main inventory, hotbar and offhand. Armour slots are
+     * excluded because no whitelisted item is wearable.
+     */
+    public Map<Material, Long> carried(Player player) {
+        Map<Material, Long> totals = new EnumMap<>(Material.class);
+        if (player == null) {
+            return totals;
+        }
+        PlayerInventory inventory = player.getInventory();
+        for (ItemStack item : inventory.getStorageContents()) {
+            accumulate(totals, item);
+        }
+        accumulate(totals, inventory.getItemInOffHand());
+        return totals;
+    }
+
+    /** Ore-equivalents of one material the player is carrying. */
+    public long carried(Player player, Material material) {
+        return carried(player).getOrDefault(material, 0L);
+    }
+
+    private void accumulate(Map<Material, Long> totals, ItemStack item) {
+        long value = equivalents(item);
+        if (value > 0) {
+            totals.merge(item.getType(), value, Long::sum);
+        }
+    }
+
+    /**
+     * Whitelist entries that can be placed as a block.
+     *
+     * <p>Always empty in a correct configuration. Placing a block removes the
+     * item from the inventory, which would park ore somewhere nothing counts
+     * it, so this is asserted in a test rather than only documented.
+     */
+    public List<Material> placeableEntries() {
+        return whitelist.stream().filter(Material::isBlock).toList();
+    }
+
+    public CompressedOre compressed() {
+        return compressed;
+    }
+}
