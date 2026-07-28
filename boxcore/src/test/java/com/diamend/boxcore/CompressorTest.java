@@ -204,9 +204,14 @@ class CompressorTest {
         player.getInventory().setItemInMainHand(unit);
 
         assertEquals(1, compressor().expand(player, 1));
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.LAPIS_LAZULI),
+                "one unit's worth comes back as raw ore");
+        assertEquals(1, plugin.ores().compressed()
+                        .ratio(player.getInventory().getItemInMainHand()) > 0
+                ? player.getInventory().getItemInMainHand().getAmount() : 0,
+                "the other unit is still compressed in hand");
         assertEquals(128, plugin.ores().carried(player, Material.LAPIS_LAZULI),
                 "expanding changes the form, not the amount");
-        assertEquals(64, compressor().rawCount(player.getInventory(), Material.LAPIS_LAZULI));
     }
 
     @Test
@@ -217,9 +222,13 @@ class CompressorTest {
                 plugin.ores().compressed().create(Material.LAPIS_LAZULI, 64, 1));
 
         assertEquals(1, compressor().expand(player, 1));
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.LAPIS_LAZULI),
+                "expanding the last unit must still hand the ore over");
         assertTrue(compressor().inGrace(player), "a grace window opens on expand");
         assertEquals(0, compressor().compress(player),
                 "ore expanded for an enchanting table must not be folded straight back");
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.LAPIS_LAZULI),
+                "and it is still raw afterwards");
     }
 
     @Test
@@ -231,10 +240,28 @@ class CompressorTest {
         for (int slot = 0; slot < 36; slot++) {
             player.getInventory().setItem(slot, new ItemStack(Material.COBBLESTONE, 64));
         }
+        // Two units need 128 free slots' worth; emptying the hand frees 64.
+        player.getInventory().setItemInMainHand(
+                plugin.ores().compressed().create(Material.DIAMOND, 64, 2));
+
+        assertEquals(0, compressor().expand(player, 2), "no room means no expand");
+        assertEquals(0, compressor().rawCount(player.getInventory(), Material.DIAMOND));
+    }
+
+    @Test
+    void theLastUnitFitsBecauseItsOwnSlotComesFree() {
+        PlayerMock player = server.addPlayer();
+        maxCollections(player);
+        player.getInventory().clear();
+        for (int slot = 0; slot < 36; slot++) {
+            player.getInventory().setItem(slot, new ItemStack(Material.COBBLESTONE, 64));
+        }
         player.getInventory().setItemInMainHand(
                 plugin.ores().compressed().create(Material.DIAMOND, 64, 1));
 
-        assertEquals(0, compressor().expand(player, 1), "no room means no expand");
+        assertEquals(1, compressor().expand(player, 1),
+                "the slot the unit vacates is exactly enough for the stack it becomes");
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.DIAMOND));
     }
 
     @Test

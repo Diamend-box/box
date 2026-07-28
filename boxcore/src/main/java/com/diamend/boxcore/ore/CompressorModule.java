@@ -293,26 +293,40 @@ public class CompressorModule implements BoxModule {
         if (itemRatio <= 0) {
             return 0;
         }
-        int available = Math.min(units, held.getAmount());
-        int room = freeSpaceFor(inventory, held.getType());
-        // Expanding the last unit in hand frees the slot it was sitting in, and
-        // that slot is usually the only room a full inventory has left. Counting
-        // it only when the whole held stack is consumed keeps the estimate from
-        // ever promising space that will not exist.
-        int roomIfHandEmpties = room + held.getType().getMaxStackSize();
-        int affordable;
-        if (available == held.getAmount() && roomIfHandEmpties / itemRatio >= available) {
-            affordable = available;
-        } else {
-            affordable = Math.min(available, room / itemRatio);
-        }
+        // Read everything off the held stack before touching it. Emptying an
+        // ItemStack turns it into AIR, so a material read afterwards would come
+        // back as nothing and the raw ore would never be handed over.
+        Material material = held.getType();
+        int heldUnits = held.getAmount();
+        int maxStack = material.getMaxStackSize();
+
+        int available = Math.min(units, heldUnits);
+        int room = freeSpaceFor(inventory, material);
+        // Expanding the whole held stack frees the slot it was sitting in, and
+        // on a full inventory that slot is the only room left. Counting it only
+        // when every unit is consumed keeps the estimate from ever promising
+        // space that will not exist.
+        int roomIfHandEmpties = room + maxStack;
+        int affordable = available == heldUnits && roomIfHandEmpties / itemRatio >= available
+                ? available
+                : Math.min(available, room / itemRatio);
         if (affordable <= 0) {
             return 0;
         }
 
-        held.setAmount(held.getAmount() - affordable);
-        inventory.setItemInMainHand(held.getAmount() <= 0 ? null : held);
-        inventory.addItem(new ItemStack(held.getType(), affordable * itemRatio));
+        int remaining = heldUnits - affordable;
+        inventory.setItemInMainHand(remaining <= 0
+                ? null
+                : plugin.ores().compressed().create(material, itemRatio, remaining));
+
+        // Hand the ore back a stack at a time. An ItemStack larger than the
+        // material's stack size is not something every inventory path handles.
+        int raw = affordable * itemRatio;
+        while (raw > 0) {
+            int chunk = Math.min(maxStack, raw);
+            inventory.addItem(new ItemStack(material, chunk));
+            raw -= chunk;
+        }
         startGrace(player);
         return affordable;
     }
