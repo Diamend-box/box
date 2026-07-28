@@ -21,6 +21,7 @@ commands:
       /box points <give|take|set> <player> <n> - Adjust points (admin)
       /box unlock <player> <tree.node>         - Force-unlock a node (admin)
       /box collection set <player> <id> <n>    - Set a collection amount (admin)
+      /box collection clearplaced [radius]     - Forget placed-block flags (admin)
       /box give <ore> [units] [player]         - Give compressed ore (admin)
       /box boost                    - Show the boosts running for you
       /box boost global <type> <multiplier> <duration>   - Boost everyone (admin)

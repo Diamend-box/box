@@ -119,6 +119,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             setCollection(sender, module, args);
             return;
         }
+        // /box collection clearplaced [chunk radius]
+        if (args.length >= 2 && args[1].equalsIgnoreCase("clearplaced")) {
+            clearPlaced(sender, module, args);
+            return;
+        }
         requirePlayer(sender, player -> {
             if (args.length >= 2) {
                 CollectionCategory category = module.collections().category(args[1]);
@@ -279,6 +284,45 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendLiteral(sender, "<green>Set <white>" + Text.plain(collection.getDisplay())
                     + "<green> to <white>" + Text.number(amount) + "<green> for <white>"
                     + args[2] + "<green>.");
+        });
+    }
+
+    /**
+     * Forgets the player-placed flags around the sender.
+     *
+     * <p>For a mine that was rebuilt by something which never fired a place
+     * event — a WorldEdit paste, a mine-reset plugin — where flags left by the
+     * players who mined it last would otherwise refuse the fresh ore.
+     */
+    private void clearPlaced(CommandSender sender, CollectionsModule module, String[] args) {
+        if (!sender.hasPermission(ADMIN)) {
+            messages().send(sender, "no-permission");
+            return;
+        }
+        int radius = 2;
+        if (args.length >= 3) {
+            try {
+                radius = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ex) {
+                messages().sendLiteral(sender, "<red><white>" + args[2] + "</white> isn't a number.");
+                return;
+            }
+            // 8 is a 17x17 square — plenty for a mine, and it keeps a single
+            // command from loading thousands of chunks on a small host.
+            if (radius < 0 || radius > 8) {
+                messages().sendLiteral(sender, "<red>Use a chunk radius between <white>0</white> and <white>8</white>.");
+                return;
+            }
+        }
+        int chunks = radius;
+        requirePlayer(sender, player -> {
+            int cleared = module.placedBlocks().clearChunks(player.getWorld(),
+                    player.getLocation().getBlockX() >> 4,
+                    player.getLocation().getBlockZ() >> 4, chunks);
+            int span = chunks * 2 + 1;
+            messages().sendLiteral(sender, "<green>Cleared <white>" + Text.number(cleared)
+                    + "<green> placed-block flag(s) across <white>" + (span * span)
+                    + "<green> chunk(s).");
         });
     }
 
@@ -683,6 +727,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
             messages().sendPlain(sender, "  <white>/box collection set <player> <id> <amount>");
+            messages().sendPlain(sender, "  <white>/box collection clearplaced [chunk radius] "
+                    + "<gray>— after a mine regen");
             messages().sendPlain(sender, "  <white>/box give <ore> [units] [player] "
                     + "<gray>— compressed ore, for testing");
             messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
@@ -784,13 +830,13 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                             options.add(category.getId());
                         }
                         if (admin) {
-                            options.add("set");
+                            options.addAll(List.of("set", "clearplaced"));
                         }
                     }
                 }
                 case "collection" -> {
                     if (admin) {
-                        options.add("set");
+                        options.addAll(List.of("set", "clearplaced"));
                     }
                 }
                 case "points" -> {

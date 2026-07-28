@@ -419,11 +419,29 @@ wall, or attack the placement itself.
 - **Tree shape:** three branches — Mining / Hauling / Combat — roughly 25–30 nodes. Respec on a
   cooldown so nobody respecs mid-fight.
 
-**Anti-farm cache must be replaced, not reused.** `CollectionListener` remembers player-placed blocks
-so place-and-break cannot farm a collection, but at 250,000 entries it **clears the entire set**
-(`CollectionListener.java:101`) rather than evicting — every placed block becomes "not placed" at
-once. Keys are `world:x,y,z` strings, tens of megabytes at that size. **Point collections at §17's
-wipe tracker and delete the bounded set.**
+**Anti-farm flags live in the chunk.** *(Was: a bounded in-memory set that emptied itself at 250,000
+entries and was lost on every restart. Replaced by `PlacedBlocks`.)*
+
+- **Storage is the chunk's persistent data container**, so a flag is written into the region file and
+  survives a restart, and unloads with its chunk instead of accumulating for the server's uptime.
+- **One int per flag**: y+64 in bits 22–30, chunk-local z and x in 18–21 and 14–17, a 14-bit hash of
+  the material in 0–13. Position sits in the high bits, so the array sorts by position and is
+  binary-searchable. Never `Location` objects, never string keys.
+- **The material hash is load-bearing for regenerating mines.** A flag that only knew a position would
+  sit there and silently refuse whatever respawned in that spot. Comparing the hash means a block that
+  no longer matches what was placed counts normally, and the stale flag is dropped as it's read.
+- **Only blocks that could feed a collection are flagged** — checked against the material and its
+  drops — so region files never carry a record of every dirt block on the server.
+- **Pistons move flags with the blocks they push**, both extend and retract; the direction is measured
+  against the piston rather than taken from the event's reported sense. Without this, shoving a placed
+  block one space laundered it.
+- **Everything else that destroys a block drops its flag**: explosions, fire, fading, leaf decay.
+- **Ceiling is 8,192 flags per chunk**, a live count of tracked blocks standing there rather than a
+  cumulative total, and it warns rather than silently emptying itself.
+- **`/box collection clearplaced [chunk radius]`** is the escape hatch for a rebuild that never fired
+  a place event — a WorldEdit paste, a mine-reset plugin.
+
+§17's wipe tracker, when it lands, should read these flags rather than keep a second set.
 
 ---
 
@@ -503,8 +521,9 @@ Regenerating cubes mean `BlockBreakEvent` fires at very high volume. That path m
   scheduled tasks do not survive.*
 - **Exposure and survival clocks are the exception** — accumulated counters, not reconstructed from
   timestamps, for the reason in §5.
-- **One placed-block tracker, unbounded by design.** Packed longs in a chunk-keyed map, never
-  `Location` objects. Two consumers: the wipe (§12) and collections anti-farm (§14). Cleared on wipe.
+- **One placed-block tracker.** Packed ints in the chunk's own persistent data, never `Location`
+  objects and never string keys — shipped as `PlacedBlocks` (§14). Two consumers: the wipe (§12) and
+  collections anti-farm (§14). Cleared on wipe.
 - **Wipe removal batched across ticks** and drop-free.
 - **Containment and clamp checks are per-transfer, not per-tick.** Nothing polls.
 
@@ -553,7 +572,8 @@ pre-secured) and principle 5 (prefer a counter to a restriction).
    clamp, because it looks correct.
 3. **§5's clock and §6's fee.** The economy does not exist until these do.
 4. **§11's kill reward.** PvP has no payout against banked players until this lands.
-5. **§14's tracker unification**, which also fixes the anti-farm cache defect.
+5. **§12's wipe**, reading §14's `PlacedBlocks` rather than starting a second tracker. *(The anti-farm
+   cache defect this used to also cover is fixed — `PlacedBlocks` shipped.)*
 
 ### Do not "fix" these
 

@@ -86,6 +86,17 @@ collections:
 
   # When false, breaking a block that a player placed doesn't count
   # (stops place-and-break farming).
+  #
+  # The flags are stored in the chunk itself, so they survive a restart and
+  # unload with the chunk rather than piling up in memory. Each flag also
+  # remembers which block was placed: if something later replaces that block
+  # — a regenerating mine, a WorldEdit paste — the new block counts normally
+  # and the stale flag is dropped. Pistons carry flags with the blocks they
+  # push, so shoving a placed block one space over doesn't launder it.
+  #
+  # If a mine is rebuilt by a plugin that never fires a place event and you
+  # want to wipe the flags there by hand, stand in it and run
+  #   /box collection clearplaced [chunk radius]
   count-player-placed-blocks: false
 
   # Notify the player when they reach a new collection tier.

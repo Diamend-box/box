@@ -2,14 +2,24 @@ package com.diamend.boxcore.collection;
 
 import org.bukkit.GameMode;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockMultiPlaceEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
@@ -17,8 +27,7 @@ import org.bukkit.event.player.PlayerHarvestBlockEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
 /**
  * Feeds collections from gameplay.
@@ -27,16 +36,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * Silk Touch, Fortune and crop yields all behave the way a player expects.
  *
  * <p>When {@code count-player-placed-blocks} is off, blocks a player placed are
- * remembered so place-and-break can't farm a collection.
+ * flagged in {@link PlacedBlocks} so place-and-break can't farm a collection.
+ * Only blocks that could actually feed a collection are flagged — nobody needs
+ * a region file recording every dirt block on the server.
  */
 public class CollectionListener implements Listener {
 
-    /** Safety valve: forget placed blocks rather than grow without bound. */
-    private static final int MAX_TRACKED_PLACEMENTS = 250_000;
-
     private final Plugin plugin;
     private final CollectionService service;
-    private final Set<String> playerPlaced = ConcurrentHashMap.newKeySet();
+    private final PlacedBlocks placed;
 
     private boolean sourceBreak;
     private boolean sourceKill;
@@ -46,9 +54,10 @@ public class CollectionListener implements Listener {
     private boolean sourcePickup;
     private boolean countPlaced;
 
-    public CollectionListener(Plugin plugin, CollectionService service) {
+    public CollectionListener(Plugin plugin, CollectionService service, PlacedBlocks placed) {
         this.plugin = plugin;
         this.service = service;
+        this.placed = placed;
         reload();
     }
 
@@ -61,22 +70,25 @@ public class CollectionListener implements Listener {
         sourceCraft = flag("craft", false);
         sourcePickup = flag("pickup", false);
         countPlaced = plugin.getConfig().getBoolean("collections.count-player-placed-blocks", false);
-        if (countPlaced) {
-            playerPlaced.clear();
-        }
     }
 
     private boolean flag(String name, boolean fallback) {
         return plugin.getConfig().getBoolean("collections.sources." + name, fallback);
     }
 
-    private static String key(Block block) {
-        return block.getWorld().getName() + ':' + block.getX() + ',' + block.getY() + ',' + block.getZ();
+    public PlacedBlocks placedBlocks() {
+        return placed;
     }
+
+    // ------------------------------------------------------------------
+    // Counting
+    // ------------------------------------------------------------------
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        boolean wasPlaced = playerPlaced.remove(key(event.getBlock()));
+        // Consume the flag whichever way this break goes: the block is gone, so
+        // leaving the flag behind would only mislead the next block here.
+        boolean wasPlaced = !countPlaced && placed.consume(event.getBlock());
         if (!sourceBreak || !event.isDropItems()) {
             return;
         }
@@ -84,25 +96,13 @@ public class CollectionListener implements Listener {
         if (player.getGameMode() == GameMode.CREATIVE) {
             return;
         }
-        if (wasPlaced && !countPlaced) {
+        if (wasPlaced) {
             return; // anti-farm
         }
         ItemStack tool = player.getInventory().getItemInMainHand();
         for (ItemStack drop : event.getBlock().getDrops(tool, player)) {
             credit(player, drop);
         }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlace(BlockPlaceEvent event) {
-        if (countPlaced) {
-            return;
-        }
-        if (playerPlaced.size() >= MAX_TRACKED_PLACEMENTS) {
-            playerPlaced.clear();
-            plugin.getLogger().info("Placed-block anti-farm cache was full and has been cleared.");
-        }
-        playerPlaced.add(key(event.getBlock()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -181,6 +181,146 @@ public class CollectionListener implements Listener {
     private void credit(Player player, ItemStack stack) {
         if (stack != null && !stack.getType().isAir()) {
             service.add(player, stack.getType(), stack.getAmount());
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Placed-block flags
+    // ------------------------------------------------------------------
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent event) {
+        if (countPlaced) {
+            return;
+        }
+        // A bed, a door or a tall flower arrives as a multi-place: every block
+        // it occupies has to be flagged, not just the one that was clicked.
+        if (event instanceof BlockMultiPlaceEvent multi) {
+            for (BlockState state : multi.getReplacedBlockStates()) {
+                Block block = state.getBlock();
+                if (worthTracking(block)) {
+                    placed.mark(block);
+                }
+            }
+            return;
+        }
+        if (worthTracking(event.getBlock())) {
+            placed.mark(event.getBlock());
+        }
+    }
+
+    /**
+     * Whether this block could ever credit a collection — either directly, or
+     * through what it drops. Everything else is left untracked so region files
+     * only carry flags that can change an outcome.
+     */
+    private boolean worthTracking(Block block) {
+        CollectionManager collections = service.collections();
+        if (!collections.forMaterial(block.getType()).isEmpty()) {
+            return true; // Silk Touch returns the block itself
+        }
+        for (ItemStack drop : block.getDrops()) {
+            if (!collections.forMaterial(drop.getType()).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        if (!countPlaced) {
+            // Extending pushes the blocks away from the piston.
+            shift(event.getBlock(), event.getBlocks(), event.getDirection(), false);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonRetract(BlockPistonRetractEvent event) {
+        if (!countPlaced) {
+            // A sticky piston pulls them back towards itself.
+            shift(event.getBlock(), event.getBlocks(), event.getDirection(), true);
+        }
+    }
+
+    /**
+     * Moves the flags on a run of pushed blocks.
+     *
+     * <p>The event's direction is taken as an axis rather than a sense: whether
+     * it already points the right way is decided by measuring against the piston
+     * itself, which is true for both events regardless of how the server reports
+     * a retraction.
+     */
+    private void shift(Block piston, List<Block> blocks, BlockFace face, boolean towardsPiston) {
+        if (blocks.isEmpty() || face == null) {
+            return;
+        }
+        int dx = face.getModX();
+        int dy = face.getModY();
+        int dz = face.getModZ();
+        Block sample = blocks.get(0);
+        long before = distanceSquared(piston, sample.getX(), sample.getY(), sample.getZ());
+        long after = distanceSquared(piston, sample.getX() + dx, sample.getY() + dy, sample.getZ() + dz);
+        if ((after < before) != towardsPiston) {
+            dx = -dx;
+            dy = -dy;
+            dz = -dz;
+        }
+        placed.shift(blocks, dx, dy, dz);
+    }
+
+    private static long distanceSquared(Block from, int x, int y, int z) {
+        long dx = (long) from.getX() - x;
+        long dy = (long) from.getY() - y;
+        long dz = (long) from.getZ() - z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    /*
+     * Anything else that destroys a block drops its flag too. A flag that
+     * outlives its block would sit there waiting to refuse whatever appears in
+     * that spot next.
+     */
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        if (countPlaced) {
+            return;
+        }
+        placed.clear(event.getBlock());
+        for (Block block : event.blockList()) {
+            placed.clear(block);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        if (countPlaced) {
+            return;
+        }
+        for (Block block : event.blockList()) {
+            placed.clear(block);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBurn(BlockBurnEvent event) {
+        if (!countPlaced) {
+            placed.clear(event.getBlock());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFade(BlockFadeEvent event) {
+        if (!countPlaced) {
+            placed.clear(event.getBlock());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLeavesDecay(LeavesDecayEvent event) {
+        if (!countPlaced) {
+            placed.clear(event.getBlock());
         }
     }
 }

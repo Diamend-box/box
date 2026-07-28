@@ -18,6 +18,7 @@ public class CollectionsModule implements BoxModule {
     private CollectionManager manager;
     private CollectionService service;
     private CollectionListener listener;
+    private PlacedBlocks placed;
 
     public CollectionsModule(BoxCorePlugin plugin) {
         this.plugin = plugin;
@@ -38,7 +39,8 @@ public class CollectionsModule implements BoxModule {
         this.manager = new CollectionManager(plugin);
         this.manager.load();
         this.service = new CollectionService(plugin, manager);
-        this.listener = new CollectionListener(plugin, service);
+        this.placed = new PlacedBlocks(plugin);
+        this.listener = new CollectionListener(plugin, service, placed);
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
     }
 
@@ -78,5 +80,10 @@ public class CollectionsModule implements BoxModule {
 
     public CollectionService service() {
         return service;
+    }
+
+    /** The player-placed block flags backing the anti-farm rule. */
+    public PlacedBlocks placedBlocks() {
+        return placed;
     }
 }

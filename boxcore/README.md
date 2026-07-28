@@ -57,7 +57,12 @@ Three ship today:
   Silk Touch and Fortune behave the way players expect. Kills, fishing and
   harvesting all feed collections too; crafting and pickups are available but
   off by default (they double-count).
-- 🚫 **Anti-farm** — breaking a block you placed doesn't count, by default.
+- 🚫 **Anti-farm** — breaking a block you placed doesn't count, by default. The
+  flags are stored in the chunk, so they survive a restart instead of being
+  forgotten with the server's uptime; pistons carry them along with the blocks
+  they push; and each flag remembers *which* block was placed, so a regenerated
+  mine counts normally instead of being poisoned by whatever was standing there
+  before.
 - 🏷️ **Item tags** — a collection can track `#logs` instead of listing 11
   materials.
 - ♻️ **Respec** for a configurable **item** — a token you obtain rather than a tax
@@ -125,6 +130,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
+| `/box collection clearplaced [chunk radius]` | Forget placed-block flags around you, after a mine regen | `boxcore.admin` |
 | `/box give <ore> [units] [player]` | Give compressed ore, for testing | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
