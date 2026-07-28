@@ -225,7 +225,7 @@ public class BoostsModule implements BoxModule {
         windows.clear();
         List<?> raw = section == null ? List.of() : section.getList("schedule", List.of());
         for (int i = 0; i < raw.size(); i++) {
-            if (!(raw.get(i) instanceof java.util.Map<?, ?> map)) {
+            if (!(raw.get(i) instanceof Map<?, ?> map)) {
                 continue;
             }
             Window window = readWindow(map, i);
@@ -235,7 +235,7 @@ public class BoostsModule implements BoxModule {
         }
     }
 
-    private Window readWindow(java.util.Map<?, ?> map, int index) {
+    private Window readWindow(Map<?, ?> map, int index) {
         String where = "boosts.schedule[" + index + "]";
 
         List<DayOfWeek> days = new ArrayList<>();
@@ -256,21 +256,21 @@ public class BoostsModule implements BoxModule {
 
         LocalTime start;
         try {
-            start = LocalTime.parse(String.valueOf(map.getOrDefault("start", "18:00")));
+            start = LocalTime.parse(text(map, "start", "18:00"));
         } catch (Exception ex) {
             plugin.getLogger().warning(where + ": '" + map.get("start")
                     + "' is not a HH:mm time, skipping this window.");
             return null;
         }
 
-        long duration = Durations.parse(String.valueOf(map.getOrDefault("duration", "1h")));
+        long duration = Durations.parse(text(map, "duration", "1h"));
         if (duration <= 0) {
             plugin.getLogger().warning(where + ": '" + map.get("duration")
                     + "' is not a duration, skipping this window.");
             return null;
         }
 
-        List<BoostType> types = typesFor(String.valueOf(map.getOrDefault("type", "all")));
+        List<BoostType> types = typesFor(text(map, "type", "all"));
         if (types.isEmpty()) {
             plugin.getLogger().warning(where + ": '" + map.get("type")
                     + "' names no boost type, skipping this window.");
@@ -286,6 +286,18 @@ public class BoostsModule implements BoxModule {
             return null;
         }
         return new Window(days, start, duration, types, multiplier);
+    }
+
+    /**
+     * A string out of a raw YAML map.
+     *
+     * <p>Schedule entries arrive as {@code Map<?, ?>}, whose value type is a
+     * capture, so {@code getOrDefault} cannot be handed a default of a known
+     * type. Reading and converting separately sidesteps that.
+     */
+    private static String text(Map<?, ?> map, String key, String fallback) {
+        Object value = map.get(key);
+        return value == null ? fallback : String.valueOf(value);
     }
 
     private static DayOfWeek parseDay(String name) {
