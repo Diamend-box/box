@@ -322,16 +322,21 @@ public class CompressorModule implements BoxModule {
      * every inventory path to compare metadata the way we expect, this only
      * ever tops up a stack of genuinely the same kind — both raw, or both
      * compressed at the same ratio — and otherwise takes an empty slot.
+     *
+     * <p>Slots are written one at a time rather than through
+     * {@code setStorageContents}, which is not implemented for player
+     * inventories everywhere and would clobber the whole inventory to change
+     * one slot even where it is.
      */
     public void give(Player player, ItemStack stack) {
         CompressedOre compressed = plugin.ores().compressed();
         PlayerInventory inventory = player.getInventory();
-        ItemStack[] contents = inventory.getStorageContents();
+        int slots = inventory.getStorageContents().length;
         int max = stack.getType().getMaxStackSize();
         int remaining = stack.getAmount();
 
-        for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
-            ItemStack item = contents[slot];
+        for (int slot = 0; slot < slots && remaining > 0; slot++) {
+            ItemStack item = inventory.getItem(slot);
             if (item == null || item.getType() != stack.getType()) {
                 continue;
             }
@@ -344,20 +349,20 @@ public class CompressorModule implements BoxModule {
             }
             int add = Math.min(room, remaining);
             item.setAmount(item.getAmount() + add);
+            inventory.setItem(slot, item);
             remaining -= add;
         }
-        for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
-            ItemStack item = contents[slot];
+        for (int slot = 0; slot < slots && remaining > 0; slot++) {
+            ItemStack item = inventory.getItem(slot);
             if (item != null && !item.getType().isAir()) {
                 continue;
             }
             int add = Math.min(max, remaining);
             ItemStack copy = stack.clone();
             copy.setAmount(add);
-            contents[slot] = copy;
+            inventory.setItem(slot, copy);
             remaining -= add;
         }
-        inventory.setStorageContents(contents);
 
         if (remaining > 0) {
             ItemStack spill = stack.clone();
@@ -380,22 +385,22 @@ public class CompressorModule implements BoxModule {
 
     private void removeRaw(PlayerInventory inventory, Material material, long amount) {
         CompressedOre compressed = plugin.ores().compressed();
-        ItemStack[] contents = inventory.getStorageContents();
+        int slots = inventory.getStorageContents().length;
         long remaining = amount;
-        for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
-            ItemStack item = contents[slot];
+        for (int slot = 0; slot < slots && remaining > 0; slot++) {
+            ItemStack item = inventory.getItem(slot);
             if (item == null || item.getType() != material || compressed.isCompressed(item)) {
                 continue;
             }
             int take = (int) Math.min(item.getAmount(), remaining);
             remaining -= take;
             if (take >= item.getAmount()) {
-                contents[slot] = null;
+                inventory.setItem(slot, null);
             } else {
                 item.setAmount(item.getAmount() - take);
+                inventory.setItem(slot, item);
             }
         }
-        inventory.setStorageContents(contents);
     }
 
     /**
