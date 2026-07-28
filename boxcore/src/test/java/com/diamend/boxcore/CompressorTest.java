@@ -150,6 +150,26 @@ class CompressorTest {
         assertEquals(4096, plugin.ores().carried(player, Material.COAL));
     }
 
+    @Test
+    void rawOreNeverMergesIntoACompressedStack() {
+        // A compressed unit and a raw item are the same material and differ
+        // only in metadata. Anything that merges on material alone would fold
+        // raw ore into a compressed stack and multiply it by the ratio, so this
+        // is the dupe the design has to be immune to rather than merely avoid.
+        PlayerMock player = server.addPlayer();
+        maxCollections(player);
+        player.getInventory().clear();
+        player.getInventory().setItem(0, plugin.ores().compressed().create(Material.COAL, 64, 1));
+        player.getInventory().setItem(1, new ItemStack(Material.COAL, 32));
+
+        assertEquals(96, plugin.ores().carried(player, Material.COAL),
+                "one unit plus thirty-two raw");
+        assertEquals(0, compressor().compress(player), "32 is not a full stack");
+        assertEquals(96, plugin.ores().carried(player, Material.COAL),
+                "the raw ore must not have been absorbed by the compressed stack");
+        assertEquals(32, compressor().rawCount(player.getInventory(), Material.COAL));
+    }
+
     // ------------------------------------------------------------------
     // Gating
     // ------------------------------------------------------------------

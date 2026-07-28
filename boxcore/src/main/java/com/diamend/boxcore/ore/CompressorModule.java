@@ -237,11 +237,62 @@ public class CompressorModule implements BoxModule {
         // least as many slots as the compressed stack needs, so the give-back
         // below cannot overflow into a drop.
         removeRaw(inventory, material, (long) units * ratio);
-        Map<Integer, ItemStack> leftover = inventory.addItem(compressed);
-        for (ItemStack spill : leftover.values()) {
+        give(player, compressed);
+        return units;
+    }
+
+    /**
+     * Puts items into the inventory without depending on stack-merge rules.
+     *
+     * <p>A compressed unit and a raw item are the same material and differ only
+     * in metadata, so anything that merges on material alone would fold raw ore
+     * into a compressed stack and multiply it by the ratio. Rather than trust
+     * every inventory path to compare metadata the way we expect, this only
+     * ever tops up a stack of genuinely the same kind — both raw, or both
+     * compressed at the same ratio — and otherwise takes an empty slot.
+     */
+    private void give(Player player, ItemStack stack) {
+        CompressedOre compressed = plugin.ores().compressed();
+        PlayerInventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getStorageContents();
+        int max = stack.getType().getMaxStackSize();
+        int kind = compressed.ratio(stack);
+        int remaining = stack.getAmount();
+
+        for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
+            ItemStack item = contents[slot];
+            if (item == null || item.getType() != stack.getType()) {
+                continue;
+            }
+            if (compressed.ratio(item) != kind) {
+                continue;
+            }
+            int room = max - item.getAmount();
+            if (room <= 0) {
+                continue;
+            }
+            int add = Math.min(room, remaining);
+            item.setAmount(item.getAmount() + add);
+            remaining -= add;
+        }
+        for (int slot = 0; slot < contents.length && remaining > 0; slot++) {
+            ItemStack item = contents[slot];
+            if (item != null && !item.getType().isAir()) {
+                continue;
+            }
+            int add = Math.min(max, remaining);
+            ItemStack copy = stack.clone();
+            copy.setAmount(add);
+            contents[slot] = copy;
+            remaining -= add;
+        }
+        inventory.setStorageContents(contents);
+
+        if (remaining > 0) {
+            ItemStack spill = stack.clone();
+            spill.setAmount(remaining);
             player.getWorld().dropItemNaturally(player.getLocation(), spill);
         }
-        return units;
     }
 
     /** Counts raw (uncompressed) items of a material in the inventory. */
@@ -324,7 +375,7 @@ public class CompressorModule implements BoxModule {
         int raw = affordable * itemRatio;
         while (raw > 0) {
             int chunk = Math.min(maxStack, raw);
-            inventory.addItem(new ItemStack(material, chunk));
+            give(player, new ItemStack(material, chunk));
             raw -= chunk;
         }
         startGrace(player);
