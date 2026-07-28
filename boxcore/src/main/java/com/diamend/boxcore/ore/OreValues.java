@@ -82,6 +82,34 @@ public final class OreValues {
         return material != null && whitelist.contains(material);
     }
 
+    /**
+     * Resolves a typed ore name to a whitelisted material, or null.
+     *
+     * <p>Accepts the material name ({@code RAW_IRON}) and the short display
+     * name the player actually sees ({@code iron}), because the two differ for
+     * every raw form and staff type the one on the item.
+     */
+    public Material matchOre(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String trimmed = name.trim();
+        Material exact = Material.matchMaterial(trimmed.toUpperCase(Locale.ROOT));
+        if (isOre(exact)) {
+            return exact;
+        }
+        String wanted = trimmed.toUpperCase(Locale.ROOT).replace(' ', '_');
+        for (Material material : whitelist) {
+            String bare = material.name().startsWith("RAW_")
+                    ? material.name().substring(4)
+                    : material.name();
+            if (bare.equals(wanted) || bare.startsWith(wanted + "_")) {
+                return material;
+            }
+        }
+        return null;
+    }
+
     public Set<Material> whitelist() {
         return Collections.unmodifiableSet(whitelist);
     }

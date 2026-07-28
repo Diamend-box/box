@@ -439,8 +439,11 @@ wipe tracker and delete the bounded set.**
 - **Each ore's compressed form is skinnable** — its own material, name, lore, model data and glint,
   all config. **The material is presentation only.** What a unit is worth, and which ore it is worth
   it in, are stored on the item and read from there; re-skinning an ore never changes what existing
-  units count as. **A skin may not be a placeable block**, or the laundering route reopens through
-  the skin.
+  units count as. Name and lore take classic colour codes and MiniMessage tags interchangeably.
+  **A skin may not be a placeable block**, or the laundering route reopens through the skin.
+- Staff can **mint a unit directly** (`/box give <ore> [units] [player]`) so a skin, a drop rule or an
+  expand can be checked without mining a full stack of an unlocked ore first. Minted units are the
+  real item — same tag, same ratio, same value — so they are never a way to hand out ore quietly.
 - **Never let code merge stacks by material alone.** A compressed unit and a raw item are the same
   material and differ only in metadata, so a merge that ignores metadata multiplies ore by 64. Vanilla
   compares metadata and is safe; our own inventory code has to be written not to need that guarantee.

@@ -157,12 +157,17 @@ compressor:
   #
   #   item:
   #     material: COAL        # what it renders as (default: the ore itself)
-  #     name: "<dark_gray><bold>Coal Briquette"
+  #     name: "&8&lCoal Briquette"
   #     lore:
-  #       - "<gray>A stack of coal, pressed flat."
+  #       - "&7A stack of coal, pressed flat."
   #       - "<dark_gray>Worth <ratio> <ore>."
   #     model-data: 1001      # for a resource pack; 0 = none
   #     glow: true
+  #
+  # Name and lore take classic colour codes (&a, &l, &#ff8800) and
+  # MiniMessage tags (<gray>, <bold>, <#ff8800>), mixed freely. Always
+  # quote a value that starts with & — bare & begins a YAML anchor and
+  # the file will fail to load.
   #
   # <ratio>, <ore> and <Ore> are replaced in name and lore.
   #

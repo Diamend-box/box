@@ -11,6 +11,8 @@ import com.diamend.boxcore.gui.HubMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
 import com.diamend.boxcore.module.BoxModule;
+import com.diamend.boxcore.ore.CompressedOre;
+import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.RespecCost;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillService;
@@ -19,12 +21,14 @@ import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.util.Messages;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +66,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "points", "point" -> points(sender, args);
             case "respec" -> respec(sender);
             case "compress", "compressor" -> compress(sender, args);
+            case "give", "givecompressed" -> giveCompressed(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
             case "modules" -> modules(sender);
@@ -358,6 +363,84 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().send(player, enabled ? "compressor-on" : "compressor-off");
     }
 
+    /**
+     * {@code /box give <ore> [units] [player]} — mint compressed units.
+     *
+     * <p>A test tool. Compressed ore is otherwise only reachable by mining a
+     * full stack of an ore you have already unlocked, which makes checking a
+     * custom skin, a drop rule or an expand a twenty-minute errand. The units
+     * it hands out are real: same tag, same ratio, same value.
+     */
+    private void giveCompressed(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(ADMIN)) {
+            messages().send(sender, "no-permission");
+            return;
+        }
+        CompressorModule compressor = plugin.compressor();
+        if (compressor == null) {
+            messages().sendLiteral(sender, "<red>The auto-compressor is disabled on this server.");
+            return;
+        }
+        if (args.length < 2) {
+            messages().sendLiteral(sender, "<red>Usage: /box give <ore> [units] [player]");
+            return;
+        }
+        Material ore = plugin.ores().matchOre(args[1]);
+        if (ore == null) {
+            messages().sendLiteral(sender, "<red><white>" + args[1]
+                    + "</white> isn't a whitelisted ore. Try one of: <white>"
+                    + String.join(", ", oreNames()) + "<red>.");
+            return;
+        }
+        int units = 1;
+        if (args.length >= 3) {
+            try {
+                units = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ex) {
+                messages().sendLiteral(sender, "<red><white>" + args[2] + "</white> isn't a number.");
+                return;
+            }
+        }
+        // An inventory holds 36 stacks; more than that would only ever spill
+        // onto the floor, so cap it there rather than carpeting the spawn.
+        units = Math.max(1, Math.min(units, 36 * 64));
+
+        Player target;
+        if (args.length >= 4) {
+            target = Bukkit.getPlayerExact(args[3]);
+            if (target == null) {
+                messages().send(sender, "unknown-player", "name", args[3]);
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            messages().sendLiteral(sender, "<red>Name a player: /box give <ore> [units] <player>");
+            return;
+        }
+
+        ItemStack stack = compressor.createUnit(ore, units);
+        if (stack == null) {
+            messages().sendLiteral(sender, "<red>Couldn't build a compressed <white>"
+                    + ore.name() + "<red>.");
+            return;
+        }
+        compressor.give(target, stack);
+        messages().sendLiteral(sender, "<green>Gave <white>" + Text.number(units)
+                + "<green> compressed <white>" + CompressedOre.displayName(ore)
+                + "<green> (<white>" + Text.number((long) units * compressor.ratio())
+                + "<green> ore) to <white>" + target.getName() + "<green>.");
+    }
+
+    /** Whitelisted ores by the short name the give command accepts. */
+    private List<String> oreNames() {
+        List<String> names = new ArrayList<>();
+        for (Material material : plugin.ores().whitelist()) {
+            names.add(CompressedOre.displayName(material).toLowerCase(Locale.ROOT).replace(' ', '_'));
+        }
+        return names;
+    }
+
     private void help(CommandSender sender) {
         messages().sendLiteral(sender, "<gray>Commands:");
         messages().sendPlain(sender, "  <white>/box <gray>— open the hub");
@@ -370,6 +453,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
             messages().sendPlain(sender, "  <white>/box collection set <player> <id> <amount>");
+            messages().sendPlain(sender, "  <white>/box give <ore> [units] [player] "
+                    + "<gray>— compressed ore, for testing");
             messages().sendPlain(sender, "  <white>/box reset <player>");
             messages().sendPlain(sender, "  <white>/box modules <gray>— list loaded modules");
             messages().sendPlain(sender, "  <white>/box reload");
@@ -428,7 +513,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             options.addAll(List.of("skills", "collections", "points", "respec", "compress"));
             if (admin) {
-                options.addAll(List.of("unlock", "collection", "reset", "modules", "reload"));
+                options.addAll(List.of("give", "unlock", "collection", "reset", "modules", "reload"));
             }
             return filter(options, args[0]);
         }
@@ -441,6 +526,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             switch (sub) {
                 case "compress", "compressor" -> {
                     return filter(List.of("on", "off"), args[1]);
+                }
+                case "give", "givecompressed" -> {
+                    if (admin) {
+                        options.addAll(oreNames());
+                    }
                 }
                 case "skills", "tree", "trees" -> {
                     if (skills != null) {
@@ -478,6 +568,14 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 }
             }
             return filter(options, args[1]);
+        }
+
+        if (args.length == 3 && admin && (sub.equals("give") || sub.equals("givecompressed"))) {
+            return filter(List.of("1", "8", "64"), args[2]);
+        }
+
+        if (args.length == 4 && admin && (sub.equals("give") || sub.equals("givecompressed"))) {
+            return filter(onlineNames(), args[3]);
         }
 
         if (args.length == 3) {

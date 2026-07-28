@@ -300,6 +300,20 @@ public class CompressorModule implements BoxModule {
     }
 
     /**
+     * Mints compressed units of an ore at the configured ratio and appearance,
+     * without taking any raw ore for them. Used by the admin give command to
+     * put a real unit in hand for testing a skin or a drop rule.
+     *
+     * @return the stack, or null when the ore isn't one this server compresses
+     */
+    public ItemStack createUnit(Material ore, int units) {
+        if (ore == null || units <= 0 || !plugin.ores().isOre(ore)) {
+            return null;
+        }
+        return plugin.ores().compressed().create(ore, appearanceFor(ore), ratio, units);
+    }
+
+    /**
      * Puts items into the inventory without depending on stack-merge rules.
      *
      * <p>A compressed unit and a raw item are the same material and differ only
@@ -309,7 +323,7 @@ public class CompressorModule implements BoxModule {
      * ever tops up a stack of genuinely the same kind — both raw, or both
      * compressed at the same ratio — and otherwise takes an empty slot.
      */
-    private void give(Player player, ItemStack stack) {
+    public void give(Player player, ItemStack stack) {
         CompressedOre compressed = plugin.ores().compressed();
         PlayerInventory inventory = player.getInventory();
         ItemStack[] contents = inventory.getStorageContents();

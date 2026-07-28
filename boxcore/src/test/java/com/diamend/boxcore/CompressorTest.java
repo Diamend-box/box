@@ -4,6 +4,11 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.ore.OreValues;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
@@ -18,6 +23,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -243,6 +249,126 @@ class CompressorTest {
 
         assertEquals(Material.COAL, plugin.ores().oreKey(legacy));
         assertEquals(64, plugin.ores().equivalents(legacy));
+    }
+
+    // ------------------------------------------------------------------
+    // Colour codes in a custom skin
+    // ------------------------------------------------------------------
+
+    @Test
+    void colourCodesInACustomNameAreParsedNotPrinted() {
+        // Server owners write &f, not <white>. Both have to work, and neither
+        // may end up rendered literally on the item.
+        ItemStack unit = plugin.ores().compressed().create(Material.COAL,
+                new CompressedOre.Appearance(null, "&f&lCoal Briquette", null, 0, false),
+                64, 1);
+        assertNotNull(unit);
+        Component name = unit.getItemMeta().displayName();
+        assertNotNull(name);
+        assertEquals("Coal Briquette", plain(name), "the codes are consumed, not shown");
+        assertTrue(hasColour(name, NamedTextColor.WHITE), "&f colours the name");
+        assertTrue(hasDecoration(name, TextDecoration.BOLD), "&l bolds it");
+    }
+
+    @Test
+    void hexColourCodesWorkInCustomLore() {
+        ItemStack unit = plugin.ores().compressed().create(Material.COAL,
+                new CompressedOre.Appearance(null, null, List.of("&#ff8800Pressed flat."), 0, false),
+                64, 1);
+        assertNotNull(unit);
+        List<Component> lore = unit.getItemMeta().lore();
+        assertNotNull(lore);
+        assertEquals("Pressed flat.", plain(lore.get(0)));
+        assertTrue(hasColour(lore.get(0), TextColor.color(0xff8800)), "&#rrggbb sets a hex colour");
+    }
+
+    @Test
+    void colourCodesAndMiniMessageMixWithPlaceholders() {
+        ItemStack unit = plugin.ores().compressed().create(Material.RAW_IRON,
+                new CompressedOre.Appearance(null, "&6<bold><Ore> Block",
+                        List.of("&7Worth <white><ratio></white> <ore>."), 0, false),
+                64, 1);
+        assertNotNull(unit);
+        assertEquals("Iron Block", plain(unit.getItemMeta().displayName()));
+        assertEquals("Worth 64 iron.", plain(unit.getItemMeta().lore().get(0)));
+    }
+
+    private static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    /** Whether a colour appears anywhere in the component tree. */
+    private static boolean hasColour(Component component, TextColor colour) {
+        if (colour.equals(component.color())) {
+            return true;
+        }
+        for (Component child : component.children()) {
+            if (hasColour(child, colour)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasDecoration(Component component, TextDecoration decoration) {
+        if (component.decoration(decoration) == TextDecoration.State.TRUE) {
+            return true;
+        }
+        for (Component child : component.children()) {
+            if (hasDecoration(child, decoration)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // The admin give command
+    // ------------------------------------------------------------------
+
+    @Test
+    void oreNamesResolveByMaterialOrShortName() {
+        OreValues ores = plugin.ores();
+        assertEquals(Material.RAW_IRON, ores.matchOre("RAW_IRON"));
+        assertEquals(Material.RAW_IRON, ores.matchOre("iron"), "the name players actually see");
+        assertEquals(Material.LAPIS_LAZULI, ores.matchOre("lapis"));
+        assertEquals(Material.NETHERITE_SCRAP, ores.matchOre("netherite_scrap"));
+        assertNull(ores.matchOre("dirt"), "off the whitelist is not an ore");
+        assertNull(ores.matchOre("not_a_material"));
+    }
+
+    @Test
+    void mintedUnitsAreWorthTheSameAsMinedOnes() {
+        // The give command is a shortcut to the item, never to a different item.
+        ItemStack minted = compressor().createUnit(Material.COAL, 2);
+        assertNotNull(minted);
+        assertEquals(Material.COAL, plugin.ores().oreKey(minted));
+        assertEquals(2L * compressor().ratio(), plugin.ores().equivalents(minted));
+        assertNull(compressor().createUnit(Material.DIRT, 1), "only whitelisted ore");
+    }
+
+    @Test
+    void theGiveCommandHandsOverRealCompressedOre() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+        player.getInventory().clear();
+
+        assertTrue(player.performCommand("box give diamond 3"));
+        assertEquals(3L * compressor().ratio(),
+                plugin.ores().carried(player, Material.DIAMOND),
+                "three units, worth a stack apiece");
+        assertEquals(0, compressor().rawCount(player.getInventory(), Material.DIAMOND),
+                "compressed, not raw");
+    }
+
+    @Test
+    void theGiveCommandNeedsPermission() {
+        PlayerMock player = server.addPlayer();
+        player.getInventory().clear();
+
+        assertTrue(player.performCommand("box give diamond 3"));
+        assertEquals(0, plugin.ores().carried(player, Material.DIAMOND),
+                "no admin permission, no ore");
     }
 
     // ------------------------------------------------------------------

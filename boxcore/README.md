@@ -74,6 +74,7 @@ Three ship today:
   right-click to expand one back for an anvil or an enchanting table. Each ore's
   compressed form can be given its own material, name, lore, model data and
   glow — what it's worth lives on the item, so re-skinning never changes it.
+  `/box give <ore> [units]` mints one to check a skin without mining for it.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -117,6 +118,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
+| `/box give <ore> [units] [player]` | Give compressed ore, for testing | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
 | `/box modules` | List modules and their state | `boxcore.admin` |
 | `/box reload` | Re-read every config | `boxcore.admin` |
