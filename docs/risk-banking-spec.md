@@ -2,53 +2,19 @@
 
 **Platform:** Paper 1.21.4, Minehut free plan.
 
-**Status:** v6. Supersedes all previous versions. Earlier drafts contained coins, a sell step,
-carry-capacity upgrades, box depletion, schematic refills and per-player build caps — **none of
+**Status:** v7, consolidated. This is a full rewrite rather than another patch layer: every decision
+from v1–v6 is folded in and the revision history is gone. Nothing carries over from older copies —
+earlier drafts contained coins, a sell step, carry-capacity upgrades, box depletion, schematic
+refills, per-player build caps, ore as a crafting ingredient and a reseal decay rule. **None of
 those exist.** Discard older copies.
 
-**Changes in v6:**
+**How to read this.** Where a rule has a non-obvious reason, the reason is written next to it. That
+is deliberate: several rules here look arbitrary or look like they contradict a neighbouring rule,
+and a later pass that deletes them on sight will reopen a hole. §18 lists what was cut and why.
 
-- **Ore is never a crafting ingredient.** Gear, upgrades and consumables are bought from a menu with
-  banked ore. This deletes the workstation problem rather than regulating it, and turns the early
-  game into a pricing decision instead of a rounding accident. §2, §3, §18.
-- **The fee is paid from the cheapest ore anywhere in the inventory**, not just the deposit's own
-  materials, which is what turned rounding into a lost diamond. §6.
-- **Two v5 relief valves withdrawn as wrong** — a zero-fee floor and a workstation exemption. §3,
-  §18.
-- **Two questions opened**: buying while combat-tagged, and whether enchanting and anvil repair
-  move into the menu. §2, §19.
-
-**Changes in v5:**
-
-- **Cargo containment.** *Unbanked* ore cannot be moved into any inventory but the player's own. A
-  chest was a free bank — dump, die losing nothing, retrieve. Closed at the transfer, not by banning
-  containers. Banked ore may leave and **spends its protection 1:1** doing so, which makes the
-  deposit fee a general toll on ore leaving your person. §3.
-- **Ore must clear the bank before it becomes gear**, since the rule keys on banked status rather
-  than inventory type. §3.
-- **The fee clock resets on entering spawn** rather than pausing, closing the mule relay that §3
-  left as the last laundering route. §5.
-- **Manual drops stay legal** so teammates can trade, with a ~60s despawn on player-dropped
-  whitelisted ore. Death drops keep the normal timer. §3.
-- **Reseal decay removed outright**, not deferred. v3's trigger was circular and v4's proximity
-  version killed legitimate tactical walls. §12, §18.
-- **Clamp hooks revised.** `InventoryCloseEvent` is dropped — containment makes it redundant — but
-  drop and craft are added, because both remove ore with no container involved. §4.
-- **All three v5 questions answered** in the same revision: smelting is an NPC, containment keys on
-  banked status rather than inventory type, and the clock resets in spawn.
-- **Ore must clear the bank before it becomes anything** — the consequence of keying containment on
-  banked status. Superseded in v6 by removing ore from crafting altogether. §3.
-
-**Changes in v4** (retained for history):
-
-- **Exposure clock pauses while combat-tagged** instead of accruing. A full reversal of the v3
-  clause; it fixes an inversion where being attacked made banking *cheaper*. §5, §10.
-- **Banking remains blocked while combat-tagged.** The v3 rule stands; the objection to it was
-  withdrawn. §4, §5.
-- **Survival clock gains an activity gate**, and does **not** pause during combat. §11.
-- **No building restrictions.** Compressed output is a **custom non-placeable item**. §3, §12.
-- **Collections anti-farm unified with the wipe tracker.** §14, §17.
-- **Wipe mechanics specified**: no drops, batched, clears on zone rotation. §12, §17.
+**All numbers are starting points for playtest.** The ones that matter most, in order: the fee
+spread (25%/5%), the death drop percentage (60%), and whether §5's combat freeze makes players
+avoid fights during the ramp.
 
 ---
 
@@ -104,7 +70,7 @@ of the economy; it **is** the economy.
 
 No coins, no tokens, no second currency of any kind.
 
-- Ore is spent directly on upgrades and skill nodes.
+- Ore is spent directly on gear, upgrades and skill nodes.
 - The same mining action increments **collections** (§14), which are permanently loss-proof.
 - One action feeds a lossy track and a safe track simultaneously. This is intentional and is what
   makes drop-on-death survivable.
@@ -116,30 +82,28 @@ This is load-bearing. If ore could be spent unbanked, buying an upgrade would it
 at-risk ore into permanent progress with no fee, no channel, no zone. Making banking mandatory means
 the fee is unavoidable, and carrying ore back to spawn to dodge it accomplishes nothing.
 
-**Where gear and upgrades come from:** a menu, purchasable anywhere with banked ore. **Ore is never
-a crafting ingredient.** Pickaxes, armour and consumables are bought, not crafted.
+### Ore is never a crafting ingredient
 
-This keeps ore off the workstation path entirely, the same way §3 keeps it off the furnace path.
-Nothing needs a rule about crafting tables, smithing tables, anvils or enchanting tables, because
-unbanked ore has nowhere to go in them. It also makes the early game a pricing decision rather than
-a rounding accident — a starter pickaxe costs whatever you set it to, instead of costing three
-diamonds minus whatever the fee rounding takes.
+**Gear, upgrades and consumables are bought from a menu with banked ore.** Pickaxes, armour and
+§13's counter-items are purchased, not crafted. Purchasable anywhere, at any time — safe under
+principle 3, because the fee was already paid at deposit, and there is no reason to force a walk to
+spawn for a transaction that carries no risk either way.
 
-Safe under principle 3 because the fee was already paid at deposit. There is no reason to force a
-walk to spawn for a transaction that carries no risk either way.
+This is the rule that keeps ore off the workstation path, the same way §3 keeps it off the furnace
+path. Nothing needs a special case for crafting tables, smithing tables, anvils or enchanting
+tables, because unbanked ore has no reason to go into any of them. It also makes the early game a
+pricing decision rather than a rounding accident: a starter pickaxe costs whatever you set it to,
+instead of costing three diamonds minus whatever the fee rounding takes.
 
-> **OPEN — can you buy while combat-tagged?** §4 blocks *banking* while tagged; the symmetric rule
-> for spending is not stated anywhere, and "anywhere, at any time" currently implies yes. That makes
-> §13's consumables instantly restockable mid-fight from banked ore, so a fight is decided by bank
-> balance rather than by what you brought — and §13 is explicitly built as an ore sink whose cost is
-> supposed to bite. **Recommend blocking purchases while combat-tagged**, or at minimum consumables.
-> Gear is already permanently safe (§9), so the restriction costs almost nothing elsewhere.
+The alternative — letting players craft gear from ore — is a free cash-out. At-risk cargo becomes
+permanently safe value (§9 protects all gear) with no fee, no channel and no zone. See §18.
 
-> **Two whitelist entries are still vanilla ingredients.** Lapis is consumed by the enchanting
-> table, and anvil repairs consume ingots and diamonds. Neither is *crafting gear*, so §2's rule
-> does not reach them. Either move enchanting and repair into the menu too, or accept that both run
-> on banked ore under §3's 1:1 spend — which is consistent, just worth choosing on purpose rather
-> than discovering.
+**Accepted, not open:** two vanilla systems still consume whitelist entries — the enchanting table
+takes lapis, and anvil repair takes ingots and diamonds. Neither is *crafting gear*, so this section
+does not reach them, and both run on banked ore under §3's 1:1 spend. That is consistent with
+everything else here and is small enough to leave alone. Likewise, purchases are **not** blocked
+while combat-tagged; the theoretical cost is instant mid-fight restock of §13 consumables, judged
+not worth a rule.
 
 **Ore-typed upgrade costs.** Upgrades should require *specific materials*, not a generic quantity. A
 node costing three different ore types forces movement around the chamber instead of letting a
@@ -148,15 +112,22 @@ colliding — use it deliberately when pricing the tree.
 
 ---
 
-## 3. Ore value table and ore-equivalents
+## 3. Ore value, ore-equivalents and containment
 
-**Required, and referenced by four other sections.** Removing the sell step removed the only place
-ore had a number attached, but the need did not go away: §6 apportions one fee percentage across a
-mixed-material deposit, §6 rounds in value terms, §8 gates announcements on deposit size, and §9's
-drop floor is defined in mining-value terms.
+### The value table
+
+**Required, and referenced by four other sections.** With no sell step there is no other place ore
+has a number attached, and the need does not go away: §6 apportions one fee percentage across a
+mixed holding and rounds in value terms, §8 gates announcements on deposit size, and §9's drop floor
+is defined in mining-value terms.
 
 Define one internal per-ore value weight table in config and have every section read from it.
 Without this, three systems will each invent their own and disagree.
+
+**Price effort, not rarity.** The two are not the same curve, and every consumer of this table
+assumes one ore-equivalent is worth roughly one ore-equivalent of player time. A table that prices
+rarity alone makes the cheapest whitelist entry the best value per swing, which distorts §6's fee,
+§9's drop floor and §14's collection pacing at once.
 
 ### Ore-equivalents
 
@@ -177,10 +148,10 @@ separate handling.
 resolve it — the counting path reads the custom identity first and falls back to the vanilla
 material, never the reverse.
 
-### Cargo containment — the only storage rule
+### Cargo containment
 
-**Unbanked** whitelisted ore and compressed units cannot be moved into any inventory other than the
-player's own. Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers,
+**Unbanked whitelisted ore and compressed units cannot be moved into any inventory other than the
+player's own.** Blocks chests, ender chests, shulkers (placed or held), furnaces, hoppers,
 chest-carrying entities, item frames. Cancel the transfer; no message spam beyond a brief actionbar
 note.
 
@@ -198,33 +169,35 @@ chest, and the clamp stays quiet because 100 ≤ 200 — one fee has bought prot
 chest *and* 100 still on your person. With it, the fee reads as a toll on ore leaving you, a chest
 holds only ore that has already paid, and there is nothing to launder.
 
-**`carried` must recurse into nested inventories anyway** as a backstop — one missed transfer path
-reopens the hole.
+**`carried` must recurse into nested inventories** as a backstop — one missed transfer path reopens
+the hole.
 
 **Manual drops are allowed** so teammates can trade, but player-dropped whitelisted ore despawns in
 ~60s. Death drops keep the normal timer so vultures get their window. This falls out of the event
 split for free: the short timer is set in `PlayerDropItemEvent`, and §9's drops are spawned by
 `dropItemNaturally` without passing through it.
 
-**Smelting is an NPC, so furnaces are not on the ore path** and can stay blocked with no cost. The
-NPC still has to obey the rule above — it may hand back ingots for banked ore, and it must never
-hold ore across a logout, or it is a free bank with extra steps.
+**Smelting is an NPC**, so furnaces are not on the ore path and can stay blocked at no cost. The NPC
+obeys the same rule: it may hand back ingots for banked ore, and it must never hold ore across a
+logout, or it is a free bank with extra steps.
 
-**Consequence: ore only becomes gear through the bank.** Gear is bought from §2's menu with banked
-ore, so there is no second path. The deposit fee is a general toll on ore turning into anything,
-which is principle 3 stated in one rule rather than three. Workstations need no special handling —
-ore is not an ingredient in anything.
+**Net effect: ore only becomes anything through the bank.** Gear comes from §2's menu, smelting from
+the NPC, and both take banked ore. The deposit fee is a general toll on ore turning into value,
+which is principle 3 stated in one rule rather than three.
 
-*(Two fixes previously ranked here are withdrawn, both wrong. A zero-fee floor reopens §6's spam
-exploit: a free deposit makes the rate irrelevant, so players bank every stack at zero risk.
-Exempting workstations is worse — unbanked ore into crafted gear converts at-risk cargo into
-permanently safe value with no fee, principle 3 straight through.)*
+### Placement audit
 
-**The placement audit still applies.** Compressed output stays a custom non-placeable item, and no
-whitelist entry may be a placeable vanilla block — in practice **ancient debris** plus **any ore
-block obtainable intact via Silk Touch**. Placing a block drops `carried` without touching `banked`,
-which would both stash value outside the risk system and silently destroy paid-for protection.
-Assert the audit in a unit test so a later whitelist edit cannot reopen it.
+Placing a block removes it from the inventory, dropping `carried` without touching `banked` — which
+would both stash value outside the risk system and silently destroy paid-for protection.
+
+Compressed output is a custom non-placeable item, and every ordinary whitelist entry — raw
+iron/gold/copper, diamond, emerald, coal, lapis, redstone, quartz, netherite scrap — is already an
+item and cannot be placed. **What remains is a one-time audit: no whitelist entry may be a placeable
+vanilla block.** In practice that means **ancient debris**, plus **any ore block obtainable intact
+via Silk Touch**. Keep those off the whitelist or make them custom items. Assert it in a unit test
+so a later whitelist edit cannot reopen it.
+
+This is an audit, not a building restriction. Building is unrestricted (§12).
 
 ---
 
@@ -237,7 +210,7 @@ Banking is an **action**, not a building. It marks ore as protected.
 - **Breaks on player-caused damage only.** Fall damage and environmental chip damage must not cancel
   it.
 - Also breaks on leaving the zone.
-- **Cannot be started while combat-tagged** (§10). To bank, you must break contact first — see §5.
+- **Cannot be started while combat-tagged** (§10). To bank, you must break contact first.
 - **Cannot be started while immunity is active** (§16).
 - On completion: fee deducted in ore and destroyed, remainder protected, exposure clock reset.
 
@@ -246,14 +219,13 @@ Banking is an **action**, not a building. It marks ore as protected.
 - **Holding a stack + sneak-use** → banks that stack only.
 - **Empty hand + sneak-use** → banks everything.
 
-**It must not be a GUI.** The v3 justification for that was "it has to work under fire," which the
-tag block makes false — you can never be under fire while depositing. The interface stays anyway,
-for two reasons that still hold: it has no moving parts, and it makes the §7 channel preview
-coherent, since the duration resolves from what is in the player's hand.
+**Not a GUI.** It has no moving parts, and it makes §7's channel preview coherent, since the
+duration resolves from whatever is in the player's hand.
 
-Note that partial deposits are now **convenience, not an emergency valve** (§5). They are still
-worth having — bank one valuable stack, keep mining with the rest — and the time anchor still makes
-cherry-picking pointless, since the clock resets regardless of deposit size.
+Partial deposits are **convenience, not an emergency valve** — the tag block means you can never be
+under fire while depositing. They are still worth having (bank one valuable stack, keep mining with
+the rest), and the time anchor makes cherry-picking pointless, since the clock resets regardless of
+deposit size.
 
 ### Tracking — do not tag items
 
@@ -270,40 +242,39 @@ banked = { IRON: 288, GOLD: 108, ... }   // ore-equivalents
 On death, the droppable amount per key is `carried − banked`, with `carried` also computed in
 ore-equivalents across raw and compressed forms.
 
+Persist banked quantities across logout.
+
 ### The clamp — hook events, do not poll
 
 `banked` must be clamped to `min(banked, carried)` whenever banked ore can leave the inventory.
-**A periodic check has an exploit window by construction** — and so does a hook list that misses a
-route, because the hole is the window between removal and re-acquisition, not the state at death.
+
+**A periodic check has an exploit window by construction, and so does a hook list that misses a
+route** — the hole is the window between removal and re-acquisition, not the state at death.
 Clamping lazily at death does not work: bank 288, remove it, mine 288 fresh, die, and
 `min(288, 288)` protects ore that was never paid for. The clamp must fire *at removal*.
 
-Hook the events:
+Hook:
 
-- On purchase — must decrement `banked` directly at the point of spend
-- On death
-- `PlayerDropItemEvent` — §3 legalises manual drops, and a drop removes ore with no container
+- **On purchase** — decrement `banked` directly at the point of spend
+- **On death**
+- **`PlayerDropItemEvent`** — §3 legalises manual drops, and a drop removes ore with no container
   involved
-- `CraftItemEvent` — nine banked ingots become one iron block in the player's own 2×2 grid. The
+- **`CraftItemEvent`** — nine banked ingots become one iron block in the player's own 2×2 grid. The
   block has no ore-equivalent, because §3's audit keeps placeable vanilla blocks off the whitelist,
-  so `carried` falls and `banked` does not. Uncraft afterwards and the cycle closes
+  so `carried` falls and `banked` does not. Uncraft afterwards and the cycle closes. Ore is not a
+  gear ingredient (§2), but vanilla storage blocks are still craftable and this closes that door
 - **On transfer out of the inventory** — `InventoryClickEvent`, `InventoryDragEvent`,
-  `InventoryMoveItemEvent`. This is the same hook §3 uses to cancel unbanked transfers, doing double
-  duty: cancel if unbanked, decrement `banked` by the transferred amount if not
+  `InventoryMoveItemEvent`. Same hook §3 uses to cancel unbanked transfers, doing double duty:
+  cancel if unbanked, decrement `banked` by the transferred amount if not
 
-`InventoryCloseEvent` is **not** the right hook for that last one. Close fires too late to tell how
-much moved and in which direction, and §3 needs the decision at the transfer anyway to cancel it.
+`InventoryCloseEvent` is the wrong event for that last one. Close fires too late to tell how much
+moved and in which direction, and §3 needs the decision at the transfer anyway in order to cancel it.
 
 **The trap is inherent to the clamp, so surface it rather than trimming hooks.** Any route that
-reduces `carried` destroys paid-for protection silently — handing a stack to a teammate does it just
-as surely as closing a chest did. Removing a hook does not remove the trap, it converts it into an
+reduces `carried` destroys paid-for protection — handing a stack to a teammate does it just as
+surely as a chest would have. Removing a hook does not remove the trap, it converts it into an
 exploit. Fix it where it belongs: an actionbar line whenever protection is reduced
 (`Protection reduced to N`), so the loss is never invisible.
-
-Compression is already safe here and needs no hook, because §3 tracks everything in ore-equivalents
-— see the note there.
-
-Persist banked quantities across logout.
 
 ---
 
@@ -318,7 +289,7 @@ Persist banked quantities across logout.
 | between | linear |
 
 All four values in config. **Current rate displayed continuously on the bossbar** — the bossbar is
-reserved for this and nothing else.
+reserved for this and nothing else (principle 7).
 
 - Fee is paid **in ore and destroyed**, not redistributed. Primary sink.
 - Multiplied by the zone's own risk rate (§8), **with the product clamped** to a configured maximum.
@@ -327,14 +298,14 @@ reserved for this and nothing else.
   (principle 4).
 - **Reset to zero on any deposit**, including partial.
 - **Reset to zero on death.** Otherwise dying grants a cheap banking window on the next haul.
-- **Reset to zero on entering spawn.** Not a pause — a reset. See the accrual rule below.
+- **Reset to zero on entering spawn.** A reset, not a pause — see below.
 
 ### Accrual rule — this is not a timestamp delta
 
 **The clock is an accumulated counter incremented by a scheduled task, never a stored-timestamp
-subtraction.** §17 requires time-based state to be reconstructed from a stored timestamp at startup
-because free servers sleep — if the fee clock used that pattern, then bank → log out → log in → mine
-one stack → bank at 5%, permanently.
+subtraction.** §17 requires most time-based state to be reconstructed from a stored timestamp at
+startup because free servers sleep — if the fee clock used that pattern, then bank → log out → log
+in → mine one stack → bank at 5%, permanently.
 
 **Accrue only when all three hold:**
 
@@ -344,72 +315,60 @@ one stack → bank at 5%, permanently.
 
 The mining condition stops a player sealing into a pocket and idling to earn the discount.
 
-### Spawn resets the clock — it does not pause it
+### Combat pauses the clock
+
+Accruing during a fight is backwards and must not be reintroduced. Combined with §4's tag block, it
+made being attacked a *discount*: a player jumped at 2 minutes and chased for three more accrued the
+whole time, broke contact, and banked at a better rate than someone who mined quietly and banked at
+2 minutes. There was never a reason to bank early — pressure was a reason to wait.
+
+**Frozen while tagged, the fee table means what it says.** Eight minutes of quiet mining reaches 5%;
+eight minutes with four of them contested sits near 15%. Contested time simply does not count toward
+the discount, so a dangerous trip banks at a worse rate than a quiet one, with no special-case code.
+
+- **Pause, never reset.** The clock has three reset triggers — deposit, death, spawn — and a freeze
+  is none of them. Being pinned for two minutes leaves the clock exactly where it was.
+- Fleeing costs the opportunity to advance, not progress already made.
+- This **dissolves the slap-farm hole**: two players trading one hit every 15 seconds outside spawn
+  used to accrue the discount at no risk. Under a freeze, doing that stalls both their clocks.
+
+### Spawn resets the clock
 
 **Pausing in spawn left a mule relay open.** B stands five blocks outside spawn and breaks one
 whitelisted block every 30 seconds — enough to keep the clock legal, no risk taken. Eight minutes
-later B is at 5%. A mines deep in the box, walks over and drops the whole haul to B (§3 allows manual
-drops for trading), and B banks it at 5%. Anything dangerous appears, B steps into spawn, the clock
-pauses, B walks back out at the same tier. **B bought the maximum discount without ever being
-exposed**, which is the one thing the fee curve exists to prevent. It became the last laundering
-route once §3 closed chests.
+later B is at 5%. A mines deep in the box, walks over and drops the whole haul to B (§3 allows
+manual drops for trading), and B banks it at 5%. Anything dangerous appears, B steps into spawn, the
+clock pauses, B walks back out at the same tier. **B bought the maximum discount without ever being
+exposed**, which is the one thing the fee curve exists to prevent.
 
 Under a reset, B has to stand in the open for the full eight minutes holding a fortune — which is
 §11's bounty target, so the relay becomes content rather than an exploit.
 
-- **This is the one place a reset is right and a pause is not.** Combat freezes the clock because a
-  pinned player is still exposed (§5's reversal above). Spawn is the opposite: entering it *is*
-  ending your exposure, so there is no progress left to preserve.
-- **Cost, accepted:** ducking into spawn mid-trip loses your tier, including for a chased player who
-  escapes there. Surviving with the haul is the compensation.
-- **Requires bank zones to sit outside spawn** (§8). If a zone were ever placed inside, the reset
-  would fire on the way in — harmless, since depositing resets it anyway, but confirm rather than
-  assume.
+**This is the one place a reset is right and a pause is wrong, and it is deliberately the opposite
+of the combat rule.** Combat freezes the clock because a pinned player is still exposed. Spawn is
+the opposite: entering it *is* ending your exposure, so there is no progress left to preserve. Do
+not "fix" the inconsistency.
 
-### Combat pauses the clock — reversal of the v3 rule
+**Cost, accepted:** ducking into spawn mid-trip loses your tier, including for a chased player who
+escapes there. Surviving with the haul is the compensation. **Requires bank zones to sit outside
+spawn** (§8) — confirm rather than assume.
 
-**v3 accrued while combat-tagged. That was backwards and must not be reintroduced.**
+### What denial looks like now
 
-The clock accrued during fights *and* §4 blocks banking while tagged. A player jumped at 2 minutes
-and chased for three more accrued the whole time, broke contact, and banked the entire haul at a
-better rate than the player who mined quietly and banked at 2 minutes. Being attacked was a
-discount, and there was never a reason to bank early — pressure was a reason to wait.
+A camped player cannot split off a sliver to cash out at a good rate, because §4 blocks depositing
+under a tag entirely. The cost of being camped lands in two places instead:
 
-**Frozen while tagged, the section's original claim becomes true again by a different route.** Eight
-minutes of quiet mining reaches 5%; eight minutes with four of them contested sits near 15%.
-Contested time simply does not count toward the discount, so a dangerous trip banks at a worse rate
-than a quiet one with no special-case code.
-
-- **Pause, never reset.** §5 has two reset triggers — deposit and death — and a freeze is neither.
-  Being pinned for two minutes leaves the clock exactly where it was.
-- The old rule's stated reason (a purely mining-gated clock stops accruing when a player flees,
-  penalising them when exposure is highest) is answered by pause-not-reset: fleeing costs the
-  opportunity to advance, not progress already made.
-
-This also **dissolves the slap-farm hole** — under v3, two players trading one hit every 15 seconds
-outside spawn accrued the discount at no risk. Under a freeze, doing that stalls both their clocks.
-
-### What replaced the anti-denial valve
-
-v3 claimed a camped player could bank a sliver in ~2 seconds at 5% and eat 25% on the remainder, so
-pressure was bought off at a bad rate. **The tag block removes that**: under pressure you cannot
-split a deposit at all, so you never pay the split cost. That paragraph described a mechanic that
-does not exist and has been deleted.
-
-**The cost of being camped now lands in two places instead:**
-
-1. **Death risk.** You are holding the whole haul, and you cannot cash any of it out until you break
-   contact.
+1. **Death risk.** You hold the whole haul and cannot cash any of it out until you break contact.
 2. **A frozen clock.** Sustained harassment holds your fee where it is. Someone willing to hit you
    once every fifteen seconds cannot stop you banking, but they can keep you at 25% for as long as
    they are willing to stand in the open next to a zone that broadcasts — and be vultured for it.
 
-That second one is the soft version of denial: a cost, not a block (principle 4), with an answer
+That second one is the soft version of denial: a cost, not a block (principle 4), with answers
 available (principle 5 — shield, disengage, §12 cover, or kill them), and it emerges from the freeze
 rule rather than needing code of its own.
 
-**Watch in playtest:** during the 0–8 minute ramp there is now a mild incentive to disengage rather
-than fight, since fighting stalls the discount. Bounded — at cap, combat costs nothing — and §11's
+**Watch in playtest:** during the 0–8 minute ramp there is a mild incentive to disengage rather than
+fight, since fighting stalls the discount. It is bounded — at cap, combat costs nothing — and §11's
 kill reward pulls the other way. Do not pre-emptively mechanic around it.
 
 ---
@@ -426,31 +385,40 @@ Rounding is not a detail here — partial deposits make any error trivially repe
 1. Compute the deposit's total value once, in value terms, using §3's table.
 2. Apply the fee rate to that total.
 3. **Round up on the total.**
-4. **Destroy from the lowest-value ore available anywhere in the player's inventory**, banked or
-   unbanked, working upward if the lowest is insufficient. If any of it comes from banked ore,
-   decrement `banked` accordingly.
+4. **Draw the fee proportionally from every whitelisted ore type the player holds** — each type
+   contributes in proportion to its share of the player's total ore-equivalents, banked and unbanked
+   alike.
+
+### Why proportional
 
 Drawing only from the deposit's own materials means a single-material deposit has nothing cheaper to
-pay with, which is what turns rounding into a lost diamond. Widening the pool costs nothing — the
-fee value is identical either way — and it makes expensive-ore deposits pay in iron whenever iron is
-on hand.
+pay with, which is what turns rounding into a lost diamond.
 
-**Tie-break: draw unbanked before banked** at the same value tier. Identical value destroyed either
-way, but it leaves the player's protected total intact, and there is no reason to prefer the version
-that quietly eats protection they paid for. Whatever is destroyed must appear in the deposit
-summary — this is the §4 trap again, and the answer is the same: make it visible.
+Drawing from the *cheapest* ore on hand fixes that but hands the player the choice of fee currency,
+and they will always pick the cheapest. That is value-neutral only if §3's table prices effort
+perfectly in every material; where it does not, a coal buffer becomes universal fee-fodder and the
+real cost of the fee quietly collapses.
 
-> **The fee currency is now the player's choice, so §3's table has to be effort-calibrated.** Under
-> the old rule a diamond-only deposit paid in diamonds. Under this one, a player who keeps coal on
-> hand always pays in coal. That is value-neutral *only if* one ore-equivalent costs roughly the
-> same effort to acquire in every material. If the cheapest whitelist entry is easier to mine per
-> ore-equivalent than the rest — which is the normal case, since rarity and effort are not the same
-> curve — then cheap ore becomes universal fee-fodder and the real cost of the fee collapses.
->
-> **Narrower alternative if calibration proves hard:** widen the pool only for the *rounding
-> remainder*, and take the whole part of the fee from the deposit's own materials. The problem this
-> step solves is a sub-unit rounding artefact, so a sub-unit fix is sufficient and leaves no room to
-> shop for a fee currency.
+**Proportional draw removes the choice.** Holding coal does not shield diamonds — it just means coal
+pays its share. A mis-calibrated table then costs accuracy instead of opening an exploit, which is
+the difference between a tuning problem and a bug.
+
+### Mechanics
+
+- **Target per material:** `fee × (that material's ore-equivalents held ÷ total ore-equivalents
+  held)`.
+- **Largest-remainder allocation** so the destroyed total equals the fee exactly, with no drift and
+  no chance of destroying more than was charged.
+- **Within a material, take unbanked before banked.** Identical value destroyed either way, but it
+  leaves the player's protected total intact, and there is no reason to prefer the version that eats
+  protection they paid for. **If banked ore is touched, decrement `banked` accordingly.**
+- **Show what was destroyed** in the deposit summary. This is §4's trap again and the answer is the
+  same: make it visible (principle 7).
+
+**Single-material holdings are the remaining edge.** A player carrying nothing but diamonds still
+pays a whole diamond on a small deposit, because there is nothing else to draw from. Accepted:
+under §2 nothing is gated behind that diamond — gear is priced in the menu, not paid for in ore
+directly — so it costs value, never progress.
 
 ---
 
@@ -474,6 +442,7 @@ trip, and death takes a percentage of it rather than of a sliver.
 - Small, flat, **on open floor away from the resource cubes** — cubes are cover, and a zone tucked
   against one defeats the point.
 - Inside the box. PvP fully enabled. **Not safe zones** — no immunity, no bubble.
+- **Outside spawn**, which §5's reset depends on.
 - **One fixed zone**, higher fee, always available — a reliable fallback and a landmark players can
   name.
 - **3–4 rotating candidate locations**, one active at a time, rotating every 10–15 minutes. **The
@@ -482,7 +451,7 @@ trip, and death takes a percentage of it rather than of a sliver.
 - **Per-zone risk rate:** safer/closer zones take a higher cut, deeper zones a lower one. Players
   pick their own risk tier.
 - **Entry feedback:** title card on entry plus a compass or waypoint pointer. With no structure,
-  this is the only visual anchor a new player gets. (Not the bossbar — that belongs to the fee rate.)
+  this is the only visual anchor a new player gets. Not the bossbar — that belongs to the fee rate.
 - **On rotation, clear player-placed blocks inside the new zone's no-build radius** (§12), or the
   first zone of every cycle can open pre-fortified.
 
@@ -530,7 +499,7 @@ is:
 
 ## 10. Combat tag
 
-Referenced by §4, §5, §9 and §12, so it needs one canonical definition.
+Referenced by §4, §5 and §9, so it needs one canonical definition.
 
 - **Applied only when a player deals damage to another player, and only when damage actually
   lands.** Not proximity, not line of sight, not a missed swing.
@@ -538,12 +507,11 @@ Referenced by §4, §5, §9 and §12, so it needs one canonical definition.
 - While tagged: **cannot start a deposit** (§4), **exposure clock is frozen** (§5), logging out
   counts as a death (§9).
 
-**The damage-landed requirement keeps its rule and loses its reason.** v3 justified it with "a
-sealed player could hold a tag and earn the fee discount while invulnerable" — under §5's freeze,
-holding a tag now *costs* you, so that scenario is dead. Keep the rule anyway, for the inverted
-reason: without it, a fake tag would let a player freeze **someone else's** clock, and block their
-banking, without ever committing to a fight. Same rule, opposite rationale — annotated so a later
-pass doesn't see a void justification and delete it.
+**Why damage must actually land.** Without it, a fake tag would let a player freeze **someone
+else's** clock and block their banking without ever committing to a fight. Note this is the
+*opposite* of the reason the rule was originally written — that version worried about a sealed
+player holding a tag to earn the discount, which the §5 freeze makes impossible. Same rule, live
+rationale; annotated so a later pass does not find a void justification and delete it.
 
 ---
 
@@ -560,19 +528,15 @@ banked pays nothing, so PvP collapses into hunting loaded miners only.
   a high clock suicides for free to shed the bounty on their head.
 - Accumulated counter, same treatment as §5 — never a timestamp delta.
 
-### Activity gate — the hole §5 was fixed for was still open here
+**Activity gate.** Accrue only while outside spawn **and** having broken a whitelisted block within
+the last ~30 seconds **or** being combat-tagged. Without it, a player parks an alt in a corner for
+an hour, returns, kills it and collects a capped bounty at zero risk; §9's 20-minute repeat guard
+never bites because the cycle is hourly.
 
-v3 accrued this on "time outside spawn" alone, with no activity condition. That let a player park an
-alt in a corner for an hour, return, kill it and collect a capped bounty at zero risk; §9's
-20-minute repeat guard never bites because the cycle is hourly.
-
-**Accrue only while outside spawn and having broken a whitelisted block within the last ~30 seconds
-or being combat-tagged.**
-
-**This clock does not pause during combat** — unlike §5's. The two clocks answer different
-questions. §5 measures time spent producing, and a fight is not production. §11 measures time
-survived, and a fight is the riskiest possible way to survive; freezing it would make the players
-hardest to kill worth the least.
+**This clock does not pause during combat** — unlike §5's, and deliberately so. The two clocks
+answer different questions. §5 measures time spent producing, and a fight is not production. §11
+measures time survived, and a fight is the riskiest possible way to survive; freezing it would make
+the players hardest to kill worth the least.
 
 **On a kill:** spawn ore on the ground at the death site, scaled by the victim's survival clock
 against a configured cap, subject to §9's repeat-kill guard.
@@ -594,10 +558,9 @@ Ore is infinite (§1), so printing some is not inflationary in the usual sense, 
 applies — the killer pays a fee to keep any of it.
 
 **Make the bounty visible** (principle 7). "The hunt points the right way" only works if players can
-see where it points, and right now the clock is invisible to the carrier and to everyone hunting
-them. Above a threshold, give it a tell — glow, particle, or a scoreboard line; **not** the bossbar,
-which belongs to the fee rate. The victim gets a visible reason to play carefully, hunters get a
-target, and no value changes hands, so principle 3 is untouched.
+see where it points. Above a threshold, give it a tell — glow, particle, or a scoreboard line; **not**
+the bossbar, which belongs to the fee rate. The victim gets a visible reason to play carefully,
+hunters get a target, and no value changes hands, so principle 3 is untouched.
 
 **Explicitly do not** pay this reward as a fee discount or a clock reduction. That is value arriving
 pre-secured and fails principle 3 even though it is not an item.
@@ -638,40 +601,36 @@ route closes at the whitelist rather than with a build rule.
 ### Access protection — the only building restrictions
 
 These are **location rules, not player limits** — they bind everyone identically and exist because
-both would lock players out of a mandatory system with no available counter-play:
+both would otherwise lock players out of a mandatory system with no available counter-play:
 
 - **No-build radius around the active bank zone** (a radius, not just the zone itself — otherwise it
   gets ringed). Cleared on rotation, per §8.
 - **No-build radius around box entrances**, or a group can wall people out of the game entirely.
 
-### Reseal decay — removed
+### Bunkering is uncountered until §13 ships, and that is accepted
 
-**Cut in v5, not deferred.** Both versions failed, in different ways. v3 decayed blocks placed while
-combat-tagged, which was circular: §10 applies the tag only when damage lands, a sealed turtle
-cannot be damaged, so the pre-seal never decayed and an attacker chewing cobble never generated the
-tag that would make it decay. v4's proximity trigger worked but caught every tactical wall thrown up
-in a fight, which is legitimate play the spec spent §12 protecting. **A stopgap that misfires on
-normal play is worse than the gap it covers.**
+There is no reseal decay rule. Two versions were tried and both failed: keying decay to the combat
+tag was circular (a sealed player cannot be damaged, so the tag that triggers the decay can never be
+applied), and keying it to proximity caught every tactical wall thrown up in a fight, which is
+legitimate play this section exists to protect. **A stopgap that misfires on normal play is worse
+than the gap it covers.**
 
-The narrow problem it addressed is real and remains open: placement is instant and breaking takes a
-second or two, so an attacker can never out-break a resealer. **The correct answer is §13** — a
-counter, not a timer (principle 5) — and §19 already puts the suppression consumable first in the
-build order.
+The underlying problem is real: placement is instant and breaking takes a second or two, so an
+attacker can never out-break a resealer. **The answer is §13** — a counter, not a timer (principle
+5) — and §19 puts the suppression consumable first in the build order for exactly this reason.
 
 **Partial cover in the meantime, stated precisely.** §5 accrues only while the player has broken a
-whitelisted block in the last ~30 seconds, so a sealed player's fee rate stalls — turtling costs
-them the thing they went out to earn. **This only bites below the cap.** A player already at eight
-minutes and carrying a fortune has no further use for the clock, so sealing costs them nothing at
-all — and that is exactly the player worth sealing against. Do not read the stall as a substitute
-for §13.
+whitelisted block in the last ~30 seconds, so a sealed player's fee rate stalls; turtling costs them
+the thing they went out to earn. **This only bites below the cap.** A player already at eight minutes
+and carrying a fortune has no further use for the clock, so sealing costs them nothing at all — and
+that is exactly the player worth sealing against. Do not read the stall as a substitute for §13.
 
-> **Optional, if the top-end case needs cover before §13 ships:** decay the *clock*, not the blocks.
-> After ~60s outside spawn with no accrual and no combat tag, the fee tier drifts back toward 25%.
-> Combat continues to **stall** rather than decay, so fighting and repositioning stay safe; sitting
-> sealed does not. No block tracking, no build rule, and it also reaches AFK-parked players and mule
-> relays. **The cost is real:** a player who breaks contact and runs a long way to a zone loses tier
-> for doing what §5 tells them to do, so the grace window has to be generous or the drift slow.
-> Not adopted — recorded as the cheap option if bunkering proves worse than expected in playtest.
+*If bunkering proves worse than expected before §13 lands*, the cheap option is to decay the
+**clock**, not the blocks: after ~60s outside spawn with no accrual and no combat tag, the fee tier
+drifts back toward 25%. Combat continues to stall rather than decay, so fighting and repositioning
+stay safe. The cost is that a player who breaks contact and runs a long way to a zone loses tier for
+doing what §5 tells them to do, so the grace window would have to be generous. Recorded as an
+option, not adopted.
 
 ---
 
@@ -683,7 +642,7 @@ Principle 5 in practice. These replace restrictions rather than supplementing th
 the turtle answers it by placing another block. Counters must remove more per action than can be
 replaced, ignore the wall, or attack the placement itself.
 
-### Priority 1 — Suppression consumable *(build first; nothing else covers bunkering since v5)*
+### Priority 1 — Suppression consumable *(build first; nothing else covers bunkering)*
 
 A thrown grenade or stackable lingering potion that **prevents block placement in a small radius for
 a few seconds.**
@@ -707,8 +666,8 @@ all.
 
 ### Rules for all counter items
 
-- **Consumable or ore-gated**, never a free ability — countering a bunker should cost something, so
-  the turtle's stall retains value.
+- **Bought with banked ore** from §2's menu, never crafted and never free — countering a bunker
+  should cost something, so the turtle's stall retains value.
 - **They are cargo.** They sit in the inventory and drop on death like ore. Principle 3.
 
 ---
@@ -773,8 +732,8 @@ not in conflict.
 **Movement speed is the dominant stat.** With little natural cover, escaping is close to a pure
 footrace and chases end only when someone runs out of upgrades. The escape-related nodes need a
 **hard ceiling**, not a soft curve. §12's persistent structures partially mitigate this, but the
-ceiling is still required — and note that §4's tag block now makes disengagement *mandatory* before
-banking, so escape strength has a second lever on it that did not exist in earlier drafts.
+ceiling is still required — and note that §4's tag block makes disengagement *mandatory* before
+banking, so escape strength has a second lever on it.
 
 **Entering the box is the most dangerous moment in the loop.** Provide **multiple entrances** spread
 around the shell, plus brief immunity on entry.
@@ -804,10 +763,11 @@ Regenerating cubes mean `BlockBreakEvent` fires at very high volume. That path m
 - **Exposure and survival clocks are the exception** — they are accumulated counters incremented by
   a task, *not* reconstructed from timestamps, for the reason in §5.
 - **One placed-block tracker, unbounded by design.** Packed longs in a chunk-keyed map, never
-  `Location` objects. It serves two consumers: the wipe (§12) and the collections anti-farm (§14).
-  *(v5: reseal decay was the third; it is gone.)* Cleared on wipe, which is what keeps it bounded in
-  practice.
+  `Location` objects. Two consumers: the wipe (§12) and the collections anti-farm (§14). Cleared on
+  wipe, which is what keeps it bounded in practice.
 - **Wipe removal batched across ticks** and drop-free (§12).
+- **Containment and clamp checks are per-transfer, not per-tick.** §3 and §4 hook inventory events;
+  nothing in either system polls.
 
 ---
 
@@ -823,17 +783,18 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Minimum deposit amount** | Doesn't produce sustained exposure — carry oscillates 0→N→0 and the early part of every trip sits under the drop floor. Inverts with progression, and hard-blocking a cash-out pushes players offline rather than back into the box. |
 | **Banking cooldown** | Creates dead time. Makes the game slower rather than riskier; boredom loses players faster than deaths do. |
 | **Per-player build caps** | Principle 4. Binds inexperienced players hardest; experienced players route around it. Replaced by §13 counter-play. |
-| **Restricting which blocks players may place** | Unnecessary once compressed output is a custom non-placeable item. Handled at the whitelist instead (§3). |
+| **Restricting which blocks players may place** | Unnecessary once compressed output is a custom non-placeable item. Handled at the whitelist audit instead (§3). |
+| **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and banked ore moves freely at the cost of its protection (§3). |
+| **Crafting gear from ore** | Unbanked ore → crafted gear is a free cash-out into permanently safe value. Gear is bought with banked ore instead (§2), which removes the workstation problem rather than regulating it. |
+| **Zero-fee floor for small deposits** | Considered as early-game relief and withdrawn. A free deposit makes the rate irrelevant, so every stack gets banked at zero risk — §6's spam case by another door. Early-game relief belongs in §2's pricing. |
+| **Paying the fee from the cheapest ore on hand** | Lets the player choose the fee currency, so a coal buffer pays for everything and the fee's real cost depends entirely on §3's table being perfectly effort-calibrated. Replaced by proportional draw (§6). |
 | **Carry-capacity upgrades as a readable system** | Not being built. Nothing in fee, drop or clock math may depend on a capacity value. |
 | **Safe compressed blocks** | A second protection route bypassing the bank. |
 | **Fee keyed to fraction of inventory** | Depends on a capacity system that doesn't exist, and is junk-stuffable. |
 | **Fee clock as a stored-timestamp delta** | Ticks while the server sleeps; bank → relog → bank at 5% permanently. |
-| **Fee clock accruing during combat** | v3 rule. Combined with §4's tag block it made being attacked a *discount* — pressure became a reason to wait rather than bank. Replaced by a freeze (§5). |
-| **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and banked ore moves freely at the cost of its protection (§3). |
-| **Crafting gear from ore** | Unbanked ore → crafted gear is a free cash-out into permanently safe value. Gear is bought with banked ore instead (§2), which removes the workstation problem rather than regulating it. |
-| **Zero-fee floor for small deposits** | Considered as an early-game relief valve and withdrawn. A free deposit makes the rate irrelevant, so every stack gets banked at zero risk — §6's spam case by another door. |
+| **Fee clock accruing during combat** | Combined with §4's tag block it made being attacked a *discount* — pressure became a reason to wait rather than bank. Replaced by a freeze (§5). |
 | **Pausing the fee clock in spawn** | Let a parked mule reach 5% at no risk and bank other players' hauls. Replaced by a reset (§5). Note this is the *opposite* call to combat, which pauses — a pinned player is still exposed, a player in spawn is not. |
-| **Reseal decay (any trigger)** | v3's combat-tag version was circular; v4's proximity version killed legitimate tactical walls. Cut in v5. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
+| **Reseal decay (any trigger)** | The combat-tag version was circular; the proximity version killed legitimate tactical walls. Cut. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
 
 ---
@@ -841,34 +802,35 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 ## 19. Standing note
 
 **Push back with reasoning rather than implementing something you think is wrong.** Review passes
-have now caught six ship-breaking errors across three revisions. That has been worth far more than
-compliance — including the passes where the objection was wrong and got withdrawn.
-
-**All numbers are playtest starting points.** The values most worth testing first are the fee spread
-(25%/5%) and the death drop percentage (60%) — that is where player behaviour actually lives. Third
-on the list is whether §5's freeze makes players avoid fights during the ramp.
+have caught several ship-breaking errors across the revisions that produced this document — including
+the passes where the objection turned out to be wrong and got withdrawn. That has been worth far
+more than compliance.
 
 **When proposing anything new**, check it against principle 3 (no *spendable* value arrives
 pre-secured) and principle 5 (prefer a counter to a restriction), and say so explicitly in the
 proposal.
 
-**Build order suggestion:** §13's suppression consumable is the highest-leverage item on the list.
-v5 cut §12's stopgap outright, so bunkering is now uncountered until this ships — that is a known,
-accepted gap, not an oversight.
+### Build order
 
-### Open questions
+1. **§13's suppression consumable.** Highest-leverage item on the list — bunkering is currently
+   uncountered by design, and this is the answer.
+2. **§3 containment and §4's clamp.** Everything downstream assumes unbanked ore cannot leave the
+   player. Ship them together; a clamp with a missing hook is worse than no clamp, because it looks
+   correct.
+3. **§5's clock and §6's fee.** The economy does not exist until these do.
+4. **§11's kill reward.** PvP has no payout against banked players until this lands.
+5. **§14's tracker unification**, which also fixes the existing anti-farm cache defect.
 
-- **§2 — can you buy while combat-tagged?** Recommend no, at least for consumables. Unanswered, and
-  it decides whether §13's sink has teeth.
-- **§2 — enchanting and anvil repair.** Menu them, or accept they run on banked lapis and ingots.
-- ~~**§6 — the early-game gear toll.**~~ **Closed in v6.** Ore is no longer a crafting ingredient;
-  starter gear is priced in the §2 menu.
+### Carried assumptions to confirm
 
-Parked pending playtest rather than a decision:
+- **Bank zones sit outside spawn** (§8), which §5's reset depends on.
+- **§3's value table prices effort, not rarity** — §6, §9 and §14 all read it.
 
-- **§3/§6 — ore-equivalent calibration.** §6 step 4 lets players choose the fee currency, so the
-  table has to price effort rather than rarity. Narrower fallback recorded in §6.
-- **§12 — clock decay**, if bunkering proves worse than expected before §13 lands. Recorded as
-  optional, not adopted.
+### Deliberate inconsistencies — do not "fix" these
 
-**Confirm before building §5:** bank zones sit outside spawn.
+- §5's clock **pauses** in combat but **resets** in spawn. A pinned player is still exposed; a player
+  in spawn is not.
+- §11's clock **does not** pause in combat, unlike §5's. One measures production, the other measures
+  survival, and a fight is the riskiest way to survive.
+- §10's damage-landed rule exists to stop a player freezing *someone else's* clock — not, as it once
+  did, to stop a sealed player farming a discount.
