@@ -83,9 +83,9 @@ live behind it).
 
 ### Ore-equivalents
 
-**Track ore-equivalents, not materials.** One compressed iron unit counts as nine iron against the
-same key. *Without this, compressing 64 banked iron would drop `carried[IRON]` to 7, fire the clamp,
-and silently destroy 63 ore of paid-for protection.*
+**Track ore-equivalents, not materials.** One compressed unit counts as the 64 raw items it was
+folded from, against the same key. *Without this, compressing a stack of banked iron would drop
+`carried[IRON]` to 1, fire the clamp, and silently destroy 63 ore of paid-for protection.*
 
 **Custom items count.** The lookup reads the custom identity first and falls back to the vanilla
 material, never the reverse.
@@ -430,9 +430,16 @@ wipe tracker and delete the bounded set.**
 ## 15. Auto-compressor
 
 - Unlocked **per ore type via that ore's collection tier.**
-- A **capacity** tool: it lets a player stay out longer. Keep it bounded — ~3 tiers, ~4× capacity.
-- **Output is a custom, non-placeable item.** Load-bearing: it closes §3's placement laundering route
-  without a building restriction. Do not replace it with vanilla storage blocks.
+- **64 raw items make one unit** — a full stack becomes a single item. One compression level, not a
+  ladder of them; the bound is which ores compress and how late they unlock, both config.
+- A **capacity** tool: it lets a player stay out longer, and nothing else.
+- **Output is a custom, non-placeable item** — the raw ore itself carrying a persistent-data tag.
+  Load-bearing: it closes §3's placement laundering route without a building restriction, since raw
+  ores are items and only their `_BLOCK` forms are placeable. Do not replace it with vanilla storage
+  blocks.
+- **Never let code merge stacks by material alone.** A compressed unit and a raw item are the same
+  material and differ only in metadata, so a merge that ignores metadata multiplies ore by 64. Vanilla
+  compares metadata and is safe; our own inventory code has to be written not to need that guarantee.
 - **Compressed units drop on death exactly like raw ore.** Falls out of ore-equivalents with no
   special handling. **The compressor buys time in the box, never safety.**
 - Toggleable (`/compress off`).
