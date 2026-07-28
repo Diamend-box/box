@@ -120,24 +120,27 @@ colliding — use it deliberately when pricing the tree.
 
 ## 3. Ore value, ore-equivalents and containment
 
-### The value table
+### Ore value — every whitelisted ore is worth the same
 
-**Required, and referenced by four other sections.** With no sell step there is no other place ore
-has a number attached, and the need does not go away: §6 apportions one fee percentage across a
-mixed holding and rounds in value terms, §8 gates announcements on deposit size, and §9's drop floor
-is defined in mining-value terms.
+**One raw whitelisted item = one ore-equivalent. Every material, no exceptions.** A diamond and a
+lump of coal both count 1. There is no per-material weight table and no config knob for one.
 
-Define one internal per-ore value weight table in config and have every section read from it.
-Without this, three systems will each invent their own and disagree.
+This is what §6, §8 and §9 read when they need a number. All three are counting the same thing —
+"how much ore is this" — and with a flat table that count is just the item count in
+ore-equivalents. **Still route them through one shared accessor rather than three inline counts**,
+because the value is uniform and the *counting* is not: compression, custom items and the whitelist
+check all live behind it, and three call sites that each reimplement that will diverge.
 
-**Price effort, not rarity.** The two are not the same curve, and every consumer of this table
-assumes one ore-equivalent is worth roughly one ore-equivalent of player time. A table that prices
-rarity alone makes the cheapest whitelist entry the best value per swing, which distorts §6's fee,
-§9's drop floor and §14's collection pacing at once.
+**What flat costs, stated plainly.** Volume becomes value. Coal and redstone are fast, common and
+now worth exactly what diamond is worth, so they inflate every ore-gated threshold in the system —
+§9's drop floor, §8's announcement threshold, §6's fee base. A player who fills up on the cheapest
+thing in the box carries a "large" haul by every measure the plugin has.
 
-**Coal has no floor under it.** With furnaces disabled it has no vanilla utility at all, so nothing
-props its weight up from below — its number has to come from mining effort alone. Do not carry over
-a burn-value intuition from vanilla; here coal is worth exactly what it costs to swing at.
+That is accepted, and it is not the disaster the weighted version would have you believe: the box
+decides what you swing at, not the player, so there is no build that farms coal exclusively unless
+the box lets it. **The lever if it does go wrong is the whitelist, not a weight table** — dropping a
+material off the whitelist removes it from the risk system entirely, which is one config line and
+has no calibration to get wrong. Reach for that before reintroducing per-material weights (§18).
 
 ### Ore-equivalents
 
@@ -437,25 +440,31 @@ kill reward pulls the other way. Do not pre-emptively mechanic around it.
 Rounding is not a detail here — partial deposits make any error trivially repeatable.
 
 - Round **down** and a one-item deposit is free (25% of 1 → 0), spammable indefinitely.
-- Round **up per material** and protecting 3 high-value ore costs 1 of them.
+- Round **up per material** and a mixed deposit is overcharged once per type it contains: ten
+  materials, ten items destroyed, however small the deposit. That is a stealth surcharge on variety,
+  and on a box server the player does not choose their variety.
 
 **Correct handling:**
 
-1. Compute the deposit's total value once, in value terms, using §3's table.
+1. Count the deposit's total ore-equivalents (§3 — every material counts 1 per raw item).
 2. Apply the fee rate to that total.
 3. **Round up on the total.**
-4. **Draw the fee proportionally from the deposit's own materials** — each material in the deposit
-   contributes in proportion to its share of the deposit's ore-equivalents.
+4. **Draw the fee from every material in the deposit, in proportion to its share.** Under flat
+   values this is simply the same percentage off each type: a 10% fee takes 10% of the iron, 10% of
+   the coal and 10% of the diamonds.
 
 ### Why proportional, and why only the deposit
 
-Drawing from a *single* material — whichever is cheapest, or whichever the deposit happens to be
-made of — hands the player the choice of fee currency, and they will always pick the cheapest. That
-is value-neutral only if §3's table prices effort perfectly in every material; where it does not, a
-coal buffer becomes universal fee-fodder and the real cost of the fee quietly collapses.
-Proportional draw removes the choice: holding coal does not shield diamonds, it just means coal pays
-its share. A mis-calibrated table then costs accuracy instead of opening an exploit, which is the
-difference between a tuning problem and a bug.
+**Note what changed when §3 went flat: proportional draw is no longer an anti-exploit rule.** With
+every material worth the same, drawing the whole fee from one material is value-identical to
+spreading it, so there is no cheapest currency to shop for and no exploit to close. Do not defend
+this rule on exploit grounds — that argument belonged to the weighted table and died with it.
+
+It is kept for two smaller reasons, both real. It is **predictable**: the player sees the same
+percentage come off everything, which is the rule they were told, and no single stack is
+disproportionately gutted to pay for a haul it barely contributed to. And it is **stable under a
+future whitelist change** — if a material is ever dropped or added, a proportional draw needs no
+recalibration, where a "always take it from X" rule breaks the moment X leaves the whitelist.
 
 **The pool is the deposit, not the player's holdings.** Widening it to everything carried was
 considered and cut: with banked ore in the pool, a player holding 1,000 banked ore and depositing 10
@@ -474,8 +483,8 @@ unambiguously a cut of the transaction rather than a levy on the balance.
   no chance of destroying more than was charged.
 - **Show what was destroyed** in the deposit summary (principle 7).
 
-**Single-material deposits are the remaining edge.** A one-diamond deposit has nothing cheaper to
-pay with, so granularity forces a whole diamond. Accepted for two reasons: single-item deposits
+**Tiny deposits are the remaining edge.** A one-diamond deposit rounds up to a whole diamond — a
+100% fee — because there is no smaller unit to charge. Accepted for two reasons: tiny deposits being
 self-punishing is the intended behaviour that stops round-down spam, and under §2 nothing is gated
 behind that diamond — gear is priced in the menu, not paid for in ore directly — so it costs value,
 never progress.
@@ -859,7 +868,7 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Storing unbanked ore in any container** | A free bank with no zone, channel or fee. Closed at the transfer, not by banning containers — chests stay useful for gear, and banked ore moves freely at the cost of its protection (§3). |
 | **Crafting gear from ore** | Unbanked ore → crafted gear is a free cash-out into permanently safe value. Gear is bought with banked ore instead (§2), which removes the workstation problem rather than regulating it. |
 | **Zero-fee floor for small deposits** | Considered as early-game relief and withdrawn. A free deposit makes the rate irrelevant, so every stack gets banked at zero risk — §6's spam case by another door. Early-game relief belongs in §2's pricing. |
-| **Paying the fee from the cheapest ore on hand** | Lets the player choose the fee currency, so a coal buffer pays for everything and the fee's real cost depends entirely on §3's table being perfectly effort-calibrated. Replaced by proportional draw (§6). |
+| **Paying the fee from the cheapest ore on hand** | Two faults, and flattening §3 only removed one. The value argument is gone — with every ore worth 1 there is no cheapest to shop for — but "on hand" still sources the fee from outside the deposit, which erodes previously banked ore (§6). Replaced by proportional draw from the deposit. |
 | **Drawing the fee from everything the player holds** | Sources the fee mostly from already-banked ore, so every small deposit erodes paid-for protection and the optimal play becomes never holding banked ore. The pool is the deposit (§6). |
 | **Carry-capacity upgrades as a readable system** | Not being built. Nothing in fee, drop or clock math may depend on a capacity value. |
 | **Safe compressed blocks** | A second protection route bypassing the bank. |
@@ -869,6 +878,7 @@ Do not reintroduce. Each was considered and cut for a stated reason.
 | **Pausing the fee clock in spawn** | Let a parked mule reach 5% at no risk and bank other players' hauls. Replaced by a reset (§5). Note this is the *opposite* call to combat, which pauses — a pinned player is still exposed, a player in spawn is not. |
 | **Reseal decay (any trigger)** | The combat-tag version was circular; the proximity version killed legitimate tactical walls. Cut. §5's clock stalling while sealed covers the case *below the fee cap only* — it is not a substitute for §13, which remains the answer. |
 | **Kill reward as a fee discount or clock reduction** | Value arriving pre-secured. Principle 3. |
+| **Per-material ore value weights** | Every whitelisted ore counts 1 (§3). A weight table is four sections deep, has no correct answer without play data, and its only real job — stopping cheap high-volume ore from dominating ore-gated thresholds — is done more cheaply by removing that ore from the whitelist. Do not reintroduce it to fix a coal problem; try the whitelist first. |
 
 ---
 
@@ -900,9 +910,10 @@ proposal.
   reset is safe to build as written. Keep it true: moving a bank zone inside the spawn region later
   would pin the fee at 25% for everyone using it, with no error and no symptom other than a
   percentage nobody can explain.
-- **§3's value table prices effort, not rarity** — §6, §9 and §14 all read it. **Still open: the
-  table has no numbers yet.** It is the one set of numbers that cannot be tuned in isolation
-  afterwards, because those three sections all read it at once.
+- ~~**§3's value table prices effort, not rarity** — §6, §9 and §14 all read it.~~ **Resolved: there
+  is no value table.** Every whitelisted ore counts 1 (§3), so there are no weights to calibrate and
+  nothing left blocking a start. If volume-farming of cheap ore becomes a problem in playtest, the
+  fix is a whitelist removal, not a weight table (§18).
 
 ### Deliberate inconsistencies — do not "fix" these
 
