@@ -110,13 +110,19 @@ public class BoxCorePlugin extends JavaPlugin {
 
     private void registerCommand() {
         BoxCommand handler = new BoxCommand(this);
-        PluginCommand command = getCommand("box");
-        if (command != null) {
-            command.setExecutor(handler);
-            command.setTabCompleter(handler);
-        } else {
-            getLogger().warning("Command 'box' is missing from plugin.yml!");
+        bind("box", handler);
+        bind(BoxCommand.TRAVEL_COMMAND, handler);
+    }
+
+    /** Points one plugin.yml command at the handler, complaining if it's missing. */
+    private void bind(String name, BoxCommand handler) {
+        PluginCommand command = getCommand(name);
+        if (command == null) {
+            getLogger().warning("Command '" + name + "' is missing from plugin.yml!");
+            return;
         }
+        command.setExecutor(handler);
+        command.setTabCompleter(handler);
     }
 
     /**

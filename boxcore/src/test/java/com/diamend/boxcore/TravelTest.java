@@ -11,6 +11,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -306,6 +307,48 @@ class TravelTest {
         player.simulateInventoryClick(FIRST_WARP);
 
         assertTrue(module().travel().isTravelling(player));
+    }
+
+    /** Whether the travel menu is the screen this player currently has open. */
+    private boolean travelMenuIsOpen(PlayerMock player) {
+        InventoryView view = player.getOpenInventory();
+        if (view == null || view.getTopInventory() == null) {
+            return false;
+        }
+        return view.getTopInventory().getHolder() instanceof TravelMenu;
+    }
+
+    @Test
+    void theStandaloneCommandOpensTheMenu() {
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(0, 64, 0), "");
+
+        assertTrue(player.performCommand("fasttravel"), "the command should be registered");
+
+        assertTrue(travelMenuIsOpen(player), "/fasttravel opens the travel menu");
+    }
+
+    @Test
+    void theShortAliasesOpenItToo() {
+        // The point of the aliases is that they're what people will actually
+        // type, so a typo in plugin.yml has to fail here rather than in game.
+        for (String label : List.of("fastravel", "ft")) {
+            PlayerMock player = server.addPlayer();
+
+            assertTrue(player.performCommand(label), "/" + label + " should be registered");
+
+            assertTrue(travelMenuIsOpen(player), "/" + label + " opens the travel menu");
+        }
+    }
+
+    @Test
+    void argumentsAfterTheCommandAreIgnored() {
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(0, 64, 0), "");
+
+        assertTrue(player.performCommand("ft mines nonsense"));
+
+        assertTrue(travelMenuIsOpen(player), "it still just opens the menu");
     }
 
     // ------------------------------------------------------------------

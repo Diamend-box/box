@@ -23,6 +23,8 @@ commands:
       /box collection set <player> <id> <n>    - Set a collection amount (admin)
       /box collection clearplaced [radius]     - Forget placed-block flags (admin)
       /box give <ore> [units] [player]         - Give compressed ore (admin)
+      /box travel                   - Open the places you've found
+      /box warp <set|delete|list> [id]         - Manage destinations (admin)
       /box boost                    - Show the boosts running for you
       /box boost global <type> <multiplier> <duration>   - Boost everyone (admin)
       /box boost player <name> <type> <multiplier> <dur> - Boost one player (admin)
@@ -31,6 +33,10 @@ commands:
       /box reset <player>                      - Wipe a player's BoxCore data (admin)
       /box reload                              - Reload configuration from disk (admin)
     aliases: [boxcore, bx]
+  fasttravel:
+    description: Open the fast travel menu. Same as /box travel.
+    usage: /fasttravel
+    aliases: [fastravel, ft]
 
 permissions:
   boxcore.use:

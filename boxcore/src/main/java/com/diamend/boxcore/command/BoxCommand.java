@@ -53,6 +53,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
     private static final String ADMIN = "boxcore.admin";
 
+    /** The standalone command that opens the travel menu, from plugin.yml. */
+    public static final String TRAVEL_COMMAND = "fasttravel";
+
     private final BoxCorePlugin plugin;
 
     public BoxCommand(BoxCorePlugin plugin) {
@@ -65,6 +68,12 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (isTravelCommand(command)) {
+            // /fasttravel, /fastravel and /ft are a shortcut to one screen, so
+            // anything typed after them is ignored rather than second-guessed.
+            travel(sender);
+            return true;
+        }
         if (args.length == 0) {
             requirePlayer(sender, player -> HubMenu.openFor(plugin, player));
             return true;
@@ -591,6 +600,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     // Fast travel
     // ------------------------------------------------------------------
 
+    /** Whether this invocation came in on the standalone fast travel command. */
+    private boolean isTravelCommand(Command command) {
+        return TRAVEL_COMMAND.equalsIgnoreCase(command.getName());
+    }
+
     /** {@code /box travel} — the destinations you've found. */
     private void travel(CommandSender sender) {
         TravelModule module = plugin.travel();
@@ -947,7 +961,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
         messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— open your compactor (or pause it)");
         messages().sendPlain(sender, "  <white>/box boost <gray>— show the boosts running for you");
-        messages().sendPlain(sender, "  <white>/box travel <gray>— open the places you've found");
+        messages().sendPlain(sender, "  <white>/box travel <dark_gray>(/ft) "
+                + "<gray>— open the places you've found");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
@@ -1018,6 +1033,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (isTravelCommand(command)) {
+            return List.of();
+        }
         List<String> options = new ArrayList<>();
         boolean admin = sender.hasPermission(ADMIN);
 

@@ -112,7 +112,8 @@ Six ship today:
   you move or take damage, and is refused outright while you're combat-tagged —
   on a PvP server, fast travel that can be used to leave a losing fight is a
   different feature entirely. Only player-versus-player damage tags, so a mob
-  farm doesn't lock you out of it.
+  farm doesn't lock you out of it. The menu is on `/box travel` and on
+  `/fasttravel`, `/fastravel` and `/ft`.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -155,6 +156,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box compress [on\|off]` | Open your compactor, or pause compacting | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box travel` | Open the places you've found | `boxcore.use` |
+| `/fasttravel`, `/fastravel`, `/ft` | The same menu, on its own command | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
