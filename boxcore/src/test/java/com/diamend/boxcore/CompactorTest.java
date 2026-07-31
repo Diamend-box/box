@@ -9,6 +9,7 @@ import com.diamend.boxcore.ore.CompressorModule;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -172,8 +173,20 @@ class CompactorTest {
 
         module().openFor(player);
 
-        assertTrue(player.getOpenInventory().getTopInventory().getHolder()
-                instanceof CompactorMenu);
+        assertTrue(compactorIsOpen(player));
+    }
+
+    /**
+     * Whether a compactor page is on screen. Null-guarded: a player who has
+     * never opened anything has no top inventory to ask about, which is exactly
+     * the state the "carrying none" case leaves them in.
+     */
+    private boolean compactorIsOpen(PlayerMock player) {
+        InventoryView view = player.getOpenInventory();
+        if (view == null || view.getTopInventory() == null) {
+            return false;
+        }
+        return view.getTopInventory().getHolder() instanceof CompactorMenu;
     }
 
     @Test
@@ -186,8 +199,7 @@ class CompactorTest {
         module().openFor(player);
 
         assertNotNull(player.nextMessage(), "they are told why nothing opened");
-        assertFalse(player.getOpenInventory().getTopInventory().getHolder()
-                instanceof CompactorMenu);
+        assertFalse(compactorIsOpen(player), "and nothing opened");
     }
 
     @Test
