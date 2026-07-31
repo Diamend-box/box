@@ -64,6 +64,17 @@ public final class Text {
         return parse(input).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
+    /**
+     * Renders a component back to a MiniMessage string.
+     *
+     * <p>The inverse of {@link #item(String)}, used where an existing item's own
+     * name or lore is being captured into config: a server owner names something
+     * in an anvil, and what they wrote is what gets written down.
+     */
+    public static String serialize(Component component) {
+        return component == null ? "" : MM.serialize(component);
+    }
+
     /** Strips all formatting to a plain string. */
     public static String plain(String input) {
         return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()

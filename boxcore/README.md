@@ -86,6 +86,13 @@ Three ship today:
   a recipe compacts, and each one can be given its own material, name, lore,
   model data and glow. `/box give <item> [units]` mints a unit to check a skin
   without gathering for it.
+- 🛠️ **Recipes are edited in game** — `/box compactor recipes` adds, retunes and
+  deletes them without touching YAML or restarting. Nothing is typed: hold the
+  item to add a recipe for it, step the amount with buttons, and set the
+  compacted unit's skin, name, lore and model data by holding an item you've
+  already named in an anvil. Every change writes `compactor.yml` immediately, and
+  that file is the plugin's to rewrite — your commented `config.yml` is never
+  touched.
 - ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
   running server-wide or for one player. Start them by command, on a recurring
   schedule, or from a consumable item players right-click. They multiply
@@ -143,6 +150,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box collection clearplaced [chunk radius]` | Forget placed-block flags around you, after a mine regen | `boxcore.admin` |
 | `/box give <item> [units] [player]` | Give compacted items, for testing | `boxcore.admin` |
 | `/box compactor give <tier> [player]` | Hand out a personal compactor | `boxcore.admin` |
+| `/box compactor recipes` | Add, edit and delete compaction recipes | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
 | `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |

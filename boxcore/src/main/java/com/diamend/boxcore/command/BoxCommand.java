@@ -11,6 +11,7 @@ import com.diamend.boxcore.gui.BoostMenu;
 import com.diamend.boxcore.gui.CollectionCategoryMenu;
 import com.diamend.boxcore.gui.CollectionListMenu;
 import com.diamend.boxcore.gui.HubMenu;
+import com.diamend.boxcore.gui.RecipeEditorMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
 import com.diamend.boxcore.module.BoxModule;
@@ -437,8 +438,13 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendLiteral(sender, "<red>The compactor is disabled on this server.");
             return;
         }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("recipes")) {
+            requirePlayer(sender, player ->
+                    new RecipeEditorMenu(plugin, compressor, 0).open(player));
+            return;
+        }
         if (args.length < 3 || !args[1].equalsIgnoreCase("give")) {
-            messages().sendLiteral(sender, "<red>Usage: /box compactor give <tier> [player]");
+            messages().sendLiteral(sender, "<red>Usage: /box compactor <give <tier> [player] | recipes>");
             messages().sendLiteral(sender, "<gray>Tiers: <white>" + tierNames(compressor));
             return;
         }
@@ -838,6 +844,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                     + "<gray>— compacted items, for testing");
             messages().sendPlain(sender, "  <white>/box compactor give <tier> [player] "
                     + "<gray>— hand out a personal compactor");
+            messages().sendPlain(sender, "  <white>/box compactor recipes "
+                    + "<gray>— add and edit what compacts");
             messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost player <name> <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost item <id> [player] [amount]");
@@ -922,7 +930,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 }
                 case "compactor" -> {
                     if (admin) {
-                        options.add("give");
+                        options.addAll(List.of("give", "recipes"));
                     }
                 }
                 case "boost", "boosts" -> {
