@@ -21,10 +21,12 @@ import java.util.Map;
 /**
  * One recipe: how much makes a unit, and what that unit looks like.
  *
- * <p>The look is captured from an item rather than typed. Name something in an
- * anvil, hold it, click — the skin, the name, the lore and the model data all
- * come across. Colour codes are a solved problem in an anvil and a fiddly one in
- * a config file.
+ * <p>The look can be captured whole from an item: name something in an anvil,
+ * hold it, click, and the skin, the name, the lore and the model data all come
+ * across. The name and the lore can also be typed, which is the only way to use
+ * the <code>&lt;ratio&gt;</code> and <code>&lt;ore&gt;</code> tokens — an anvil
+ * writes a fixed string, and "Worth 64 coal" stops being true the moment the
+ * ratio changes.
  *
  * <p>Editing a recipe does not reach units already in circulation: what a unit
  * is worth is written on it at creation, so old stacks keep working and simply
@@ -34,9 +36,11 @@ public class RecipeEditMenu extends AbstractMenu {
 
     private static final int PREVIEW_SLOT = 4;
     private static final int AMOUNT_SLOT = 22;
+    private static final int NAME_SLOT = 27;
     private static final int LOOK_SLOT = 29;
     private static final int GLOW_SLOT = 31;
     private static final int RESET_SLOT = 33;
+    private static final int LORE_SLOT = 35;
     private static final int DELETE_SLOT = 40;
     private static final int BACK_SLOT = 36;
     private static final int CLOSE_SLOT = 44;
@@ -83,6 +87,8 @@ public class RecipeEditMenu extends AbstractMenu {
                                 + "</white> makes one unit.",
                         "<dark_gray>id: " + recipe.id()), false));
 
+        set(NAME_SLOT, nameIcon(recipe));
+        set(LORE_SLOT, loreIcon(recipe));
         set(LOOK_SLOT, lookIcon(player, recipe));
         set(GLOW_SLOT, Items.text(recipe.appearance().glow()
                         ? Material.GLOWSTONE_DUST : Material.GUNPOWDER,
@@ -122,6 +128,40 @@ public class RecipeEditMenu extends AbstractMenu {
                 label, List.of(result == recipe.amount()
                         ? "<dark_gray>Already at the limit."
                         : "<gray>Makes it <white>" + Text.number(result) + "</white> → 1."), false);
+    }
+
+    private ItemStack nameIcon(CompactRecipe recipe) {
+        String name = recipe.appearance().name();
+        List<String> lore = new ArrayList<>();
+        lore.add(name == null || name.isBlank()
+                ? "<gray>Now: <white>the built-in name"
+                : "<gray>Now: <white>" + name);
+        lore.add("");
+        lore.add("<gray><white><ratio></white> becomes the amount and");
+        lore.add("<gray><white><ore></white> the ore, so the name stays");
+        lore.add("<gray>true when you change the ratio.");
+        lore.add("");
+        lore.add("<yellow>Click to type a name");
+        lore.add("<yellow>Shift-click for the built-in one");
+        return Items.text(Material.NAME_TAG, "<yellow>Name the unit", lore, false);
+    }
+
+    private ItemStack loreIcon(CompactRecipe recipe) {
+        List<String> current = recipe.appearance().lore();
+        List<String> lore = new ArrayList<>();
+        if (current == null || current.isEmpty()) {
+            lore.add("<gray>Now: <white>the built-in lines");
+        } else {
+            lore.add("<gray>Now:");
+            for (String line : current) {
+                lore.add("  <dark_gray>" + line);
+            }
+        }
+        lore.add("");
+        lore.add("<yellow>Click to add a line");
+        lore.add("<yellow>Right-click to drop the last one");
+        lore.add("<yellow>Shift-click for the built-in lines");
+        return Items.text(Material.WRITABLE_BOOK, "<yellow>Describe the unit", lore, false);
     }
 
     private ItemStack lookIcon(Player player, CompactRecipe recipe) {
@@ -194,6 +234,14 @@ public class RecipeEditMenu extends AbstractMenu {
             setLook(player, recipe);
             return;
         }
+        if (raw == NAME_SLOT) {
+            setName(player, recipe, event.isShiftClick());
+            return;
+        }
+        if (raw == LORE_SLOT) {
+            setLore(player, recipe, event.isShiftClick(), event.isRightClick());
+            return;
+        }
         Integer step = STEPS.get(raw);
         if (step != null) {
             int amount = clamp(recipe.amount() + step);
@@ -202,6 +250,83 @@ public class RecipeEditMenu extends AbstractMenu {
                         recipe.appearance()));
             }
         }
+    }
+
+    /**
+     * Types the unit's name, or puts the built-in one back.
+     *
+     * <p>The answer is applied against the recipe as it is when the answer
+     * arrives, not the copy this menu was drawn from — somebody else may have
+     * edited it while the question was open, and only the name was being asked
+     * about.
+     */
+    private void setName(Player player, CompactRecipe recipe, boolean clear) {
+        if (clear) {
+            save(player, withName(recipe, null));
+            return;
+        }
+        click(player);
+        plugin.prompts().ask(player,
+                "<gold>What should a unit of <white>" + recipe.display() + "</white> be called?",
+                answer -> {
+                    CompactRecipe now = recipe();
+                    if (now != null) {
+                        module.recipes().put(withName(now, answer));
+                    }
+                    reopen(player);
+                },
+                () -> reopen(player));
+    }
+
+    /** Adds a line, drops the last one, or puts the built-in lines back. */
+    private void setLore(Player player, CompactRecipe recipe, boolean clear, boolean removeLast) {
+        List<String> lines = recipe.appearance().lore();
+        if (clear) {
+            save(player, withLore(recipe, null));
+            return;
+        }
+        if (removeLast) {
+            if (lines == null || lines.isEmpty()) {
+                return;
+            }
+            List<String> shorter = new ArrayList<>(lines);
+            shorter.remove(shorter.size() - 1);
+            save(player, withLore(recipe, shorter.isEmpty() ? null : shorter));
+            return;
+        }
+        click(player);
+        plugin.prompts().ask(player,
+                "<gold>What line should be added under the name?",
+                answer -> {
+                    CompactRecipe now = recipe();
+                    if (now != null) {
+                        List<String> longer = now.appearance().lore() == null
+                                ? new ArrayList<>() : new ArrayList<>(now.appearance().lore());
+                        longer.add(answer);
+                        module.recipes().put(withLore(now, longer));
+                    }
+                    reopen(player);
+                },
+                () -> reopen(player));
+    }
+
+    private CompactRecipe withName(CompactRecipe recipe, String name) {
+        CompressedOre.Appearance look = recipe.appearance();
+        return new CompactRecipe(recipe.id(), recipe.input(), recipe.amount(),
+                new CompressedOre.Appearance(look.material(), name, look.lore(),
+                        look.modelData(), look.glow()));
+    }
+
+    private CompactRecipe withLore(CompactRecipe recipe, List<String> lore) {
+        CompressedOre.Appearance look = recipe.appearance();
+        return new CompactRecipe(recipe.id(), recipe.input(), recipe.amount(),
+                new CompressedOre.Appearance(look.material(), look.name(), lore,
+                        look.modelData(), look.glow()));
+    }
+
+    /** Reopens this screen after a question, which closed it to make chat readable. */
+    private void reopen(Player player) {
+        new RecipeEditMenu(plugin, module, id).open(player);
     }
 
     /** Copies the held item's presentation onto the recipe. */

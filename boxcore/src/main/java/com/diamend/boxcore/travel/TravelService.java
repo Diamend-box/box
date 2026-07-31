@@ -2,8 +2,10 @@ package com.diamend.boxcore.travel;
 
 import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.util.Durations;
+import com.diamend.boxcore.util.Sounds;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -45,6 +47,7 @@ public class TravelService {
 
     private int warmupSeconds = 3;
     private boolean cancelOnMove = true;
+    private boolean sounds = true;
 
     public TravelService(BoxCorePlugin plugin, CombatTagger combat) {
         this.plugin = plugin;
@@ -54,6 +57,24 @@ public class TravelService {
     public void configure(int warmupSeconds, boolean cancelOnMove) {
         this.warmupSeconds = Math.max(0, warmupSeconds);
         this.cancelOnMove = cancelOnMove;
+    }
+
+    public void setSounds(boolean sounds) {
+        this.sounds = sounds;
+    }
+
+    /**
+     * Feedback for a trip.
+     *
+     * <p>The warmup is a few seconds of standing still with an actionbar line
+     * you may well not be looking at. A sound is what tells you it started, that
+     * it is still going, and — the one that matters in a fight — that it just
+     * stopped.
+     */
+    private void sound(Player player, Sound sound, float volume, float pitch) {
+        if (sounds) {
+            Sounds.play(player, sound, volume, pitch);
+        }
     }
 
     public int warmupSeconds() {
@@ -88,6 +109,7 @@ public class TravelService {
         if (combat.isTagged(player)) {
             plugin.messages().send(player, "travel-in-combat",
                     "time", Durations.format(combat.remainingMillis(player)));
+            sound(player, Sound.ENTITY_VILLAGER_NO, 0.6f, 1.0f);
             return Outcome.IN_COMBAT;
         }
         if (isTravelling(player)) {
@@ -136,6 +158,11 @@ public class TravelService {
     private void showCountdown(Player player, Warp warp, int secondsLeft) {
         player.sendActionBar(Text.parse("<aqua>Travelling to <white>"
                 + Text.plain(warp.display()) + "</white> — <yellow>" + secondsLeft + "s"));
+        // A tick per second, climbing as you get closer, so the trip is audible
+        // to you and to anyone stood next to you deciding whether to hit you.
+        double done = warmupSeconds <= 0 ? 1.0
+                : (warmupSeconds - secondsLeft) / (double) warmupSeconds;
+        sound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.5f, (float) (0.9 + 0.8 * done));
         if (plugin.boosts() != null) {
             plugin.boosts().notifier().hold(player, 1500L);
         }
@@ -158,6 +185,7 @@ public class TravelService {
         };
         plugin.messages().send(player, path);
         player.sendActionBar(Text.parse("<red>Travel cancelled."));
+        sound(player, Sound.BLOCK_FIRE_EXTINGUISH, 0.7f, 1.2f);
     }
 
     private void stop(UUID uuid) {
@@ -191,6 +219,7 @@ public class TravelService {
         plugin.messages().send(player, "travel-arrived", "warp", Text.plain(warp.display()));
         player.sendActionBar(Text.parse("<green>Arrived at <white>"
                 + Text.plain(warp.display())));
+        sound(player, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.2f);
     }
 
     // ------------------------------------------------------------------

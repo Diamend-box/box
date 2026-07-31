@@ -10,6 +10,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +23,11 @@ import java.util.Map;
  * <p>Places you haven't found are shown rather than hidden, but without their
  * name or where they are. A blank in a list someone can see is a reason to go
  * exploring; a list that silently grows as you wander is just a list.
+ *
+ * <p>The screen rebuilds once a second while it is open. Two things on it are
+ * true only for the moment they were drawn — the combat tag counting down and
+ * whether a trip is already running — and a menu that says you can't travel
+ * several seconds after you can is worse than one that never said anything.
  */
 public class TravelMenu extends AbstractMenu {
 
@@ -47,6 +53,8 @@ public class TravelMenu extends AbstractMenu {
     private final Map<Integer, String> offered = new HashMap<>();
     private int pages = 1;
 
+    private BukkitTask refresh;
+
     public TravelMenu(BoxCorePlugin plugin, TravelModule module, int page) {
         super(plugin, 54, "<dark_gray>Box <gray>| <green>Fast travel");
         this.module = module;
@@ -54,9 +62,15 @@ public class TravelMenu extends AbstractMenu {
     }
 
     @Override
+    public void open(Player player) {
+        super.open(player);
+        startRefresh(player);
+    }
+
+    @Override
     protected void build(Player player) {
         offered.clear();
-        List<Warp> warps = module.visibleTo(player);
+        List<Warp> warps = module.orderedFor(player);
         pages = Math.max(1, (warps.size() + WARP_SLOTS.length - 1) / WARP_SLOTS.length);
         int start = Math.min(page, pages - 1) * WARP_SLOTS.length;
 
@@ -155,25 +169,30 @@ public class TravelMenu extends AbstractMenu {
         }
         int raw = event.getRawSlot();
         if (raw == CLOSE_SLOT) {
+            stopRefresh();
             player.closeInventory();
             return;
         }
         if (raw == BACK_SLOT) {
+            stopRefresh();
             click(player);
             openLater(player, new HubMenu(plugin));
             return;
         }
         if (raw == EDIT_SLOT && player.hasPermission(ADMIN)) {
+            stopRefresh();
             click(player);
             openLater(player, new WarpEditorMenu(plugin, module, 0));
             return;
         }
         if (raw == PREV_SLOT && page > 0) {
+            stopRefresh();
             click(player);
             openLater(player, new TravelMenu(plugin, module, page - 1));
             return;
         }
         if (raw == NEXT_SLOT && page < pages - 1) {
+            stopRefresh();
             click(player);
             openLater(player, new TravelMenu(plugin, module, page + 1));
             return;
@@ -189,6 +208,7 @@ public class TravelMenu extends AbstractMenu {
         }
         // Close first: the warmup countdown goes to the actionbar, which is
         // behind an open inventory screen.
+        stopRefresh();
         click(player);
         player.closeInventory();
         module.travel().begin(player, warp);
@@ -197,5 +217,35 @@ public class TravelMenu extends AbstractMenu {
     private void redraw(Player player) {
         getInventory().clear();
         build(player);
+    }
+
+    // ------------------------------------------------------------------
+    // Keeping it current
+    // ------------------------------------------------------------------
+
+    private void startRefresh(Player player) {
+        stopRefresh();
+        refresh = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            if (!player.isOnline() || !isWatching(player)) {
+                stopRefresh();
+                return;
+            }
+            redraw(player);
+        }, 20L, 20L);
+    }
+
+    private boolean isWatching(Player player) {
+        try {
+            return player.getOpenInventory().getTopInventory().getHolder() == this;
+        } catch (Throwable ex) {
+            return false; // can't tell; stop rather than redraw something else
+        }
+    }
+
+    private void stopRefresh() {
+        if (refresh != null) {
+            refresh.cancel();
+            refresh = null;
+        }
     }
 }

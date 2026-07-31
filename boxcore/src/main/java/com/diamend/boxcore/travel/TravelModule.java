@@ -5,13 +5,17 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.TravelMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
+import com.diamend.boxcore.util.Sounds;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Fast travel: a list of destinations a player finds by walking into them.
@@ -27,12 +31,45 @@ import java.util.List;
  */
 public class TravelModule implements BoxModule {
 
+    /**
+     * How the menu lays destinations out.
+     *
+     * <p>The order is a server's choice rather than a fixed rule, because what
+     * "first" should mean depends on how many places there are. A handful reads
+     * best in the order staff added them; two pages of them read best with the
+     * ones you can actually use at the top.
+     */
+    public enum Order {
+        /** Places you've found first, then the rest, each group by name. */
+        FOUND,
+        /** By name, found or not. */
+        NAME,
+        /** Nearest first; other worlds last. */
+        DISTANCE,
+        /** However warps.yml happens to list them. */
+        FILE;
+
+        public static Order parse(String raw) {
+            if (raw == null) {
+                return FOUND;
+            }
+            return switch (raw.trim().toLowerCase(Locale.ROOT)) {
+                case "name", "alphabetical" -> NAME;
+                case "distance", "nearest" -> DISTANCE;
+                case "file", "config", "added" -> FILE;
+                default -> FOUND;
+            };
+        }
+    }
+
     private final BoxCorePlugin plugin;
     private final WarpManager warps;
     private final CombatTagger combat;
     private final TravelService travel;
 
     private boolean announceDiscovery = true;
+    private boolean sounds = true;
+    private Order order = Order.FOUND;
 
     public TravelModule(BoxCorePlugin plugin) {
         this.plugin = plugin;
@@ -73,7 +110,14 @@ public class TravelModule implements BoxModule {
                 plugin.getConfig().getBoolean("travel.cancel-on-move", true));
         combat.setSeconds(plugin.getConfig().getLong("travel.combat-tag-seconds", 15L));
         announceDiscovery = plugin.getConfig().getBoolean("travel.announce-discovery", true);
+        sounds = plugin.getConfig().getBoolean("travel.sounds", true);
+        order = Order.parse(plugin.getConfig().getString("travel.menu-order", "found"));
+        travel.setSounds(sounds);
         warps.load();
+    }
+
+    public Order order() {
+        return order;
     }
 
     public WarpManager warps() {
@@ -112,6 +156,11 @@ public class TravelModule implements BoxModule {
                     plugin.messages().send(player, "travel-discovered",
                             "warp", Text.plain(warp.display()));
                 }
+                if (sounds) {
+                    // Finding somewhere is the only progression this module has;
+                    // it deserves to sound like something happened.
+                    Sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.0f);
+                }
             }
         }
     }
@@ -129,6 +178,51 @@ public class TravelModule implements BoxModule {
             }
         }
         return visible;
+    }
+
+    /**
+     * Warps this player can see, in the order the menu should show them.
+     *
+     * <p>Sorting happens here rather than in the menu so the ordering is one
+     * decision made once, and so a warp's position on the page means the same
+     * thing on page two as it does on page one.
+     */
+    public List<Warp> orderedFor(Player player) {
+        List<Warp> visible = visibleTo(player);
+        Comparator<Warp> comparator = switch (order) {
+            case FILE -> null;
+            case NAME -> byName();
+            case DISTANCE -> byDistance(player).thenComparing(byName());
+            case FOUND -> foundFirst(player).thenComparing(byName());
+        };
+        if (comparator != null) {
+            visible.sort(comparator);
+        }
+        return visible;
+    }
+
+    private Comparator<Warp> byName() {
+        return Comparator.comparing(warp -> Text.plain(warp.display()).toLowerCase(Locale.ROOT));
+    }
+
+    private Comparator<Warp> foundFirst(Player player) {
+        return Comparator.comparing(warp -> hasDiscovered(player, warp) ? 0 : 1);
+    }
+
+    /**
+     * Nearest first. A warp in another world sorts last rather than throwing —
+     * distances across worlds aren't a number Minecraft will give you.
+     */
+    private Comparator<Warp> byDistance(Player player) {
+        Location from = player.getLocation();
+        return Comparator.comparingDouble(warp -> {
+            Location at = warp.location();
+            if (at == null || at.getWorld() == null || from.getWorld() == null
+                    || !at.getWorld().equals(from.getWorld())) {
+                return Double.MAX_VALUE;
+            }
+            return at.distanceSquared(from);
+        });
     }
 
     public int discoveredCount(Player player) {

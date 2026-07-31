@@ -11,6 +11,8 @@ import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.skill.perk.Perk;
+import com.diamend.boxcore.travel.TravelModule;
+import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.util.Durations;
 import com.diamend.boxcore.util.Text;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
@@ -44,6 +46,15 @@ import java.util.Locale;
  *   %boxcore_compressor_slots%            compactor slots they carry
  *   %boxcore_compressor_used%             of those, how many are filled
  *   %boxcore_compressor_recipes%          recipes this server compacts
+ *   %boxcore_travel_found%                destinations they've found
+ *   %boxcore_travel_total%                destinations they can see
+ *   %boxcore_travel_percent%              of those, the percent found
+ *   %boxcore_travel_destinations%         destinations set up at all
+ *   %boxcore_travel_found_&lt;id&gt;%     true when they've found that one
+ *   %boxcore_travel_warmup%               seconds a trip takes
+ *   %boxcore_travel_travelling%           true while a trip is running
+ *   %boxcore_travel_combat%               true while combat blocks travel
+ *   %boxcore_travel_combat_time%          time until it doesn't, e.g. 12s
  * </pre>
  *
  * <p>The boost placeholders read 1 rather than an empty string when nothing is
@@ -132,6 +143,9 @@ public class BoxPlaceholders extends PlaceholderExpansion {
         }
         if (query.startsWith("compressor_")) {
             return compressor(player, profile, query.substring(11));
+        }
+        if (query.startsWith("travel_")) {
+            return travel(player, profile, query.substring(7));
         }
 
         CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
@@ -222,6 +236,55 @@ public class BoxPlaceholders extends PlaceholderExpansion {
             case "used" -> String.valueOf(slotTotal(module, online, true));
             default -> "";
         };
+    }
+
+    /**
+     * Everything after {@code travel_}.
+     *
+     * <p>What someone has found is on their profile, so the counts answer for an
+     * offline player too. What they are <em>allowed</em> to see isn't — permission
+     * checks need a player who is here — so an offline lookup counts against
+     * every destination rather than pretending it knows which ones were theirs.
+     */
+    private String travel(OfflinePlayer player, PlayerProfile profile, String query) {
+        TravelModule module = plugin.travel();
+        if (module == null) {
+            return "";
+        }
+        if (query.startsWith("found_")) {
+            Warp warp = module.warps().get(query.substring(6));
+            return warp == null ? "" : String.valueOf(profile.hasDiscovered(warp.id()));
+        }
+
+        Player online = player.getPlayer();
+        int total = online == null ? module.warps().size() : module.visibleTo(online).size();
+        int found = discovered(module, profile, online);
+        return switch (query) {
+            case "found" -> String.valueOf(found);
+            case "total" -> String.valueOf(total);
+            case "destinations" -> String.valueOf(module.warps().size());
+            case "percent" -> String.valueOf(total == 0 ? 0 : Math.round(found * 100.0 / total));
+            case "warmup" -> String.valueOf(module.travel().warmupSeconds());
+            case "travelling" -> String.valueOf(online != null && module.travel().isTravelling(online));
+            case "combat" -> String.valueOf(online != null && module.combat().isTagged(online));
+            case "combat_time" -> online == null
+                    ? "" : Durations.format(module.combat().remainingMillis(online));
+            default -> "";
+        };
+    }
+
+    /** How many destinations they've found, counting only ones that still exist. */
+    private int discovered(TravelModule module, PlayerProfile profile, Player online) {
+        if (online != null) {
+            return module.discoveredCount(online);
+        }
+        int found = 0;
+        for (Warp warp : module.warps().all()) {
+            if (profile.hasDiscovered(warp.id())) {
+                found++;
+            }
+        }
+        return found;
     }
 
     /** Slots across every compactor the player carries, filled ones or all. */

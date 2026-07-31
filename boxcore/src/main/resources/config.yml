@@ -357,6 +357,20 @@ travel:
   # Whether to say so in chat the first time someone finds a place.
   announce-discovery: true
 
+  # Sound for finding a place, for the warmup ticking down, for arriving
+  # and for a trip being cut short. The cancel sound is the one that
+  # earns its keep: it tells you the trip stopped without you having to
+  # be looking at the action bar.
+  sounds: true
+
+  # How the travel menu orders destinations:
+  #   found     places you've found first, then the rest, each by name
+  #   name      by name, found or not
+  #   distance  nearest first, other worlds last — note this also hints
+  #             at how far away the places you haven't found are
+  #   file      however warps.yml happens to list them
+  menu-order: found
+
 # ---------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------

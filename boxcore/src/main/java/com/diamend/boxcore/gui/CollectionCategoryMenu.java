@@ -22,6 +22,13 @@ import java.util.Map;
  */
 public class CollectionCategoryMenu extends AbstractMenu {
 
+    /** The row categories sit in, and where they spill to when there are many. */
+    private static final int[] ROW = {10, 11, 12, 13, 14, 15, 16};
+    private static final int[] OVERFLOW = {19, 20, 21, 22, 23, 24, 25};
+
+    private static final int BACK_SLOT = 18;
+    private static final int CLOSE_SLOT = 26;
+
     private final CollectionsModule collections;
     private final Map<Integer, CollectionCategory> slots = new HashMap<>();
 
@@ -36,11 +43,10 @@ public class CollectionCategoryMenu extends AbstractMenu {
         PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
         List<CollectionCategory> categories = collections.collections().categories();
 
-        int slot = categories.size() <= 7 ? 10 + (7 - categories.size()) / 2 : 9;
-        for (CollectionCategory category : categories) {
-            if (slot >= 26) {
-                break;
-            }
+        int[] layout = layout(categories.size());
+        for (int index = 0; index < layout.length; index++) {
+            CollectionCategory category = categories.get(index);
+            int slot = layout[index];
             List<ItemCollection> members = collections.collections().inCategory(category.getId());
             int started = 0;
             int maxed = 0;
@@ -70,7 +76,6 @@ public class CollectionCategoryMenu extends AbstractMenu {
 
             slots.put(slot, category);
             set(slot, Items.text(category.getIcon(), category.getDisplay(), lore, tiers > 0));
-            slot++;
         }
 
         if (categories.isEmpty()) {
@@ -78,13 +83,52 @@ public class CollectionCategoryMenu extends AbstractMenu {
                     List.of("<gray>None are configured."), false));
         }
 
-        set(4, Items.text(Material.CHEST, "<gold>Your collections",
-                List.of("<gray>Items gathered: <white>"
-                                + Text.number(collections.collections().itemsCollected(profile)),
-                        "<gray>Skill points available: <white>" + profile.getAvailablePoints()), true));
-        backButton(18, "Hub");
-        closeButton(26);
+        List<String> header = new ArrayList<>();
+        header.add("<gray>Items gathered: <white>"
+                + Text.number(collections.collections().itemsCollected(profile)));
+        header.add("<gray>Skill points available: <white>" + profile.getAvailablePoints());
+        if (categories.size() > layout.length) {
+            // Say so rather than let a category quietly not exist.
+            header.add("<red>Showing <white>" + layout.length + "</white> of <white>"
+                    + categories.size() + "</white> categories.");
+        }
+        set(4, Items.text(Material.CHEST, "<gold>Your collections", header, true));
+        backButton(BACK_SLOT, "Hub");
+        closeButton(CLOSE_SLOT);
         fillEmpty(Material.GRAY_STAINED_GLASS_PANE);
+    }
+
+    /**
+     * Which slots to put {@code count} categories in.
+     *
+     * <p>A short row is centred on the middle column, under the header, so the
+     * menu doesn't read as though something is missing off the right-hand side.
+     * An even count can't sit exactly on a column, so the spare space goes to
+     * the left of the group.
+     *
+     * <p>More than a row's worth spills onto a second row rather than running on
+     * into the back and close buttons. The old layout ran straight through them:
+     * a tenth category was drawn under the back arrow and could not be clicked,
+     * and an eighteenth was dropped without a word.
+     */
+    private static int[] layout(int count) {
+        if (count <= 0) {
+            return new int[0];
+        }
+        if (count > ROW.length) {
+            int shown = Math.min(count, ROW.length + OVERFLOW.length);
+            int[] slots = new int[shown];
+            for (int index = 0; index < shown; index++) {
+                slots[index] = index < ROW.length ? ROW[index] : OVERFLOW[index - ROW.length];
+            }
+            return slots;
+        }
+        int start = (ROW.length - count + 1) / 2;
+        int[] slots = new int[count];
+        for (int index = 0; index < count; index++) {
+            slots[index] = ROW[start + index];
+        }
+        return slots;
     }
 
     @Override
@@ -93,11 +137,11 @@ public class CollectionCategoryMenu extends AbstractMenu {
             return;
         }
         int raw = event.getRawSlot();
-        if (raw == 26) {
+        if (raw == CLOSE_SLOT) {
             player.closeInventory();
             return;
         }
-        if (raw == 18) {
+        if (raw == BACK_SLOT) {
             click(player);
             openLater(player, new HubMenu(plugin));
             return;

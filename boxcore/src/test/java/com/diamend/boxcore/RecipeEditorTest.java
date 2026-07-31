@@ -38,9 +38,11 @@ class RecipeEditorTest {
     private static final int PLUS_ONE = 23;
     private static final int MINUS_TEN = 20;
     private static final int MINUS_64 = 19;
+    private static final int NAME_SLOT = 27;
     private static final int LOOK_SLOT = 29;
     private static final int GLOW_SLOT = 31;
     private static final int RESET_SLOT = 33;
+    private static final int LORE_SLOT = 35;
     private static final int DELETE_SLOT = 40;
 
     private ServerMock server;
@@ -262,6 +264,118 @@ class RecipeEditorTest {
         CompactRecipe now = module().recipes().get(id);
         assertEquals(Material.COAL, now.appearance().materialOr(Material.COAL));
         assertNull(now.appearance().name(), "back to the built-in name");
+    }
+
+    // ------------------------------------------------------------------
+    // Typing the words
+    // ------------------------------------------------------------------
+
+    /** Answers the question the menu just asked, and lets the answer land. */
+    private void answer(PlayerMock player, String text) {
+        assertTrue(plugin.prompts().deliver(player, text), "something should be asking");
+        server.getScheduler().performOneTick();
+    }
+
+    @Test
+    void theNameCanBeTyped() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+
+        player.simulateInventoryClick(NAME_SLOT);
+        answer(player, "<gold>Coal Brick");
+
+        assertEquals("<gold>Coal Brick", module().recipes().get(id).appearance().name());
+        assertTrue(isOpen(player, RecipeEditMenu.class),
+                "and it puts you back where you were");
+    }
+
+    @Test
+    void aTypedNameCanCarryTheRatio() {
+        // The reason typing exists at all: an anvil writes a fixed string, and
+        // "64 coal" stops being true the first time somebody edits the amount.
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+
+        player.simulateInventoryClick(NAME_SLOT);
+        answer(player, "<ratio> coal");
+
+        assertTrue(module().recipes().get(id).appearance().name().contains("<ratio>"),
+                "the token is stored, not resolved at the time it was typed");
+    }
+
+    @Test
+    void shiftClickingTheNamePutsTheBuiltInOneBack() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+        player.simulateInventoryClick(NAME_SLOT);
+        answer(player, "Coal Brick");
+
+        openRecipe(player, id);
+        player.simulateInventoryClick(player.getOpenInventory(), ClickType.SHIFT_LEFT, NAME_SLOT);
+
+        assertNull(module().recipes().get(id).appearance().name(), "back to the built-in name");
+    }
+
+    @Test
+    void cancellingLeavesTheNameAlone() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+
+        player.simulateInventoryClick(NAME_SLOT);
+        answer(player, "cancel");
+
+        assertNull(module().recipes().get(id).appearance().name(), "nothing was written");
+    }
+
+    @Test
+    void loreLinesAreAddedOneAtATime() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+
+        player.simulateInventoryClick(LORE_SLOT);
+        answer(player, "Pressed flat.");
+        player.simulateInventoryClick(LORE_SLOT);
+        answer(player, "Worth <ratio>.");
+
+        List<String> lines = module().recipes().get(id).appearance().lore();
+        assertNotNull(lines);
+        assertEquals(List.of("Pressed flat.", "Worth <ratio>."), lines);
+    }
+
+    @Test
+    void rightClickingDropsTheLastLine() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+        player.simulateInventoryClick(LORE_SLOT);
+        answer(player, "Pressed flat.");
+        player.simulateInventoryClick(LORE_SLOT);
+        answer(player, "A mistake.");
+
+        openRecipe(player, id);
+        player.simulateInventoryClick(player.getOpenInventory(), ClickType.RIGHT, LORE_SLOT);
+
+        assertEquals(List.of("Pressed flat."), module().recipes().get(id).appearance().lore());
+    }
+
+    @Test
+    void shiftClickingTheLoreClearsIt() {
+        PlayerMock player = server.addPlayer();
+        String id = coalId();
+        openRecipe(player, id);
+        player.simulateInventoryClick(LORE_SLOT);
+        answer(player, "Pressed flat.");
+
+        openRecipe(player, id);
+        player.simulateInventoryClick(player.getOpenInventory(), ClickType.SHIFT_LEFT, LORE_SLOT);
+
+        assertNull(module().recipes().get(id).appearance().lore(),
+                "back to the built-in lines");
     }
 
     // ------------------------------------------------------------------

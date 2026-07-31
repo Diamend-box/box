@@ -24,10 +24,11 @@ import java.util.Map;
  * add. Every change writes {@code compactor.yml} straight away, so a crash
  * between edits costs nothing.
  *
- * <p>Nothing is typed. The input, the skin, the name and the lore all come from
- * items the editor is holding, which means an owner styles a compacted unit the
- * way they already style everything else — in an anvil — rather than learning
- * where the colour codes go in a config file.
+ * <p>Adding one is done entirely by holding an item, and so is styling it: the
+ * skin, the name and the lore can all be lifted off something named in an anvil,
+ * which is how an owner styles everything else. Typing is offered too, on the
+ * recipe's own screen, for the one thing an anvil can't write — a name that
+ * still reads correctly after the ratio changes.
  */
 public class RecipeEditorMenu extends AbstractMenu {
 

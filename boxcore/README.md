@@ -88,10 +88,13 @@ Six ship today:
   model data and glow. `/box give <item> [units]` mints a unit to check a skin
   without gathering for it.
 - 🛠️ **Recipes are edited in game** — `/box compactor recipes` adds, retunes and
-  deletes them without touching YAML or restarting. Nothing is typed: hold the
-  item to add a recipe for it, step the amount with buttons, and set the
+  deletes them without touching YAML or restarting. Most of it needs no typing:
+  hold the item to add a recipe for it, step the amount with buttons, and set the
   compacted unit's skin, name, lore and model data by holding an item you've
-  already named in an anvil. Every change writes `compactor.yml` immediately, and
+  already named in an anvil. The name and the lore can also be typed in chat,
+  which is the only way to use the `<ratio>` and `<ore>` tokens — an anvil writes
+  a fixed string, and "Worth 64 coal" stops being true the moment somebody
+  retunes the ratio. Every change writes `compactor.yml` immediately, and
   that file is the plugin's to rewrite — your commented `config.yml` is never
   touched.
 - ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
@@ -113,7 +116,11 @@ Six ship today:
   on a PvP server, fast travel that can be used to leave a losing fight is a
   different feature entirely. Only player-versus-player damage tags, so a mob
   farm doesn't lock you out of it. The menu is on `/box travel` and on
-  `/fasttravel`, `/fastravel` and `/ft`. Staff build the list from inside the
+  `/fasttravel`, `/fastravel` and `/ft`; it rebuilds itself once a second while
+  it's open, so a combat tag running out unlocks the list in front of you rather
+  than when you next reopen it. Places you've found sort to the top by default,
+  and `travel.menu-order` can make that alphabetical, nearest-first, or the
+  order staff added them. Staff build the list from inside the
   game: `/box warp` opens an editor where a destination is made where you stand,
   wears whatever you're holding, and has its description, permission and
   discovery radius set by clicking. Nothing needs a text editor or a restart.
@@ -392,6 +399,15 @@ With PlaceholderAPI installed:
 | `%boxcore_compressor_slots%` | Compactor slots they carry |
 | `%boxcore_compressor_used%` | Of those, how many are filled |
 | `%boxcore_compressor_recipes%` | How many recipes this server compacts |
+| `%boxcore_travel_found%` | Destinations they've found |
+| `%boxcore_travel_total%` | Destinations they're allowed to see |
+| `%boxcore_travel_percent%` | Of those, the percent found |
+| `%boxcore_travel_destinations%` | Destinations set up at all |
+| `%boxcore_travel_found_<id>%` | `true` when they've found that one |
+| `%boxcore_travel_warmup%` | Seconds a trip takes |
+| `%boxcore_travel_travelling%` | `true` while a trip is running |
+| `%boxcore_travel_combat%` | `true` while combat is blocking travel |
+| `%boxcore_travel_combat_time%` | Time until it isn't, e.g. `12s` |
 
 ---
 
