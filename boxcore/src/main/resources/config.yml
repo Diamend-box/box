@@ -23,6 +23,8 @@ modules:
     enabled: true
   boosts:
     enabled: true
+  travel:
+    enabled: true
 
 # ---------------------------------------------------------------------
 # Skill trees
@@ -326,6 +328,36 @@ boosts:
 autosave-minutes: 5
 
 # ---------------------------------------------------------------------
+# Fast travel
+# ---------------------------------------------------------------------
+# Destinations are set by staff with /box warp set <id> and found by
+# players walking into them. Warps live in warps.yml, which the plugin
+# writes; nothing here needs editing to add one.
+#
+# The warmup and the combat tag are what stop this being a free escape
+# from a losing fight. Turning both off makes /box travel an instant
+# teleport out of any PvP encounter.
+travel:
+  # Seconds a player must stand still before arriving. 0 teleports
+  # immediately.
+  warmup-seconds: 3
+
+  # Whether stepping off the block you started on cancels the trip.
+  # Taking damage always cancels it, regardless of this.
+  cancel-on-move: true
+
+  # How long after player-versus-player damage travelling is refused.
+  # Only PvP tags — being hit by a mob doesn't.
+  combat-tag-seconds: 15
+
+  # How close a player must get to find a warp, in blocks. Per-warp
+  # values in warps.yml override this.
+  default-radius: 8
+
+  # Whether to say so in chat the first time someone finds a place.
+  announce-discovery: true
+
+# ---------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------
 messages:
@@ -358,6 +390,14 @@ messages:
   recipe-needs-item: "<red>Hold the item you want to use first."
   recipe-placeable: "<red>A placeable block can't be a compacted skin — placing one would move items out of the inventory uncounted."
   recipe-confirm-delete: "<yellow>Shift-click to confirm deleting this recipe."
+  travel-starting: "<aqua>Travelling to <white><warp></white> — hold still for <white><seconds></white>s."
+  travel-arrived: "<green>Arrived at <white><warp></white>."
+  travel-cancelled: "<yellow>Travel cancelled."
+  travel-cancelled-moved: "<yellow>You moved, so the trip was cancelled."
+  travel-cancelled-hurt: "<red>You took damage, so the trip was cancelled."
+  travel-in-combat: "<red>Not while you're in combat — <white><time></white> left."
+  travel-discovered: "<green>You found <white><warp></white>! It's on your travel list now."
+  travel-unavailable: "<red><white><warp></white> isn't reachable right now."
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."

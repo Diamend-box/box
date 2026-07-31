@@ -24,7 +24,7 @@ writing one class and registering it in `BoxCorePlugin`, not reworking the
 plugin. A module that fails to start is logged and skipped; the rest keep
 running.
 
-Three ship today:
+Six ship today:
 
 | Module | What it does |
 |--------|--------------|
@@ -33,6 +33,7 @@ Three ship today:
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 | `compressor` | Personal compactor: a carried item that folds up whichever recipes the player slots into it. |
 | `boosts` | Temporary multipliers on ore drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
+| `travel` | Fast travel to staff-set destinations, found by walking into them, with a warmup that can't be used to leave a fight. |
 
 ---
 
@@ -103,6 +104,15 @@ Three ship today:
   that you can click to start. An actionbar line keeps the multiplier and the
   time left on screen while it runs, and a boost never ends silently — there's a
   warning before, and a line when it does.
+- 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while
+  standing where they want it, using the held item as the icon. Players don't
+  get them handed over: a place shows in the menu as somewhere they haven't been
+  until they walk into it, so the list is a reason to explore rather than a
+  locked door. Travelling takes a configurable warmup that cancels the moment
+  you move or take damage, and is refused outright while you're combat-tagged —
+  on a PvP server, fast travel that can be used to leave a losing fight is a
+  different feature entirely. Only player-versus-player damage tags, so a mob
+  farm doesn't lock you out of it.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -144,6 +154,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box respec` | Refund every node you own | `boxcore.respec` |
 | `/box compress [on\|off]` | Open your compactor, or pause compacting | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
+| `/box travel` | Open the places you've found | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
@@ -151,6 +162,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box give <item> [units] [player]` | Give compacted items, for testing | `boxcore.admin` |
 | `/box compactor give <tier> [player]` | Hand out a personal compactor | `boxcore.admin` |
 | `/box compactor recipes` | Add, edit and delete compaction recipes | `boxcore.admin` |
+| `/box warp <set\|delete\|list> [id]` | Manage fast-travel destinations | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
 | `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |

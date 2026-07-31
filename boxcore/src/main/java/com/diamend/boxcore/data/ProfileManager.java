@@ -134,6 +134,7 @@ public class ProfileManager {
             }
         }
         profile.setCompressorEnabled(config.getBoolean("compressor/enabled", true));
+        profile.setDiscoveredWarps(config.getStringList("travel/discovered"));
         profile.setBoosts(readBoosts(config));
         // Boosts run on the wall clock, so anything that ran out while the
         // player was away is already over by the time we read it back.
@@ -180,6 +181,10 @@ public class ProfileManager {
             config.set(base + "tier", profile.getAwardedTier(entry.getKey()));
         }
         config.set("compressor" + SEPARATOR + "enabled", profile.isCompressorEnabled());
+        if (!profile.getDiscoveredWarps().isEmpty()) {
+            config.set("travel" + SEPARATOR + "discovered",
+                    new ArrayList<>(profile.getDiscoveredWarps()));
+        }
 
         long now = System.currentTimeMillis();
         int index = 0;

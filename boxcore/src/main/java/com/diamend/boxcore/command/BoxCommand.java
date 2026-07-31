@@ -20,6 +20,8 @@ import com.diamend.boxcore.ore.CompactorTier;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.RespecCost;
+import com.diamend.boxcore.travel.TravelModule;
+import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.skill.SkillNode;
 import com.diamend.boxcore.skill.SkillService;
 import com.diamend.boxcore.skill.SkillTree;
@@ -76,6 +78,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "compactor" -> compactor(sender, args);
             case "give", "givecompressed" -> giveCompressed(sender, args);
             case "boost", "boosts" -> boost(sender, args);
+            case "travel", "warps" -> travel(sender);
+            case "warp" -> warp(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
             case "modules" -> modules(sender);
@@ -582,6 +586,115 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         return null;
     }
 
+
+    // ------------------------------------------------------------------
+    // Fast travel
+    // ------------------------------------------------------------------
+
+    /** {@code /box travel} — the destinations you've found. */
+    private void travel(CommandSender sender) {
+        TravelModule module = plugin.travel();
+        if (module == null) {
+            messages().sendLiteral(sender, "<red>Fast travel is disabled on this server.");
+            return;
+        }
+        requirePlayer(sender, module::openFor);
+    }
+
+    /**
+     * {@code /box warp set|delete|list} — staff tools for the destination list.
+     *
+     * <p>{@code set} takes the location from where you're standing and the icon
+     * from what you're holding, including its name if you've renamed it. Typing
+     * coordinates and colour codes into chat is a worse version of both.
+     */
+    private void warp(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(ADMIN)) {
+            messages().send(sender, "no-permission");
+            return;
+        }
+        TravelModule module = plugin.travel();
+        if (module == null) {
+            messages().sendLiteral(sender, "<red>Fast travel is disabled on this server.");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        switch (action) {
+            case "set" -> setWarp(sender, module, args);
+            case "delete", "remove" -> deleteWarp(sender, module, args);
+            case "list" -> listWarps(sender, module);
+            default -> messages().sendLiteral(sender,
+                    "<red>Usage: /box warp <set|delete|list> [id]");
+        }
+    }
+
+    private void setWarp(CommandSender sender, TravelModule module, String[] args) {
+        if (args.length < 3) {
+            messages().sendLiteral(sender, "<red>Usage: /box warp set <id>");
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            messages().send(sender, "players-only");
+            return;
+        }
+        String id = args[2].trim().toLowerCase(Locale.ROOT);
+        if (id.isEmpty() || !id.matches("[a-z0-9_-]+")) {
+            messages().sendLiteral(sender,
+                    "<red>Use letters, numbers, - and _ for a warp id.");
+            return;
+        }
+
+        ItemStack held = player.getInventory().getItemInMainHand();
+        Material icon = held == null || held.getType().isAir()
+                ? Material.ENDER_PEARL : held.getType();
+        String display = id;
+        if (held != null && held.getItemMeta() != null && held.getItemMeta().hasDisplayName()) {
+            display = Text.serialize(held.getItemMeta().displayName());
+        }
+
+        Warp existing = module.warps().get(id);
+        Warp warp = new Warp(id,
+                existing == null ? display : existing.display(),
+                icon,
+                existing == null ? List.of() : existing.description(),
+                player.getLocation().clone(),
+                existing == null ? "" : existing.permission(),
+                plugin.getConfig().getDouble("travel.default-radius", 8.0));
+        module.warps().put(warp);
+        messages().sendLiteral(sender, (existing == null
+                ? "<green>Created warp <white>" : "<green>Moved warp <white>") + id
+                + "<green> to where you're standing.");
+    }
+
+    private void deleteWarp(CommandSender sender, TravelModule module, String[] args) {
+        if (args.length < 3) {
+            messages().sendLiteral(sender, "<red>Usage: /box warp delete <id>");
+            return;
+        }
+        String id = args[2].trim().toLowerCase(Locale.ROOT);
+        if (module.warps().remove(id)) {
+            messages().sendLiteral(sender, "<yellow>Deleted warp <white>" + id + "<yellow>.");
+        } else {
+            messages().sendLiteral(sender, "<red>No warp called <white>" + id + "<red>.");
+        }
+    }
+
+    private void listWarps(CommandSender sender, TravelModule module) {
+        if (module.warps().size() == 0) {
+            messages().sendLiteral(sender,
+                    "<gray>No warps yet. Stand somewhere and run <white>/box warp set <id><gray>.");
+            return;
+        }
+        messages().sendLiteral(sender, "<gray>Warps:");
+        for (Warp warp : module.warps().all()) {
+            org.bukkit.Location at = warp.location();
+            messages().sendPlain(sender, "  <white>" + warp.id() + " <dark_gray>— "
+                    + (at.getWorld() == null ? "?" : at.getWorld().getName())
+                    + " " + Math.round(at.getX()) + ", " + Math.round(at.getY())
+                    + ", " + Math.round(at.getZ()));
+        }
+    }
+
     // ------------------------------------------------------------------
     // Boosts
     // ------------------------------------------------------------------
@@ -834,6 +947,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
         messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— open your compactor (or pause it)");
         messages().sendPlain(sender, "  <white>/box boost <gray>— show the boosts running for you");
+        messages().sendPlain(sender, "  <white>/box travel <gray>— open the places you've found");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
             messages().sendPlain(sender, "  <white>/box unlock <player> <tree.node> [level]");
@@ -846,6 +960,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                     + "<gray>— hand out a personal compactor");
             messages().sendPlain(sender, "  <white>/box compactor recipes "
                     + "<gray>— add and edit what compacts");
+            messages().sendPlain(sender, "  <white>/box warp <set|delete|list> [id] "
+                    + "<gray>— fast-travel destinations");
             messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost player <name> <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost item <id> [player] [amount]");
@@ -906,9 +1022,10 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission(ADMIN);
 
         if (args.length == 1) {
-            options.addAll(List.of("skills", "collections", "points", "respec", "compress", "boost"));
+            options.addAll(List.of("skills", "collections", "points", "respec", "compress",
+                    "boost", "travel"));
             if (admin) {
-                options.addAll(List.of("give", "compactor", "unlock", "collection",
+                options.addAll(List.of("give", "compactor", "warp", "unlock", "collection",
                         "reset", "modules", "reload"));
             }
             return filter(options, args[0]);
@@ -931,6 +1048,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 case "compactor" -> {
                     if (admin) {
                         options.addAll(List.of("give", "recipes"));
+                    }
+                }
+                case "warp" -> {
+                    if (admin) {
+                        options.addAll(List.of("set", "delete", "list"));
                     }
                 }
                 case "boost", "boosts" -> {

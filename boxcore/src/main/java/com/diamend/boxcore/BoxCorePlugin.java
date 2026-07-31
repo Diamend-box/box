@@ -11,6 +11,7 @@ import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.ModuleManager;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.ore.OreValues;
+import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.playtime.PlaytimeModule;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.util.Messages;
@@ -39,6 +40,7 @@ public class BoxCorePlugin extends JavaPlugin {
     private PlaytimeModule playtimeModule;
     private CompressorModule compressorModule;
     private BoostsModule boostsModule;
+    private TravelModule travelModule;
 
     private BukkitTask autosaveTask;
 
@@ -62,11 +64,13 @@ public class BoxCorePlugin extends JavaPlugin {
         this.playtimeModule = new PlaytimeModule(this);
         this.compressorModule = new CompressorModule(this);
         this.boostsModule = new BoostsModule(this);
+        this.travelModule = new TravelModule(this);
         modules.register(skillsModule);
         modules.register(collectionsModule);
         modules.register(playtimeModule);
         modules.register(compressorModule);
         modules.register(boostsModule);
+        modules.register(travelModule);
         modules.enableAll();
 
         registerCommand();
@@ -198,6 +202,10 @@ public class BoxCorePlugin extends JavaPlugin {
 
     public BoostsModule boosts() {
         return modules.isActive("boosts") ? boostsModule : null;
+    }
+
+    public TravelModule travel() {
+        return modules.isActive("travel") ? travelModule : null;
     }
 
     /**

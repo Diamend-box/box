@@ -4,9 +4,11 @@ import com.diamend.boxcore.boost.Boost;
 import com.diamend.boxcore.boost.BoostType;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -38,6 +40,16 @@ public class PlayerProfile {
 
     /** Whether the auto-compressor runs for this player. */
     private volatile boolean compressorEnabled = true;
+
+    /**
+     * Fast-travel destinations this player has found.
+     *
+     * <p>Held as ids rather than as warps, so deleting a warp and adding it back
+     * under the same name keeps everyone's discovery of it, and a warp that no
+     * longer exists is simply an id nothing matches rather than a dangling
+     * reference to clean up.
+     */
+    private final Set<String> discoveredWarps = ConcurrentHashMap.newKeySet();
 
     /**
      * Boosts this player is personally running.
@@ -225,6 +237,35 @@ public class PlayerProfile {
             this.compressorEnabled = enabled;
             dirty = true;
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Fast travel
+    // ------------------------------------------------------------------
+
+    public Set<String> getDiscoveredWarps() {
+        return Collections.unmodifiableSet(discoveredWarps);
+    }
+
+    public boolean hasDiscovered(String warpId) {
+        return warpId != null && discoveredWarps.contains(warpId);
+    }
+
+    /** Records a find. Returns true only the first time, so callers can announce it. */
+    public boolean discoverWarp(String warpId) {
+        if (warpId == null || warpId.isBlank() || !discoveredWarps.add(warpId)) {
+            return false;
+        }
+        dirty = true;
+        return true;
+    }
+
+    public void setDiscoveredWarps(Collection<String> ids) {
+        discoveredWarps.clear();
+        if (ids != null) {
+            discoveredWarps.addAll(ids);
+        }
+        dirty = true;
     }
 
     // ------------------------------------------------------------------
