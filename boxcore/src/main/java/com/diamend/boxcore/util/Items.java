@@ -59,6 +59,12 @@ public final class Items {
         return of(material, Component.text(" "));
     }
 
+    /** A material's name the way it should read in a menu: {@code Ender Pearl}. */
+    public static String prettyName(Material material) {
+        return material == null
+                ? "" : Text.prettify(material.name().toLowerCase(java.util.Locale.ROOT));
+    }
+
     /** Resolves a config material name, falling back when it isn't recognised. */
     public static Material material(String name, Material fallback) {
         if (name == null || name.isBlank()) {

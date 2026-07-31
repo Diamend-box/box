@@ -25,9 +25,12 @@ import java.util.Map;
  */
 public class TravelMenu extends AbstractMenu {
 
+    private static final String ADMIN = "boxcore.admin";
+
     private static final int HEADER_SLOT = 4;
     private static final int PREV_SLOT = 48;
     private static final int NEXT_SLOT = 50;
+    private static final int EDIT_SLOT = 49;
     private static final int BACK_SLOT = 45;
     private static final int CLOSE_SLOT = 53;
 
@@ -83,6 +86,13 @@ public class TravelMenu extends AbstractMenu {
         }
         if (page < pages - 1) {
             set(NEXT_SLOT, Items.text(Material.ARROW, "<yellow>Next »", List.of(), false));
+        }
+        if (player.hasPermission(ADMIN)) {
+            set(EDIT_SLOT, Items.text(Material.FILLED_MAP, "<gold>Edit destinations",
+                    List.of("<gray>Add, move and describe places",
+                            "<gray>without leaving the game.",
+                            "",
+                            "<dark_gray>Only staff see this."), false));
         }
         backButton(BACK_SLOT, "Hub");
         closeButton(CLOSE_SLOT);
@@ -151,6 +161,11 @@ public class TravelMenu extends AbstractMenu {
         if (raw == BACK_SLOT) {
             click(player);
             openLater(player, new HubMenu(plugin));
+            return;
+        }
+        if (raw == EDIT_SLOT && player.hasPermission(ADMIN)) {
+            click(player);
+            openLater(player, new WarpEditorMenu(plugin, module, 0));
             return;
         }
         if (raw == PREV_SLOT && page > 0) {

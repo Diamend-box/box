@@ -31,6 +31,47 @@ public record Warp(String id,
         icon = icon == null || icon.isAir() ? Material.ENDER_PEARL : icon;
     }
 
+    // ------------------------------------------------------------------
+    // Editing
+    // ------------------------------------------------------------------
+    // A warp is edited one field at a time from a menu, and spelling out all
+    // seven arguments at every call site is how the wrong one ends up swapped.
+
+    public Warp withDisplay(String display) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    public Warp withIcon(Material icon) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    public Warp withDescription(List<String> description) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    public Warp withLocation(Location location) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    public Warp withPermission(String permission) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    public Warp withRadius(double radius) {
+        return new Warp(id, display, icon, description, location, permission, radius);
+    }
+
+    /** Where it is, in a form worth putting in a menu or a chat line. */
+    public String where() {
+        if (location == null) {
+            return "?";
+        }
+        return (location.getWorld() == null ? "?" : location.getWorld().getName())
+                + " " + Math.round(location.getX())
+                + ", " + Math.round(location.getY())
+                + ", " + Math.round(location.getZ());
+    }
+
     /** Whether this player is allowed to use it at all. */
     public boolean allows(org.bukkit.entity.Player player) {
         return permission.isEmpty() || player.hasPermission(permission);

@@ -113,7 +113,10 @@ Six ship today:
   on a PvP server, fast travel that can be used to leave a losing fight is a
   different feature entirely. Only player-versus-player damage tags, so a mob
   farm doesn't lock you out of it. The menu is on `/box travel` and on
-  `/fasttravel`, `/fastravel` and `/ft`.
+  `/fasttravel`, `/fastravel` and `/ft`. Staff build the list from inside the
+  game: `/box warp` opens an editor where a destination is made where you stand,
+  wears whatever you're holding, and has its description, permission and
+  discovery radius set by clicking. Nothing needs a text editor or a restart.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -164,7 +167,14 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box give <item> [units] [player]` | Give compacted items, for testing | `boxcore.admin` |
 | `/box compactor give <tier> [player]` | Hand out a personal compactor | `boxcore.admin` |
 | `/box compactor recipes` | Add, edit and delete compaction recipes | `boxcore.admin` |
-| `/box warp <set\|delete\|list> [id]` | Manage fast-travel destinations | `boxcore.admin` |
+| `/box warp` | Open the destination editor | `boxcore.admin` |
+| `/box warp set <id>` | Make a destination here, or move an existing one | `boxcore.admin` |
+| `/box warp <move\|icon> <id>` | Move it here, or take its icon from your hand | `boxcore.admin` |
+| `/box warp rename <id> <name>` | Change what players see | `boxcore.admin` |
+| `/box warp desc <id> <add\|remove\|clear> [text]` | Edit its description | `boxcore.admin` |
+| `/box warp perm <id> [permission\|none]` | Who can use it | `boxcore.admin` |
+| `/box warp radius <id> <blocks>` | How close counts as finding it | `boxcore.admin` |
+| `/box warp <tp\|delete\|list> [id]` | Go there, remove it, or list them | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
 | `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |

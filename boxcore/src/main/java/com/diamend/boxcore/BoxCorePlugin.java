@@ -14,6 +14,7 @@ import com.diamend.boxcore.ore.OreValues;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.playtime.PlaytimeModule;
 import com.diamend.boxcore.skill.SkillsModule;
+import com.diamend.boxcore.util.ChatPrompt;
 import com.diamend.boxcore.util.Messages;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
@@ -34,6 +35,7 @@ public class BoxCorePlugin extends JavaPlugin {
     private Messages messages;
     private ModuleManager modules;
     private OreValues ores;
+    private ChatPrompt prompts;
 
     private SkillsModule skillsModule;
     private CollectionsModule collectionsModule;
@@ -55,9 +57,11 @@ public class BoxCorePlugin extends JavaPlugin {
         this.messages = new Messages(this);
         this.modules = new ModuleManager(this);
         this.ores = new OreValues(this);
+        this.prompts = new ChatPrompt(this);
 
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
+        getServer().getPluginManager().registerEvents(prompts, this);
 
         this.skillsModule = new SkillsModule(this);
         this.collectionsModule = new CollectionsModule(this);
@@ -221,5 +225,10 @@ public class BoxCorePlugin extends JavaPlugin {
      */
     public OreValues ores() {
         return ores;
+    }
+
+    /** Typed answers from chat, for the things a menu can't capture from the world. */
+    public ChatPrompt prompts() {
+        return prompts;
     }
 }

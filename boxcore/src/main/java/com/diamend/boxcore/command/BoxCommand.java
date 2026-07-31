@@ -14,6 +14,8 @@ import com.diamend.boxcore.gui.HubMenu;
 import com.diamend.boxcore.gui.RecipeEditorMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
+import com.diamend.boxcore.gui.WarpEditMenu;
+import com.diamend.boxcore.gui.WarpEditorMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.ore.CompactRecipe;
 import com.diamend.boxcore.ore.CompactorTier;
@@ -27,6 +29,7 @@ import com.diamend.boxcore.skill.SkillService;
 import com.diamend.boxcore.skill.SkillTree;
 import com.diamend.boxcore.skill.SkillsModule;
 import com.diamend.boxcore.util.Durations;
+import com.diamend.boxcore.util.Items;
 import com.diamend.boxcore.util.Messages;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Bukkit;
@@ -632,14 +635,211 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendLiteral(sender, "<red>Fast travel is disabled on this server.");
             return;
         }
-        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "edit";
         switch (action) {
             case "set" -> setWarp(sender, module, args);
             case "delete", "remove" -> deleteWarp(sender, module, args);
             case "list" -> listWarps(sender, module);
-            default -> messages().sendLiteral(sender,
-                    "<red>Usage: /box warp <set|delete|list> [id]");
+            case "edit", "menu", "gui" -> editWarps(sender, module, args);
+            case "move", "here" -> moveWarp(sender, module, args);
+            case "icon" -> iconWarp(sender, module, args);
+            case "rename", "name" -> renameWarp(sender, module, args);
+            case "desc", "description" -> descWarp(sender, module, args);
+            case "perm", "permission" -> permWarp(sender, module, args);
+            case "radius" -> radiusWarp(sender, module, args);
+            case "tp", "teleport", "goto" -> tpWarp(sender, module, args);
+            default -> messages().sendLiteral(sender, "<red>Usage: /box warp "
+                    + "<edit|set|move|icon|rename|desc|perm|radius|tp|delete|list> [id]");
         }
+    }
+
+    /** {@code /box warp edit [id]} — the editor, on the list or on one place. */
+    private void editWarps(CommandSender sender, TravelModule module, String[] args) {
+        requirePlayer(sender, player -> {
+            if (args.length >= 3) {
+                Warp warp = module.warps().get(args[2]);
+                if (warp == null) {
+                    unknownWarp(sender, args[2]);
+                    return;
+                }
+                new WarpEditMenu(plugin, module, warp.id()).open(player);
+                return;
+            }
+            new WarpEditorMenu(plugin, module, 0).open(player);
+        });
+    }
+
+    /**
+     * The warp an id-taking subcommand names, or null with the reason already
+     * sent. Every one of these commands starts the same way.
+     */
+    private Warp namedWarp(CommandSender sender, TravelModule module, String[] args, String usage) {
+        if (args.length < 3) {
+            messages().sendLiteral(sender, "<red>Usage: " + usage);
+            return null;
+        }
+        Warp warp = module.warps().get(args[2]);
+        if (warp == null) {
+            unknownWarp(sender, args[2]);
+        }
+        return warp;
+    }
+
+    private void unknownWarp(CommandSender sender, String id) {
+        messages().sendLiteral(sender, "<red>No warp called <white>" + id + "<red>.");
+    }
+
+    private void moveWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp move <id>");
+        if (warp == null) {
+            return;
+        }
+        requirePlayer(sender, player -> {
+            module.warps().put(warp.withLocation(player.getLocation().clone()));
+            messages().sendLiteral(sender, "<green>Moved <white>" + warp.id()
+                    + "<green> to where you're standing.");
+        });
+    }
+
+    private void iconWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp icon <id>");
+        if (warp == null) {
+            return;
+        }
+        requirePlayer(sender, player -> {
+            ItemStack held = player.getInventory().getItemInMainHand();
+            if (held == null || held.getType().isAir()) {
+                messages().sendLiteral(sender, "<red>Hold the item you want as the icon.");
+                return;
+            }
+            module.warps().put(warp.withIcon(held.getType()));
+            messages().sendLiteral(sender, "<green>Icon for <white>" + warp.id()
+                    + "<green> is now <white>" + Items.prettyName(held.getType()) + "<green>.");
+        });
+    }
+
+    private void renameWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp rename <id> <name>");
+        if (warp == null) {
+            return;
+        }
+        if (args.length < 4) {
+            messages().sendLiteral(sender, "<red>Usage: /box warp rename <id> <name>");
+            return;
+        }
+        String display = join(args, 3);
+        module.warps().put(warp.withDisplay(display));
+        messages().sendLiteral(sender, "<green><white>" + warp.id()
+                + "</white> is now shown as <white>" + display + "<green>.");
+    }
+
+    private void descWarp(CommandSender sender, TravelModule module, String[] args) {
+        String usage = "/box warp desc <id> <add|remove|clear> [text]";
+        Warp warp = namedWarp(sender, module, args, usage);
+        if (warp == null) {
+            return;
+        }
+        String mode = args.length >= 4 ? args[3].toLowerCase(Locale.ROOT) : "";
+        List<String> lines = new ArrayList<>(warp.description());
+        switch (mode) {
+            case "add" -> {
+                if (args.length < 5) {
+                    messages().sendLiteral(sender,
+                            "<red>Usage: /box warp desc <id> add <text>");
+                    return;
+                }
+                lines.add(join(args, 4));
+                module.warps().put(warp.withDescription(lines));
+                messages().sendLiteral(sender, "<green>Added a line to <white>"
+                        + warp.id() + "<green>.");
+            }
+            case "remove", "pop" -> {
+                if (lines.isEmpty()) {
+                    messages().sendLiteral(sender, "<gray>It has no description.");
+                    return;
+                }
+                lines.remove(lines.size() - 1);
+                module.warps().put(warp.withDescription(lines));
+                messages().sendLiteral(sender, "<yellow>Dropped the last line.");
+            }
+            case "clear" -> {
+                module.warps().put(warp.withDescription(List.of()));
+                messages().sendLiteral(sender, "<yellow>Cleared the description.");
+            }
+            default -> messages().sendLiteral(sender, "<red>Usage: " + usage);
+        }
+    }
+
+    private void permWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp perm <id> [permission|none]");
+        if (warp == null) {
+            return;
+        }
+        if (args.length < 4) {
+            messages().sendLiteral(sender, warp.permission().isEmpty()
+                    ? "<gray><white>" + warp.id() + "</white> is open to everyone."
+                    : "<gray><white>" + warp.id() + "</white> needs <white>" + warp.permission());
+            return;
+        }
+        String permission = args[3];
+        if (permission.equalsIgnoreCase("none") || permission.equalsIgnoreCase("clear")) {
+            module.warps().put(warp.withPermission(""));
+            messages().sendLiteral(sender, "<green><white>" + warp.id()
+                    + "</white> is now open to everyone.");
+            return;
+        }
+        module.warps().put(warp.withPermission(permission));
+        messages().sendLiteral(sender, "<green><white>" + warp.id()
+                + "</white> now needs <white>" + permission + "<green>.");
+    }
+
+    private void radiusWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp radius <id> <blocks>");
+        if (warp == null) {
+            return;
+        }
+        if (args.length < 4) {
+            messages().sendLiteral(sender, "<gray><white>" + warp.id() + "</white> is found within "
+                    + "<white>" + Math.round(warp.radius()) + "</white> blocks.");
+            return;
+        }
+        double radius;
+        try {
+            radius = Double.parseDouble(args[3]);
+        } catch (NumberFormatException ex) {
+            messages().sendLiteral(sender, "<red>That isn't a number of blocks.");
+            return;
+        }
+        if (radius < 1 || radius > 250) {
+            messages().sendLiteral(sender, "<red>Pick something between 1 and 250 blocks.");
+            return;
+        }
+        module.warps().put(warp.withRadius(radius));
+        messages().sendLiteral(sender, "<green><white>" + warp.id()
+                + "</white> is now found within <white>" + Math.round(radius) + "</white> blocks.");
+    }
+
+    private void tpWarp(CommandSender sender, TravelModule module, String[] args) {
+        Warp warp = namedWarp(sender, module, args, "/box warp tp <id>");
+        if (warp == null) {
+            return;
+        }
+        requirePlayer(sender, player -> {
+            player.teleport(warp.location());
+            messages().sendLiteral(sender, "<green>Teleported to <white>" + warp.id() + "<green>.");
+        });
+    }
+
+    /** Everything from {@code index} on, joined back into the sentence it was. */
+    private String join(String[] args, int index) {
+        StringBuilder text = new StringBuilder();
+        for (int position = index; position < args.length; position++) {
+            if (text.length() > 0) {
+                text.append(' ');
+            }
+            text.append(args[position]);
+        }
+        return text.toString();
     }
 
     private void setWarp(CommandSender sender, TravelModule module, String[] args) {
@@ -658,22 +858,28 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        Warp existing = module.warps().get(id);
         ItemStack held = player.getInventory().getItemInMainHand();
-        Material icon = held == null || held.getType().isAir()
-                ? Material.ENDER_PEARL : held.getType();
+        boolean holding = held != null && !held.getType().isAir();
+        // Setting a warp on top of an existing one moves it. Everything else
+        // about it — its icon, name and settings — is left alone unless this
+        // call actually carries a replacement.
+        Material icon = holding ? held.getType()
+                : existing == null ? Material.ENDER_PEARL : existing.icon();
         String display = id;
-        if (held != null && held.getItemMeta() != null && held.getItemMeta().hasDisplayName()) {
+        if (holding && held.getItemMeta() != null && held.getItemMeta().hasDisplayName()) {
             display = Text.serialize(held.getItemMeta().displayName());
         }
 
-        Warp existing = module.warps().get(id);
         Warp warp = new Warp(id,
                 existing == null ? display : existing.display(),
                 icon,
                 existing == null ? List.of() : existing.description(),
                 player.getLocation().clone(),
                 existing == null ? "" : existing.permission(),
-                plugin.getConfig().getDouble("travel.default-radius", 8.0));
+                existing == null
+                        ? plugin.getConfig().getDouble("travel.default-radius", 8.0)
+                        : existing.radius());
         module.warps().put(warp);
         messages().sendLiteral(sender, (existing == null
                 ? "<green>Created warp <white>" : "<green>Moved warp <white>") + id
@@ -939,6 +1145,17 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     }
 
     /** Compactable items by the short name the give command accepts. */
+    private List<String> warpIds(TravelModule travel) {
+        List<String> ids = new ArrayList<>();
+        if (travel == null) {
+            return ids;
+        }
+        for (Warp warp : travel.warps().all()) {
+            ids.add(warp.id());
+        }
+        return ids;
+    }
+
     private List<String> recipeNames() {
         CompressorModule compressor = plugin.compressor();
         List<String> names = new ArrayList<>();
@@ -975,8 +1192,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                     + "<gray>— hand out a personal compactor");
             messages().sendPlain(sender, "  <white>/box compactor recipes "
                     + "<gray>— add and edit what compacts");
-            messages().sendPlain(sender, "  <white>/box warp <set|delete|list> [id] "
-                    + "<gray>— fast-travel destinations");
+            messages().sendPlain(sender, "  <white>/box warp <gray>— edit destinations in a menu");
+            messages().sendPlain(sender, "  <white>/box warp <set|move|icon|rename> <id> "
+                    + "<gray>— from where you stand and what you hold");
+            messages().sendPlain(sender, "  <white>/box warp <desc|perm|radius|tp|delete> <id> "
+                    + "<gray>— the rest of it");
             messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost player <name> <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost item <id> [player] [amount]");
@@ -1070,7 +1290,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 }
                 case "warp" -> {
                     if (admin) {
-                        options.addAll(List.of("set", "delete", "list"));
+                        options.addAll(List.of("edit", "set", "move", "icon", "rename",
+                                "desc", "perm", "radius", "tp", "delete", "list"));
                     }
                 }
                 case "boost", "boosts" -> {
@@ -1150,6 +1371,27 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             }
             if (args.length == 6 && (mode.equals("player") || mode.equals("give"))) {
                 return filter(List.of("30m", "1h", "2h"), args[5]);
+            }
+            return List.of();
+        }
+
+        if (admin && sub.equals("warp")) {
+            TravelModule travel = plugin.travel();
+            String mode = args[1].toLowerCase(Locale.ROOT);
+            if (args.length == 3 && !mode.equals("set")) {
+                return filter(warpIds(travel), args[2]);
+            }
+            if (args.length == 4) {
+                return switch (mode) {
+                    case "desc", "description" -> filter(List.of("add", "remove", "clear"), args[3]);
+                    case "perm", "permission" -> {
+                        List<String> suggestions = new ArrayList<>(List.of("none"));
+                        suggestions.add("boxcore.warp." + args[2].toLowerCase(Locale.ROOT));
+                        yield filter(suggestions, args[3]);
+                    }
+                    case "radius" -> filter(List.of("8", "16", "32"), args[3]);
+                    default -> List.of();
+                };
             }
             return List.of();
         }
