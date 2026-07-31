@@ -1,6 +1,8 @@
 package com.diamend.boxcore;
 
 import com.diamend.boxcore.data.PlayerProfile;
+import com.diamend.boxcore.ore.CompactRecipe;
+import com.diamend.boxcore.ore.CompactorTier;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.ore.OreValues;
@@ -18,6 +20,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,13 +57,29 @@ class CompressorTest {
         return module;
     }
 
-    /** Gives the player enough of a collection to clear every unlock tier. */
-    private void maxCollections(PlayerMock player) {
-        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
-        for (String id : List.of("coal", "iron", "copper", "redstone", "lapis",
-                "gold", "quartz", "diamond", "emerald", "ancient_debris")) {
-            profile.setCollected(id, 1_000_000);
+    /**
+     * Gives the player a top-tier compactor slotted for every recipe, parked in
+     * the last inventory slot so it stays out of the way of what a test is
+     * actually arranging.
+     */
+    private void giveCompactor(PlayerMock player) {
+        CompactorTier tier = compressor().tiers().get(4);
+        assertNotNull(tier, "tier 4 should be configured");
+        ItemStack compactor = compressor().compactors().create(tier);
+        assertNotNull(compactor, "a compactor should be buildable");
+        List<String> ids = new ArrayList<>();
+        for (CompactRecipe recipe : compressor().recipes().all()) {
+            ids.add(recipe.id());
         }
+        player.getInventory().setItem(35,
+                compressor().compactors().withFilters(compactor, ids));
+    }
+
+    /** How many of a material one compacted unit is worth, per its recipe. */
+    private int amount(Material material) {
+        CompactRecipe recipe = compressor().recipes().forInput(material);
+        assertNotNull(recipe, material + " should have a recipe");
+        return recipe.amount();
     }
 
     // ------------------------------------------------------------------
@@ -78,7 +97,7 @@ class CompressorTest {
     @Test
     void compressingDoesNotChangeHowMuchOreIsHeld() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
         player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
 
@@ -124,7 +143,7 @@ class CompressorTest {
     @Test
     void partialStacksAreLeftAlone() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().addItem(new ItemStack(Material.COAL, 63));
 
         assertEquals(0, compressor().compress(player), "63 is not a full stack");
@@ -134,7 +153,7 @@ class CompressorTest {
     @Test
     void theRemainderStaysRaw() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().addItem(new ItemStack(Material.COAL, 64));
         player.getInventory().addItem(new ItemStack(Material.COAL, 10));
 
@@ -148,7 +167,7 @@ class CompressorTest {
     @Test
     void alreadyCompressedOreIsNotCompressedAgain() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         // 64 compressed units of coal is 4096 ore-equivalents, but only 64 items.
         player.getInventory().addItem(plugin.ores().compressed().create(Material.COAL, 64, 64));
 
@@ -163,7 +182,7 @@ class CompressorTest {
         // raw ore into a compressed stack and multiply it by the ratio, so this
         // is the dupe the design has to be immune to rather than merely avoid.
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().clear();
         player.getInventory().setItem(0, plugin.ores().compressed().create(Material.COAL, 64, 1));
         player.getInventory().setItem(1, new ItemStack(Material.COAL, 32));
@@ -197,7 +216,6 @@ class CompressorTest {
     @Test
     void expandingASkinnedUnitHandsBackTheOreNotTheSkin() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
         player.getInventory().clear();
         player.getInventory().setItemInMainHand(plugin.ores().compressed().create(Material.COAL,
                 new CompressedOre.Appearance(Material.PAPER, null, null, 0, false), 64, 1));
@@ -213,7 +231,6 @@ class CompressorTest {
         // Both skinned as paper at the same ratio, so a merge that only looked
         // at material and ratio would silently turn coal into diamonds.
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
         player.getInventory().clear();
         CompressedOre compressed = plugin.ores().compressed();
         CompressedOre.Appearance skin =
@@ -232,7 +249,7 @@ class CompressorTest {
     void aPlaceableSkinIsRefused() {
         // Placing a block moves ore out of the inventory without anything
         // counting it, which is the route the custom item exists to close.
-        assertEquals(List.of(), compressor().placeableSkins(),
+        assertEquals(List.of(), compressor().recipes().placeable(),
                 "no configured skin may be a placeable block");
     }
 
@@ -343,8 +360,8 @@ class CompressorTest {
         ItemStack minted = compressor().createUnit(Material.COAL, 2);
         assertNotNull(minted);
         assertEquals(Material.COAL, plugin.ores().oreKey(minted));
-        assertEquals(2L * compressor().ratio(), plugin.ores().equivalents(minted));
-        assertNull(compressor().createUnit(Material.DIRT, 1), "only whitelisted ore");
+        assertEquals(2L * amount(Material.COAL), plugin.ores().equivalents(minted));
+        assertNull(compressor().createUnit(Material.DIRT, 1), "nothing compacts dirt");
     }
 
     /**
@@ -373,7 +390,7 @@ class CompressorTest {
         player.getInventory().clear();
 
         run(player, "box give diamond 3");
-        assertEquals(3L * compressor().ratio(),
+        assertEquals(3L * amount(Material.DIAMOND),
                 plugin.ores().carried(player, Material.DIAMOND),
                 "three units, worth a stack apiece");
         assertEquals(0, compressor().rawCount(player.getInventory(), Material.DIAMOND),
@@ -391,36 +408,91 @@ class CompressorTest {
     }
 
     // ------------------------------------------------------------------
-    // Gating
+    // The compactor decides what folds
     // ------------------------------------------------------------------
 
     @Test
-    void oreIsNotCompressedBeforeItsCollectionTier() {
+    void nothingFoldsWithoutACompactor() {
         PlayerMock player = server.addPlayer();
-        // No collection progress at all.
         player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
 
-        assertFalse(compressor().isUnlocked(player, Material.DIAMOND));
-        assertEquals(0, compressor().compress(player));
+        assertFalse(compressor().hasCompactor(player));
+        assertEquals(0, compressor().compress(player), "no compactor, no compacting");
         assertEquals(64, compressor().rawCount(player.getInventory(), Material.DIAMOND));
     }
 
     @Test
-    void reachingTheTierUnlocksThatOreOnly() {
+    void onlySlottedRecipesFold() {
         PlayerMock player = server.addPlayer();
-        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
-        // coal unlocks at tier 1, whose first threshold is 50.
-        profile.setCollected("coal", 50);
+        CompactorTier tier = compressor().tiers().get(1);
+        assertNotNull(tier, "tier 1 should be configured");
+        ItemStack compactor = compressor().compactors().create(tier);
+        player.getInventory().setItem(35,
+                compressor().compactors().withFilters(compactor, List.of("coal")));
+        player.getInventory().addItem(new ItemStack(Material.COAL, 64));
+        player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
 
-        assertTrue(compressor().isUnlocked(player, Material.COAL));
-        assertFalse(compressor().isUnlocked(player, Material.DIAMOND),
-                "an unrelated collection stays locked");
+        assertEquals(1, compressor().compress(player), "coal is slotted, so coal folds");
+        assertEquals(0, compressor().rawCount(player.getInventory(), Material.COAL));
+        assertEquals(64, compressor().rawCount(player.getInventory(), Material.DIAMOND),
+                "diamond is not slotted, so it is left exactly alone");
+    }
+
+    @Test
+    void anEmptyCompactorFoldsNothing() {
+        PlayerMock player = server.addPlayer();
+        CompactorTier tier = compressor().tiers().get(1);
+        player.getInventory().setItem(35, compressor().compactors().create(tier));
+        player.getInventory().addItem(new ItemStack(Material.COAL, 64));
+
+        assertTrue(compressor().hasCompactor(player), "they are carrying one");
+        assertEquals(0, compressor().compress(player), "but nothing is slotted into it");
+    }
+
+    @Test
+    void aTierGrantsItsSlotsToCompactorsAlreadyOut() {
+        // Slot count is read from the tier rather than off the item, so retuning
+        // a tier reaches the compactors already in circulation instead of only
+        // the ones handed out afterwards.
+        PlayerMock player = server.addPlayer();
+        ItemStack compactor = compressor().compactors().create(compressor().tiers().get(1));
+        assertEquals(1, compressor().compactors().slots(compactor));
+
+        plugin.getConfig().set("compressor.tiers.1.slots", 5);
+        compressor().tiers().load();
+
+        assertEquals(5, compressor().compactors().slots(compactor),
+                "the compactor someone is already holding grew with the tier");
+        assertEquals(5, compressor().compactors().filters(compactor).size(),
+                "and reports a slot list of the new length");
+    }
+
+    @Test
+    void aCompactorIsNeverFedToItself() {
+        // A compactor skinned as a hopper is still a hopper. If hoppers compact,
+        // the sweep must not count the tool as raw stock and fold it away.
+        PlayerMock player = server.addPlayer();
+        assertTrue(compressor().recipes().put(
+                new CompactRecipe("hopper", Material.HOPPER, 2, null)),
+                "a hopper recipe should be addable");
+
+        ItemStack compactor = compressor().compactors().create(compressor().tiers().get(1));
+        player.getInventory().setItem(35,
+                compressor().compactors().withFilters(compactor, List.of("hopper")));
+        player.getInventory().addItem(new ItemStack(Material.HOPPER, 3));
+
+        compressor().compress(player);
+
+        assertTrue(compressor().compactors().isCompactor(player.getInventory().getItem(35)),
+                "the compactor itself survives");
+        assertEquals(1, compressor().rawCount(player.getInventory(), Material.HOPPER),
+                "three loose hoppers fold into one unit, leaving one over");
     }
 
     @Test
     void theToggleStopsCompressionAndPersists() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().addItem(new ItemStack(Material.COAL, 64));
         plugin.profiles().get(player.getUniqueId()).markClean();
 
@@ -439,7 +511,6 @@ class CompressorTest {
     @Test
     void expandingReturnsTheRawStack() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
         ItemStack unit = plugin.ores().compressed().create(Material.LAPIS_LAZULI, 64, 2);
         player.getInventory().setItemInMainHand(unit);
 
@@ -457,7 +528,7 @@ class CompressorTest {
     @Test
     void expandingHoldsOffTheCompressorSoTheOreStaysUsable() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
+        giveCompactor(player);
         player.getInventory().setItemInMainHand(
                 plugin.ores().compressed().create(Material.LAPIS_LAZULI, 64, 1));
 
@@ -474,7 +545,6 @@ class CompressorTest {
     @Test
     void expandingNeedsRoomForTheResult() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
         player.getInventory().clear();
         // Fill every slot but the hand with something that cannot merge.
         for (int slot = 0; slot < 36; slot++) {
@@ -491,7 +561,6 @@ class CompressorTest {
     @Test
     void theLastUnitFitsBecauseItsOwnSlotComesFree() {
         PlayerMock player = server.addPlayer();
-        maxCollections(player);
         player.getInventory().clear();
         for (int slot = 0; slot < 36; slot++) {
             player.getInventory().setItem(slot, new ItemStack(Material.COBBLESTONE, 64));

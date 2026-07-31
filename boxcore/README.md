@@ -31,7 +31,7 @@ Three ship today:
 | `skills` | Config-driven skill trees bought with skill points, plus the perk engine that runs their scripted effects. |
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
-| `compressor` | Folds full stacks of raw ore into single items, unlocked per ore by that ore's collection tier. |
+| `compressor` | Personal compactor: a carried item that folds up whichever recipes the player slots into it. |
 | `boosts` | Temporary multipliers on ore drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
 
 ---
@@ -74,16 +74,18 @@ Three ship today:
 - 🕒 **Playtime is a collection**, read from the server's own statistic (so time
   banked before BoxCore was installed still counts) and capped by its own last
   tier — the ceiling is visible in the menu, not implied.
-- 📦 **Auto-compressor** — a full stack of raw ore folds into one item, unlocked
-  per ore type by that ore's own collection tier. A compressed unit is worth
-  exactly the stack it came from, so it buys time in the box rather than value;
-  right-click to expand one back for an anvil or an enchanting table. Each ore's
-  compressed form can be given its own material, name, lore, model data and
-  glow — what it's worth lives on the item, so re-skinning never changes it.
-  `/box compress` opens a page listing every compressible ore: the ones you've
-  earned, and for the rest which collection tier unlocks them and how far off
-  you are, with a locked ore's icon opening the collection that gates it.
-  `/box give <ore> [units]` mints one to check a skin without mining for it.
+- 📦 **Personal compactor** — a carried item that folds up whichever recipes a
+  player has slotted into it, so they can stay out longer before inventory space
+  sends them back. What compacts is decided by the item, not by anything on the
+  player: no compactor, nothing folds. Each tier holds more recipes, and slot
+  count is read from the tier, so retuning one reaches the compactors already in
+  circulation. A compacted unit is worth exactly what went into it — right-click
+  to expand one back for an anvil or an enchanting table. It can't be dropped,
+  placed, or lost on death; putting it in a chest still works, because that's a
+  decision rather than an accident. Recipes aren't limited to ore: anything with
+  a recipe compacts, and each one can be given its own material, name, lore,
+  model data and glow. `/box give <item> [units]` mints a unit to check a skin
+  without gathering for it.
 - ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
   running server-wide or for one player. Start them by command, on a recurring
   schedule, or from a consumable item players right-click. They multiply
@@ -133,13 +135,14 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box collections [category]` | Open the collections | `boxcore.use` |
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
-| `/box compress [on\|off]` | Open the compressor menu, or toggle it directly | `boxcore.use` |
+| `/box compress [on\|off]` | Open your compactor, or pause compacting | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box points <give\|take\|set> <player> <n>` | Adjust a player's points | `boxcore.admin` |
 | `/box unlock <player> <tree.node> [level]` | Force-set a node's level | `boxcore.admin` |
 | `/box collection set <player> <id> <amount>` | Set a collection total | `boxcore.admin` |
 | `/box collection clearplaced [chunk radius]` | Forget placed-block flags around you, after a mine regen | `boxcore.admin` |
-| `/box give <ore> [units] [player]` | Give compressed ore, for testing | `boxcore.admin` |
+| `/box give <item> [units] [player]` | Give compacted items, for testing | `boxcore.admin` |
+| `/box compactor give <tier> [player]` | Hand out a personal compactor | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
 | `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |
@@ -352,10 +355,11 @@ With PlaceholderAPI installed:
 | `%boxcore_boost_<type>_time%` | Time until it changes, e.g. `12m 30s` |
 | `%boxcore_boost_global_<type>%` | The server-wide part alone |
 | `%boxcore_boost_active%` | `true` when anything is boosting them |
-| `%boxcore_compressor_enabled%` | `true`/`false` — their own auto-compress toggle |
-| `%boxcore_compressor_unlocked%` | How many ores they can compress |
-| `%boxcore_compressor_total%` | How many ores this server compresses |
-| `%boxcore_compressor_ratio%` | Raw ore per compressed unit |
+| `%boxcore_compressor_enabled%` | `true`/`false` — their own pause toggle |
+| `%boxcore_compressor_has%` | `true` when they're carrying a compactor |
+| `%boxcore_compressor_slots%` | Compactor slots they carry |
+| `%boxcore_compressor_used%` | Of those, how many are filled |
+| `%boxcore_compressor_recipes%` | How many recipes this server compacts |
 
 ---
 

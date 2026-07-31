@@ -141,29 +141,49 @@ ore:
     - NETHERITE_SCRAP
 
 # ---------------------------------------------------------------------
-# Auto-compressor
+# Personal compactor
 # ---------------------------------------------------------------------
-# Folds full stacks of raw ore into single items so a player can stay out
-# longer before inventory space forces them back. A compressed unit is
-# worth exactly what it was folded from, so this buys time, never safety.
+# A carried item that folds up whichever recipes a player has slotted into
+# it, so they can stay out longer before inventory space forces them back.
+# A compacted unit is worth exactly what went into it, so this buys time,
+# never value.
+#
+# What compacts is decided by the item, not by anything on the player: no
+# compactor means nothing folds. Slot count comes from the compactor's
+# tier, which is the seam a progression system plugs into later.
+#
+# Recipes live in compactor.yml, edited in game with
+# /box compactor recipes. The 'ores' block at the bottom of this section
+# is only read once, to seed that file the first time.
 compressor:
-  # How many raw items make one compressed unit. 64 means a full stack
-  # becomes a single item.
+  # Tiers of compactor, and how many recipes each one holds. Hand them out
+  # with /box compactor give <tier> [player].
+  tiers:
+    1: { name: "<gray>Personal Compactor 4000", slots: 1,  material: HOPPER }
+    2: { name: "<white>Personal Compactor 5000", slots: 3,  material: HOPPER }
+    3: { name: "<aqua>Personal Compactor 6000", slots: 6,  material: HOPPER, glow: true }
+    4: { name: "<light_purple>Personal Compactor 7000", slots: 12, material: HOPPER, glow: true }
+
+  # How many raw items make one unit when seeding compactor.yml from the
+  # 'ores' block below. Ignored once compactor.yml exists — change amounts
+  # per recipe in the editor instead.
   ratio: 64
 
-  # After expanding a unit by hand, don't re-compress that player for this
-  # many seconds — otherwise ore expanded to use in an anvil or enchanting
-  # table gets folded straight back up before they reach one.
+  # After expanding a unit by hand, don't re-compact that player for this
+  # many seconds — otherwise items expanded to use in an anvil or
+  # enchanting table get folded straight back up before they reach one.
   expand-grace-seconds: 30
 
   # How often (in ticks) to sweep players who have gained items. Only
   # players who actually picked something up are looked at.
   sweep-ticks: 20
 
-  # Which ores compress, and what unlocks them. 'collection' is the
-  # collection id from collections.yml; 'tier' is how many of its tiers the
-  # player must have reached. tier: 0 means always available.
-  # Removing an entry makes that ore uncompressible.
+  # Seed recipes. Read ONCE, on the first run that has no compactor.yml,
+  # and written into that file — after which this block does nothing and
+  # recipes are managed in game with /box compactor recipes.
+  #
+  # 'collection' and 'tier' are left over from the tier-gated compressor
+  # and are ignored: a compactor is what unlocks compacting now.
   #
   # Each ore may also carry an optional 'item:' block describing how its
   # compressed form looks. Everything in it is optional:
@@ -325,11 +345,13 @@ messages:
   tier-up: "<aqua><collection></aqua> <gray>collection reached tier <white><tier></white><gray>!"
   # Shown when the Second Chance perk saves a player from a killing blow.
   second-chance: "<gold>Second Chance <gray>pulled you back from the brink."
-  compressor-on: "<green>Auto-compressor <white>enabled<green>."
-  compressor-off: "<yellow>Auto-compressor <white>disabled<yellow>."
-  compressor-expanded: "<aqua>Expanded <white><amount></white> compressed <ore><plural><gray> — won't re-compress for <white><seconds></white>s."
+  compressor-on: "<green>Compacting <white>resumed<green>."
+  compressor-off: "<yellow>Compacting <white>paused<yellow>."
+  compressor-expanded: "<aqua>Expanded <white><amount></white> compacted <ore><plural><gray> — won't re-compact for <white><seconds></white>s."
   compressor-no-room: "<red>Not enough inventory space to expand that."
-  compressor-status: "<aqua>Auto-compressor <gray>is <white><state></white> <dark_gray>(<unlocked>/<total> ores unlocked)"
+  compactor-none: "<red>You aren't carrying a personal compactor."
+  compactor-kept: "<yellow>Your compactor stays with you."
+  compactor-moved: "<red>That compactor isn't where it was."
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."

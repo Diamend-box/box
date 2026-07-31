@@ -10,11 +10,12 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.BoostMenu;
 import com.diamend.boxcore.gui.CollectionCategoryMenu;
 import com.diamend.boxcore.gui.CollectionListMenu;
-import com.diamend.boxcore.gui.CompressorMenu;
 import com.diamend.boxcore.gui.HubMenu;
 import com.diamend.boxcore.gui.SkillTreeMenu;
 import com.diamend.boxcore.gui.TreePickerMenu;
 import com.diamend.boxcore.module.BoxModule;
+import com.diamend.boxcore.ore.CompactRecipe;
+import com.diamend.boxcore.ore.CompactorTier;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.RespecCost;
@@ -71,6 +72,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "points", "point" -> points(sender, args);
             case "respec" -> respec(sender);
             case "compress", "compressor" -> compress(sender, args);
+            case "compactor" -> compactor(sender, args);
             case "give", "givecompressed" -> giveCompressed(sender, args);
             case "boost", "boosts" -> boost(sender, args);
             case "unlock" -> unlock(sender, args);
@@ -387,13 +389,12 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * {@code /box compress [on|off]} — the compressor menu, or the toggle
-     * directly.
+     * {@code /box compress [on|off]} — open the compactor you're carrying, or
+     * pause compacting outright.
      *
-     * <p>Bare {@code /box compress} opens the menu rather than flipping the
-     * toggle: which ores are unlocked and what unlocks the rest is the question
-     * players actually have, and {@code on}/{@code off} still answers the other
-     * one in one line.
+     * <p>Bare {@code /box compress} opens the compactor rather than flipping the
+     * toggle: what it is set to fold is the question players actually have, and
+     * {@code on}/{@code off} still answers the other one in one line.
      */
     private void compress(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -402,11 +403,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         }
         CompressorModule compressor = plugin.compressor();
         if (compressor == null) {
-            messages().sendLiteral(sender, "<red>The auto-compressor is disabled on this server.");
+            messages().sendLiteral(sender, "<red>The compactor is disabled on this server.");
             return;
         }
         if (args.length < 2) {
-            new CompressorMenu(plugin, compressor).open(player);
+            compressor.openFor(player);
             return;
         }
         String choice = args[1].toLowerCase(Locale.ROOT);
@@ -420,12 +421,81 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * {@code /box give <ore> [units] [player]} — mint compressed units.
+     * {@code /box compactor give <tier> [player]} — hand out a compactor.
      *
-     * <p>A test tool. Compressed ore is otherwise only reachable by mining a
-     * full stack of an ore you have already unlocked, which makes checking a
-     * custom skin, a drop rule or an expand a twenty-minute errand. The units
-     * it hands out are real: same tag, same ratio, same value.
+     * <p>Admin-only and deliberately the only way to get one for now. When
+     * compactors become something players earn, whatever grants them calls this
+     * same path rather than reimplementing what a compactor is.
+     */
+    private void compactor(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(ADMIN)) {
+            messages().send(sender, "no-permission");
+            return;
+        }
+        CompressorModule compressor = plugin.compressor();
+        if (compressor == null) {
+            messages().sendLiteral(sender, "<red>The compactor is disabled on this server.");
+            return;
+        }
+        if (args.length < 3 || !args[1].equalsIgnoreCase("give")) {
+            messages().sendLiteral(sender, "<red>Usage: /box compactor give <tier> [player]");
+            messages().sendLiteral(sender, "<gray>Tiers: <white>" + tierNames(compressor));
+            return;
+        }
+        int level;
+        try {
+            level = Integer.parseInt(args[2].trim());
+        } catch (NumberFormatException ex) {
+            messages().sendLiteral(sender, "<red><white>" + args[2] + "</white> isn't a tier number.");
+            return;
+        }
+        CompactorTier tier = compressor.tiers().get(level);
+        if (tier == null) {
+            messages().sendLiteral(sender, "<red>No compactor tier <white>" + level
+                    + "<red>. Try one of: <white>" + tierNames(compressor) + "<red>.");
+            return;
+        }
+
+        Player target;
+        if (args.length >= 4) {
+            target = Bukkit.getPlayerExact(args[3]);
+            if (target == null) {
+                messages().send(sender, "unknown-player", "name", args[3]);
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            messages().sendLiteral(sender, "<red>Name a player: /box compactor give <tier> <player>");
+            return;
+        }
+
+        ItemStack item = compressor.compactors().create(tier);
+        if (item == null) {
+            messages().sendLiteral(sender, "<red>Couldn't build that compactor.");
+            return;
+        }
+        compressor.give(target, item);
+        messages().sendLiteral(sender, "<green>Gave a tier <white>" + level
+                + "<green> compactor (<white>" + tier.slots() + "<green> slots) to <white>"
+                + target.getName() + "<green>.");
+    }
+
+    private String tierNames(CompressorModule compressor) {
+        List<String> levels = new ArrayList<>();
+        for (CompactorTier tier : compressor.tiers().all()) {
+            levels.add(String.valueOf(tier.level()));
+        }
+        return String.join(", ", levels);
+    }
+
+    /**
+     * {@code /box give <item> [units] [player]} — mint compacted units.
+     *
+     * <p>A test tool. A compacted unit is otherwise only reachable by gathering
+     * a full recipe's worth with a compactor slotted for it, which makes
+     * checking a custom skin, a drop rule or an expand a twenty-minute errand.
+     * The units it hands out are real: same tag, same amount, same value.
      */
     private void giveCompressed(CommandSender sender, String[] args) {
         if (!sender.hasPermission(ADMIN)) {
@@ -438,16 +508,17 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            messages().sendLiteral(sender, "<red>Usage: /box give <ore> [units] [player]");
+            messages().sendLiteral(sender, "<red>Usage: /box give <item> [units] [player]");
             return;
         }
-        Material ore = plugin.ores().matchOre(args[1]);
-        if (ore == null) {
-            messages().sendLiteral(sender, "<red><white>" + args[1]
-                    + "</white> isn't a whitelisted ore. Try one of: <white>"
-                    + String.join(", ", oreNames()) + "<red>.");
+        CompactRecipe recipe = matchRecipe(compressor, args[1]);
+        if (recipe == null) {
+            messages().sendLiteral(sender, "<red>Nothing compacts <white>" + args[1]
+                    + "</white>. Try one of: <white>"
+                    + String.join(", ", recipeNames()) + "<red>.");
             return;
         }
+        Material ore = recipe.input();
         int units = 1;
         if (args.length >= 3) {
             try {
@@ -477,15 +548,32 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
         ItemStack stack = compressor.createUnit(ore, units);
         if (stack == null) {
-            messages().sendLiteral(sender, "<red>Couldn't build a compressed <white>"
+            messages().sendLiteral(sender, "<red>Couldn't build a compacted <white>"
                     + ore.name() + "<red>.");
             return;
         }
         compressor.give(target, stack);
         messages().sendLiteral(sender, "<green>Gave <white>" + Text.number(units)
-                + "<green> compressed <white>" + CompressedOre.displayName(ore)
-                + "<green> (<white>" + Text.number((long) units * compressor.ratio())
-                + "<green> ore) to <white>" + target.getName() + "<green>.");
+                + "<green> compacted <white>" + CompressedOre.displayName(ore)
+                + "<green> (<white>" + Text.number((long) units * recipe.amount())
+                + "<green> items) to <white>" + target.getName() + "<green>.");
+    }
+
+    /** Resolves a give-command argument to a recipe by id or by item name. */
+    private CompactRecipe matchRecipe(CompressorModule compressor, String text) {
+        CompactRecipe byId = compressor.recipes().get(text);
+        if (byId != null) {
+            return byId;
+        }
+        String wanted = text.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        for (CompactRecipe recipe : compressor.recipes().all()) {
+            String display = CompressedOre.displayName(recipe.input())
+                    .toLowerCase(Locale.ROOT).replace(' ', '_');
+            if (display.equals(wanted) || recipe.input().name().equalsIgnoreCase(wanted)) {
+                return recipe;
+            }
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------
@@ -717,11 +805,16 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         return millis;
     }
 
-    /** Whitelisted ores by the short name the give command accepts. */
-    private List<String> oreNames() {
+    /** Compactable items by the short name the give command accepts. */
+    private List<String> recipeNames() {
+        CompressorModule compressor = plugin.compressor();
         List<String> names = new ArrayList<>();
-        for (Material material : plugin.ores().whitelist()) {
-            names.add(CompressedOre.displayName(material).toLowerCase(Locale.ROOT).replace(' ', '_'));
+        if (compressor == null) {
+            return names;
+        }
+        for (CompactRecipe recipe : compressor.recipes().all()) {
+            names.add(CompressedOre.displayName(recipe.input())
+                    .toLowerCase(Locale.ROOT).replace(' ', '_'));
         }
         return names;
     }
@@ -733,7 +826,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendPlain(sender, "  <white>/box collections [category] <gray>— open your collections");
         messages().sendPlain(sender, "  <white>/box points <gray>— show your skill points");
         messages().sendPlain(sender, "  <white>/box respec <gray>— refund every node you own");
-        messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— open the compressor (or toggle it)");
+        messages().sendPlain(sender, "  <white>/box compress [on|off] <gray>— open your compactor (or pause it)");
         messages().sendPlain(sender, "  <white>/box boost <gray>— show the boosts running for you");
         if (sender.hasPermission(ADMIN)) {
             messages().sendPlain(sender, "  <white>/box points <give|take|set> <player> <n>");
@@ -741,8 +834,10 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             messages().sendPlain(sender, "  <white>/box collection set <player> <id> <amount>");
             messages().sendPlain(sender, "  <white>/box collection clearplaced [chunk radius] "
                     + "<gray>— after a mine regen");
-            messages().sendPlain(sender, "  <white>/box give <ore> [units] [player] "
-                    + "<gray>— compressed ore, for testing");
+            messages().sendPlain(sender, "  <white>/box give <item> [units] [player] "
+                    + "<gray>— compacted items, for testing");
+            messages().sendPlain(sender, "  <white>/box compactor give <tier> [player] "
+                    + "<gray>— hand out a personal compactor");
             messages().sendPlain(sender, "  <white>/box boost global <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost player <name> <type> <mult> <duration>");
             messages().sendPlain(sender, "  <white>/box boost item <id> [player] [amount]");
@@ -805,7 +900,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             options.addAll(List.of("skills", "collections", "points", "respec", "compress", "boost"));
             if (admin) {
-                options.addAll(List.of("give", "unlock", "collection", "reset", "modules", "reload"));
+                options.addAll(List.of("give", "compactor", "unlock", "collection",
+                        "reset", "modules", "reload"));
             }
             return filter(options, args[0]);
         }
@@ -821,7 +917,12 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 }
                 case "give", "givecompressed" -> {
                     if (admin) {
-                        options.addAll(oreNames());
+                        options.addAll(recipeNames());
+                    }
+                }
+                case "compactor" -> {
+                    if (admin) {
+                        options.add("give");
                     }
                 }
                 case "boost", "boosts" -> {
