@@ -9,9 +9,11 @@ import java.util.Random;
  * anything else the sea builds (~70x70 at ring 2 up to ~86x86 at ring 5).
  * A square curtain wall with four corner towers rings a courtyard holding
  * a roofless keep (throne dais over a sunken vault), a great hall over an
- * undercroft, and a chapel the Order has since reconsecrated. Every chest
- * sits in a buried or walled room — 4/5/6/7 of them by tier, two elected as
- * vaults — and the garrison is denser and drawn from one ring deeper than
+ * undercroft, and a chapel the Order has since reconsecrated. Four to seven
+ * chests sit in buried or walled rooms, two of them elected vaults; nine
+ * more are garrison caches out in the guardrooms, keep and hall where a
+ * player can simply find them (13/14/15/16 by tier, each thinner than an
+ * ordinary island's chest) — and the garrison is denser and drawn from one ring deeper than
  * the water it stands in. A rare intruder even out in the Sunless Trench
  * (ring 5), where the Mariphage nest otherwise holds sway.
  */
@@ -76,12 +78,23 @@ final class RuinedCastle implements DemoShape {
 
     @Override
     public int chestCount(int tier) {
-        return tier + 2;  // 4 / 5 / 6
+        // Four hidden vaults, one more per tier from 3, plus nine garrison
+        // caches out in the rooms: 13 / 14 / 15 / 16 across tiers 2-5. A
+        // castle is the largest thing in the sea and used to hold four
+        // chests, all of them buried.
+        return tier + 11;
     }
 
     @Override
     public int vaultChestCount() {
         return 2;
+    }
+
+    @Override
+    public int chestRollDelta() {
+        // The caches are numerous, so each is thinner than a lone reef chest.
+        // The two vaults keep their full rolls.
+        return -2;
     }
 
     @Override
@@ -547,6 +560,40 @@ final class RuinedCastle implements DemoShape {
             s.put(gx + 1, -3, gz, "WITHER_SKELETON_SKULL");
             climbOut(s, rng, p::rockMix, gx, -3, gz, 0, 1, 7);   // up the trench to the yard
         }
+
+        // --- 8. Garrison caches: the rooms people actually lived in. ---
+        //
+        // Everything above this point is a hidden vault, which left the castle
+        // reading as an enormous empty courtyard with all its worth behind
+        // puzzles a player has no reason to suspect. These sit in plain sight
+        // on the floors of the rooms you walk through. Individually they are
+        // thinner than an ordinary island's chest (see chestRollDelta) — the
+        // point is a building that looks lived in, not a bigger payday.
+
+        // The four corner guardrooms. Each tower's ground room is already
+        // hollow with two doorways onto the courtyard.
+        for (int[] corner : corners) {
+            chests.add(new Rel(corner[0] + (corner[0] > 0 ? -1 : 1), 2,
+                    corner[1] + (corner[1] > 0 ? -1 : 1)));
+        }
+
+        // The west gate tower, which had no way in at all — its twin holds
+        // the gatehouse cache, this one was sealed masonry.
+        s.carveBox(-4, 2, w - 3, -4, 3, w - 3);   // doorway to the gate passage
+        chests.add(new Rel(-6, 2, w - 2));
+        s.put(-7, 2, w - 3, p.glow());
+
+        // The keep's floor, either side of the door, under the rotted upper
+        // storey. Whatever the lord's household left when the wall came down.
+        chests.add(new Rel(5, 2, kz1 - 2));
+        chests.add(new Rel(-5, 2, kz1 - 2));
+
+        // The great hall, which was also sealed — roofless, but four blocks of
+        // wall with no opening. A door in the courtyard face fixes that.
+        s.carveBox(hx1, 2, 1, hx1, 3, 2);
+        chests.add(new Rel(hx1 - 2, 2, 0));
+        chests.add(new Rel(hx0 + 2, 2, 6));
+        s.put(hx0 + 2, 2, 5, p.glow());
 
         // --- The garrison: denser than any other island. ---
         List<Rel> mobs = new ArrayList<>();

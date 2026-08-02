@@ -2,6 +2,8 @@ package com.diamend.darksea.loot;
 
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.island.IslandRegistry;
+import com.diamend.darksea.island.shape.DemoShape;
+import com.diamend.darksea.island.shape.DemoShapes;
 import com.diamend.darksea.item.DarkSeaItems;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -55,6 +57,7 @@ public final class ChestRefillService implements Listener {
         if (table == null) {
             return;
         }
+        table = thinnedForShape(table, ref.island().template(), vault);
         long now = System.currentTimeMillis();
         if (now - ref.island().lastRefill(ref.pos()) < table.refillCooldownMillis()) {
             return;
@@ -96,4 +99,29 @@ public final class ChestRefillService implements Listener {
         ref.island().setRefilled(ref.pos(), now);
         registry.save();
     }
+
+    /**
+     * Applies the island shape's chest-roll delta to an ordinary chest.
+     *
+     * A shape that scatters many chests through a big building (the castle's
+     * garrison caches) makes each one thinner, so the building reads as
+     * inhabited without paying out several islands' worth. Vaults are never
+     * thinned — being worth finding is the entire point of a vault — and a
+     * chest never drops below one roll.
+     */
+    private LootTable thinnedForShape(LootTable table, String template, boolean vault) {
+        if (vault || template == null) {
+            return table;
+        }
+        DemoShape shape = DemoShapes.byId(template);
+        if (shape == null || shape.chestRollDelta() == 0) {
+            return table;
+        }
+        int rolls = Math.max(1, table.rolls() + shape.chestRollDelta());
+        if (rolls == table.rolls()) {
+            return table;
+        }
+        return new LootTable(table.tier(), rolls, table.refillCooldownMinutes(), table.entries());
+    }
+
 }

@@ -223,8 +223,16 @@ class DemoShapeTest {
                 assertTrue(area > otherArea * 3 / 2, "t" + tier + " castle (" + area
                         + ") not clearly bigger than " + other.id() + " (" + otherArea + ")");
             }
-            assertTrue(build.chests().size() >= 4,
-                    "t" + tier + " castle must hide at least four chests");
+            assertTrue(build.chests().size() >= 12,
+                    "t" + tier + " castle must hold at least twelve chests");
+            // ...and most of them out in the rooms rather than buried. Every
+            // castle chest used to sit in a hidden vault, so the largest
+            // building in the sea read as an empty courtyard and everything
+            // worth having was behind a puzzle nobody knew to look for.
+            long inRooms = build.chests().stream().filter(chest -> chest.y() >= 2).count();
+            assertTrue(inRooms >= 8, "t" + tier + " castle has only " + inRooms
+                    + " chests standing in its rooms — the garrison caches are gone"
+                    + " and the courtyard is bare again");
             assertTrue(build.mobSpawns().size() >= 6,
                     "t" + tier + " castle garrison too thin");
         }

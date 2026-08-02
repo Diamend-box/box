@@ -78,6 +78,18 @@ public interface DemoShape {
     }
 
     /**
+     * Added to the rolls of this shape's ORDINARY chests — negative thins
+     * them. A shape that scatters many chests around a large building wants
+     * each one to be worth less than a lone reef cache, so the building reads
+     * as inhabited without the shape paying out several islands' worth. Vault
+     * chests are unaffected: the point of a vault is that it is worth
+     * finding.
+     */
+    default int chestRollDelta() {
+        return 0;
+    }
+
+    /**
      * Added to the island's ring tier when picking its mob pool: a boost of
      * 1 makes a ring-2 island fight with ring 3's roster. The spawner
      * falls back to the ring's own pool where no deeper pool exists.
