@@ -19,7 +19,7 @@
 # Some islands were rich once: each island carries a hidden wealth multiplier
 # (0.6x–1.8x, derived from its position) applied to its Chronon piles only.
 # The refugees at the calm center take Chronons to wake relics (/ds relic
-# revive), and a proper goods trader is planned on top of the same coin.
+# revive), and the outpost's five shopkeepers all deal in the same coin.
 #
 # RELICS drop dormant (collectibles). Revived at the calm center they grant
 # a passive boost from your inventory — at most 'relics.max-active' at once.
@@ -200,3 +200,52 @@ tiers:
         - { type: token, level: 3, weight: 6 }
         - { type: token, level: 4, weight: 4 }
         - { type: token, level: 5, weight: 2 }
+  # ── The Sunless Trench — the Order's breeding water ──
+  # Ring 5 builds only a couple of islands, and nothing survives out here
+  # without full tier-4 plate and a shielded hull. The tables pay for that:
+  # the fattest Chronon piles in the sea, netherite by the ingot, and the
+  # only chests that hand out a level-5 token with any regularity. There is
+  # no tier-5 armor to progress into — the Leviathan set is the ceiling — so
+  # the Trench pays in coin, hulls and consumables instead of in plate.
+  5:
+    rolls: 6
+    refill-cooldown-minutes: 150
+    entries:
+      # junk
+      - { type: item, material: SCULK_VEIN,       min: 3, max: 8, weight: 6,
+          name: '<dark_gray>Breeding Slick</dark_gray>',
+          lore: ['<dark_gray>Scraped off a hull that came back.</dark_gray>',
+                 '<dark_gray>The crew did not.</dark_gray>'] }
+      # goods
+      - { type: custom, id: chronon,              min: 16, max: 26, weight: 14 }
+      - { type: item, material: NETHERITE_SCRAP,  min: 2, max: 4, weight: 10 }
+      - { type: item, material: DIAMOND_BLOCK,    min: 2, max: 3, weight: 8 }
+      - { type: item, material: ECHO_SHARD,       min: 2, max: 5, weight: 7 }
+      - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2, weight: 6 }
+      - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 2, weight: 5 }
+      - { type: custom, id: gillwater_philter,    weight: 4 }
+      - { type: custom, id: tidal_draught,        weight: 4 }
+      # treasure
+      - { type: custom, id: relic_naxome_heart,   weight: 5 }
+      - { type: custom, id: relic_monolith_splinter, weight: 5 }
+      - { type: custom, id: order_ceremonial_blade, weight: 3 }
+      - { type: custom, id: harpoon_gun,          weight: 3 }
+      - { type: armor, tier: 4, weight: 8 }
+      - { type: token, level: 4, weight: 3 }
+      - { type: token, level: 5, weight: 2 }
+      - { type: custom, id: hullpiercer_arrow,    min: 6, max: 12, weight: 4 }
+    vault:
+      rolls: 8
+      entries:
+        - { type: custom, id: chronon,            min: 40, max: 64, weight: 12 }
+        - { type: item, material: NETHERITE_INGOT, min: 1, max: 2, weight: 6 }
+        - { type: item, material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, min: 1, max: 1, weight: 4 }
+        - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 2, max: 3, weight: 6 }
+        - { type: item, material: TOTEM_OF_UNDYING, min: 2, max: 2, weight: 5 }
+        - { type: custom, id: gillwater_philter,  weight: 5 }
+        - { type: custom, id: relic_naxome_heart, weight: 8 }
+        - { type: custom, id: relic_monolith_splinter, weight: 8 }
+        - { type: custom, id: order_ceremonial_blade, weight: 5 }
+        - { type: custom, id: harpoon_gun,        weight: 5 }
+        - { type: armor, tier: 4, weight: 10 }
+        - { type: token, level: 5, weight: 4 }

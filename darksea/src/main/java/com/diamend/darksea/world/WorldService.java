@@ -177,7 +177,11 @@ public final class WorldService {
 
     private void recreateAndRegenerate(CommandSender sender) {
         getOrCreate(new SecureRandom().nextLong());
-        // generate() pastes the home island first, then scatters the rings.
+        // The landfall goes first. resetFull cleared the registry, so nothing
+        // else will raise it — and without it there is no way into the caves
+        // until the next server start. generate() then pastes the home island
+        // and scatters the rings around both.
+        placer.maybeQueueLandfall(sender, null);
         placer.generate(sender);
     }
 

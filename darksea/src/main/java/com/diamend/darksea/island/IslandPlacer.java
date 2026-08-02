@@ -68,7 +68,7 @@ public final class IslandPlacer {
      * island's chests on the richest loot table, which suits the one place
      * the Order actually landed.
      */
-    private static final int LANDFALL_TIER = 5;
+    public static final int LANDFALL_TIER = 5;
 
     /** Marker positions found in a clipboard, relative to its origin. */
     private record ScanResult(List<Pos> chests, List<Pos> spawnPoints, Pos relMin, Pos relMax) {
@@ -124,6 +124,12 @@ public final class IslandPlacer {
         for (IslandInstance island : registry.all()) {
             existing.add(new PlacementSampler.Point(island.origin().x(), island.origin().z()));
         }
+        // The landfall's spot is reserved whether or not it is standing yet.
+        // A full reset queues it alongside this generation pass, so it is not
+        // in the registry to be spaced around the ordinary way.
+        existing.add(new PlacementSampler.Point(
+                settings.centerX() + settings.landfallOffsetX(),
+                settings.centerZ() + settings.landfallOffsetZ()));
 
         int queued = 0;
         for (int tier = 1; tier <= zones.maxTier() && queued < limit; tier++) {

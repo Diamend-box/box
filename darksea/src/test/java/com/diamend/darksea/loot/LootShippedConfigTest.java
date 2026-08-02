@@ -2,6 +2,7 @@ package com.diamend.darksea.loot;
 
 import com.diamend.darksea.config.DarkSeaSettings.ArmorSettings;
 import com.diamend.darksea.item.DarkSeaItems;
+import com.diamend.darksea.island.IslandPlacer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.configuration.ConfigurationSection;
@@ -54,6 +55,14 @@ class LootShippedConfigTest {
             DarkSeaItems.DEEPSIGHT_TONIC, DarkSeaItems.GILLWATER_PHILTER);
 
     private LootTables tables;
+
+    /**
+     * The deepest ring loot must cover, derived from the shape roster rather
+     * than hardcoded — tier 5 shipped with no tables at all because this test
+     * only ever counted to 4. Any shape that reaches a new ring now demands
+     * loot for it.
+     */
+    private int maxTier;
     private int declaredEntries;
 
     @BeforeEach
@@ -76,11 +85,37 @@ class LootShippedConfigTest {
             }
         }
         tables = LootConfig.load(config, LOG);
+        maxTier = deepestGeneratedTier();
     }
 
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
+    }
+
+    /**
+     * Every tier an island can actually be registered at: the configured
+     * rings, plus the cultist landfall's own tier. Read from config.yml
+     * rather than hardcoded — ring 5 shipped with no loot tables at all
+     * because this test only ever counted to 4, and a chest with no table
+     * fills with nothing and logs nothing.
+     */
+    private static int deepestGeneratedTier() throws Exception {
+        YamlConfiguration config = new YamlConfiguration();
+        try (InputStream in = LootShippedConfigTest.class.getResourceAsStream("/config.yml")) {
+            assertNotNull(in, "config.yml missing from resources");
+            config.loadFromString(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        ConfigurationSection rings =
+                config.getConfigurationSection("generation.islands-per-ring");
+        assertNotNull(rings, "config.yml declares no islands-per-ring");
+        int deepest = IslandPlacer.LANDFALL_TIER;
+        for (String key : rings.getKeys(false)) {
+            if (rings.getInt(key) > 0) {
+                deepest = Math.max(deepest, Integer.parseInt(key));
+            }
+        }
+        return deepest;
     }
 
     private List<LootEntry> allEntries(int tier) {
@@ -96,7 +131,7 @@ class LootShippedConfigTest {
     @Test
     void everyRingHasBaseAndVaultAndNoEntryWasDroppedAsMalformed() {
         int parsed = 0;
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             LootTable base = tables.base().get(tier);
             LootTable vault = tables.vault().get(tier);
             assertNotNull(base, "tier " + tier + " has no base table");
@@ -116,7 +151,7 @@ class LootShippedConfigTest {
     @Test
     void chrononsFlowInEveryRingAndGrowWithDepthAndVaults() {
         int previousMax = 0;
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             LootEntry base = tables.base().get(tier).entries().stream()
                     .filter(e -> isCustom(e, DarkSeaItems.CHRONON)).findFirst().orElse(null);
             LootEntry vault = tables.vault().get(tier).entries().stream()
@@ -132,13 +167,13 @@ class LootShippedConfigTest {
 
     @Test
     void everyRingCarriesARealRelicAndTheVectorStaysWithTheCore() {
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             boolean baseRelic = tables.base().get(tier).entries().stream()
                     .anyMatch(e -> e.type() == LootEntry.Type.CUSTOM
                             && e.customId().startsWith("relic_"));
             assertTrue(baseRelic, "tier " + tier + " has no relic in its base table");
         }
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             assertTrue(allEntries(tier).stream()
                             .noneMatch(e -> isCustom(e, "relic_mariphage_vector")),
                     "the Vector must only ever come from the Core");
@@ -147,7 +182,7 @@ class LootShippedConfigTest {
 
     @Test
     void chestWeaponsEverywhereButMobSignatureWeaponsNever() {
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             assertTrue(allEntries(tier).stream().anyMatch(e ->
                             e.type() == LootEntry.Type.CUSTOM && CHEST_WEAPONS.contains(e.customId())),
                     "tier " + tier + " offers no chest weapon at all");
@@ -159,7 +194,7 @@ class LootShippedConfigTest {
 
     @Test
     void everyRingOffersSomethingToDrink() {
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             assertTrue(allEntries(tier).stream().anyMatch(e ->
                             e.type() == LootEntry.Type.CUSTOM && CONSUMABLES.contains(e.customId())),
                     "tier " + tier + " has no consumable");
@@ -170,7 +205,7 @@ class LootShippedConfigTest {
     void everyCustomEntryRollsTaggedNamedAndUnenchanted() {
         Random rng = new Random(42);
         ArmorSettings armor = new ArmorSettings(true, Map.of());
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             for (LootEntry entry : allEntries(tier)) {
                 if (entry.type() != LootEntry.Type.CUSTOM) {
                     continue;
@@ -191,7 +226,7 @@ class LootShippedConfigTest {
         Random rng = new Random(42);
         ArmorSettings armor = new ArmorSettings(true, Map.of());
         int named = 0;
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             for (LootEntry entry : allEntries(tier)) {
                 if (entry.type() != LootEntry.Type.ITEM || entry.name() == null) {
                     continue;
@@ -214,7 +249,7 @@ class LootShippedConfigTest {
     @Test
     void boatTokensForEveryLevelExistSomewhereInTheProgression() {
         Set<Integer> levels = new HashSet<>();
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             for (LootEntry entry : allEntries(tier)) {
                 if (entry.type() == LootEntry.Type.TOKEN) {
                     levels.add(entry.tokenLevel());
@@ -227,7 +262,7 @@ class LootShippedConfigTest {
     @Test
     void deeperRingsRefillSlower() {
         long previous = 0;
-        for (int tier = 1; tier <= 4; tier++) {
+        for (int tier = 1; tier <= maxTier; tier++) {
             long cooldown = tables.base().get(tier).refillCooldownMinutes();
             assertTrue(cooldown > previous, "tier " + tier + " cooldown should exceed tier " + (tier - 1));
             previous = cooldown;
@@ -248,9 +283,15 @@ class LootShippedConfigTest {
                 assertTrue(tease, "tier " + tier + " " + side.getKey() + " should tease tier " + (t + 1));
             }
         }
-        assertTrue(tables.base().get(4).entries().stream()
-                .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4));
-        assertTrue(tables.vault().get(4).entries().stream()
-                .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4));
+        // Tier 4 is the armor ceiling, so every ring past the tease band just
+        // keeps dropping Leviathan plate — there is nothing above it to tease.
+        for (int tier = 4; tier <= maxTier; tier++) {
+            assertTrue(tables.base().get(tier).entries().stream()
+                    .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4),
+                    "tier " + tier + " base should still drop tier-4 armor");
+            assertTrue(tables.vault().get(tier).entries().stream()
+                    .anyMatch(e -> e.type() == LootEntry.Type.ARMOR && e.armorTier() == 4),
+                    "tier " + tier + " vault should still drop tier-4 armor");
+        }
     }
 }
