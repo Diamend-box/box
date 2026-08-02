@@ -585,6 +585,30 @@ messages:
   editor-list-full: "<red>That shelf is full."
   editor-cannot-encode: "<red>That item can't be put on a shelf."
 
+  # --- The loot editor (/ds loot) --------------------------------------
+  # Additions here go to loot-custom.yml and are merged on top of loot.yml,
+  # so nothing shipped is ever overwritten. Percentages are per roll, and a
+  # chest makes several rolls — the tile shows how many.
+  loot-editor-title-picker: "<dark_aqua>Loot pool"
+  loot-editor-title-list: "<dark_aqua>Loot: <white>{table}"
+  loot-editor-table-counts: "<gray>{shipped} shipped, <green>{added} added</green>"
+  loot-editor-table-rolls: "<dark_gray>{rolls} rolls per chest, refills every {cooldown}m"
+  loot-editor-help-file: "<gray>Additions are saved to loot-custom.yml. loot.yml is never touched."
+  loot-editor-help-pick: "<gray>Click a tier to open its pool."
+  loot-editor-line-weight: "<aqua>Weight {weight} — {share}% per roll"
+  loot-editor-line-amount: "<gray>Drops {min}-{max} at a time"
+  loot-editor-line-shipped: "<dark_gray>from loot.yml: {source}"
+  loot-editor-line-added: "<dark_green>yours: {source}"
+  loot-editor-help-add: "<green>Click an item in your pack to add it to this pool."
+  loot-editor-help-weight: "<gray>Left/right-click your line: weight +/-1 (shift: 10)"
+  loot-editor-help-amount: "<gray>Middle-click your line: stack size +1, wraps at 8"
+  loot-editor-help-delete: "<gray>Press Q on your line: remove it"
+  loot-editor-help-shipped: "<dark_gray>Grey lines are loot.yml's. Edit those in the file."
+  loot-editor-added: "<green>Added <white>{item}</white> at weight {weight}. <gray>Click it to weight it."
+  loot-editor-removed: "<yellow>Removed <white>{item}</white> from the pool."
+  loot-editor-list-full: "<red>That pool is full."
+  loot-editor-cannot-encode: "<red>That item can't be put in a loot pool."
+
   # --- The cultist caves ---------------------------------------------
   caves-unbreakable: "<red>The rock here doesn't give. Only the crystal does."
   caves-no-building: "<red>This place was built once already. Not by you."

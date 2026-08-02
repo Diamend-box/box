@@ -791,6 +791,45 @@ Every click writes `shops.yml` immediately, so a crash can't lose an edit. The
 rewrite re-emits the file's header and section comments, so it stays
 hand-editable no matter how many times the GUI has been through it.
 
+### Editing the loot pool in game: `/ds loot`
+
+Admin-only, and the answer to "how do I put my own gear in chests". Opens a
+picker of every tier that has a loot table, base on the left and vault beside
+it, then a board showing that table's full pool.
+
+| Gesture | What it does |
+| --- | --- |
+| **Click an item in your own pack** | Adds it to this pool at weight 5 |
+| **Left / right-click your line** | Weight +1 / -1 (hold shift for 10) |
+| **Middle-click your line** | Stack size +1, wrapping at 8 |
+| **Press Q on your line** | Removes it |
+
+Same rule as the shop editor: adding *copies* what you clicked, so nothing in
+your inventory ever moves.
+
+**Two files, not one.** Additions go to `loot-custom.yml`, and `loot.yml` is
+never written. That is not tidiness — loot.yml is hand-written and its comments
+are the only record of why the shipped weights are what they are, and no YAML
+serialiser preserves a comment. An editor that rewrote it would delete its own
+documentation the first time anyone clicked a button. The two are merged at
+load, shipped entries first, and an addition can only ever *dilute* the
+existing weights: it never replaces a line, a `rolls` count or a cooldown.
+
+Shipped lines are drawn on the board too, greyed and unclickable. They are
+there because a weight means nothing on its own — you need to see that the
+shipped rotten flesh is at 40 before "5" tells you anything. Every line shows
+its resulting share of the merged table as a percentage, and the tier tile
+shows how many rolls a chest makes, which together are the numbers that decide
+how often a thing actually appears.
+
+The entry form is picked for readability, as in the shop editor: a DarkSea item
+or relic writes a `CUSTOM` entry naming its id, a plain vanilla item writes an
+`ITEM` entry naming its material, and only a stack carrying real item data
+falls back to a `SNAPSHOT` — base64, carrying name, lore, enchants, model data
+and foreign NBT. Every click rewrites the file and re-merges the live tables
+immediately, so an added item is in the pool before the board is even closed
+and can be checked against a real chest on the spot.
+
 ### Two economy rules the tests enforce
 
 1. **Nothing that ends a run is for sale.** The Undrowned Heart, the Soulwake

@@ -12,6 +12,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -199,6 +200,22 @@ class ConfigParsingTest {
         assertTrue(settings.messages().containsKey("portal-descended"));
         assertTrue(settings.messages().containsKey("portal-ascended"));
         assertTrue(settings.messages().containsKey("portal-closed"));
+        // The loot editor is all lore lines: a missing key there is not a
+        // silent fallback, it is a tile whose numbers cannot be read, which
+        // makes the board useless for the one thing it exists to do.
+        for (String key : List.of(
+                "loot-editor-title-picker", "loot-editor-title-list",
+                "loot-editor-table-counts", "loot-editor-table-rolls",
+                "loot-editor-help-file", "loot-editor-help-pick",
+                "loot-editor-line-weight", "loot-editor-line-amount",
+                "loot-editor-line-shipped", "loot-editor-line-added",
+                "loot-editor-help-add", "loot-editor-help-weight",
+                "loot-editor-help-amount", "loot-editor-help-delete",
+                "loot-editor-help-shipped", "loot-editor-added",
+                "loot-editor-removed", "loot-editor-list-full",
+                "loot-editor-cannot-encode")) {
+            assertTrue(settings.messages().containsKey(key), "config.yml is missing " + key);
+        }
         // Every rung of the old man's ladder must have a line to speak. The
         // ladder's length is shops.yml's clue-costs list; ShopConfigTest pins
         // that to four, so four lines is what config.yml owes.

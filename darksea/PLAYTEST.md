@@ -25,7 +25,14 @@ you're enjoying yourself.
    builds are missing the NPC respawn fix and will look broken in Pass 2.
 3. Apply the 6 GB profile from the README (config values + `view-distance`),
    restart.
-4. Optional: copy `mythicmobs-pack/` into `plugins/MythicMobs/`, restart.
+4. Optional but strongly recommended: copy the **contents** of
+   `mythicmobs-pack/` into `plugins/MythicMobs/Mobs/`, restart. The `Mobs/`
+   subfolder is the part that matters — MythicMobs only reads mob definitions
+   from there, and this document said `plugins/MythicMobs/` for the whole
+   first playtest, which is why every island spawned husks. Check it landed
+   with `/ds diag`, which now reports how many of the ids in mobs.yml Mythic
+   can actually resolve. Anything less than all of them means the pack is in
+   the wrong place; the spawner falls back to vanilla mobs silently.
 
 Then, **before anything else**:
 
@@ -50,6 +57,11 @@ Then:
 ```
 /ds reset full confirm
 ```
+
+A full reset now re-raises the cultist landfall along with everything else. It
+did not before, which is why the landfall was missing after the first
+playtest's setup — this document told you to run a full reset, and the reset
+deleted it.
 
 > **RECORD:** how long the full reset takes, wall-clock, and whether the
 > server visibly hangs during it. 34 islands get pasted; if that's a 30-second

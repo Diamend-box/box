@@ -10,6 +10,8 @@ import org.bukkit.Material;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -22,14 +24,21 @@ import org.bukkit.inventory.ItemStack;
  * ring N chests are the source of tier N armor), a boat upgrade token, or a
  * CUSTOM registry item ({@link DarkSeaItems} — Chronons, relics, weapons,
  * consumables; identity guaranteed by PDC, so a typo'd id fails at parse
- * time where CI catches it, never as a silently plain item in a chest).
+ * time where CI catches it, never as a silently plain item in a chest), or a
+ * SNAPSHOT — a base64 image of a whole ItemStack, captured from an admin's own
+ * inventory by {@code /ds loot}. A snapshot carries name, lore, enchants,
+ * model data and any other plugin's NBT, which is what lets the sea drop gear
+ * this plugin knows nothing about.
+ *
+ * <p>{@code customId} does double duty: a registry id for CUSTOM, the base64
+ * payload for SNAPSHOT. They are never both in play on one entry.
  */
 public record LootEntry(Type type, Material material, int min, int max,
                         String name, List<String> lore,
                         int armorTier, int tokenLevel, String customId, int weight) {
 
     public enum Type {
-        ITEM, ARMOR, TOKEN, CUSTOM
+        ITEM, ARMOR, TOKEN, CUSTOM, SNAPSHOT
     }
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
@@ -73,6 +82,15 @@ public record LootEntry(Type type, Material material, int min, int max,
                 int min = Math.max(1, toInt(map.get("min"), 1));
                 int max = Math.max(min, toInt(map.get("max"), min));
                 return new LootEntry(type, null, min, max, null, List.of(), 0, 0, id, weight);
+            }
+            case SNAPSHOT -> {
+                String data = map.get("data") != null ? String.valueOf(map.get("data")) : null;
+                if (data == null || data.isBlank()) {
+                    throw new IllegalArgumentException("snapshot entry has no data");
+                }
+                int min = Math.max(1, toInt(map.get("min"), 1));
+                int max = Math.max(min, toInt(map.get("max"), min));
+                return new LootEntry(type, null, min, max, null, List.of(), 0, 0, data, weight);
             }
         }
         throw new IllegalArgumentException("unknown entry type: " + typeName);
@@ -121,7 +139,78 @@ public record LootEntry(Type type, Material material, int min, int max,
                 }
                 yield DarkSeaItems.create(customId, amount);
             }
+            case SNAPSHOT -> {
+                ItemStack stack = decode(customId);
+                if (stack != null) {
+                    stack.setAmount(Math.min(stack.getMaxStackSize(),
+                            min + rng.nextInt(max - min + 1)));
+                }
+                yield stack;
+            }
         };
+    }
+
+    /**
+     * Rebuilds a snapshot's stack, or null if the payload is unreadable — a
+     * hand-edited loot-custom.yml, or an item from a plugin that has since
+     * been removed. Null is survivable: {@code rollLoot} drops it and the
+     * chest is one item lighter, which beats a stack trace per refill.
+     */
+    public static ItemStack decode(String base64) {
+        try {
+            return ItemStack.deserializeBytes(Base64.getDecoder().decode(base64));
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * This entry as a loot.yml map — the inverse of {@link #parse}, so what
+     * the in-game editor writes reads back as exactly the same entry.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", type.name());
+        switch (type) {
+            case ITEM -> {
+                map.put("material", material.name());
+                map.put("min", min);
+                map.put("max", max);
+                if (name != null) {
+                    map.put("name", name);
+                }
+                if (!lore.isEmpty()) {
+                    map.put("lore", List.copyOf(lore));
+                }
+            }
+            case ARMOR -> map.put("tier", armorTier);
+            case TOKEN -> map.put("level", tokenLevel);
+            case CUSTOM -> {
+                map.put("id", customId);
+                map.put("min", min);
+                map.put("max", max);
+            }
+            case SNAPSHOT -> {
+                map.put("data", customId);
+                map.put("min", min);
+                map.put("max", max);
+            }
+        }
+        map.put("weight", weight);
+        return map;
+    }
+
+    /** The same entry at a different weight — the editor's weight buttons. */
+    public LootEntry withWeight(int newWeight) {
+        return new LootEntry(type, material, min, max, name, lore, armorTier,
+                tokenLevel, customId, Math.max(1, newWeight));
+    }
+
+    /** The same entry at a different stack size, keeping min and max in order. */
+    public LootEntry withAmount(int newMin, int newMax) {
+        int lo = Math.max(1, newMin);
+        return new LootEntry(type, material, lo, Math.max(lo, newMax), name, lore,
+                armorTier, tokenLevel, customId, weight);
     }
 
     private static Component noItalic(Component component) {

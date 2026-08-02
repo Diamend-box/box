@@ -17,6 +17,9 @@ import com.diamend.darksea.island.IslandRegistry;
 import com.diamend.darksea.item.ConsumableService;
 import com.diamend.darksea.item.SoulwakeService;
 import com.diamend.darksea.loot.ChestRefillService;
+import com.diamend.darksea.loot.CustomLoot;
+import com.diamend.darksea.loot.CustomLootConfig;
+import com.diamend.darksea.loot.LootEditorService;
 import com.diamend.darksea.loot.LootConfig;
 import com.diamend.darksea.loot.LootTables;
 import com.diamend.darksea.loot.RunLootService;
@@ -66,6 +69,11 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     private volatile DarkSeaSettings settings;
     private volatile ZoneManager zoneManager;
+    /** loot.yml exactly as shipped — what the editor greys out as context. */
+    private volatile LootTables shippedLoot;
+    /** loot-custom.yml: everything added in game. */
+    private volatile CustomLoot customLoot;
+    /** The two merged. This is what chests actually roll. */
     private volatile LootTables lootTables;
     private volatile Map<String, List<MobDrops.Line>> mobDrops;
     private volatile ShopStock shopStock;
@@ -95,6 +103,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private NpcService npcs;
     private ShopMenuService shops;
     private ShopEditorService shopEditor;
+    private LootEditorService lootEditor;
     private NodeService nodes;
     private ExtractionChannel extraction;
     private PortalService portals;
@@ -130,6 +139,14 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
         messages = new Messages(settings.messages());
         lootTables = stepGet("loot.yml", this::loadLootTables, LootTables.empty());
+        // A failed loot.yml step leaves shippedLoot unset, and the merge has to
+        // survive that — a broken loot.yml should cost the shipped tables, not
+        // the whole plugin.
+        if (shippedLoot == null) {
+            shippedLoot = lootTables;
+        }
+        customLoot = stepGet("loot-custom.yml", this::loadCustomLoot, CustomLoot.empty());
+        lootTables = customLoot.mergeInto(shippedLoot);
         mobDrops = stepGet("mobs.yml", this::loadMobDrops, Map.<String, List<MobDrops.Line>>of());
         shopStock = stepGet("shops.yml", this::loadShopStock, ShopStock.empty());
         oreTables = stepGet("ores.yml", this::loadOreTables, OreTables.empty());
@@ -152,6 +169,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         npcs = new NpcService(this);
         shops = new ShopMenuService(this);
         shopEditor = new ShopEditorService(this);
+        lootEditor = new LootEditorService(this);
         nodes = new NodeService(this);
         extraction = new ExtractionChannel(this, nodes);
         portals = new PortalService(this);
@@ -166,6 +184,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         listener("chest-refill", () -> chestRefill);
         listener("exposure", () -> exposureTask);
         listener("relics", () -> relics);
+        listener("loot-editor", () -> lootEditor);
         listener("consumables", () -> new ConsumableService(this));
         listener("soulwake", () -> new SoulwakeService(this));
         listener("undrowned-heart", () -> new UndrownedHeartService(this));
@@ -327,16 +346,30 @@ public final class DarkSeaPlugin extends JavaPlugin {
         this.settings = loaded;
         this.zoneManager = new ZoneManager(loaded.zones());
         this.messages.reload(loaded.messages());
-        this.lootTables = loadLootTables();
+        this.customLoot = loadCustomLoot();
+        this.lootTables = this.customLoot.mergeInto(loadLootTables());
         this.mobDrops = loadMobDrops();
         this.shopStock = loadShopStock();
         this.oreTables = loadOreTables();
         this.mobSpawner.reloadSets();
     }
 
+    /**
+     * Reads loot.yml and remembers it verbatim. The editor needs the shipped
+     * tables on their own — merging is one-way, and a merged table cannot say
+     * which of its lines came from which file.
+     */
     private LootTables loadLootTables() {
         File file = new File(getDataFolder(), "loot.yml");
-        return LootConfig.load(YamlConfiguration.loadConfiguration(file), getLogger());
+        LootTables loaded =
+                LootConfig.load(YamlConfiguration.loadConfiguration(file), getLogger());
+        this.shippedLoot = loaded;
+        return loaded;
+    }
+
+    private CustomLoot loadCustomLoot() {
+        return CustomLootConfig.load(
+                new File(getDataFolder(), "loot-custom.yml"), getLogger());
     }
 
     private OreTables loadOreTables() {
@@ -533,6 +566,33 @@ public final class DarkSeaPlugin extends JavaPlugin {
     public void saveShopStock(ShopStock updated) {
         this.shopStock = updated;
         ShopConfig.save(updated, new File(getDataFolder(), "shops.yml"), getLogger());
+    }
+
+    /** loot.yml as shipped, without the in-game additions merged in. */
+    public LootTables shippedLoot() {
+        return shippedLoot;
+    }
+
+    /** The in-game loot additions, as {@code /ds loot} last left them. */
+    public CustomLoot customLoot() {
+        return customLoot;
+    }
+
+    /**
+     * Swaps the live overlay, re-merges the tables and writes
+     * loot-custom.yml. Re-merging here rather than on the next reload is the
+     * point: an item added in game is in the pool before the editor is even
+     * closed, so it can be verified against a real chest immediately.
+     */
+    public void saveCustomLoot(CustomLoot updated) {
+        this.customLoot = updated;
+        this.lootTables = updated.mergeInto(shippedLoot);
+        CustomLootConfig.save(updated,
+                new File(getDataFolder(), "loot-custom.yml"), getLogger());
+    }
+
+    public LootEditorService lootEditor() {
+        return lootEditor;
     }
 
     public VaultService vaults() {

@@ -72,6 +72,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "npc" -> npc(sender, args);
             case "shop" -> shop(sender);
+            case "loot" -> loot(sender);
             case "diag" -> diag(sender, args);
             case "reload" -> {
                 if (requireAdmin(sender)) {
@@ -104,6 +105,8 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds give item <id> [count] [player]", "grant any registry item (weapons, relics, chronons...)", "darksea.admin");
         helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
         helpLine(sender, "/ds boat damage [amount]", "test tool: hull-damage the boat you're in", "darksea.admin");
+        helpLine(sender, "/ds shop", "edit shop prices and stock in game", "darksea.admin");
+        helpLine(sender, "/ds loot", "add your own items to the chest loot pools", "darksea.admin");
         helpLine(sender, "/ds diag [warnings]", "what came up, what didn't, and what it warned about", "darksea.admin");
         helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
     }
@@ -734,6 +737,23 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         plugin.shopEditor().openPicker(player);
     }
 
+    /**
+     * /ds loot — the in-game loot-pool editor. Unlike {@code /ds shop} this is
+     * not merely a convenience for a file: it is the only practical way to put
+     * an item the plugin has no id for into a chest, because doing it by hand
+     * means pasting a base64 stack image into YAML.
+     */
+    private void loot(CommandSender sender) {
+        if (!requireAdmin(sender)) {
+            return;
+        }
+        if (!(sender instanceof Player player)) {
+            plugin.messages().send(sender, "players-only");
+            return;
+        }
+        plugin.lootEditor().openPicker(player);
+    }
+
     private boolean requireAdmin(CommandSender sender) {
         if (!sender.hasPermission("darksea.admin")) {
             plugin.messages().send(sender, "no-permission");
@@ -771,6 +791,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 options.add("give");
                 options.add("npc");
                 options.add("shop");
+                options.add("loot");
                 options.add("diag");
                 options.add("reload");
             }
