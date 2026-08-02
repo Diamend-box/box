@@ -183,9 +183,32 @@ public final class RelicService extends BukkitRunnable implements Listener {
             return;
         }
         DarkSeaItems.removeChronons(player.getInventory(), cost);
-        relic.wake(hand);
+        wakeOne(player, hand, relic);
         plugin.messages().send(player, "relic-revived",
                 "name", relic.displayName(), "cost", String.valueOf(cost));
+    }
+
+    /**
+     * Wakes exactly ONE relic out of the held stack.
+     *
+     * The awake flag lives in item meta, which a stack shares — so waking a
+     * stack of three woke all three for a single payment. Splitting one off
+     * first keeps the price per relic honest: the rest of the stack stays
+     * dormant in hand, and the woken one goes to the inventory (or the floor
+     * if there is no room, which beats deleting it).
+     */
+    private void wakeOne(Player player, ItemStack hand, Relic relic) {
+        if (hand.getAmount() <= 1) {
+            relic.wake(hand);
+            return;
+        }
+        ItemStack single = hand.clone();
+        single.setAmount(1);
+        relic.wake(single);
+        hand.setAmount(hand.getAmount() - 1);
+        for (ItemStack leftover : player.getInventory().addItem(single).values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+        }
     }
 
     /** The refugees live at the calm center: the sea's ring with required tier 0. */

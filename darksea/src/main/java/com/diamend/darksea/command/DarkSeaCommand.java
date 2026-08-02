@@ -697,6 +697,12 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         diagLine(sender, "next rotation",
                 MarketClock.format(MarketClock.millisUntilNext(System.currentTimeMillis(), interval)));
 
+        // MythicMobs, and — more usefully — whether it actually knows the
+        // roster. A pack in the wrong folder is completely silent: every mob
+        // quietly spawns its vanilla fallback, so the sea fills with husks
+        // and nothing is ever logged. This is the line that says so.
+        diagLine(sender, "mythicmobs", plugin.mobSpawner().mythicReport());
+
         diagLine(sender, "warnings logged", tail.warningCount() + " warning, "
                 + tail.severeCount() + " severe");
         if (!tail.clean()) {

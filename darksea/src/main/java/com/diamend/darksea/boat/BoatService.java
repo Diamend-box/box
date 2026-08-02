@@ -258,14 +258,27 @@ public final class BoatService implements Listener {
         }
         double multiplier = effectiveMultiplier(rider);
         double wounded = plugin.naval() != null ? plugin.naval().speedCeiling(boat) : 1.0;
-        Vector velocity = boat.getVelocity();
-        double horizontal = Math.hypot(velocity.getX(), velocity.getZ());
+
+        // Measured from the move itself, NOT from getVelocity(). A boat with
+        // a rider is driven by that rider's client, which reports positions;
+        // the server's velocity vector stays near zero the whole voyage. Read
+        // that way every boat looked stationary, boostFactor's "nearly still"
+        // guard tripped on every tick, and no boat has ever been faster than
+        // vanilla at any level — which is exactly what the second live test
+        // found with a Maelstrom under it.
+        Vector step = event.getTo().toVector().subtract(event.getFrom().toVector());
+        double horizontal = Math.hypot(step.getX(), step.getZ());
         double factor = speedFactor(multiplier, horizontal,
                 plugin.settings().boat().speedCapBase(), wounded);
         if (Math.abs(factor - 1.0) < 1e-9) {
             return;
         }
-        boat.setVelocity(new Vector(velocity.getX() * factor, velocity.getY(), velocity.getZ() * factor));
+        Vector velocity = boat.getVelocity();
+        // The boost rides on the measured step, falling back to the boat's
+        // own velocity only if the server happens to have a real one.
+        double x = (Math.abs(step.getX()) > 1e-6 ? step.getX() : velocity.getX()) * factor;
+        double z = (Math.abs(step.getZ()) > 1e-6 ? step.getZ() : velocity.getZ()) * factor;
+        boat.setVelocity(new Vector(x, velocity.getY(), z));
     }
 
     /**

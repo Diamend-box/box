@@ -191,6 +191,16 @@ mob-spawning:
   global-cap: 120
   abandon-cooldown-minutes: 5   # despawn island mobs after this long with nobody near
 
+  # per-island-cap is how many stand at once. island-budget is how many the
+  # island will EVER give you before it is spent — killing one does not hand
+  # the slot back, so an island can be cleared out and stays cleared. The
+  # clock runs from the island's first spawn (not its last), the same
+  # first-touch rule the crystal geodes use, so half-clearing an island never
+  # pushes its recovery further away and islands recover out of step with
+  # each other on their own.
+  island-budget: 14
+  budget-refill-minutes: 20
+
 # Timed sea reset. The whole Dark Sea resets on a cycle so loot can't be
 # hoarded or camp-farmed forever — a countdown warns players, then the sea
 # heals and restocks. Players out in the sea are washed home to the sanctuary

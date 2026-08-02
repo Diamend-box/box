@@ -58,8 +58,18 @@ public record DarkSeaSettings(
                                      int demoPaceTicks) {
     }
 
+    /**
+     * {@code perIslandCap} is how many of an island's garrison stand at once;
+     * {@code islandBudget} is how many it will ever spawn before the island
+     * is spent. Without a budget a killed mob frees its slot immediately and
+     * an island is an endless farm — clearing one has to mean something, so
+     * the budget is consumed per spawn and only refills {@code
+     * budgetRefillMinutes} after the island's FIRST spawn, the same
+     * first-touch clock the crystal geodes use.
+     */
     public record MobSpawnSettings(int scanIntervalTicks, double activationRadius, int perIslandCap,
-                                   int globalCap, int abandonCooldownMinutes) {
+                                   int globalCap, int abandonCooldownMinutes,
+                                   int islandBudget, int budgetRefillMinutes) {
     }
 
     /**
@@ -281,7 +291,9 @@ public record DarkSeaSettings(
                 Math.max(8, cfg.getDouble("mob-spawning.activation-radius", 64)),
                 Math.max(1, cfg.getInt("mob-spawning.per-island-cap", 6)),
                 Math.max(1, cfg.getInt("mob-spawning.global-cap", 120)),
-                Math.max(1, cfg.getInt("mob-spawning.abandon-cooldown-minutes", 5)));
+                Math.max(1, cfg.getInt("mob-spawning.abandon-cooldown-minutes", 5)),
+                Math.max(1, cfg.getInt("mob-spawning.island-budget", 14)),
+                Math.max(1, cfg.getInt("mob-spawning.budget-refill-minutes", 20)));
 
         CombatSettings combat = new CombatSettings(
                 cfg.getBoolean("combat.protect-islands", true),

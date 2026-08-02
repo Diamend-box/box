@@ -7,6 +7,7 @@ import com.diamend.darksea.island.IslandRegistry;
 import com.diamend.darksea.util.Pos;
 import io.lumine.mythic.api.exceptions.InvalidMobTypeException;
 import io.lumine.mythic.bukkit.MythicBukkit;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -53,6 +54,8 @@ public final class MobSpawner extends BukkitRunnable {
     private final Random rng = new Random();
     private final Map<String, Set<UUID>> tracked = new HashMap<>();
     private final Map<String, Long> lastNear = new HashMap<>();
+    /** Per-island spawn budgets: what stops an island being an endless farm. */
+    private final Map<String, SpawnBudget> budgets = new HashMap<>();
     private final Set<String> warnedTypes = new HashSet<>();
     private volatile Map<Integer, List<MobPool.Slot>> pools = Map.of();
 
@@ -130,9 +133,19 @@ public final class MobSpawner extends BukkitRunnable {
             if (near) {
                 lastNear.put(island.id(), now);
 
+                SpawnBudget budget = budgets.computeIfAbsent(island.id(),
+                        id -> new SpawnBudget(cfg.islandBudget() + island.mobCapBonus(),
+                                cfg.budgetRefillMinutes() * 60_000L));
+                if (budget.exhausted(now)) {
+                    // Cleared out. Nothing more from this island until it
+                    // refills — walking to the next one is the whole point.
+                    continue;
+                }
+
                 // A nest keeps its boss standing: the Order grows another the
                 // moment the sea is empty of one, even past the ordinary mob
-                // cap. One spawn per pass keeps the same gentle ramp.
+                // cap — but not past the island's budget, or a nest would be
+                // an endless boss farm.
                 String boss = island.bossMob();
                 if (boss != null && countLive(mobs, boss) == 0) {
                     Pos heart = island.bossSpawn();
@@ -140,6 +153,7 @@ public final class MobSpawner extends BukkitRunnable {
                         UUID spawned = spawnMob(new MobPool.MobEntry(boss,
                                 island.bossFallback(), 1, BOSS_LEVEL), heart.toLocation(world));
                         if (spawned != null) {
+                            budget.tryConsume(now);
                             mobs.add(spawned);
                         }
                     }
@@ -164,6 +178,9 @@ public final class MobSpawner extends BukkitRunnable {
                 Pos point = island.spawnPoints().get(rng.nextInt(island.spawnPoints().size()));
                 UUID spawned = spawnMob(entry, point.toLocation(world));
                 if (spawned != null) {
+                    // Charged only for a mob that actually stood up, so a
+                    // broken mobs.yml entry cannot silently drain an island.
+                    budget.tryConsume(now);
                     mobs.add(spawned);
                 }
             } else if (!mobs.isEmpty()) {
@@ -211,8 +228,28 @@ public final class MobSpawner extends BukkitRunnable {
         if (entity != null) {
             entity.getPersistentDataContainer().set(MobDrops.MOB_ID_KEY,
                     PersistentDataType.STRING, type);
+            nameIfAnonymous(entity, type);
         }
         return id;
+    }
+
+    /**
+     * Gives a spawn a visible name derived from its mobs.yml type, unless it
+     * already carries one — a Mythic mob named by the pack keeps the pack's
+     * name, while a vanilla fallback stops being an anonymous husk. Without
+     * this the whole roster reads identically to a player, which is what the
+     * second live test reported.
+     */
+    private void nameIfAnonymous(Entity entity, String type) {
+        if (entity.customName() != null) {
+            return;
+        }
+        String name = MobNames.pretty(type);
+        if (name.isEmpty()) {
+            return;
+        }
+        entity.customName(Component.text(name));
+        entity.setCustomNameVisible(true);
     }
 
     private UUID spawnVanilla(String name, Location location) {
@@ -257,6 +294,45 @@ public final class MobSpawner extends BukkitRunnable {
                 return null;
             }
         }
+
+        /** Whether Mythic has a mob registered under this internal name. */
+        static boolean knows(String type) {
+            return MythicBukkit.inst().getMobManager().getMythicMob(type).isPresent();
+        }
+    }
+
+    /**
+     * One line for {@code /ds diag}: is MythicMobs here, and does it actually
+     * know the roster mobs.yml asks for? A pack sitting in the wrong folder
+     * fails completely silently — every entry falls back to its vanilla mob,
+     * the sea fills with anonymous husks, and nothing is ever logged, because
+     * from the spawner's point of view the fallback worked. Reporting how
+     * many ids resolve turns that into a number you can read at a glance.
+     */
+    public String mythicReport() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
+            return "not installed — every mob spawns its vanilla fallback";
+        }
+        Set<String> types = new HashSet<>();
+        for (List<MobPool.Slot> pool : pools.values()) {
+            for (MobPool.Slot slot : pool) {
+                types.add(slot.entry().type());
+            }
+        }
+        if (types.isEmpty()) {
+            return "installed, but mobs.yml declares no mobs";
+        }
+        int known = 0;
+        for (String type : types) {
+            if (MythicHook.knows(type)) {
+                known++;
+            }
+        }
+        String detail = known + " of " + types.size() + " mobs.yml ids known";
+        if (known == 0) {
+            return "installed, but " + detail + " — pack not in plugins/MythicMobs/Mobs/";
+        }
+        return known == types.size() ? "installed, " + detail : "installed, only " + detail;
     }
 
     /** How many still-living tracked mobs carry the given mobs.yml type tag. */
@@ -294,6 +370,7 @@ public final class MobSpawner extends BukkitRunnable {
 
     /** Resets and shutdown: remove every mob this plugin spawned. */
     public void despawnAll() {
+        budgets.clear();
         for (Set<UUID> mobs : tracked.values()) {
             despawn(mobs);
         }
