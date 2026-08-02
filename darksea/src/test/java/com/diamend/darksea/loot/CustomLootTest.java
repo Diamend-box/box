@@ -73,7 +73,9 @@ class CustomLootTest {
                 .plus(new CustomLoot.Key(1, true), item(Material.DIAMOND, 2))
                 .mergeInto(shipped());
 
-        assertEquals(1, merged.base().get(1).entries().size(), "base must be untouched");
+        // The fixture ships two base lines and one vault line; a vault addition
+        // must move only the second of those numbers.
+        assertEquals(2, merged.base().get(1).entries().size(), "base must be untouched");
         assertEquals(2, merged.vault().get(1).entries().size());
     }
 
