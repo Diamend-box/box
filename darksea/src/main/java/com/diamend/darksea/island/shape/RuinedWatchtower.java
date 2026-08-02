@@ -208,7 +208,11 @@ final class RuinedWatchtower implements DemoShape {
         // stepped trench in the yard leads down.
         if (tier >= 3) {
             s.fillBox(-2, -4, -9, 2, 0, -5, p::rockMix);
-            s.carveBox(-1, -3, -8, 1, -2, -6);
+            // Three blocks of head-room, not two. At two, the last step of the
+            // trench had a single clear block above it and the crypt was only
+            // enterable by crawling — which survival players cannot choose to
+            // do, so the chest down here was sealed on every tier-3+ seed.
+            s.carveBox(-1, -3, -8, 1, -1, -6);
             s.put(0, 0, -4, p.rockMix(rng));
             s.carveBox(0, 1, -4, 0, 3, -4);
             s.put(0, -1, -5, p.rockMix(rng));

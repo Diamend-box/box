@@ -329,11 +329,11 @@ class DemoShapeTest {
     void everyChestCanBeLootedWithoutBreakingBlocks() {
         // Island blocks are protected on the live server — players can open a
         // chest but can't mine their way to a sealed one. So EVERY chest on
-        // EVERY island must be reachable without breaking a block: walked to,
-        // crawled to (a 1-high hollow, like the twin atoll's), or dropped
-        // into. A buried vault with no such path is dead loot. This swept the
-        // whole roster clean offline over 28,000 chests; here we lock a broad
-        // seed band per shape so no future edit can re-seal one.
+        // EVERY island chest must be reachable without breaking a block:
+        // walked to at standing height, or dropped into. A buried vault with
+        // no such path is dead loot. This swept the whole roster clean
+        // offline; here we lock a broad seed band per shape so no future edit
+        // can re-seal one.
         long[] seeds = {1L, 424242L, -777L, 4242L, 99L, 2026L, -55L, 700700L,
                 104L, 201L, 240L, 288L, 357L, 476L, 40L, 165L};
         for (DemoShape shape : DemoShapes.ALL) {
@@ -345,8 +345,8 @@ class DemoShapeTest {
                         assertTrue(reachableWithoutBreaking(build, chest),
                                 shape.id() + " t" + tier + " seed " + seed + " chest#" + c
                                         + " @ " + chest.x() + "," + chest.y() + "," + chest.z()
-                                        + " is sealed — no walk/crawl/fall path to it,"
-                                        + " and island blocks can't be mined");
+                                        + " is sealed — no standing-height walk or fall"
+                                        + " path to it, and island blocks can't be mined");
                     }
                 }
             }
@@ -355,8 +355,8 @@ class DemoShapeTest {
 
     /**
      * Flood-fills a player from the chest out to open sky, breaking nothing.
-     * A cell is enterable when it has a solid floor and at least one clear
-     * block (crawl height); two clear blocks is full standing height. The
+     * A cell is enterable when it has a solid floor and standing head-room.
+     * The
      * player may step or auto-jump up one block onto an adjacent tread, move
      * level, or fall any distance. Reaching a column with nothing solid
      * overhead means daylight — the chest can be looted without mining.
@@ -374,7 +374,7 @@ class DemoShapeTest {
             }
             for (int[] d : dirs) {
                 int nx = f.x() + d[0], nz = f.z() + d[1];
-                // Move level or step/crawl up one block onto an adjacent tread.
+                // Move level, or step/auto-jump up one block onto a tread.
                 for (int dy = 1; dy >= 0; dy--) {
                     Rel step = new Rel(nx, f.y() + dy, nz);
                     if (enterable(build, step) && seen.add(step)) {
@@ -401,10 +401,21 @@ class DemoShapeTest {
         return false;
     }
 
-    /** A cell a player can occupy without breaking in: solid floor, clear
-     *  above (one block = crawl, so 1-high hollows still count as reachable). */
+    /**
+     * A cell a player can occupy without breaking in: solid floor and TWO
+     * clear blocks — standing height.
+     *
+     * This used to accept one clear block, on the theory that a 1-high hollow
+     * could be crawled into. It cannot: crawling in survival is something the
+     * game does to you under a trapdoor or on leaving water, never something
+     * you can choose from an ordinary standing space. That leniency passed 64
+     * chests the second live test found sealed — every twin-atoll grotto and
+     * every tier-3+ watchtower crypt.
+     */
     private static boolean enterable(ShapeBuild build, Rel pos) {
-        return isClear(build, pos) && isSolid(build, pos.below());
+        return isClear(build, pos)
+                && isClear(build, pos.above())
+                && isSolid(build, pos.below());
     }
 
     /** Nothing solid anywhere above the cell — the player sees sky. */

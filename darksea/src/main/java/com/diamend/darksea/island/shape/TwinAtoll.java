@@ -107,8 +107,12 @@ final class TwinAtoll implements DemoShape {
             }
         }
         for (int d = 2; d <= 4; d++) {
-            s.put(capX - d, capBase, capZ, p.rockMix(rng));     // crawl floor
-            s.carve(capX - d, capBase + 1, capZ);               // seaward crawl gap
+            s.put(capX - d, capBase, capZ, p.rockMix(rng));     // tunnel floor
+            // Two blocks of head-room, not one. A 1-high gap reads as a way in
+            // and is not: a survival player cannot choose to crawl, so the
+            // chest under this pile was unreachable on every seed.
+            s.carve(capX - d, capBase + 1, capZ);
+            s.carve(capX - d, capBase + 2, capZ);
         }
         Rel chest = new Rel(capX + 1, capBase + 1, capZ);
         s.put(capX - 1, capBase + 1, capZ - 1, p.glow());
