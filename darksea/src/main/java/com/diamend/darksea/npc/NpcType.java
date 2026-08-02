@@ -19,7 +19,7 @@ public enum NpcType {
      * basics a captain forgot to pack. Stands near the middle of the outpost.
      */
     REFUGEE_TRADER("refugee_trader", "fisherman",
-            "<aqua>Refugee Trader</aqua>", "<dark_aqua>Refugee Trader</dark_aqua>"),
+            "<aqua>Refugee Trader</aqua>", "<dark_aqua>Trader</dark_aqua>"),
 
     /**
      * Wakes dormant relics for their Chronon price — the only one who will —
@@ -34,7 +34,7 @@ public enum NpcType {
      * which is the entire reason anyone puts up with him.
      */
     BLACK_MARKET("black_market", "cleric",
-            "<dark_purple>Black Market</dark_purple>", "<dark_purple>Black Market</dark_purple>"),
+            "<dark_purple>Black Market</dark_purple>", "<dark_purple>Market</dark_purple>"),
 
     /**
      * The old boat expert, who seems to know rather more than a boat expert
@@ -42,7 +42,7 @@ public enum NpcType {
      * you what he has heard about the Heart.
      */
     BOAT_EXPERT("boat_expert", "fletcher",
-            "<color:#7fb2c4>Old Boat Expert</color>", "<color:#7fb2c4>Old Boat Expert</color>"),
+            "<color:#7fb2c4>Old Boat Expert</color>", "<color:#7fb2c4>Boat Expert</color>"),
 
     /**
      * Tonics, salves and food that is actually food.
@@ -53,6 +53,12 @@ public enum NpcType {
     private final String id;
     private final String profession;
     private final String displayName;
+    /**
+     * Kept short on purpose: a chest GUI's title bar is narrow, and clients
+     * that draw their own buttons up there (quick-stack mods, commonly) will
+     * happily overlap a long one. The NPC's full name still stands over its
+     * head.
+     */
     private final String menuTitle;
 
     NpcType(String id, String profession, String displayName, String menuTitle) {

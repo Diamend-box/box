@@ -11,9 +11,10 @@ import java.util.Random;
  * a roofless keep (throne dais over a sunken vault), a great hall over an
  * undercroft, and a chapel the Order has since reconsecrated. Four to seven
  * chests sit in buried or walled rooms, two of them elected vaults; nine
- * more are garrison caches out in the guardrooms, keep and hall where a
- * player can simply find them (13/14/15/16 by tier, each thinner than an
- * ordinary island's chest) — and the garrison is denser and drawn from one ring deeper than
+ * more are garrison caches in roofed guard huts along the east and south
+ * walks, where a player crossing the bailey simply finds them (13/14/15/16
+ * by tier, each rolling thinner than an ordinary island's chest). The
+ * garrison is denser and drawn from one ring deeper than
  * the water it stands in. A rare intruder even out in the Sunless Trench
  * (ring 5), where the Mariphage nest otherwise holds sway.
  */
@@ -570,30 +571,26 @@ final class RuinedCastle implements DemoShape {
         // thinner than an ordinary island's chest (see chestRollDelta) — the
         // point is a building that looks lived in, not a bigger payday.
 
-        // The four corner guardrooms. Each tower's ground room is already
-        // hollow with two doorways onto the courtyard.
-        for (int[] corner : corners) {
-            chests.add(new Rel(corner[0] + (corner[0] > 0 ? -1 : 1), 2,
-                    corner[1] + (corner[1] > 0 ? -1 : 1)));
+        // Nine roofed guard huts stood along the bailey's east and south
+        // walks. The towers and the great hall are open to the sky, so a
+        // chest cannot simply be set down in one — the huts carry their own
+        // roofs, and standing in the courtyard is what makes them findable.
+        // Fixed coordinates: every tier's bailey reaches at least 24 out, so
+        // these sit clear of the keep, the hall, the gatehouse and the corner
+        // towers at every size the castle is built.
+        int[][] huts = {
+                {14, -18}, {18, -11}, {10, -4}, {14, 3}, {14, 10},
+                {14, 17}, {6, 15}, {-6, 15}, {-14, 15},
+        };
+        for (int[] hut : huts) {
+            chests.add(guardHut(s, st, p, rng, hut[0], hut[1]));
         }
 
-        // The west gate tower, which had no way in at all — its twin holds
-        // the gatehouse cache, this one was sealed masonry.
-        s.carveBox(-4, 2, w - 3, -4, 3, w - 3);   // doorway to the gate passage
-        chests.add(new Rel(-6, 2, w - 2));
-        s.put(-7, 2, w - 3, p.glow());
-
-        // The keep's floor, either side of the door, under the rotted upper
-        // storey. Whatever the lord's household left when the wall came down.
-        chests.add(new Rel(5, 2, kz1 - 2));
-        chests.add(new Rel(-5, 2, kz1 - 2));
-
-        // The great hall, which was also sealed — roofless, but four blocks of
-        // wall with no opening. A door in the courtyard face fixes that.
-        s.carveBox(hx1, 2, 1, hx1, 3, 2);
-        chests.add(new Rel(hx1 - 2, 2, 0));
-        chests.add(new Rel(hx0 + 2, 2, 6));
-        s.put(hx0 + 2, 2, 5, p.glow());
+        // Two rooms that had no way in at all, fixed while they were under
+        // the nose: the west gate tower was sealed masonry (its twin holds
+        // the gatehouse cache) and the great hall was unbroken wall.
+        s.carveBox(-4, 2, w - 3, -4, 3, w - 3);   // west gate tower doorway
+        s.carveBox(hx1, 2, 1, hx1, 3, 2);         // great hall doorway
 
         // --- The garrison: denser than any other island. ---
         List<Rel> mobs = new ArrayList<>();
@@ -618,6 +615,34 @@ final class RuinedCastle implements DemoShape {
         s.shore(radiusBudget(), p::groundPatch);
 
         return ShapeBuild.of(s, chests, mobs);
+    }
+
+    /**
+     * A guard hut: a 3x3 roofed room on the courtyard slab with a doorway
+     * facing the middle of the bailey and a chest at the back.
+     *
+     * Deliberately built rather than carved out of something else. Every
+     * other castle chest sits in a buried or walled vault because the towers,
+     * keep and hall are all open to the sky and a chest under open sky is not
+     * a find, it is scenery. A hut brings its own roof, so the caches can
+     * stand where players actually walk.
+     *
+     * @return where the chest goes
+     */
+    private Rel guardHut(ShapeSketch s, Stones st, Palette p, Random rng, int cx, int cz) {
+        // Solid block first, then hollowed, so nothing the plinth or the
+        // courtyard slab left behind survives inside the room.
+        s.fillBox(cx - 1, 1, cz - 1, cx + 1, 5, cz + 1, st::patch);
+        s.carveBox(cx, 2, cz, cx, 4, cz);          // the room itself
+        // One doorway, on the side facing the middle of the bailey — the way
+        // anyone crossing the courtyard is already looking.
+        int door = cx > 0 ? cx - 1 : cx + 1;
+        s.carveBox(door, 2, cz, door, 3, cz);
+        // A lamp set into the back wall, opposite the door.
+        if (rng.nextInt(100) < 60) {
+            s.put(cx > 0 ? cx + 1 : cx - 1, 3, cz, p.glow());
+        }
+        return new Rel(cx, 2, cz);
     }
 
     /**

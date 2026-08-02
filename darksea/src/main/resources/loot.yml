@@ -22,7 +22,10 @@
 # revive), and the outpost's five shopkeepers all deal in the same coin.
 #
 # RELICS drop dormant (collectibles). Revived at the calm center they grant
-# a passive boost from your inventory — at most 'relics.max-active' at once.
+# a PERMANENT passive boost from your inventory — at most 'relics.max-active'
+# at once — so they are deliberately the rarest thing in any table: roughly
+# one chest in twenty-five, one vault in five. They were an order of
+# magnitude commoner than that until the second live test said so.
 # The junk-band named items (Rotted Rigging...) are salvage, not relics.
 #
 # VAULT — islands with two or more chests (tier 3 hides two, tier 4 three)
@@ -55,7 +58,7 @@ tiers:
       - { type: item, material: EXPERIENCE_BOTTLE, min: 2, max: 5, weight: 9 }
       - { type: custom, id: sea_salve,            weight: 6 }
       # treasure
-      - { type: custom, id: relic_trade_coin,     weight: 5 }
+      - { type: custom, id: relic_trade_coin,     weight: 1 }
       - { type: custom, id: naxian_boarding_axe,  weight: 2 }
       - { type: armor, tier: 1, weight: 8 }
       - { type: armor, tier: 2, weight: 1 }
@@ -69,7 +72,7 @@ tiers:
         - { type: item, material: GOLDEN_APPLE,    min: 1, max: 2, weight: 6 }
         - { type: custom, id: sea_salve,           weight: 6 }
         - { type: custom, id: tidal_draught,       weight: 5 }
-        - { type: custom, id: relic_trade_coin,    weight: 9 }
+        - { type: custom, id: relic_trade_coin,    weight: 2 }
         - { type: custom, id: naxian_boarding_axe, weight: 5 }
         - { type: armor, tier: 1, weight: 10 }
         - { type: armor, tier: 2, weight: 2 }
@@ -93,7 +96,7 @@ tiers:
       - { type: custom, id: sea_salve,            weight: 5 }
       - { type: custom, id: tidal_draught,        weight: 5 }
       # treasure
-      - { type: custom, id: relic_harbor_bell,    weight: 4 }
+      - { type: custom, id: relic_harbor_bell,    weight: 1 }
       - { type: custom, id: naxian_boarding_axe,  weight: 2 }
       - { type: custom, id: harborguard_pike,     weight: 2 }
       - { type: armor, tier: 2, weight: 8 }
@@ -109,7 +112,7 @@ tiers:
         - { type: item, material: DIAMOND,        min: 2, max: 4, weight: 8 }
         - { type: item, material: GOLDEN_APPLE,   min: 2, max: 3, weight: 6 }
         - { type: custom, id: tidal_draught,      weight: 6 }
-        - { type: custom, id: relic_harbor_bell,  weight: 8 }
+        - { type: custom, id: relic_harbor_bell,  weight: 2 }
         - { type: custom, id: harborguard_pike,   weight: 5 }
         - { type: armor, tier: 2, weight: 10 }
         - { type: armor, tier: 3, weight: 2 }
@@ -133,8 +136,7 @@ tiers:
       - { type: custom, id: gillwater_philter,    weight: 4 }
       - { type: custom, id: tidal_draught,        weight: 4 }
       # treasure
-      - { type: custom, id: relic_mariphage_sample, weight: 4 }
-      - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 2 }
+      - { type: custom, id: relic_mariphage_sample, weight: 1 }
       - { type: custom, id: harborguard_pike,     weight: 2 }
       - { type: custom, id: order_ceremonial_blade, weight: 1 }
       - { type: armor, tier: 3, weight: 8 }
@@ -149,10 +151,9 @@ tiers:
       entries:
         - { type: custom, id: chronon,            min: 20, max: 32, weight: 12 }
         - { type: item, material: DIAMOND_BLOCK,  min: 1, max: 1, weight: 6 }
-        - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 4 }
         - { type: custom, id: deepsight_tonic,    weight: 5 }
         - { type: custom, id: gillwater_philter,  weight: 5 }
-        - { type: custom, id: relic_mariphage_sample, weight: 8 }
+        - { type: custom, id: relic_mariphage_sample, weight: 2 }
         - { type: custom, id: order_ceremonial_blade, weight: 4 }
         - { type: armor, tier: 3, weight: 10 }
         - { type: armor, tier: 4, weight: 2 }
@@ -172,12 +173,10 @@ tiers:
       - { type: item, material: NETHERITE_SCRAP,     min: 1, max: 3, weight: 9 }
       - { type: item, material: DIAMOND_BLOCK,       min: 1, max: 2, weight: 7 }
       - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1, weight: 4 }
-      - { type: item, material: TOTEM_OF_UNDYING,    min: 1, max: 1, weight: 4 }
       - { type: custom, id: gillwater_philter,    weight: 4 }
       - { type: custom, id: tidal_draught,        weight: 4 }
       # treasure
-      - { type: custom, id: relic_monolith_splinter, weight: 4 }
-      - { type: custom, id: relic_naxome_heart,   weight: 4 }
+      - { type: custom, id: relic_naxome_heart,   weight: 1 }
       - { type: custom, id: order_ceremonial_blade, weight: 2 }
       - { type: armor, tier: 4, weight: 8 }
       - { type: token, level: 3, weight: 3 }
@@ -192,9 +191,8 @@ tiers:
         - { type: item, material: NETHERITE_INGOT, min: 1, max: 1, weight: 4 }
         - { type: custom, id: harpoon_gun,        weight: 4 }
         - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2, weight: 5 }
-        - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 1, weight: 5 }
-        - { type: custom, id: relic_monolith_splinter, weight: 7 }
-        - { type: custom, id: relic_naxome_heart, weight: 7 }
+        - { type: custom, id: relic_monolith_splinter, weight: 1 }
+        - { type: custom, id: relic_naxome_heart, weight: 1 }
         - { type: custom, id: order_ceremonial_blade, weight: 4 }
         - { type: armor, tier: 4, weight: 10 }
         - { type: token, level: 3, weight: 6 }
@@ -222,12 +220,10 @@ tiers:
       - { type: item, material: DIAMOND_BLOCK,    min: 2, max: 3, weight: 8 }
       - { type: item, material: ECHO_SHARD,       min: 2, max: 5, weight: 7 }
       - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2, weight: 6 }
-      - { type: item, material: TOTEM_OF_UNDYING, min: 1, max: 2, weight: 5 }
       - { type: custom, id: gillwater_philter,    weight: 4 }
       - { type: custom, id: tidal_draught,        weight: 4 }
       # treasure
-      - { type: custom, id: relic_naxome_heart,   weight: 5 }
-      - { type: custom, id: relic_monolith_splinter, weight: 5 }
+      - { type: custom, id: relic_naxome_heart,   weight: 1 }
       - { type: custom, id: order_ceremonial_blade, weight: 3 }
       - { type: custom, id: harpoon_gun,          weight: 3 }
       - { type: armor, tier: 4, weight: 8 }
@@ -241,10 +237,9 @@ tiers:
         - { type: item, material: NETHERITE_INGOT, min: 1, max: 2, weight: 6 }
         - { type: item, material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, min: 1, max: 1, weight: 4 }
         - { type: item, material: ENCHANTED_GOLDEN_APPLE, min: 2, max: 3, weight: 6 }
-        - { type: item, material: TOTEM_OF_UNDYING, min: 2, max: 2, weight: 5 }
         - { type: custom, id: gillwater_philter,  weight: 5 }
-        - { type: custom, id: relic_naxome_heart, weight: 8 }
-        - { type: custom, id: relic_monolith_splinter, weight: 8 }
+        - { type: custom, id: relic_naxome_heart, weight: 1 }
+        - { type: custom, id: relic_monolith_splinter, weight: 1 }
         - { type: custom, id: order_ceremonial_blade, weight: 5 }
         - { type: custom, id: harpoon_gun,        weight: 5 }
         - { type: armor, tier: 4, weight: 10 }

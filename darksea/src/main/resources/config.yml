@@ -550,7 +550,12 @@ messages:
   shop-clue-no-bearing: "<gray>'Nothing's nesting out there right now. Come back after the sea turns over.'"
 
   # --- Vaults --------------------------------------------------------
+  shop-band-label: "<gray>above: <white>they sell</white>  ·  below: <white>they buy</white></gray>"
   vault-sealed: "<red>Sealed. Something on this island holds it shut."
+  # Given instead of vault-sealed whenever the lever's position is known —
+  # hunting a floor lever across a whole island is not a puzzle, it is a
+  # chore, and the garrison would have known where its own bar was.
+  vault-sealed-hint: "<red>Sealed. <gray>The bar is held by a lever <white>{distance}</white> blocks <white>{direction}</white> of here."
   vault-cracked: "<green>The lever gives. <gray>{count} vault(s) on this island are open — and stay open."
   vault-already-cracked: "<gray>Already thrown. The vaults here are open."
 

@@ -2,6 +2,7 @@ package com.diamend.darksea.vault;
 
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.island.IslandInstance;
+import com.diamend.darksea.util.Bearing;
 import com.diamend.darksea.util.Pos;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -65,6 +66,15 @@ public final class VaultService implements Listener {
         }
         island.setVaultLever(spot);
         Block block = world.getBlockAt(spot.x(), spot.y(), spot.z());
+
+        // Stand it on a redstone lamp. A bare lever on bare ground reads as
+        // scenery; a lamp reads as a mechanism somebody installed. It also
+        // does the work for free — the lever powers the block it is attached
+        // to, so the lamp is dark while the vaults are sealed and lit the
+        // moment they are open, visible clear across the island at night.
+        Block base = world.getBlockAt(spot.x(), spot.y() - 1, spot.z());
+        base.setType(Material.REDSTONE_LAMP, false);
+
         block.setType(Material.LEVER, false);
         BlockData data = block.getBlockData();
         if (data instanceof Switch lever) {
@@ -150,10 +160,34 @@ public final class VaultService implements Listener {
                 && !island.vaultsCracked()
                 && isVault(island, clicked)) {
             event.setCancelled(true);
-            plugin.messages().send(event.getPlayer(), "vault-sealed");
+            sendSealedHint(event.getPlayer(), island);
             event.getPlayer().playSound(block.getLocation(),
                     Sound.BLOCK_CHEST_LOCKED, 1.0f, 0.8f);
         }
+    }
+
+
+    /**
+     * Refuses a sealed vault AND says where the lever is.
+     *
+     * A floor lever planted at the far side of a 70-block island is not
+     * something a player finds by looking; the second live test called
+     * hunting for it a pain, and the fiction never suffered for the hint —
+     * the harbour lords' garrison would have known where their own bar was.
+     * The direction is given at the moment it is wanted, which is the moment
+     * the chest refuses to open.
+     */
+    private void sendSealedHint(Player player, IslandInstance island) {
+        Pos lever = island.vaultLever();
+        if (lever == null) {
+            plugin.messages().send(player, "vault-sealed");
+            return;
+        }
+        double dx = lever.x() - player.getLocation().getX();
+        double dz = lever.z() - player.getLocation().getZ();
+        plugin.messages().send(player, "vault-sealed-hint",
+                "direction", Bearing.compass(dx, dz),
+                "distance", String.valueOf(Bearing.blocks(dx, dz)));
     }
 
     /**

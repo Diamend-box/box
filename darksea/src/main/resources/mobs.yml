@@ -100,6 +100,6 @@ drops:
     - { id: chronon, min: 3, max: 6, chance: 0.40 }
   MariphageCore:
     - { id: mariphage_stinger, chance: 0.30 }
-    - { id: relic_mariphage_vector, chance: 0.25 }
+    - { id: relic_mariphage_vector, chance: 0.12 }
     - { id: chronon, min: 24, max: 48, chance: 1.0 }
-    - { id: relic_mariphage_sample, chance: 0.35 }
+    - { id: relic_mariphage_sample, chance: 0.15 }

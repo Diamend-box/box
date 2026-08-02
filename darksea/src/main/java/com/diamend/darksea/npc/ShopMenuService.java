@@ -37,6 +37,16 @@ public final class ShopMenuService implements Listener {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
     private static final int MENU_SIZE = 54;
+    /**
+     * Six rows, in four bands: two rows of what the NPC sells, a labelled
+     * divider, two rows of what it buys, then the action row. The bands were
+     * always there in spirit — offers filled from slot 0 and from slot 27 —
+     * but with nothing drawn between them a board read as a scatter of items
+     * with holes in it. Every slot a band does not use gets a filler pane, so
+     * a half-empty shelf looks deliberate instead of broken.
+     */
+    private static final int BUY_ROW_START = 0;
+    private static final int DIVIDER_ROW_START = 18;
     private static final int SELL_ROW_START = 27;
     private static final int ACTION_ROW_START = 45;
 
@@ -66,11 +76,11 @@ public final class ShopMenuService implements Listener {
         long rotation = MarketClock.index(System.currentTimeMillis(),
                 plugin.shopStock().rotationMillis());
 
-        int buySlot = 0;
+        int buySlot = BUY_ROW_START;
         int sellSlot = SELL_ROW_START;
         for (ShopOffer offer : plugin.shopStock().offers(type, rotation)) {
             if (offer.kind() == ShopOffer.Kind.BUY) {
-                if (buySlot >= SELL_ROW_START) {
+                if (buySlot >= DIVIDER_ROW_START) {
                     continue;  // shelf full; the stock tables never come close
                 }
                 inv.setItem(buySlot, render(offer, player));
@@ -85,6 +95,13 @@ public final class ShopMenuService implements Listener {
                 sellSlot++;
             }
         }
+
+        // The divider, labelled in the middle so the two halves are named
+        // rather than merely separated.
+        for (int slot = DIVIDER_ROW_START; slot < SELL_ROW_START; slot++) {
+            inv.setItem(slot, divider());
+        }
+        inv.setItem(DIVIDER_ROW_START + 4, bandLabel());
 
         int actionSlot = ACTION_ROW_START;
         if (type.wakesRelics()) {
@@ -103,6 +120,45 @@ public final class ShopMenuService implements Listener {
 
         // The purse, always in the same corner.
         inv.setItem(MENU_SIZE - 1, purse(player));
+
+        // Everything still unset becomes a filler pane. Done last so it can
+        // never overwrite an offer or a button.
+        for (int slot = 0; slot < MENU_SIZE; slot++) {
+            if (inv.getItem(slot) == null) {
+                inv.setItem(slot, filler());
+            }
+        }
+    }
+
+    /** A blank pane: the empty half of a shelf, drawn as if on purpose. */
+    private ItemStack filler() {
+        return blank(Material.GRAY_STAINED_GLASS_PANE, Component.empty());
+    }
+
+    /** The band divider itself — darker, so the split reads at a glance. */
+    private ItemStack divider() {
+        return blank(Material.BLACK_STAINED_GLASS_PANE, Component.empty());
+    }
+
+    /** The one labelled tile in the divider row: which half is which. */
+    private ItemStack bandLabel() {
+        return blank(Material.PAPER,
+                line(plugin.messages().component("shop-band-label")));
+    }
+
+    /**
+     * A decorative tile. Named (even if blank) so no client renders a
+     * material name over it, and never registered with the menu, so clicking
+     * it does nothing at all.
+     */
+    private ItemStack blank(Material material, Component name) {
+        ItemStack stack = new ItemStack(material);
+        ItemMeta meta = stack.getItemMeta();
+        if (meta != null) {
+            meta.displayName(name);
+            stack.setItemMeta(meta);
+        }
+        return stack;
     }
 
     /** An offer's tile: the real item, with the price written under it. */
