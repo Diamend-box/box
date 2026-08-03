@@ -9,7 +9,7 @@ so it gets its own pass rather than a tick in a table.
 Order is by **how likely I am to have got it wrong**, not by importance. The
 boat goes first again, because it is still the fix I cannot check from here.
 
-**Build: `DarkSea-0.5.0-b97.jar` or newer.** Jars are no longer all called
+**Build: `DarkSea-0.5.0-b98.jar` or newer.** Jars are no longer all called
 1.0.0 — the number after `-b` is the Actions run that built it, and
 `/version DarkSea` reports the same string, so you can always tell what is
 actually loaded. Runs 94 and 95 are red; don't build from them. See
