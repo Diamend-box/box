@@ -222,7 +222,8 @@ class ConfigParsingTest {
                 // Waking a relic went unnoticed across two live tests because
                 // the tile said what you held and nothing else.
                 "shop-wake-what", "shop-wake-boost", "shop-wake-afford",
-                "shop-wake-short", "shop-wake-awake")) {
+                "shop-wake-short", "shop-wake-awake",
+                "relic-woken-title", "relic-woken-subtitle")) {
             assertTrue(settings.messages().containsKey(key), "config.yml is missing " + key);
         }
         // Every rung of the old man's ladder must have a line to speak. The

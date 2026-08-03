@@ -434,6 +434,11 @@ messages:
   invalid-item: "<red>Unknown item id {id}. Tab-complete /ds give item for the list."
 
   relic-not-relic: "<red>Hold a Naxome relic in your main hand to revive it."
+  # The title that lands half a second after the anvil strike. Waking is the
+  # biggest one-off Chronon spend in the game and used to pass as a line of
+  # chat, which is why it did not feel like anything had happened.
+  relic-woken-title: "<gradient:#c9a227:#fff3c4>{name}</gradient>"
+  relic-woken-subtitle: "<white>Awake. <gray>{boost}"
   relic-already-awake: "<yellow>That relic is already awake."
   relic-only-home: "<red>Only the refugees at the calm center can wake a relic. Sail home first."
   relic-need-chronons: "<red>The refugees ask <aqua>{cost} Chronons</aqua> to wake this — you carry {have}."

@@ -3,8 +3,12 @@ package com.diamend.darksea.relic;
 import com.diamend.darksea.DarkSeaPlugin;
 import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.zone.Zone;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -17,6 +21,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -184,6 +189,7 @@ public final class RelicService extends BukkitRunnable implements Listener {
         }
         DarkSeaItems.removeChronons(player.getInventory(), cost);
         wakeOne(player, hand, relic);
+        celebrate(player, relic);
         plugin.messages().send(player, "relic-revived",
                 "name", relic.displayName(), "cost", String.valueOf(cost));
     }
@@ -197,6 +203,42 @@ public final class RelicService extends BukkitRunnable implements Listener {
      * dormant in hand, and the woken one goes to the inventory (or the floor
      * if there is no room, which beats deleting it).
      */
+    /**
+     * The moment itself.
+     *
+     * <p>Waking used to be a line of chat and a changed tooltip, for the
+     * largest one-off Chronon spend in the game. It read as a transaction that
+     * had gone through rather than as something happening, and "it doesn't feel
+     * special" was the verdict after the third live test.
+     *
+     * <p>So it takes a beat: the anvil strike lands first, then the relic
+     * answers half a second later, and the title says which boon the player
+     * just bought while the second sound is still ringing. The pause is the
+     * whole trick — one simultaneous noise is an event, two spaced ones are a
+     * cause and an effect.
+     */
+    private void celebrate(Player player, Relic relic) {
+        Location at = player.getLocation();
+        player.playSound(at, Sound.BLOCK_ANVIL_USE, 1.0f, 0.7f);
+        player.getWorld().spawnParticle(Particle.ENCHANT, at.clone().add(0, 1.2, 0),
+                80, 0.4, 0.7, 0.4, 1.2);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            Location then = player.getLocation();
+            player.playSound(then, Sound.BLOCK_BEACON_ACTIVATE, 0.7f, 1.4f);
+            player.playSound(then, Sound.ITEM_TOTEM_USE, 0.35f, 1.6f);
+            player.getWorld().spawnParticle(Particle.END_ROD, then.clone().add(0, 1.0, 0),
+                    40, 0.3, 0.6, 0.3, 0.05);
+            player.showTitle(Title.title(
+                    plugin.messages().component("relic-woken-title", "name", relic.displayName()),
+                    plugin.messages().component("relic-woken-subtitle", "boost", relic.boostLine()),
+                    Title.Times.times(Duration.ofMillis(250), Duration.ofMillis(2000),
+                            Duration.ofMillis(700))));
+        }, 10L);
+    }
+
     private void wakeOne(Player player, ItemStack hand, Relic relic) {
         if (hand.getAmount() <= 1) {
             relic.wake(hand);

@@ -49,6 +49,8 @@ public final class ShopMenuService implements Listener {
     private static final int DIVIDER_ROW_START = 18;
     private static final int SELL_ROW_START = 27;
     private static final int ACTION_ROW_START = 45;
+    /** Middle of the bottom row: where the board's one real action belongs. */
+    private static final int ACTION_ROW_CENTRE = ACTION_ROW_START + 4;
 
     private final DarkSeaPlugin plugin;
 
@@ -103,15 +105,20 @@ public final class ShopMenuService implements Listener {
         }
         inv.setItem(DIVIDER_ROW_START + 4, bandLabel());
 
-        int actionSlot = ACTION_ROW_START;
+        // The anvil takes the middle of the action row, the same place the
+        // divider puts its label. It used to sit in the row's first slot,
+        // shoulder to shoulder with the rumour map and one step from the
+        // filler panes — which is the corner a player's eye reaches last, and
+        // waking went unnoticed across two live tests because of it.
         if (type.wakesRelics()) {
-            inv.setItem(actionSlot, wakeButton(player));
-            menu.put(actionSlot, ShopMenu.Action.WAKE_RELIC);
-            actionSlot++;
+            inv.setItem(ACTION_ROW_CENTRE, wakeButton(player));
+            menu.put(ACTION_ROW_CENTRE, ShopMenu.Action.WAKE_RELIC);
         }
         if (type.sellsHeartClues()) {
-            inv.setItem(actionSlot, clueButton(player));
-            menu.put(actionSlot, ShopMenu.Action.BUY_CLUE);
+            // Centre too, when there is no anvil competing for it.
+            int clueSlot = type.wakesRelics() ? ACTION_ROW_START + 2 : ACTION_ROW_CENTRE;
+            inv.setItem(clueSlot, clueButton(player));
+            menu.put(clueSlot, ShopMenu.Action.BUY_CLUE);
         }
 
         if (type.rotatesStock()) {
