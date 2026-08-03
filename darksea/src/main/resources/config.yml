@@ -201,6 +201,13 @@ mob-spawning:
   island-budget: 14
   budget-refill-minutes: 20
 
+  # How long an island waits before raising its resident boss again. A nest
+  # or a Trench castle keeps exactly one Mariphage Core standing, and used to
+  # grow the next the instant the last one fell — which meant a castle handed
+  # out a dozen Cores back to back until its budget ran dry. Killing one now
+  # buys you the island for a while.
+  boss-respawn-minutes: 15
+
 # Timed sea reset. The whole Dark Sea resets on a cycle so loot can't be
 # hoarded or camp-farmed forever — a countdown warns players, then the sea
 # heals and restocks. Players out in the sea are washed home to the sanctuary
@@ -543,8 +550,8 @@ messages:
   # The anvil answers four questions in order: what this does, what you are
   # holding, what it gets you, and whether you can pay for it right now. It
   # used to answer only the second, and waking went unnoticed for two tests.
-  shop-wake-what: "<gray>A dormant relic is dead weight. <white>Woken<gray>, it carries a permanent boon for as long as you keep it on you."
-  shop-wake-empty: "<dark_gray>Hold a dormant relic in your main hand, then click here."
+  shop-wake-what: "<gray>A woken relic boons you while you carry it."
+  shop-wake-empty: "<dark_gray>Hold a dormant relic and click."
   shop-wake-holding: "<white>{name} <dark_gray>— <aqua>{cost} Chronons"
   shop-wake-boost: "<dark_gray>Awake: <green>{boost}"
   shop-wake-afford: "<green>Click to wake it."

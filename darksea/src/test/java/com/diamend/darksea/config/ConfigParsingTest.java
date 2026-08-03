@@ -233,6 +233,11 @@ class ConfigParsingTest {
             assertTrue(settings.messages().containsKey("shop-clue-" + level),
                     "missing shop-clue-" + level);
         }
+        // A resident boss that re-raises the instant it dies is not a landmark
+        // defending itself, it is a queue: a Trench castle handed out a dozen
+        // Mariphage Cores back to back before its budget ran out.
+        assertTrue(settings.mobSpawning().bossRespawnMinutes() > 0,
+                "a resident boss must wait before it rises again");
     }
 
     @Test

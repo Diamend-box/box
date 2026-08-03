@@ -54,6 +54,8 @@ public final class MobSpawner extends BukkitRunnable {
     private final Random rng = new Random();
     private final Map<String, Set<UUID>> tracked = new HashMap<>();
     private final Map<String, Long> lastNear = new HashMap<>();
+    /** When each island last noticed its resident boss missing, for the respawn wait. */
+    private final Map<String, Long> bossFell = new HashMap<>();
     /** Per-island spawn budgets: what stops an island being an endless farm. */
     private final Map<String, SpawnBudget> budgets = new HashMap<>();
     private final Set<String> warnedTypes = new HashSet<>();
@@ -142,12 +144,26 @@ public final class MobSpawner extends BukkitRunnable {
                     continue;
                 }
 
-                // A nest keeps its boss standing: the Order grows another the
-                // moment the sea is empty of one, even past the ordinary mob
-                // cap — but not past the island's budget, or a nest would be
-                // an endless boss farm.
+                // A nest keeps its boss standing, but not instantly. The
+                // Order grows another once the sea has been empty of one for
+                // a while — past the ordinary mob cap, never past the
+                // island's budget.
+                //
+                // Without the wait this branch ran on every scan the moment
+                // the last Core died, so a Trench castle handed out one boss
+                // after another until its fourteen-mob budget was gone. That
+                // is not a landmark defending itself, it is a queue, and it
+                // is what the fourth live test walked into.
                 String boss = island.bossMob();
                 if (boss != null && countLive(mobs, boss) == 0) {
+                    Long fellAt = bossFell.get(island.id());
+                    if (fellAt == null) {
+                        bossFell.put(island.id(), now);
+                        continue;
+                    }
+                    if (now - fellAt < cfg.bossRespawnMinutes() * 60_000L) {
+                        continue;
+                    }
                     Pos heart = island.bossSpawn();
                     if (heart != null && totalTracked() < cfg.globalCap()) {
                         UUID spawned = spawnMob(new MobPool.MobEntry(boss,
@@ -155,9 +171,13 @@ public final class MobSpawner extends BukkitRunnable {
                         if (spawned != null) {
                             budget.tryConsume(now);
                             mobs.add(spawned);
+                            bossFell.remove(island.id());
                         }
                     }
                     continue;
+                }
+                if (boss != null) {
+                    bossFell.remove(island.id());   // one is standing again
                 }
 
                 if (island.spawnPoints().isEmpty()

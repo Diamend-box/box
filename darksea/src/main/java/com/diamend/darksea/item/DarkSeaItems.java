@@ -274,7 +274,11 @@ public final class DarkSeaItems {
                     List.of("<gray>It hums against the palm at a pitch</gray>",
                             "<gray>you feel rather than hear.</gray>",
                             "<dark_gray>It was growing before you broke it off.</dark_gray>"));
-            case GODSPORE -> createOre(id, amount, Material.AMETHYST_SHARD,
+            // Not an amethyst shard. Voidbloom already is one, the geode rind
+            // is studded with amethyst, and the god's own growth reading as
+            // the same purple crystal as everything else around it was the
+            // first thing the fourth live test called out.
+            case GODSPORE -> createOre(id, amount, Material.SLIME_BALL,
                     "<color:#8bc34a>Godspore</color>",
                     List.of("<gray>The green in it moves when you</gray>",
                             "<gray>are not looking at it.</gray>",

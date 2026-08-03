@@ -17,6 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
+import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
@@ -48,6 +49,8 @@ public final class BoatService implements Listener {
     private final PlayerDataStore data;
     /** Tidal Draught expiry timestamps; stale entries lapse on their own. */
     private final Map<UUID, Long> draughts = new ConcurrentHashMap<>();
+    /** Carried thrust per rider, so the boost ramps and coasts instead of snapping. */
+    private final Map<UUID, Drive> drives = new ConcurrentHashMap<>();
 
     public BoatService(DarkSeaPlugin plugin, PlayerDataStore data) {
         this.plugin = plugin;
@@ -284,11 +287,26 @@ public final class BoatService implements Listener {
             boat.setVelocity(new Vector(x, velocity.getY(), z));
             return;
         }
-        // Nothing at all unless the rider is asking for speed. The boost used
-        // to be applied on every move event, so releasing the key just handed
-        // the boat another shove and it kept going: a boosted boat could not be
-        // slowed down, only pointed. Coasting now falls back to vanilla drag.
-        if (!rider.getCurrentInput().isForward()) {
+
+        // Thrust is carried between ticks rather than recomputed from scratch,
+        // and it fades instead of stopping.
+        //
+        // Setting velocity straight from this tick's measured step made the
+        // boat jitter: the step is noisy, the client owns a ridden boat's
+        // physics, and a server value that jumps around every tick is a server
+        // and a client disagreeing several times a second. And cutting the
+        // thrust to nothing the moment W came up read as hitting a wall — the
+        // client's own momentum was never boosted, so there was nothing left
+        // to coast on. Easing toward the target instead smooths the ride, and
+        // easing back down gives a heavy hull the glide it should have.
+        Drive drive = drives.computeIfAbsent(rider.getUniqueId(), id -> new Drive());
+        boolean forward = rider.getCurrentInput().isForward();
+        double target = forward ? horizontal * factor : 0.0;
+        drive.speed += (target - drive.speed) * (forward ? THROTTLE_UP : COAST_DOWN);
+        if (drive.speed <= horizontal + 1.0e-4) {
+            // No faster than the boat was going anyway: leave it entirely
+            // alone. Every tick we do not touch is a tick the client is not
+            // being corrected, which is most of what "smooth" means here.
             return;
         }
         // Along the hull, not along the momentum. Scaling the measured step
@@ -301,8 +319,27 @@ public final class BoatService implements Listener {
         if (heading.lengthSquared() < 1.0e-9) {
             return;
         }
-        heading.normalize().multiply(horizontal * factor);
+        heading.normalize().multiply(drive.speed);
         boat.setVelocity(new Vector(heading.getX(), velocity.getY(), heading.getZ()));
+    }
+
+    /** How much of the gap to the target speed a tick of holding forward closes. */
+    private static final double THROTTLE_UP = 0.22;
+
+    /** And how much of it a tick of not holding forward gives back. */
+    private static final double COAST_DOWN = 0.06;
+
+    /** One rider's carried thrust. Lives only while they are sailing. */
+    private static final class Drive {
+        private double speed;
+    }
+
+    /** Stepping off the boat ends the run; nothing should carry to the next one. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onVehicleExit(VehicleExitEvent event) {
+        if (event.getExited() instanceof Player player) {
+            drives.remove(player.getUniqueId());
+        }
     }
 
     /**

@@ -17,8 +17,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The crystal veins: placing them, growing them back, and making sure they are
@@ -54,8 +56,12 @@ public final class NodeService extends BukkitRunnable implements Listener {
     /** How often the regrow pass runs. Veins take tens of minutes; this is ample. */
     public static final long REGROW_PERIOD_TICKS = 20L * 30;
 
+    /** How long between two "you can't break that" lines for the same player. */
+    private static final long REFUSAL_COOLDOWN_MILLIS = 2000L;
+
     private final DarkSeaPlugin plugin;
     private final NodeRegistry registry;
+    private final Map<UUID, Long> refusedAt = new HashMap<>();
 
     public NodeService(DarkSeaPlugin plugin) {
         this.plugin = plugin;
@@ -236,8 +242,27 @@ public final class NodeService extends BukkitRunnable implements Listener {
 
         Pos pos = new Pos(block.getX(), block.getY(), block.getZ());
         if (registry.nodeAt(pos) == null) {
-            plugin.messages().send(player, "caves-unbreakable");
+            refuse(player);
         }
+    }
+
+    /**
+     * Says no, once, quietly.
+     *
+     * <p>A break event fires every time a block finishes its dig timer, and
+     * the amethyst clusters in a geode's rind break instantly — so holding
+     * the button on one printed this line several times a second and buried
+     * the chat. It belongs on the action bar anyway: it is feedback about
+     * what just happened, not something worth keeping a record of.
+     */
+    private void refuse(Player player) {
+        long now = System.currentTimeMillis();
+        Long last = refusedAt.get(player.getUniqueId());
+        if (last != null && now - last < REFUSAL_COOLDOWN_MILLIS) {
+            return;
+        }
+        refusedAt.put(player.getUniqueId(), now);
+        plugin.messages().actionBar(player, "caves-unbreakable");
     }
 
     /**

@@ -61,8 +61,13 @@ public final class RunLootService implements Listener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
+        // Any world DarkSea runs, not just the sea. The caves were left out,
+        // so dying down there fell through to vanilla with keep-inventory off
+        // and cost a player everything they were wearing — the one place in
+        // the plugin where death was not the extraction loop but a total
+        // wipe.
         if (!plugin.settings().combat().runLootDeath()
-                || !plugin.isDarkSea(player.getWorld())) {
+                || plugin.managedWorld(player.getWorld()) == null) {
             return;
         }
         // Take control regardless of the server keep-inventory gamerule: only the
