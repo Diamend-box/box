@@ -1,347 +1,239 @@
-# Playtest 3 — what to do, and what to bring back
+# Playtest 3 — the fix pass
 
-Written after your second live test, so this one is shaped around what you
-actually found rather than around what I guessed you'd find.
+Everything in this document exists because you reported it. The last session
+found nine things; eight of them turned out to be real and are fixed, one I
+could not reproduce and have said so plainly rather than quietly closing.
 
-**Build: Actions run #86 or newer.** Anything older is missing the loot
-editor, the guard huts and the mob budget, and Pass 1 will look wrong.
+So this is a verification run, not an exploration run. The order below is by
+**how likely I am to have got it wrong**, not by how important the feature is.
+Two of these fixes I could reason about but never actually run — those go
+first, because a wrong fix that nobody catches becomes the foundation for the
+next three weeks of work.
 
-**How to use it.** Work top to bottom. Pass 1 is a checklist of things you
-already reported broken — it should be quick, and it is the most valuable
-thing in the document, because a fix I can't confirm is a fix I don't have.
-After that the order runs from "never been tested at all" to "nice to have".
-
-**Timeboxing.** Passes 0–4 are the ones that matter. Pass 5 is the caves,
-which have **never been played by anyone**, so it is the biggest unknown in
-the project — but it is also the longest, which is why it isn't first.
+**Build: Actions run #92 or newer.** Older builds have unmineable crystal and a
+full reset that eats your islands.
 
 ---
 
 ## What changed since you last played
 
-Everything below came out of your two reports. It's listed here so you know
-what you're looking at, not as a to-do.
-
-| You said | What I did |
-| --- | --- |
-| Tier 5 chests were empty | loot.yml had no tier 5 section at all. Added one. |
-| Chests unreachable through a 1-block gap | My reachability test accepted a crawl gap. It now requires standing height, and two castle rooms that were sealed with **no way in at all** got doorways. |
-| Mobs respawned infinitely | Strict per-island budget: 14 spawns, refilling 20 minutes after the first one. |
-| The cultist landfall was gone | A full reset was deleting it. It's re-raised on reset now. |
-| Husks everywhere | The MythicMobs pack was in the wrong folder — **my** fault, this document gave the wrong path. See Pass 0. |
-| Mobs need nametags | Every spawned mob is named from its id. |
-| Castles feel empty | Nine roofed guard huts along the walls. 13–16 chests per castle, each rolling slightly less. |
-| Stacked relics all woke at once | Only the one in your hand wakes now. |
-| GUIs feel janky | Shop boards rebuilt into four bands with filler panes; menu titles shortened so client buttons stop overlapping them. |
-| Relics for permanent upgrades too common | Were up to 79% of a vault. Now ~5% of a chest, ~20% of a vault. |
-| Vault levers are a pain to find | A sealed vault now tells you the direction and distance, and the lever stands on a redstone lamp that lights when thrown. |
-| Boat speed was vanilla regardless of type | Diagnosed and fixed — **but see Pass 2, this is the one I can't confirm.** |
-| Remove totems | Gone from every table. |
-| A GUI to add my own items to loot | `/ds loot`. See Pass 4. |
+| You said | What it was | Status |
+| --- | --- | --- |
+| Boats glide, can't steer | Thrust followed your momentum, not your hull | Fixed, **unverified** |
+| Can't break anything, incl. crystal with Eff 25 | Channel died mid-dig; no pickaxe could have helped | Fixed, **unverified** |
+| Caves impossible to navigate | 13 geodes in 512 blocks with no wayfinding | Readout added |
+| Full reset deletes every island but the landfall | Reset queued the landfall, then refused its own generate as busy | Fixed |
+| (from your logs) world folder never deleted | Guard wanted a `level.dat` an unsaved world hadn't written | Fixed |
+| Respawn in the overworld | Nothing claimed the respawn | Fixed |
+| Relic waking not prominent / not satisfying | Anvil in the row's last-looked-at corner; wake was one chat line | Fixed |
+| Chest I couldn't reach (t5 castle, underground) | Not reproduced — see Pass 6 | **Open** |
+| Chests I couldn't stand next to | 124 of 321 have only a diagonal | Needs your call |
+| Mob budget | You said it was fine | Left alone |
 
 ---
 
-## Pass 0 — Boot, and the folder that broke last time
+## Pass 0 — before you sail
 
-1. Stop the server, drop in the jar from run **#86 or newer**.
-2. **The MythicMobs pack goes in `plugins/MythicMobs/Mobs/`.** Not
-   `plugins/MythicMobs/`. Copy the *contents* of `mythicmobs-pack/` in there.
-   This document told you the wrong path last time and that is the entire
-   reason every island spawned husks.
-3. Restart.
+1. **Place the NPCs.** They are only ever created by hand and nothing spawns
+   them for you. On the home island:
 
-```
-/ds diag
-```
+   ```
+   /ds npc create refugee_trader
+   /ds npc create artificer
+   /ds npc create black_market
+   /ds npc create boat_expert
+   /ds npc create apothecary
+   ```
 
-There's a new line: **`mythicmobs`**, reporting how many of the ids in mobs.yml
-Mythic can actually resolve. It exists specifically because the failure you hit
-was silent — from the spawner's side, falling back to a vanilla husk looks like
-success.
+   The artificer is the only one who wakes relics, so Pass 5 depends on it.
 
-> **RECORD — do this before anything else.** A screenshot of `/ds diag`. If the
-> mythicmobs line doesn't say all ids resolved, the pack is still in the wrong
-> place, and fixing that before you continue will save the whole session.
+2. **`/ds diag`.** Expect `45 of 45 startup steps OK` and `0 warning, 0 severe`.
+   The `npc placements` line now tells you off if it reads 0 instead of just
+   printing a number — last time you ran diag before spawning them, which is
+   fine, but a genuinely empty sea looks identical in every other line.
 
-**Do not run `/ds reset full confirm` unless you want a fresh sea.** Last time
-this document told you to, and it deleted the landfall. That specific bug is
-fixed, but a full reset still wipes vault states and island layouts, and you
-have a world worth keeping now.
-
-If you *do* want a fresh sea, run it — and note the wall-clock time again. You
-measured 82 seconds last time; the guard huts add blocks per castle, so I'd
-like to know whether that number moved.
+3. **Do not run `/ds reset full confirm` yet.** It has its own pass, and it is
+   the change most likely to have side effects I have not thought of.
 
 ---
 
-## Pass 1 — The fix list
+## Pass 1 — boats (do this first)
 
-Short, mostly yes/no. This is the pass I most need back.
+This is the fix I am least able to check from here, and the sea is most of the
+game.
 
-**Tier 5 loot.** Sail to a tier 5 island, open chests.
+The bug was that the boost scaled your *measured step* — the direction you were
+already travelling — so every tick of a turn added speed down the old heading,
+and letting go of W just handed the boat another shove. Thrust now follows the
+hull's facing, and only while you are actually holding forward.
 
-> **RECORD:** still empty? If they have items now, roughly what — I want to
-> know whether tier 5 feels like the top of the ladder or just like tier 4.
+- Take a Maelstrom out and **turn hard at speed**. It should come round, not
+  plough on.
+- **Let go of W.** It should slow down and stop. Previously it kept going.
+- **Reverse and strafe.** The boost is deliberately forward-only, so these are
+  vanilla speed. Tell me if that feels wrong — it is a choice, not a limitation.
+- Compare a level 1 boat to a Maelstrom. There should still be an obvious gap.
 
-**Chest reachability.** Open every chest you can find on two or three islands,
-including a castle and the twin atoll.
-
-> **RECORD:** any chest you can see but cannot open. This should now be zero — I
-> swept every shape at every tier across 16 seeds offline and got 1712 reachable
-> chests and 0 sealed. A single counter-example means my sweep is testing the
-> wrong thing, which I'd want to know immediately.
-
-**Mob nametags.** Kill things.
-
-> **RECORD:** a screenshot with nametags visible. Are the names readable, or is
-> "Drowned Reaver" floating over a vanilla drowned because the pack still isn't
-> loading?
-
-**Stacked relics.** Get two or more of the same relic, hold the stack, wake one.
-
-> **RECORD:** does exactly one wake?
-
-**Vault levers.** Find a vault chest and try to open it while sealed.
-
-> **RECORD:** does the direction-and-distance hint point you the right way?
-> Getting north and south backwards across a 70-block island is the obvious
-> failure mode and I have only unit tests to go on. Then throw the lever and
-> confirm the lamp under it lights.
-
-**Relic rarity.** A feel question, not a count — you won't open enough chests
-to measure 5%.
-
-> **RECORD:** after a normal session, did you find relics at all? Zero in a long
-> session means I over-corrected, and cutting from 79% to 5% is a big enough
-> swing that over-correcting is entirely plausible.
+If it is still uncontrollable, say so bluntly and do not soften it. It would
+mean applying velocity to a client-driven boat cannot work at all, and I would
+rather rip out the mechanism than tune something that is broken in principle.
 
 ---
 
-## Pass 2 — Boat speed, which I could not verify
+## Pass 2 — the caves
 
-**This is the fix I'm least confident in**, and it needs its own pass.
+Crystal was unmineable and I want to be precise about why, because it changes
+what "working" looks like.
 
-Your screenshot showed the HUD reading "Maelstrom", which proved the multiplier
-was being calculated correctly — so the bug was never the maths. A boat driven
-by its rider is moved by the *client*, and the server sees positions rather than
-velocity, so the speed guard was reading a velocity of roughly zero and never
-applying anything. It now measures actual movement between ticks.
+`BlockDamageEvent` fires once when a dig *starts*, not per tick. Vanilla then
+runs its own timer, the break at the end gets cancelled, and the client waits
+out its own delay — so a held mouse button goes **silent for about fifteen
+ticks**. My abandon-grace was ten. Every channel longer than half a second died
+in that gap. Separately: a froglight is not pickaxe-mineable, so it takes no
+tool bonus and no Efficiency from vanilla at all — your Eff 25 was doing
+literally nothing for the dig. It does count in *our* curve, which is the one
+that now runs.
 
-What I don't know is whether the server pushing a velocity back survives the
-client's own prediction. Only a real server can answer that.
+- Hold left-click on a geode core. **You should see a progress bar on the action
+  bar** filling to 100%, then the block turns to basalt and you get the crystal.
+  If there is no bar at all, the channel is not opening and that is a different
+  bug from the one I fixed.
+- **Look away mid-dig.** It should abort and the crack should reset.
+- Try all three crystals. At reference gear they are 1.5s, 2.5s and 4.0s per
+  block; your Eff 25 netherite should be noticeably faster than that.
+- **The vein readout**: anywhere in the caves, the action bar should name the
+  nearest geode with an arrow and a distance. The arrow is relative to the way
+  you are facing, so turn on the spot and check it swings.
+- Half-mine a vein, note the time, come back: it should return **whole** at
+  first-touch plus its cooldown, not from the last block you took.
 
-1. Sail a plain vanilla boat. Note how it feels.
-2. Sail a level 4–5 Dark Sea Boat over the same stretch.
-
-> **RECORD — the important one.** Is there now a *noticeable* difference? If you
-> can, time yourself over a fixed distance with each; a number beats an
-> impression here. If it's still identical, say so plainly — that means the
-> velocity approach doesn't work and the delivery mechanism needs replacing,
-> which is a different piece of work and I'd rather start it than keep polishing
-> something that can't function.
-
-> **RECORD:** also whether the boat feels jittery or fights you. If the server
-> and client disagree about where the boat is, that's what it looks like, and it
-> would mean the fix is half-working.
-
----
-
-## Pass 3 — The mob budget, which is a judgement call
-
-Each island now allows **14 spawns**, and the budget refills 20 minutes after
-the first one is spent. So an island can be cleared, and clearing it means
-something for a while.
-
-These numbers are my guess at your words: *"a strict budget so it feels
-reasonable to clear out an island before going to the next"*. I have no way to
-know whether 14 is right.
-
-1. Land on a tier 3–4 island and clear it properly.
-2. Note whether it goes quiet, and whether that felt earned or abrupt.
-3. Stay, or come back within 20 minutes, and see whether it stays quiet.
-
-> **RECORD:** did clearing an island feel like an accomplishment, or like the
-> spawner broke? Those look identical from the outside and only you can tell me
-> which one it was.
-
-> **RECORD:** roughly how long clearing an island took, and whether 14 was too
-> few for a big castle. A castle is much larger than an atoll and they currently
-> share a budget, which may well be wrong.
-
-Both numbers live in config.yml under `mob-spawning` (`island-budget`,
-`budget-refill-minutes`) and `/ds reload` picks them up. **Tune them yourself
-rather than waiting on me** — you'll iterate in minutes where I'd take a day.
+Navigation is still hard on purpose, but if the readout does not fix it, the
+next lever is the "nothing in the caves is breakable" rule. That rule is why
+you cannot dig toward anything. Tell me if it should go.
 
 ---
 
-## Pass 4 — The castles, and the new loot editor
+## Pass 3 — the full reset (on a world you don't mind losing)
 
-**The castles.** Find one.
+Two bugs stacked here, and the fix touches world deletion, so treat it with
+suspicion.
 
-> **RECORD:** does the courtyard still feel empty? The nine guard huts were
-> meant to fill it with structure as much as with chests. A screenshot from the
-> gatehouse looking in would tell me more than a sentence.
+Queueing the landfall started the paste queue, which made the placer busy, so
+the `generate()` immediately after refused itself — that "Island generation or
+a reset is already running" line in your screenshot was the sea being emptied.
+And the folder delete refused to run because it wanted a `level.dat` that a
+world unloaded without saving had never written.
 
-> **RECORD:** 13–16 chests per castle, each rolling two fewer items than a
-> normal chest of that tier. Does that read as "more loot, worse chests" — what
-> you asked for — or just as more clicking?
-
-**The loot editor.** New: `/ds loot`.
-
-1. Run it. You get a picker of every tier, base table on the left, that tier's
-   vault table beside it.
-2. Open a tier. Grey lines are loot.yml's and can't be clicked; they're there so
-   you can see the scale your own weights sit against.
-3. **Click any item in your own inventory** to add it to that pool at weight 5.
-4. Left/right-click your line to change the weight; each line shows its
-   resulting share of the table as a **percentage**, which is the number that
-   actually matters. Middle-click cycles stack size. Q removes.
-5. Add something obviously identifiable — a renamed, enchanted item — then find
-   a chest of that tier and check it turns up.
-
-> **RECORD:** did your custom item appear in a chest, with its name, lore and
-> enchants intact? This is the round-trip that matters; a snapshot that loses
-> item data is worthless.
-
-> **RECORD:** confirm the editor did **not** consume or move the item you
-> clicked. It copies. If it ever takes your item that's a serious bug and I want
-> to know at once.
-
-> **RECORD:** are the percentages actually useful for choosing a weight, or
-> would you rather see something else on the tile?
-
-Your additions go to `loot-custom.yml`; `loot.yml` is never written, so your
-edits and the shipped tables can't damage each other.
+- `/ds reset full confirm`, then watch the console. You should see the world
+  removed, then a **34-island** generation, landfall included.
+- You should **not** see `Refusing to delete` — and if you do, it now says
+  which check failed, so send me that line verbatim.
+- `/ds islands` afterwards should list the full set, not just `t5-1`.
+- Fly to a couple of old island coordinates and confirm nothing is left standing
+  from the previous layout.
 
 ---
 
-## Pass 5 — The cultist caves, which nobody has ever played
+## Pass 4 — dying
 
-**No part of this has run on a real server.** Two whole features — the geode
-extraction channel and the first-touch regen clock — exist only as unit tests.
-If you have time for one long pass, make it this one.
-
-**Getting there.** The landfall is at **2600 / -1800**. Find the portal on it
-and step through.
-
-> **RECORD:** did the portal put you in the arrival chamber, on solid ground,
-> the right way up? And does going back the other way return you to the landfall
-> rather than to spawn?
-
-**The geodes.** They're big now — 60 to 150 blocks — wrapped in a calcite shell
-with amethyst buds, embedded in basalt. Three kinds: Emberglass (warm gold),
-Voidbloom (pale violet), Godspore (sick green).
-
-> **RECORD:** can you see one from across a cavern? They're meant to be
-> landmarks. If you have to hunt for them, the whole loop is wrong.
-
-**The extraction channel.** Mine a crystal core with a good pickaxe. Blocks do
-not break instantly — the plugin holds the block and advances the vanilla crack
-overlay.
-
-> **RECORD — the one I'd most like video of.** Does the crack overlay advance
-> *smoothly*, or does it flicker, jump backwards, or reset? This is the single
-> most likely thing to be visibly broken, because it fights the client's own
-> prediction of block breaking.
-
-> **RECORD:** release the button part-way. Does the crack cleanly reset? Then
-> switch to a different block mid-channel, and swap your held item mid-channel.
-> Neither should leave a stuck overlay.
-
-> **RECORD:** hit a geode with something that isn't a pickaxe. You should get a
-> refusal message, not a multi-minute channel.
-
-> **RECORD:** is the calcite shell genuinely unbreakable? Try from below, and
-> from inside if you can get there.
+- Die in the sea. You should respawn **in the sea**, not in the overworld.
+- Die in the caves. Also the sea — the caves have no spawn of their own and the
+  way in is a boat ride.
+- Set a bed on an island and die. Your bed should win.
+- Confirm run loot still drops at the death spot and the rest of your gear comes
+  back, which is unchanged but shares the same event.
 
 ---
 
-## Pass 6 — The two cave numbers I most want
+## Pass 5 — waking a relic
 
-**Extraction speed.** Mine several blocks of each crystal with your best pick,
-timing them.
+You said this wasn't prominent enough and didn't feel satisfying. Both were
+presentation problems, and I did not touch what relics actually do.
 
-> **RECORD:** seconds per block for each of the three, and exactly what the
-> pickaxe was — tier, Efficiency level, and any Haste. The shipped targets are
-> 1.5 / 2.5 / 4.0 seconds at a Netherite pick with Efficiency 15. This is the
-> number most likely to need retuning once it's in your hands, and it's a config
-> value in `ores.yml` precisely so you can move it yourself.
+- Open the artificer with a **dormant relic in your main hand**. The anvil is
+  now in the **middle of the bottom row**, and it glints when you can afford it.
+- The tile should tell you four things: what waking does, what you're holding,
+  what boon you'll get, and either "click to wake" or how many Chronons short
+  you are.
+- Click it. Expect the anvil strike, then **half a second later** the relic
+  answers with its own sound, end rod particles, and a title naming the boon.
+- Open it again holding the woken relic — it should say so rather than offering
+  to wake it twice.
 
-> **RECORD:** try a deliberately worse pick. It should be *obviously* slower — a
-> mid-game pick is about 6.7× slower by design, because the caves are endgame
-> content. Confirm that gate feels like a gate and not like a bug.
-
-**The regen clock.** The mechanic I'm least sure reads correctly.
-
-1. Mine **a few blocks** of one vein — not all of it. **Write down the time.**
-2. Leave. Go do Pass 7.
-3. Come back after the cooldown (18 / 22 / 25 minutes by type).
-
-> **RECORD:** the wall-clock time of your first block, and the wall-clock time
-> the vein came back. It should return **whole**, not just the blocks you took,
-> and the clock should run from your *first* block rather than your last —
-> that's what stops the veins all coming back at once.
+If it still lands flat, tell me which part: the tile, the moment, or the boon
+itself. Those are three different fixes and I would rather do the right one.
 
 ---
 
-## Pass 7 — Owed from last time: do the NPCs survive?
+## Pass 6 — the castle chest I couldn't find
 
-Never confirmed, and it's the failure that would quietly ruin the outpost.
+This is the one I failed on, and I want to be straight about it. I built a
+walkability model to hunt it and it flagged 121 chests — then I checked the
+model against itself and found it could only reach **176 of a t5 castle's 921
+standable floor cells**. It cannot walk around a castle, so its verdicts were
+mostly its own blind spots. I threw the number away.
 
-1. `/ds npc list` — all five present?
-2. Restart the server. Check again.
-3. Run a soft reset. Check again.
+What I did fix on the way: `climbOut`, the function whose whole job is
+guaranteeing a climbable stair out of every buried vault, took a **hardcoded
+step count** — six or seven, chosen against the castle as it was before it grew
+with tier. A fixed count cannot make that guarantee. It now climbs until it
+breaks into open air. Your "I could see an opening but not the chest" is exactly
+what a stair that stops short looks like, so this may well be it. I can't claim
+it.
 
-> **RECORD:** are all five still standing after each? And critically — is there
-> ever a **duplicate**? Duplication and disappearance have opposite causes and I
-> need to know which one I'm chasing.
+If you find another one:
 
-While you're there, the shop boards were rebuilt after your screenshots.
+1. Stand at the opening and note your **coordinates**.
+2. `/ds islands` — get the **island id and its origin**.
+3. Tell me whether the chest is visible from the opening or not.
 
-> **RECORD:** one screenshot per board. Do the empty rows read as deliberate
-> now, or still as gaps?
+With the island's origin I can rebuild that exact castle offline from its
+position seed and look straight at the geometry. Right now I am guessing.
 
 ---
 
-## Pass 8 — Performance, with the sea populated
+## Pass 7 — chests generally
 
-> **RECORD:** TPS while sailing through a populated area, and TPS in the caves.
-> The mob budget should have *helped* here — fewer mobs alive at once — so if
-> performance got worse rather than better, that's worth knowing.
+I swept all 321 chests across every shape, tier and seed. None are unreachable
+by the standard the test can check, and that standard is now locked in so it
+cannot regress. But **124 of them have no square-on face** — only a diagonal
+standing spot. That is legal and openable, and it is also precisely what "I
+could loot it but couldn't stand next to it" describes.
+
+Making every chest face-accessible is a placement change across all eleven
+shapes, not a bug fix. Worth doing? Your call — see below.
 
 ---
 
 ## Decisions I need from you
 
-Short answers are fine; a phone message is fine.
+Three carried over, two new. None block anything, but all five are cheaper to
+answer now than after more is built on top.
 
-1. **The name.** You raised changing Dark Sea → Vironic Sea. I'd suggest "The
-   Mariphage" or "The Naxian Sea" — both come from the fiction already in the
-   plugin rather than from Arcane Odyssey. Renaming only the player-facing
-   strings is cheap. Entirely your call and there's no rush.
-2. **Crystals still have no sink.** The three cave crystals can't be bought,
-   sold or spent on anything — a test actively enforces that. They're meant to
-   be upgrade materials for work that doesn't exist yet. Tell me what you want
-   them to buy and I'll build it.
-3. **`/ds tp`** — should it land you on the highest block instead of the
-   configured spawn spot? Still unanswered from last time.
+1. **The rename.** I still think "The Mariphage" or "The Naxian Sea" beats
+   "Vironic Sea". Player-visible strings only, so it is cheap either way.
+2. **What crystals buy.** They still have no sink at all. The caves produce
+   three materials that do nothing, which is the real reason that dimension
+   feels optional. My suggestion is still to make waking relics cost crystals —
+   it gives the caves a purpose and gives relics a cost worth going to get.
+3. **Should `/ds tp` land you on the highest block?**
+4. **Chest placement** (new): redo it so every chest has a square-on standing
+   face, or leave the 124 diagonals?
+5. **Caves breakability** (new): keep "nothing breaks but crystal", or let
+   players dig through the rock so the caves can be navigated by tunnelling?
 
 ---
 
-## What to send me
+## What to send me, ranked
 
-In rough order of how much it helps:
+1. **Boat feel.** One sentence is enough. It is the fix I am least sure of.
+2. **Whether crystal comes out of a geode**, and whether you saw the progress
+   bar. If there was no bar, say so — that distinguishes two different bugs.
+3. **The full reset console output**, especially any `Refusing to delete` line.
+4. **Another unreachable chest**, with coordinates and island id, if you hit one.
+5. Anything the vein readout got wrong — a backwards arrow would be worse than
+   no arrow.
+6. Answers to any of the five decisions above.
 
-1. The `/ds diag` screenshot from Pass 0 — especially the mythicmobs line.
-2. **The boat speed answer from Pass 2.** Yes or no is enough. It decides
-   whether a whole piece of work needs redoing.
-3. Video or a clear description of the extraction channel (Pass 5).
-4. The two numbers from Pass 6 — seconds per block, and the first-touch clock.
-5. Your verdict on the mob budget (Pass 3), with whatever numbers you settled on.
-6. Anything from the Pass 1 checklist that's still broken.
-7. **The server log**, `logs/latest.log`, whether or not anything went wrong.
-   Warnings without a visible symptom are exactly what I can't guess at.
-
-Impressions are welcome, but keep them separate from the numbers. "The caves
-felt slow" and "a block took 6.2 seconds" lead to different fixes, and only one
-of them is something I can act on without asking you again.
+Everything else, only if it annoyed you. The last two rounds were long lists and
+they were the right lists — most of what you flagged was real.
