@@ -684,8 +684,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         // Zero is not a neutral number here, which is why it says so. NPCs are
         // only ever placed by hand, and the artificer is the only way to wake a
         // relic — so a sea with none has an entire economy that silently does
-        // not exist, and nothing else in this readout looks wrong. Two live
-        // tests ran against a world with no NPCs in it at all.
+        // not exist, and nothing else in this readout looks wrong.
         int npcs = plugin.npcs().registry().all().size();
         diagLine(sender, "npc placements", npcs == 0
                 ? "0 — no shops or artificer exist; place them with /ds npc create <type>"

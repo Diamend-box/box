@@ -655,11 +655,30 @@ final class RuinedCastle implements DemoShape {
      */
     private static void climbOut(ShapeSketch s, Random rng,
             java.util.function.Function<Random, String> tread,
-            int cx, int cy, int cz, int dx, int dz, int steps) {
-        for (int i = 1; i <= steps; i++) {
+            int cx, int cy, int cz, int dx, int dz, int minSteps) {
+        for (int i = 1; i <= MAX_CLIMB_STEPS; i++) {
             int x = cx + dx * i, z = cz + dz * i, y = cy - 1 + i;
+            // Out in the open with sky overhead: the stair has arrived, and
+            // carving further would cut a trench across the bailey.
+            if (i > minSteps && open(s, x, y, z) && open(s, x, y + 1, z)
+                    && open(s, x, y + 2, z)) {
+                return;
+            }
             s.put(x, y - 1, z, tread.apply(rng));   // the tread you stand on
             s.carveBox(x, y, z, x, y + 1, z);       // head-and-shoulders clearance
         }
+    }
+
+    /**
+     * Far enough to leave any vault this castle digs, and a terminator for a
+     * loop that would otherwise run off the island if a shaft somehow never
+     * found daylight.
+     */
+    private static final int MAX_CLIMB_STEPS = 48;
+
+    /** Nothing written here yet, or written as air — either way you can walk in it. */
+    private static boolean open(ShapeSketch s, int x, int y, int z) {
+        String material = s.get(x, y, z);
+        return material == null || "AIR".equals(material);
     }
 }
