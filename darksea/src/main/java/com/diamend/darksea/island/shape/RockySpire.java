@@ -191,19 +191,28 @@ final class RockySpire implements DemoShape {
             // unreachable is a bug, so the tier-4 cache sits in the grotto
             // with the others, where the floor is flat and the way in is a
             // corridor.
-            int c3x = c1x + mx * 2 - qx * side * 2, c3z = c1z + mz * 2 - qz * side * 2;
-            for (int off = 0; off <= 2; off++) {
+            // A third passage off the first pocket, running the other way from
+            // the dogleg. Six blocks out, because the shape suite holds chests
+            // six apart and the tier-3 cache is already one step off this
+            // pocket in another direction.
+            int reach = 6;
+            for (int off = 1; off <= reach; off++) {
                 int cx = c1x - qx * side * off, cz = c1z - qz * side * off;
                 s.put(cx, 0, cz, p.rockMix(rng));
                 s.carve(cx, 1, cz);
                 s.carve(cx, 2, cz);
+                for (int y = 3; y <= 4; y++) {   // its own roof, out past the pocket's
+                    if (!s.solidAt(cx, y, cz)) {
+                        s.put(cx, y, cz, p.rockMix(rng));
+                    }
+                }
             }
+            int c3x = c1x - qx * side * reach, c3z = c1z - qz * side * reach;
             s.put(c3x, 0, c3z, p.rockDetail());
-            s.carve(c3x, 1, c3z);
-            s.carve(c3x, 2, c3z);
-            s.put(c3x - mx, 0, c3z - mz, p.rockMix(rng));
-            s.carve(c3x - mx, 1, c3z - mz);
-            s.carve(c3x - mx, 2, c3z - mz);
+            // Hung from the roof, not set on the floor and not left in the
+            // walkway: a lantern in the cell before the chest is a cell the
+            // player cannot stand in, and this passage is one wide.
+            s.put(c3x + qx * side, 3, c3z + qz * side, p.glow());
             chests.add(new Rel(c3x, 1, c3z));
         }
 
