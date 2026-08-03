@@ -29,13 +29,13 @@ jobs:
           cache-dependency-path: darksea/pom.xml
 
       - name: Compile, test and package
-        run: mvn -B clean package
+        run: mvn -B clean package -Dbuild.number=${{ github.run_number }}
         working-directory: darksea
 
       - name: Upload the plugin jar
         uses: actions/upload-artifact@v4
         with:
-          name: DarkSea
+          name: DarkSea-b${{ github.run_number }}
           path: darksea/target/DarkSea-*.jar
           if-no-files-found: error
 
