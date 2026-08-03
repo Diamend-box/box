@@ -681,7 +681,15 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         diagLine(sender, "caves world", worldState(plugin.settings().cultist().worldName()));
 
         diagLine(sender, "islands placed", String.valueOf(plugin.registry().all().size()));
-        diagLine(sender, "npc placements", String.valueOf(plugin.npcs().registry().all().size()));
+        // Zero is not a neutral number here, which is why it says so. NPCs are
+        // only ever placed by hand, and the artificer is the only way to wake a
+        // relic — so a sea with none has an entire economy that silently does
+        // not exist, and nothing else in this readout looks wrong. Two live
+        // tests ran against a world with no NPCs in it at all.
+        int npcs = plugin.npcs().registry().all().size();
+        diagLine(sender, "npc placements", npcs == 0
+                ? "0 — no shops or artificer exist; place them with /ds npc create <type>"
+                : String.valueOf(npcs));
 
         // Crystal veins: total, and how many are sitting spent waiting to
         // regrow. All-spent on a fresh boot means the regrow timer is not
