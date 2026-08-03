@@ -119,6 +119,13 @@ public final class IslandPlacer {
 
         // Home island first if it hasn't landed yet.
         boolean spawnQueued = maybeQueueSpawn(sender, null);
+        // Then the seam into the caves, in this same pass rather than before
+        // it. Queueing the landfall starts the queue draining, which sets
+        // running — so a caller that raised it and *then* called generate()
+        // got its generate() refused as busy and silently placed nothing. A
+        // full reset did exactly that: the landfall went up, the other
+        // thirty-odd islands were dropped, and the sea came back empty.
+        boolean landfallQueued = maybeQueueLandfall(sender, null);
 
         List<PlacementSampler.Point> existing = new ArrayList<>();
         for (IslandInstance island : registry.all()) {
@@ -184,7 +191,7 @@ public final class IslandPlacer {
             }
         }
 
-        if (queued == 0 && !spawnQueued) {
+        if (queued == 0 && !spawnQueued && !landfallQueued) {
             plugin.messages().send(sender, "generate-none");
             return;
         }

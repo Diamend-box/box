@@ -213,7 +213,11 @@ class ConfigParsingTest {
                 "loot-editor-help-amount", "loot-editor-help-delete",
                 "loot-editor-help-shipped", "loot-editor-added",
                 "loot-editor-removed", "loot-editor-list-full",
-                "loot-editor-cannot-encode")) {
+                "loot-editor-cannot-encode",
+                // The caves speak entirely through the action bar: without
+                // these the extraction channel and the vein readout both run
+                // silently, which is indistinguishable from not running.
+                "caves-extracting", "caves-vein-sense", "caves-vein-sense-growing")) {
             assertTrue(settings.messages().containsKey(key), "config.yml is missing " + key);
         }
         // Every rung of the old man's ladder must have a line to speak. The

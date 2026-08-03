@@ -157,7 +157,12 @@ public final class WorldService {
             plugin.mobSpawner().despawnAll();
 
             File folder = world.getWorldFolder();
-            if (!Bukkit.unloadWorld(world, false)) {
+            // Saved on the way out even though the next thing we do is delete
+            // it. The delete refuses to touch a folder that does not look like
+            // a world save, and an unsaved world may have no level.dat on disk
+            // at all — a sea created this session and reset before the first
+            // autosave failed that check and survived its own deletion.
+            if (!Bukkit.unloadWorld(world, true)) {
                 plugin.messages().send(sender, "reset-unload-failed");
                 return;
             }
@@ -177,19 +182,18 @@ public final class WorldService {
 
     private void recreateAndRegenerate(CommandSender sender) {
         getOrCreate(new SecureRandom().nextLong());
-        // The landfall goes first. resetFull cleared the registry, so nothing
-        // else will raise it — and without it there is no way into the caves
-        // until the next server start. generate() then pastes the home island
-        // and scatters the rings around both.
-        placer.maybeQueueLandfall(sender, null);
+        // One call, deliberately. generate() raises the home island and the
+        // cultist landfall itself before it scatters the rings; queueing the
+        // landfall separately here started the paste queue, and generate()
+        // then refused itself as busy and placed nothing else.
         placer.generate(sender);
     }
 
     private void deleteWorldFolder(File folder) {
-        // Only ever delete something that actually looks like our world save.
-        if (!folder.getName().equals(plugin.settings().worldName())
-                || !new File(folder, "level.dat").exists()) {
-            plugin.getLogger().warning("Refusing to delete " + folder + " — does not look like the Dark Sea world");
+        String refusal = refuseToDelete(folder);
+        if (refusal != null) {
+            plugin.getLogger().warning("Refusing to delete " + folder.getAbsolutePath()
+                    + " — " + refusal);
             return;
         }
         try (Stream<Path> walk = Files.walk(folder.toPath())) {
@@ -203,5 +207,35 @@ public final class WorldService {
         } catch (IOException ex) {
             plugin.getLogger().severe("Deleting world folder failed: " + ex.getMessage());
         }
+    }
+
+    /**
+     * Why this folder must not be recursively deleted, or null if it is safe.
+     *
+     * <p>The guard exists so a mistyped {@code world-name} can never point a
+     * recursive delete at something that is not a world save. It says which
+     * check failed, because the previous version reported only that the folder
+     * "does not look like the Dark Sea world" — and when it fired on the real
+     * world folder there was no way to tell from the log whether the name or
+     * the contents were at fault.
+     *
+     * <p>Any of {@code level.dat}, {@code region/} or {@code data/} is accepted
+     * as proof this is a save. Requiring {@code level.dat} alone was too strict:
+     * a world unloaded without saving may not have written one yet.
+     */
+    private String refuseToDelete(File folder) {
+        if (!folder.isDirectory()) {
+            return "not a directory";
+        }
+        String expected = plugin.settings().worldName();
+        if (!folder.getName().equals(expected)) {
+            return "folder is named '" + folder.getName() + "', not '" + expected + "'";
+        }
+        if (!new File(folder, "level.dat").exists()
+                && !new File(folder, "region").isDirectory()
+                && !new File(folder, "data").isDirectory()) {
+            return "no level.dat, region/ or data/ inside — this is not a world save";
+        }
+        return null;
     }
 }

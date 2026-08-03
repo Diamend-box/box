@@ -613,6 +613,13 @@ messages:
   caves-unbreakable: "<red>The rock here doesn't give. Only the crystal does."
   caves-no-building: "<red>This place was built once already. Not by you."
   caves-needs-pickaxe: "<red>The crystal won't come away like that. <gray>You need a pickaxe."
+  # Shown every tick of an extraction. Crystal is taken on the plugin's clock,
+  # so without a progress bar a geode looks like scenery that ignores you.
+  caves-extracting: "<light_purple>{bar} <gray>Working the crystal... <white>{percent}%"
+  # The caves are unbreakable, so a player who cannot see a geode cannot dig
+  # toward one either. The arrow is relative to the way they are facing.
+  caves-vein-sense: "<gray>Nearest geode <white>{arrow} <light_purple>{crystal} <gray>· <white>{distance}m"
+  caves-vein-sense-growing: "<gray>Nearest geode <white>{arrow} <dark_gray>{crystal} <gray>· <white>{distance}m <dark_gray>(growing back)"
   portal-closed: "<red>Nothing answers. The way isn't open."
   portal-descended: "<dark_purple>The rock takes you. <gray>It is colder down here."
   portal-ascended: "<aqua>Salt air. <gray>You are back on the landfall."

@@ -274,11 +274,35 @@ public final class BoatService implements Listener {
             return;
         }
         Vector velocity = boat.getVelocity();
-        // The boost rides on the measured step, falling back to the boat's
-        // own velocity only if the server happens to have a real one.
-        double x = (Math.abs(step.getX()) > 1e-6 ? step.getX() : velocity.getX()) * factor;
-        double z = (Math.abs(step.getZ()) > 1e-6 ? step.getZ() : velocity.getZ()) * factor;
-        boat.setVelocity(new Vector(x, velocity.getY(), z));
+        if (factor < 1.0) {
+            // Braking a wounded hull. A plain scale of the existing motion, so
+            // it slows without being steered — which way a damaged boat points
+            // is still the rider's business, and this has to apply whether or
+            // not they are driving or a wreck could coast at full speed.
+            double x = (Math.abs(step.getX()) > 1e-6 ? step.getX() : velocity.getX()) * factor;
+            double z = (Math.abs(step.getZ()) > 1e-6 ? step.getZ() : velocity.getZ()) * factor;
+            boat.setVelocity(new Vector(x, velocity.getY(), z));
+            return;
+        }
+        // Nothing at all unless the rider is asking for speed. The boost used
+        // to be applied on every move event, so releasing the key just handed
+        // the boat another shove and it kept going: a boosted boat could not be
+        // slowed down, only pointed. Coasting now falls back to vanilla drag.
+        if (!rider.getCurrentInput().isForward()) {
+            return;
+        }
+        // Along the hull, not along the momentum. Scaling the measured step
+        // accelerated the boat in the direction it was *already* travelling, so
+        // a turn fought a thrust vector still pointing down the old heading and
+        // the boat ploughed straight on through the corner — which is what made
+        // a Maelstrom impossible to steer. Pushing along the boat's own facing
+        // means turning the boat turns the thrust.
+        Vector heading = boat.getLocation().getDirection().setY(0.0);
+        if (heading.lengthSquared() < 1.0e-9) {
+            return;
+        }
+        heading.normalize().multiply(horizontal * factor);
+        boat.setVelocity(new Vector(heading.getX(), velocity.getY(), heading.getZ()));
     }
 
     /**

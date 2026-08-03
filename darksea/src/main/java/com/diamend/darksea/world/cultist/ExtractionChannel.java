@@ -10,8 +10,9 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockDamageAbortEvent;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -42,35 +43,51 @@ import java.util.UUID;
  * several times slower and a Haste beacon is a real advantage without being able
  * to drive a block below {@code floor-seconds}.
  *
- * <p>A channel is cancelled by anything that means the player stopped: letting
- * go, looking at a different block, swapping the held item, walking away, or
- * logging out. All of them reset the overlay, so a half-broken block never
- * stays visually cracked for the next person who walks up to it.
+ * <p>A channel is cancelled by anything that means the player stopped: looking
+ * away, swapping the held item, walking away, or logging out. All of them reset
+ * the overlay, so a half-broken block never stays visually cracked for the next
+ * person who walks up to it.
+ *
+ * <p>Letting go of the button is <em>not</em> in that list, because the client
+ * does not reliably say so — the abort packet is also a routine part of a
+ * held dig, and acting on it is what made crystal unmineable the first time
+ * this shipped. Releasing instead shows up as silence, and silence is handled
+ * by {@link #GRACE_TICKS} against a crosshair that has to stay on the block.
  */
 public final class ExtractionChannel implements Listener {
 
     /** How far a player may drift from where they started before the channel drops. */
     private static final double MAX_DRIFT_SQUARED = 9.0;
 
+    /** How far a player may be from the block and still count as working it. */
+    private static final int REACH = 8;
+
     /**
      * How long a channel survives without hearing from the client before it is
      * treated as abandoned.
      *
-     * <p>This grace period is load bearing, and the reason is subtle.
-     * {@code setInstaBreak(false)} stops the block vanishing on the first tick,
-     * but vanilla still runs its <em>own</em> dig timer underneath ours — and
-     * against an endgame pickaxe that timer completes almost immediately. The
-     * resulting {@link org.bukkit.event.block.BlockBreakEvent} is cancelled by
-     * {@link NodeService}, the block is resent, and the client starts digging
-     * again. So a player holding the button down produces a stream of
-     * start/cancel churn, and an abort in the middle of it means nothing.
+     * <p>This number is load bearing, and getting it wrong made crystal
+     * unmineable in the first live test. The trap is that
+     * {@link BlockDamageEvent} is <em>not</em> a heartbeat: it fires once when
+     * a dig starts, not once per tick. Vanilla then runs its own timer, and at
+     * the end of it the {@link org.bukkit.event.block.BlockBreakEvent} is
+     * cancelled by {@link NodeService}, the block is resent, and the client
+     * waits out its own five-tick delay before starting over. A player holding
+     * the button down therefore goes quiet for the whole of that cycle.
      *
-     * <p>Ending the channel the instant an abort arrived would therefore make
-     * crystal <em>unmineable</em> with exactly the gear the caves are tuned for.
-     * Instead an abort simply stops refreshing the channel, and half a second of
-     * genuine silence ends it.
+     * <p>A froglight is not pickaxe-mineable, so it takes no tool bonus and no
+     * Efficiency: about nine ticks to dig plus the client's five is roughly
+     * fifteen ticks of silence at <em>any</em> gear level. The old ten-tick
+     * grace expired inside every one of those gaps, so every channel longer
+     * than half a second aborted before it could finish — which is all of them
+     * above emberglass.
+     *
+     * <p>Thirty ticks clears a full cycle with room to spare. It is safe to be
+     * this generous because silence is no longer the only test: a channel also
+     * has to keep the block in the player's crosshair every tick, so the way to
+     * hold one open is to stand there aiming at it, which is the cost anyway.
      */
-    private static final int GRACE_TICKS = 10;
+    private static final int GRACE_TICKS = 30;
 
     /** One in-progress extraction. */
     private static final class Channel {
@@ -110,6 +127,11 @@ public final class ExtractionChannel implements Listener {
     public ExtractionChannel(DarkSeaPlugin plugin, NodeService nodes) {
         this.plugin = plugin;
         this.nodes = nodes;
+    }
+
+    /** Whether this player has a channel open — the action bar is spoken for. */
+    public boolean isChannelling(Player player) {
+        return active.containsKey(player.getUniqueId());
     }
 
     /** Starts the per-tick pass. Called once, when the plugin enables. */
@@ -239,10 +261,26 @@ public final class ExtractionChannel implements Listener {
             channel.elapsedTicks++;
             Block block = blockOf(channel);
             player.sendBlockDamage(block.getLocation(), channel.progress());
+            // Say so. Without this the caves look broken: the block does not
+            // budge, vanilla's own crack overlay keeps resetting under ours,
+            // and nothing on screen suggests the game noticed the swing. Every
+            // other tick is plenty smooth for a ten-cell bar and halves the
+            // MiniMessage parse and packet that go with it.
+            if (channel.elapsedTicks % 2 == 0 || channel.elapsedTicks >= channel.totalTicks) {
+                plugin.messages().actionBar(player, "caves-extracting",
+                        "bar", bar(channel.progress()),
+                        "percent", String.valueOf(Math.round(channel.progress() * 100.0f)));
+            }
             if (channel.elapsedTicks >= channel.totalTicks) {
                 complete(player, channel, block);
             }
         }
+    }
+
+    /** Ten cells of progress, for the action bar. */
+    private static String bar(float progress) {
+        int filled = Math.round(progress * 10.0f);
+        return "▰".repeat(filled) + "▱".repeat(10 - filled);
     }
 
     private boolean stillValid(Player player, Channel channel) {
@@ -250,6 +288,15 @@ public final class ExtractionChannel implements Listener {
             return false;
         }
         if (player.getLocation().distanceSquared(channel.anchor) > MAX_DRIFT_SQUARED) {
+            return false;
+        }
+        // Still aimed at it. This is the per-tick liveness test that the dig
+        // packets cannot provide — see GRACE_TICKS — and it is what makes a
+        // long grace period safe: looking away drops the channel immediately.
+        Block looking = player.getTargetBlockExact(REACH);
+        if (looking == null || looking.getX() != channel.target.x()
+                || looking.getY() != channel.target.y()
+                || looking.getZ() != channel.target.z()) {
             return false;
         }
         // Swapping tools mid-channel would let someone start a block with a fast
@@ -284,16 +331,24 @@ public final class ExtractionChannel implements Listener {
     // ------------------------------------------------------------------
 
     /**
-     * Letting go stops refreshing the channel rather than killing it outright.
-     * See {@link #GRACE_TICKS} — aborts also arrive as a side effect of vanilla's
-     * dig timer being cancelled mid-hold, so treating one as "the player
-     * stopped" would break mining for fast pickaxes.
+     * The other half of the heartbeat.
+     *
+     * <p>Vanilla's dig timer completing on a crystal block raises a break that
+     * {@link NodeService} cancels. From the player's side nothing happened, but
+     * it is proof they are still holding the button — and it is the only signal
+     * for the whole middle of a dig cycle, because the damage event that opened
+     * the cycle has already fired and the next one has not.
+     *
+     * <p>Deliberately not {@code ignoreCancelled}: by the time this runs the
+     * event has been cancelled, and that is exactly the case worth hearing.
      */
-    @EventHandler
-    public void onAbort(BlockDamageAbortEvent event) {
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBreakAttempt(BlockBreakEvent event) {
         Channel channel = active.get(event.getPlayer().getUniqueId());
-        if (channel != null) {
-            channel.idleTicks = GRACE_TICKS;   // one more quiet tick ends it
+        if (channel != null && channel.target.x() == event.getBlock().getX()
+                && channel.target.y() == event.getBlock().getY()
+                && channel.target.z() == event.getBlock().getZ()) {
+            channel.refresh();
         }
     }
 

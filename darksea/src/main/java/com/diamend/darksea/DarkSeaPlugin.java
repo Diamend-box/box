@@ -43,6 +43,8 @@ import com.diamend.darksea.world.cultist.NodeService;
 import com.diamend.darksea.world.cultist.OreConfig;
 import com.diamend.darksea.world.cultist.OreTables;
 import com.diamend.darksea.world.cultist.PortalService;
+import com.diamend.darksea.world.cultist.VeinSense;
+import com.diamend.darksea.world.RespawnService;
 import com.diamend.darksea.world.SeaResetScheduler;
 import com.diamend.darksea.world.WorldService;
 import com.diamend.darksea.zone.ExposureTask;
@@ -200,6 +202,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         listener("shop-editor", () -> shopEditor);
         listener("nodes", () -> nodes);
         listener("extraction", () -> extraction);
+        listener("respawn", () -> new RespawnService(this));
         listener("portals", () -> portals);
         listener("vaults", () -> vaults);
 
@@ -228,6 +231,8 @@ public final class DarkSeaPlugin extends JavaPlugin {
         step("node-timer", () -> nodes.runTaskTimer(this, NodeService.REGROW_PERIOD_TICKS,
                 NodeService.REGROW_PERIOD_TICKS));
         step("extraction", extraction::start);
+        step("vein-sense", () -> new VeinSense(this, nodes, extraction)
+                .runTaskTimer(this, VeinSense.PERIOD_TICKS, VeinSense.PERIOD_TICKS));
         step("exposure-timer", () -> {
             int interval = settings.exposure().checkIntervalTicks();
             exposureTask.runTaskTimer(this, interval, interval);
