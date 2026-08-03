@@ -184,16 +184,49 @@ final class RuinedWatchtower implements DemoShape {
             }
         }
 
-        // Jutting wall stones spiral up the inside — the way up.
-        int step = 0;
-        for (int y = 3; y <= height - 2; y++, step++) {
-            double angle = phase + step * (Math.PI / 3);
-            int lx = (int) Math.round(Math.cos(angle) * 3);
-            int lz = (int) Math.round(Math.sin(angle) * 3);
-            if (!s.solidAt(lx, y, lz)) {
-                s.put(lx, y, lz, p.rockDetail());
+        // A stair spiralling up the inside wall — the way up.
+        //
+        // This used to be one jutting stone every sixty degrees at radius
+        // three: neighbouring stones sat three blocks apart horizontally for
+        // one block of rise, which is not a step, it is a jump no player can
+        // make. The tower's chest has therefore been sealed on every seed
+        // since the shape shipped. Walking the wall ring one cell at a time
+        // makes each tread adjacent to the last, and routing it through
+        // ClimbPath makes that a property of the code rather than of the
+        // arithmetic happening to work out.
+        // It starts at the doorway cell and climbs away from it, rather than
+        // at a random bearing. A stair that begins anywhere else lands a tread
+        // at head height just inside the door on some seeds and walls the
+        // whole tower off — the ground floor included.
+        ClimbPath stair = new ClimbPath();
+        int[][] ring = ClimbPath.RING_3;
+        int ringStart = DOOR_RING_INDEX;
+        int prevX = ring[ringStart][0];
+        int prevZ = ring[ringStart][1];
+        int prevY = 3;
+        int landingX = Integer.MIN_VALUE, landingZ = 0;
+        for (int y = 4; y <= height - 2; y++) {
+            int[] cell = ring[Math.floorMod(ringStart + y - 3, ring.length)];
+            stair.connect(p::rockMix, prevX, prevY, prevZ, cell[0], y, cell[1]);
+            if (y == floor1 + 1) {
+                landingX = cell[0];
+                landingZ = cell[1];
             }
+            prevX = cell[0];
+            prevY = y;
+            prevZ = cell[1];
         }
+        // And a plank walk from where the stair meets the first floor to the
+        // chest. The floors are deliberately rotted through at about a third
+        // of their cells, which is fine to look at and fatal to cross: the
+        // stair touches each floor at exactly one cell, so without a
+        // guaranteed run of boards from that cell to the chest platform the
+        // loot is behind a hole the player can only fall down.
+        if (landingX != Integer.MIN_VALUE) {
+            stair.connect(r -> p.wood(), landingX, floor1 + 1, landingZ,
+                    0, floor1 + 1, -1);
+        }
+        stair.cut(s, rng);
 
         // Chest on the first floor against the north wall, lantern beside it.
         List<Rel> chests = new ArrayList<>();
@@ -256,4 +289,12 @@ final class RuinedWatchtower implements DemoShape {
 
         return ShapeBuild.of(s, chests, mobs);
     }
+
+    /**
+     * Where in {@link ClimbPath#RING_3} the doorway sits — (0, 3), the cell directly
+     * inside the south door. The stair starts here so its first treads walk
+     * away from the entrance instead of across it.
+     */
+    private static final int DOOR_RING_INDEX = 11;
+
 }

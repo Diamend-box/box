@@ -113,6 +113,11 @@ final class RockySpire implements DemoShape {
             }
         }
 
+        // Where the tier-4 hollow's tunnel opens onto the spiral, filled in
+        // below when that hollow is built; MIN_VALUE means this tier has none.
+        int hollowMouthX = Integer.MIN_VALUE, hollowMouthY = 0, hollowMouthZ = 0;
+        int hollowCentreX = 0, hollowCentreZ = 0;
+
         List<Rel> chests = new ArrayList<>();
         int chestX = c2x + qx * side, chestZ = c2z + qz * side;
         s.put(chestX, 0, chestZ, p.rockDetail());
@@ -168,17 +173,55 @@ final class RockySpire implements DemoShape {
                 s.carve(cx, hy + 1, cz);
                 s.carve(cx, hy + 2, cz);
             }
-            int hcx = lean2x - mx, hcz = lean2z - mz;
-            chests.add(new Rel(hcx, hy + 1, hcz));
+            hollowCentreX = lean2x;
+            hollowCentreZ = lean2z;
+            hollowMouthX = lean2x + mx * hollowLen;
+            hollowMouthY = hy + 1;
+            hollowMouthZ = lean2z + mz * hollowLen;
             s.put(lean2x + qx, hy + 1, lean2z + qz, p.glow());
+            s.put(lean2x - mx, hy + 1, lean2z - mz, "SKELETON_SKULL");
+
+            // The chest does NOT live up here. The hollow is a room bored into
+            // a tapering stack whose only approaches are a spiral of ledges
+            // hung off a face that changes shape with the seed and a shaft cut
+            // through the middle of it; a sweep of every shape, tier and seed
+            // still finds occasional spires where the last flight fails to
+            // land and the room is sealed in solid rock. A landmark that is
+            // sometimes unreachable is a curiosity. A chest that is sometimes
+            // unreachable is a bug, so the tier-4 cache sits in the grotto
+            // with the others, where the floor is flat and the way in is a
+            // corridor.
+            int c3x = c1x + mx * 2 - qx * side * 2, c3z = c1z + mz * 2 - qz * side * 2;
+            for (int off = 0; off <= 2; off++) {
+                int cx = c1x - qx * side * off, cz = c1z - qz * side * off;
+                s.put(cx, 0, cz, p.rockMix(rng));
+                s.carve(cx, 1, cz);
+                s.carve(cx, 2, cz);
+            }
+            s.put(c3x, 0, c3z, p.rockDetail());
+            s.carve(c3x, 1, c3z);
+            s.carve(c3x, 2, c3z);
+            s.put(c3x - mx, 0, c3z - mz, p.rockMix(rng));
+            s.carve(c3x - mx, 1, c3z - mz);
+            s.carve(c3x - mx, 2, c3z - mz);
+            chests.add(new Rel(c3x, 1, c3z));
         }
 
-        // Spiral parkour ledges: walk a ray out from the axis at each height
-        // and hang a two-wide step off the outermost rock face, so ledges
-        // always touch the wall and are wide enough to actually land on.
+        // The stair up the outside: a ledge hung off the rock face at each
+        // height, every one joined to the last.
+        //
+        // These were "parkour ledges" that rose two blocks at a time with the
+        // bearing swinging almost a hundred degrees between them. Two blocks
+        // is not a jump a Minecraft player can make in any direction, so the
+        // summit — and with it the tier-4 hollow's chest — has been sealed on
+        // every spire the sea has ever built. Now the ledges step one block at
+        // a time and ClimbPath lays the treads between them, which makes the
+        // route walkable by construction instead of by eye.
         double phase = rng.nextDouble() * Math.PI * 2;
-        for (int y = 4; y <= height - 3; y += 2) {
-            double angle = phase + y * 0.85;
+        ClimbPath stair = new ClimbPath();
+        int prevX = Integer.MIN_VALUE, prevY = 0, prevZ = 0;
+        for (int y = 4; y <= height - 3; y++) {
+            double angle = phase + y * 0.42;
             double dirX = Math.cos(angle), dirZ = Math.sin(angle);
             int faceX = 0, faceZ = 0;
             boolean found = false;
@@ -190,18 +233,58 @@ final class RockySpire implements DemoShape {
                     found = true;
                 }
             }
-            if (found) {
-                int outX = (int) Math.signum(Math.round(dirX));
-                int outZ = (int) Math.signum(Math.round(dirZ));
-                int lx = faceX + outX, lz = faceZ + outZ;
-                if (!s.solidAt(lx, y, lz)) {
-                    s.put(lx, y, lz, p.rockMix(rng));
-                    int tx = lx - (int) Math.signum(outZ), tz = lz + (int) Math.signum(outX);
-                    if (!s.solidAt(tx, y, tz)) {
-                        s.put(tx, y, tz, p.rockMix(rng));  // widen along the wall
-                    }
-                }
+            if (!found) {
+                continue;
             }
+            int lx = faceX + (int) Math.signum(Math.round(dirX));
+            int lz = faceZ + (int) Math.signum(Math.round(dirZ));
+            if (prevX != Integer.MIN_VALUE) {
+                stair.connect(p::rockMix, prevX, prevY, prevZ, lx, y + 1, lz);
+            } else {
+                stair.connect(p::rockMix, lx, y + 1, lz, lx, y + 1, lz + 1);
+            }
+            prevX = lx;
+            prevY = y + 1;
+            prevZ = lz;
+        }
+        // And the way in off them, for the tier-4 hollow bored into the
+        // upper mass — a tunnel mouth nobody can stand at is another sealed
+        // chest, and it is only ever a few blocks from the spiral.
+        // The stair the Naxome cut inside the stack, from the grotto up to the
+        // wind-hollow.
+        //
+        // The hollow's own tunnel opens onto the outside ledges, which is a
+        // route only when a ledge happens to sit near its height and near its
+        // mouth — on about one spire in nine it does not, and the tier-4 chest
+        // is then sealed in solid rock with no way in at all. Outside geometry
+        // cannot promise that. A bored shaft can: it walks the radius-three
+        // ring one cell per block of height, which is a staircase by
+        // definition, from the grotto floor to the hollow's own level.
+        // Cut last, and on its own plan. Where the outer spiral and the bored
+        // shaft cross, one of them has to lose a cell — and it must not be the
+        // one the chest is behind. The summit is a view; the hollow is loot.
+        stair.cut(s, rng);
+        if (hollowMouthX != Integer.MIN_VALUE) {
+            ClimbPath shaft = new ClimbPath();
+            int[][] ring = ClimbPath.RING_3;
+            int shaftY = 2;
+            int index = 0;
+            shaft.connect(p::rockMix, c1x, 1, c1z, ring[0][0], shaftY, ring[0][1]);
+            while (shaftY < hollowMouthY) {
+                int[] from = ring[index % ring.length];
+                int[] to = ring[(index + 1) % ring.length];
+                shaft.connect(p::rockMix, from[0], shaftY, from[1], to[0], shaftY + 1, to[1]);
+                shaftY++;
+                index++;
+            }
+            // Into the chamber itself, not to the far end of its outward
+            // bore. One door, deliberately: two paths crossing inside the same
+            // plan can seal each other, because a tread laid for one lands in
+            // the headroom of the other.
+            int[] top = ring[index % ring.length];
+            shaft.connect(p::rockMix, top[0], shaftY, top[1],
+                    hollowCentreX, hollowMouthY, hollowCentreZ);
+            shaft.cut(s, rng);
         }
 
         // Glowing sea pickles on the drowned rock.
