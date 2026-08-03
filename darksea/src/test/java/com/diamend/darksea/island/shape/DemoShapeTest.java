@@ -59,6 +59,7 @@ class DemoShapeTest {
                         Rel chest = build.chests().get(c);
                         assertClearWithFooting(build, chest, where + " chest#" + c);
                         assertConcealed(build, chest, where + " chest#" + c);
+                        assertStandableNeighbour(build, chest, where + " chest#" + c);
                         for (int o = 0; o < c; o++) {
                             Rel other = build.chests().get(o);
                             double gap = Math.sqrt(Math.pow(chest.x() - other.x(), 2)
@@ -538,6 +539,69 @@ class DemoShapeTest {
         assertTrue(enclosed >= 3, where + ": chest visible from " + (4 - enclosed)
                 + " open sides at " + chest);
     }
+
+    /**
+     * Somewhere to stand while you loot it.
+     *
+     * <p>Separate from {@link #assertClearWithFooting}, which only says the
+     * chest's own cell is open — a chest can pass that and still be set in a
+     * wall over a drop, openable by leaning at it and impossible to stand
+     * beside. The third live test found several of those, and looting from a
+     * ledge you keep sliding off is the kind of friction that reads as the
+     * island being broken.
+     *
+     * <p>All eight horizontal neighbours count, diagonals included — standing
+     * corner-on to a chest is normal play. A diagonal only counts if one of the
+     * two cells connecting it to the chest is open, though: a pocket walled off
+     * on both approaches is a cell no player can occupy, and counting it would
+     * make this assertion pass for a chest nobody can get to.
+     *
+     * <p>Note for later: 124 of the 321 chests in this sweep have <em>only</em>
+     * a diagonal, no square-on face at all. That is legal and openable, and it
+     * is also what a player means by "I could loot it but I couldn't stand next
+     * to it". Tightening this to demand an orthogonal face is a chest-placement
+     * change across every shape, not a test change, so it is a decision rather
+     * than a fix.
+     */
+    private static void assertStandableNeighbour(ShapeBuild build, Rel chest, String where) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) {
+                    continue;
+                }
+                if (!isStandable(build, new Rel(chest.x() + dx, chest.y(), chest.z() + dz))) {
+                    continue;
+                }
+                if (dx == 0 || dz == 0
+                        || isClear(build, new Rel(chest.x() + dx, chest.y(), chest.z()))
+                        || isClear(build, new Rel(chest.x(), chest.y(), chest.z() + dz))) {
+                    return;
+                }
+            }
+        }
+        assertTrue(false, where + ": nowhere to stand beside the chest at " + chest);
+    }
+
+    /**
+     * A cell a player fits in: solid under it, two cells of air in it.
+     *
+     * <p>An undefined cell counts as open only above the waterline. The paste
+     * writes what a shape declares and leaves everything else alone, so a gap
+     * the shape never mentioned is ocean at world Y 62 and below — somewhere
+     * you swim, not somewhere you stand. Shapes land at paste-y 58, which puts
+     * the waterline four blocks up in shape-relative terms.
+     */
+    private static boolean isStandable(ShapeBuild build, Rel foot) {
+        if (build.blocks().get(foot) == null && foot.y() <= WATERLINE_REL_Y) {
+            return false;
+        }
+        String below = build.blocks().get(foot.below());
+        return below != null && !NOT_FOOTING.contains(below)
+                && isClear(build, foot) && isClear(build, foot.above());
+    }
+
+    /** config.yml: sea-level 62 minus generation.paste-y 58. */
+    private static final int WATERLINE_REL_Y = 4;
 
     private static boolean isSolid(ShapeBuild build, Rel pos) {
         String material = build.blocks().get(pos);

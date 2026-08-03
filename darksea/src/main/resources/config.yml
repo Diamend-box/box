@@ -535,8 +535,16 @@ messages:
   shop-no-room: "<red>No room in your pack."
   shop-unavailable: "<red>That line is out of stock."
   shop-wake-title: "<color:#c9a227>Wake a Relic</color>"
-  shop-wake-empty: "<gray>Hold a dormant relic in your main hand."
-  shop-wake-holding: "<gray>{name} <dark_gray>— {cost} Chronons"
+  # The anvil answers four questions in order: what this does, what you are
+  # holding, what it gets you, and whether you can pay for it right now. It
+  # used to answer only the second, and waking went unnoticed for two tests.
+  shop-wake-what: "<gray>A dormant relic is dead weight. <white>Woken<gray>, it carries a permanent boon for as long as you keep it on you."
+  shop-wake-empty: "<dark_gray>Hold a dormant relic in your main hand, then click here."
+  shop-wake-holding: "<white>{name} <dark_gray>— <aqua>{cost} Chronons"
+  shop-wake-boost: "<dark_gray>Awake: <green>{boost}"
+  shop-wake-afford: "<green>Click to wake it."
+  shop-wake-short: "<red>You need {short} more Chronons."
+  shop-wake-awake: "<yellow>{name} is already awake."
   shop-rotation-title: "<color:#b39ddb>New Stock Soon</color>"
   shop-rotation-lore: "<gray>He turns his shelf over in <white>{time}</white>."
   shop-clue-title: "<color:#7fb2c4>What He's Heard</color>"

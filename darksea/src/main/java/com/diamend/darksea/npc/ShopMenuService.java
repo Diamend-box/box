@@ -207,17 +207,52 @@ public final class ShopMenuService implements Listener {
         return stack;
     }
 
+    /**
+     * The artificer's anvil.
+     *
+     * <p>Rewritten after the third live test, where waking a relic read as an
+     * ornament nobody had a reason to touch. The tile named itself and stopped:
+     * it never said what waking buys you, never showed the price against what
+     * you were actually carrying, and never said that the way to do it is to
+     * click this. A mechanic a player cannot find is not a mechanic they judged
+     * unimportant — they never saw it at all.
+     *
+     * <p>So the tile now answers all four questions in the order they come up:
+     * what this does, what you are holding, what you get for it, and whether
+     * you can afford it right now.
+     */
     private ItemStack wakeButton(Player player) {
         ItemStack stack = new ItemStack(Material.ANVIL);
         ItemMeta meta = stack.getItemMeta();
         meta.displayName(line(plugin.messages().component("shop-wake-title")));
-        Relic held = Relic.of(player.getInventory().getItemInMainHand());
         List<Component> lore = new ArrayList<>();
+        lore.add(line(plugin.messages().component("shop-wake-what")));
+        lore.add(Component.empty());
+
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        Relic held = Relic.of(hand);
         if (held == null) {
             lore.add(line(plugin.messages().component("shop-wake-empty")));
+        } else if (Relic.isAwake(hand)) {
+            lore.add(line(plugin.messages().component("shop-wake-awake",
+                    "name", held.displayName())));
+            lore.add(line(plugin.messages().component("shop-wake-boost",
+                    "boost", held.boostLine())));
         } else {
+            int cost = held.reviveCost();
+            int have = DarkSeaItems.countChronons(player.getInventory());
             lore.add(line(plugin.messages().component("shop-wake-holding",
-                    "name", held.displayName(), "cost", String.valueOf(held.reviveCost()))));
+                    "name", held.displayName(), "cost", String.valueOf(cost))));
+            lore.add(line(plugin.messages().component("shop-wake-boost",
+                    "boost", held.boostLine())));
+            lore.add(Component.empty());
+            lore.add(line(have >= cost
+                    ? plugin.messages().component("shop-wake-afford")
+                    : plugin.messages().component("shop-wake-short",
+                            "short", String.valueOf(cost - have))));
+            // A glint only when the click will actually do something, so the
+            // tile reads as live from across the board rather than always.
+            meta.setEnchantmentGlintOverride(have >= cost);
         }
         meta.lore(lore);
         stack.setItemMeta(meta);

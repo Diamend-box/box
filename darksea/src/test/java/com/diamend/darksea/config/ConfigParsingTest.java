@@ -217,7 +217,12 @@ class ConfigParsingTest {
                 // The caves speak entirely through the action bar: without
                 // these the extraction channel and the vein readout both run
                 // silently, which is indistinguishable from not running.
-                "caves-extracting", "caves-vein-sense", "caves-vein-sense-growing")) {
+                "caves-extracting", "caves-vein-sense", "caves-vein-sense-growing",
+                // The artificer's anvil explains itself entirely through these.
+                // Waking a relic went unnoticed across two live tests because
+                // the tile said what you held and nothing else.
+                "shop-wake-what", "shop-wake-boost", "shop-wake-afford",
+                "shop-wake-short", "shop-wake-awake")) {
             assertTrue(settings.messages().containsKey(key), "config.yml is missing " + key);
         }
         // Every rung of the old man's ladder must have a line to speak. The
