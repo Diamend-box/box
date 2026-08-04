@@ -128,7 +128,11 @@ class BoatServiceTest {
         double previous = -1.0;
         for (int tick = 0; tick < 200; tick++) {
             speed = BoatService.driveStep(speed, cap, true);
-            assertTrue(speed > previous, "holding forward must never slow the boat down");
+            // Non-decreasing, not strictly increasing: the ramp converges on
+            // the cap and then a double simply stops changing. Holding forward
+            // must never SLOW the boat, which is the invariant that matters —
+            // demanding it speed up forever fails once it has arrived.
+            assertTrue(speed >= previous, "holding forward must never slow the boat down");
             assertTrue(speed <= cap, "the throttle must not overshoot the cap, saw " + speed);
             previous = speed;
         }
