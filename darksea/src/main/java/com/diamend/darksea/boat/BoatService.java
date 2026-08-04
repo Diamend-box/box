@@ -273,9 +273,6 @@ public final class BoatService implements Listener {
         double horizontal = Math.hypot(step.getX(), step.getZ());
         double factor = speedFactor(multiplier, horizontal,
                 plugin.settings().boat().speedCapBase(), wounded);
-        if (Math.abs(factor - 1.0) < 1e-9) {
-            return;
-        }
         Vector velocity = boat.getVelocity();
         if (factor < 1.0) {
             // Braking a wounded hull. A plain scale of the existing motion, so
@@ -288,25 +285,35 @@ public final class BoatService implements Listener {
             return;
         }
 
-        // Thrust is carried between ticks rather than recomputed from scratch,
-        // and it fades instead of stopping.
+        if (multiplier <= 1.0) {
+            drives.remove(rider.getUniqueId());
+            return;   // an unupgraded hull is left entirely to vanilla
+        }
+
+        // Thrust is a value the server keeps, not one it re-derives from what
+        // it just watched the boat do. Nothing measured feeds into it.
         //
-        // Setting velocity straight from this tick's measured step made the
-        // boat jitter: the step is noisy, the client owns a ridden boat's
-        // physics, and a server value that jumps around every tick is a server
-        // and a client disagreeing several times a second. And cutting the
-        // thrust to nothing the moment W came up read as hitting a wall — the
-        // client's own momentum was never boosted, so there was nothing left
-        // to coast on. Easing toward the target instead smooths the ride, and
-        // easing back down gives a heavy hull the glide it should have.
+        // Two separate things were shaking the boat. The obvious one: the
+        // target was the measured step scaled up, and the step is noisy,
+        // because the client owns a ridden boat's physics — so the speed being
+        // written back wobbled several times a second. The worse one was
+        // hiding in boostFactor, which returns 1.0 ("leave it alone") once the
+        // boat is at its cap. At cruise that alternated: a tick over the cap
+        // was ignored and the hull slowed, the next tick was under and got
+        // pushed, forever. The boat was being shoved and dropped a few times a
+        // second by design, which is precisely what juddering is.
+        //
+        // So the target is now the cap itself — a constant for a given hull —
+        // and the ramp toward it is monotone. Same speed, but arrived at
+        // smoothly and then *held*, with no per-tick decision to make.
+        double cap = plugin.settings().boat().speedCapBase() * multiplier * wounded;
         Drive drive = drives.computeIfAbsent(rider.getUniqueId(), id -> new Drive());
-        boolean forward = rider.getCurrentInput().isForward();
-        double target = forward ? horizontal * factor : 0.0;
-        drive.speed += (target - drive.speed) * (forward ? THROTTLE_UP : COAST_DOWN);
-        if (drive.speed <= horizontal + 1.0e-4) {
-            // No faster than the boat was going anyway: leave it entirely
-            // alone. Every tick we do not touch is a tick the client is not
-            // being corrected, which is most of what "smooth" means here.
+        drive.speed = driveStep(drive.speed, cap, rider.getCurrentInput().isForward());
+        if (drive.speed <= plugin.settings().boat().speedCapBase() * wounded) {
+            // Down to what the hull makes unaided: stop writing velocity at
+            // all and hand the boat back. Every tick we do not touch is a tick
+            // the client is not being corrected, which is most of what
+            // "smooth" means here.
             return;
         }
         // Along the hull, not along the momentum. Scaling the measured step
@@ -328,6 +335,45 @@ public final class BoatService implements Listener {
 
     /** And how much of it a tick of not holding forward gives back. */
     private static final double COAST_DOWN = 0.06;
+
+    /** How fast speed above the cap — only a surge puts it there — bleeds off. */
+    private static final double SURGE_BLEED = 0.05;
+
+    /**
+     * One tick of the throttle: eases the carried speed toward the hull's cap
+     * while forward is held, and toward a standstill when it is not.
+     *
+     * <p>Speed above the cap is only ever put there by a surge, and it bleeds
+     * off more slowly than the throttle closes a gap — otherwise the burst
+     * would be gone in three ticks and the surge would read as a stutter
+     * rather than a shove. It decays rather than being clamped, so a surge is
+     * something the boat carries out of and not something snapped away from
+     * it.
+     */
+    static double driveStep(double current, double cap, boolean forward) {
+        if (!forward) {
+            return current * (1.0 - COAST_DOWN);
+        }
+        double rate = current > cap ? SURGE_BLEED : THROTTLE_UP;
+        return current + (cap - current) * rate;
+    }
+
+    /**
+     * Hands the throttle a speed from outside — the naval surge, which is a
+     * one-off burst rather than a state of its own.
+     *
+     * <p>Without this the surge did nothing you could feel for more than a
+     * tick: it set the boat's velocity, and then the very next movement tick
+     * this service wrote the carried speed straight back over it. The burst
+     * was being cancelled by the throttle a fortieth of a second later, which
+     * is what "the surge resets momentum" is. Feeding it in here instead makes
+     * the burst the throttle's new starting point, so it bleeds back down to
+     * cruise the way a shove should.
+     */
+    public void primeDrive(Player player, double speed) {
+        Drive drive = drives.computeIfAbsent(player.getUniqueId(), id -> new Drive());
+        drive.speed = Math.max(drive.speed, speed);
+    }
 
     /** One rider's carried thrust. Lives only while they are sailing. */
     private static final class Drive {

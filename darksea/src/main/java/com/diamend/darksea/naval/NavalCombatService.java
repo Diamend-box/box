@@ -461,6 +461,10 @@ public final class NavalCombatService implements Listener {
                 * speedCeiling(boat);  // a wounded, battered hull surges weakly
         boat.setVelocity(heading.normalize().multiply(burst)
                 .setY(boat.getVelocity().getY()));
+        // Tell the throttle about it, or it overwrites the burst on the next
+        // movement tick and the surge is a flicker. Primed this way the boat
+        // keeps the speed and bleeds down to its own cruise.
+        plugin.boat().primeDrive(player, burst);
         plugin.hud().flash(player, "naval-surge");
         boat.getWorld().playSound(boat.getLocation(), Sound.ENTITY_DOLPHIN_SPLASH, 1.0f, 0.8f);
     }

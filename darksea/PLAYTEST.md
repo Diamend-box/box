@@ -9,11 +9,11 @@ so it gets its own pass rather than a tick in a table.
 Order is by **how likely I am to have got it wrong**, not by importance. The
 boat goes first again, because it is still the fix I cannot check from here.
 
-**Build: `DarkSea-0.5.0-b98.jar` or newer.** Jars are no longer all called
-1.0.0 — the number after `-b` is the Actions run that built it, and
-`/version DarkSea` reports the same string, so you can always tell what is
-actually loaded. Runs 94 and 95 are red; don't build from them. See
-CHANGELOG.md for what each version changed.
+**Build: 0.5.1 or newer.** Jars are no longer all called 1.0.0 — the name is
+`DarkSea-<version>-b<Actions run>.jar` and `/version DarkSea` reports the same
+string, so you can always tell what is actually loaded. 0.5.1 carries the
+second boat fix, the surge fix and the suffocating-spawn fix from your partial
+run; CHANGELOG.md has the detail.
 
 ---
 
@@ -21,15 +21,17 @@ CHANGELOG.md for what each version changed.
 
 | You said | What it was | Status |
 | --- | --- | --- |
-| Fast boats jitter, not smooth | Velocity rewritten each tick from a noisy measured step | Fixed, **unverified** |
-| Releasing W stops you dead | No coast — thrust was all-or-nothing per tick | Fixed, **unverified** |
+| Fast boats jitter, not smooth | Two causes; the second was found in your partial run | Fixed twice, **unverified** |
+| Releasing W stops you dead | No coast — thrust was all-or-nothing per tick | Fixed |
+| The surge resets momentum after | The throttle wrote cruise speed over the burst a tick later | Fixed, **unverified** |
+| Abominations suffocate on spawn | Spawn markers promise one clear block; the mob is taller | Fixed |
 | Keep inventory fully off in the caves | Death-loot handler ran in every world, caves included | Fixed |
 | Indicator leads to a geode you already mined | Ranked by distance only, ignoring whether the vein was live | Fixed |
 | Godspore being amethyst is weird | Was `AMETHYST_SHARD`; now a slime ball | Fixed |
 | Chat spammed "crystal does." at a cluster | Unbreakable message fired once per swing | Throttled |
 | t5 castle spawned ~12 Cores in a row | Boss respawned the instant its slot was free | Fixed |
 | Text to wake a relic is too long | Four lines of tile text | Cut to two |
-| Several unreachable chests in the castle | **Not reproduced** — see Pass 5 | **Open** |
+| Several unreachable chests in the castle | **Not reproduced** — see Pass 6 | **Open** |
 | The arrows were fine | — | Left alone |
 
 ---
@@ -47,19 +49,28 @@ world: `/ds npc create` for `refugee_trader`, `artificer`, `black_market`,
 
 ## Pass 1 — boats, again
 
-Last round I moved thrust onto the hull's facing, which fixed the steering and
-introduced what you felt: jitter, and a wall when you let go.
+You said "better but still very jittery", and you were right — I fixed one cause
+and left the bigger one sitting there.
 
-Both come from the same mistake. I was reading the boat's *measured* velocity
-each tick and multiplying it. A ridden boat's physics are client-authoritative,
-so that measurement is noisy — every tick I was writing back a slightly
-different speed, which is jitter by construction. And because the multiplier
-applied only while W was held, dropping W dropped the boat to vanilla speed in a
-single tick.
+The one I fixed: thrust was computed from the boat's measured step, which is
+noisy because the client owns a ridden boat's physics, so the speed being
+written back wobbled several times a second.
 
-Speed is now a number the server holds per rider rather than a number it
-re-measures. Holding W eases it up toward target; releasing W eases it down.
-Nothing is written back from the measured step at all.
+The one I missed: `boostFactor` returns "leave this alone" once a boat is at its
+cap. At cruise that alternated — a tick over the cap was ignored and the hull
+slowed, the next tick was under and got pushed, and round again. **The boat was
+being shoved and dropped a few times a second by design.** No amount of
+smoothing the input fixes that, because the shaking was the on/off decision
+itself.
+
+There is no per-tick decision any more. The throttle aims at the cap, which is a
+fixed number for a given hull, ramps to it and holds it. Nothing measured feeds
+in at all.
+
+While in there: **the surge**. It set the boat's velocity and then the next
+movement tick wrote cruise speed straight over the top, so the burst lived about
+a fortieth of a second — that is your "resets momentum after". The surge now
+hands its speed to the throttle and bleeds down from it.
 
 - **Hold W at top speed on open water.** It should be smooth. Any judder at all
   is a fail and I want to know.
@@ -69,15 +80,22 @@ Nothing is written back from the measured step at all.
 - **Tap W repeatedly.** This is the case most likely to feel wrong; the ramp
   might read as sluggish. Tell me if it does.
 - Level 1 boat vs. Maelstrom — the gap should still be obvious.
+- **Surge at speed.** It should shove you and then settle back to cruise over a
+  couple of seconds, not snap back the instant it fires.
 
-Two numbers control the whole feel: how fast it ramps up, and how fast it coasts
-down. If it is *nearly* right, say which end is wrong and I'll move one of them.
+Three numbers control the whole feel: how fast it ramps up, how fast it coasts
+down, and how fast a surge bleeds off. If it is *nearly* right, say which one is
+wrong and I'll move it.
+
+If it is still juddering after this, say so plainly. Two attempts in, the next
+step is not another tuning pass — it is accepting that writing velocity to a
+client-driven boat cannot be made smooth, and finding a different mechanism.
 
 ---
 
 ## Pass 2 — the caves
 
-Three separate fixes here.
+Four separate fixes here.
 
 - **Die in the caves.** You should keep your inventory. The death handler that
   drops run loot was checking that you'd died — not *where* — so it ran in the
@@ -94,7 +112,25 @@ Three separate fixes here.
 
 ---
 
-## Pass 3 — the resident boss
+## Pass 3 — mobs that spawn buried
+
+A spawn marker only guarantees the marker block itself is clear, and a Naxian
+Abomination is taller than one block, so a marker under a low roof — a garrison
+hut, the underside of a stair — put its head inside stone. It took suffocation
+damage from the moment it arrived, and anything that walked clear of its own
+accord was fine, which is why it only happened sometimes.
+
+Spawns now need three blocks of air (`mob-spawning.spawn-clearance`), looking up
+first and then sideways, and a point with nowhere to stand is skipped rather
+than moved somewhere arbitrary.
+
+- Watch a garrison spawn in. Nothing should arrive already taking damage.
+- If an island now feels *emptier* than it did, tell me — that would mean real
+  spawn points are being skipped, and the clearance is too strict.
+
+---
+
+## Pass 4 — the resident boss
 
 You went to a t5 castle and it gave you about twelve Cores in a row. The boss
 slot refilled the moment the previous one died, so a castle you were standing in
@@ -112,7 +148,7 @@ drop it; if a second Core inside the same run still feels cheap, I'll raise it.
 
 ---
 
-## Pass 4 — waking a relic
+## Pass 5 — waking a relic
 
 The tile said four things. It now says two: what waking does, and either "click
 to wake" or how short you are. The anvil, the sounds, the particles and the boon
@@ -123,7 +159,7 @@ cleanly at a glance.
 
 ---
 
-## Pass 5 — the chests
+## Pass 6 — the chests
 
 **I did not find your castle chests.** I want to be plain about that before
 describing what I did find, because they are not the same thing.
@@ -194,7 +230,8 @@ later.
 2. **Another unreachable chest, with the island id.** Without it I'm guessing,
    and I've now guessed twice.
 3. Whether the vein indicator ever sends you somewhere empty.
-4. Whether 15 minutes is right for the boss.
+4. Whether 15 minutes is right for the boss, and whether islands still feel
+   properly garrisoned now that buried spawn points are skipped.
 5. Whether the rebuilt watchtower and spire stairs look like part of the
    building or like a fire escape.
 6. Answers to any of the five decisions.

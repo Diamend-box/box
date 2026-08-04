@@ -18,6 +18,43 @@ time.
 
 ---
 
+## 0.5.1 — 2026-08-04
+
+Four things from a partial playtest 5.
+
+### Fixed
+
+- **Boats were still jittery.** The 0.5.0 fix removed one cause and left the
+  larger one in place. `boostFactor` returns 1.0 — "leave this alone" — once a
+  boat is at its speed cap, so at cruise the service alternated between ticks
+  that pushed the hull and ticks that ignored it and let it slow. It was
+  shoving and dropping the boat several times a second, by design. The throttle
+  now targets the cap itself, which is a constant for a given hull, and holds
+  there: no measurement feeds into it and there is no per-tick decision left to
+  flip.
+- **The surge reset your momentum.** It set the boat's velocity and then the
+  next movement tick wrote the carried cruise speed straight over the top of
+  it, so the burst lasted a fortieth of a second. The surge now primes the
+  throttle, and bleeds back down to cruise instead of being cancelled.
+- **Naxian Abominations suffocated on arrival.** A spawn marker only promises
+  that the marker block is clear, and an Abomination is taller than one block —
+  under a low roof its head spawned inside stone. Spawns now need
+  `mob-spawning.spawn-clearance` (default 3) blocks of air, searching up and
+  then sideways, and skip the point rather than placing a mob somewhere
+  arbitrary.
+
+### Added
+
+- **`generation.shape-weights`** — which island shapes a ring raises and how
+  often, per ring or as a `default` block. `islands-per-ring` already
+  controlled how many islands each ring gets; this is the other half, what they
+  are. Unlisted shapes keep their built-in rarity, 0 keeps a shape out of the
+  sea, and an unknown shape id costs you that shape rather than the config
+  load. Shipped commented out, because the built-in rarities are the intended
+  sea.
+
+---
+
 ## 0.5.0 — 2026-08-03 (playtest 5 build)
 
 The pass that stopped trusting geometry to be walkable and started proving it.

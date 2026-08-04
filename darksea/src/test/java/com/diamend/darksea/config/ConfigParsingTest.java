@@ -109,6 +109,13 @@ class ConfigParsingTest {
         assertTrue(settings.generation().outerRadius() > 5000);
         assertTrue(settings.generation().demoIslands());
         assertTrue(settings.generation().demoPaceTicks() >= 1);
+        // Shipped commented out: the built-in rarities are the intended sea,
+        // and an override block is something you opt into. Absent must mean
+        // "leave every shape alone", not "no shapes allowed".
+        assertTrue(settings.generation().shapeWeights().isEmpty(),
+                "config.yml should ship without shape-weight overrides");
+        assertTrue(settings.generation().shapeWeightsFor(4).isEmpty(),
+                "no overrides configured must read as no overrides for any ring");
 
         assertEquals(6, settings.boat().levels().size());
         assertEquals(0, settings.boat().levels().get(0).shield());
@@ -238,6 +245,8 @@ class ConfigParsingTest {
         // Mariphage Cores back to back before its budget ran out.
         assertTrue(settings.mobSpawning().bossRespawnMinutes() > 0,
                 "a resident boss must wait before it rises again");
+        assertTrue(settings.mobSpawning().spawnClearance() >= 3,
+                "big mobs need at least three blocks of air or they spawn suffocating");
     }
 
     @Test

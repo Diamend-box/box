@@ -1,5 +1,6 @@
 package com.diamend.darksea.config;
 
+import com.diamend.darksea.island.shape.DemoShapes;
 import com.diamend.darksea.zone.Zone;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -52,10 +53,26 @@ public record DarkSeaSettings(
     public record ArmorSettings(boolean unbreakable, Map<Integer, ArmorStyle> tiers) {
     }
 
+    /**
+     * {@code shapeWeights} overrides which built-in island shapes a ring
+     * raises and how often, keyed by ring tier with {@code 0} holding the
+     * defaults that apply to every ring. A shape absent from the map keeps its
+     * own built-in rarity; a shape mapped to 0 is kept out of the sea.
+     */
     public record GenerationSettings(int pasteY, double minIslandGap, double ringBorderMargin,
                                      double outerRadius, Map<Integer, Integer> islandsPerRing,
                                      Material chestMarker, Material mobMarker, boolean demoIslands,
-                                     int demoPaceTicks) {
+                                     int demoPaceTicks,
+                                     Map<Integer, Map<String, Integer>> shapeWeights) {
+
+        /** The weight overrides in force for a ring: its own, else the defaults. */
+        public Map<String, Integer> shapeWeightsFor(int tier) {
+            Map<String, Integer> ring = shapeWeights().get(tier);
+            if (ring != null && !ring.isEmpty()) {
+                return ring;
+            }
+            return shapeWeights().getOrDefault(0, Map.of());
+        }
     }
 
     /**
@@ -70,7 +87,7 @@ public record DarkSeaSettings(
     public record MobSpawnSettings(int scanIntervalTicks, double activationRadius, int perIslandCap,
                                    int globalCap, int abandonCooldownMinutes,
                                    int islandBudget, int budgetRefillMinutes,
-                                   int bossRespawnMinutes) {
+                                   int bossRespawnMinutes, int spawnClearance) {
     }
 
     /**
@@ -295,7 +312,8 @@ public record DarkSeaSettings(
                 Math.max(1, cfg.getInt("mob-spawning.abandon-cooldown-minutes", 5)),
                 Math.max(1, cfg.getInt("mob-spawning.island-budget", 14)),
                 Math.max(1, cfg.getInt("mob-spawning.budget-refill-minutes", 20)),
-                Math.max(0, cfg.getInt("mob-spawning.boss-respawn-minutes", 15)));
+                Math.max(0, cfg.getInt("mob-spawning.boss-respawn-minutes", 15)),
+                Math.max(1, cfg.getInt("mob-spawning.spawn-clearance", 3)));
 
         CombatSettings combat = new CombatSettings(
                 cfg.getBoolean("combat.protect-islands", true),
@@ -424,7 +442,55 @@ public record DarkSeaSettings(
                 Math.max(500, cfg.getDouble("generation.outer-radius", 8000)),
                 Map.copyOf(perRing), chestMarker, mobMarker,
                 cfg.getBoolean("generation.demo-islands", false),
-                Math.max(1, cfg.getInt("generation.demo-pace-ticks", 10)));
+                Math.max(1, cfg.getInt("generation.demo-pace-ticks", 10)),
+                loadShapeWeights(cfg, log));
+    }
+
+    /**
+     * {@code generation.shape-weights}, as {@code ring -> shape id -> weight}.
+     * The {@code default} block lands under key 0 and stands in for any ring
+     * without one of its own. An unknown shape id is warned about and skipped
+     * rather than failing the load — a typo should cost you one shape, not the
+     * whole sea.
+     */
+    private static Map<Integer, Map<String, Integer>> loadShapeWeights(FileConfiguration cfg,
+                                                                      Logger log) {
+        ConfigurationSection sec = cfg.getConfigurationSection("generation.shape-weights");
+        if (sec == null) {
+            return Map.of();
+        }
+        Map<Integer, Map<String, Integer>> weights = new HashMap<>();
+        for (String ringKey : sec.getKeys(false)) {
+            int tier;
+            if ("default".equalsIgnoreCase(ringKey)) {
+                tier = 0;
+            } else {
+                try {
+                    tier = Integer.parseInt(ringKey);
+                } catch (NumberFormatException ex) {
+                    log.warning("generation.shape-weights." + ringKey
+                            + " is neither a ring number nor 'default' — skipped");
+                    continue;
+                }
+            }
+            ConfigurationSection ring = sec.getConfigurationSection(ringKey);
+            if (ring == null) {
+                continue;
+            }
+            Map<String, Integer> perShape = new HashMap<>();
+            for (String shapeId : ring.getKeys(false)) {
+                if (DemoShapes.byId(shapeId) == null) {
+                    log.warning("generation.shape-weights." + ringKey + "." + shapeId
+                            + " is not a known island shape — skipped");
+                    continue;
+                }
+                perShape.put(shapeId, Math.max(0, ring.getInt(shapeId)));
+            }
+            if (!perShape.isEmpty()) {
+                weights.put(tier, Map.copyOf(perShape));
+            }
+        }
+        return Map.copyOf(weights);
     }
 
     private static ResetSettings loadReset(FileConfiguration cfg) {

@@ -179,7 +179,7 @@ public final class IslandPlacer {
                     // No schematic pool: raise a built-in shaped island. The
                     // rolled shape is persisted (it becomes the island's
                     // template) so a soft reset rebuilds the same design.
-                    DemoShape shape = DemoShapes.pick(tier, rng);
+                    DemoShape shape = DemoShapes.pick(tier, rng, gen.shapeWeightsFor(tier));
                     queue.add(builtinJob(shape.id(), tier, px, pz, false, null, null));
                 } else {
                     IslandTemplate template = weightedPick(pool);

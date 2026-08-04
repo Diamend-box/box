@@ -218,7 +218,11 @@ public final class MobSpawner extends BukkitRunnable {
      * fallback} if set, otherwise {@code type} itself read as a vanilla
      * entity. A server without MythicMobs still gets working encounters.
      */
-    private UUID spawnMob(MobPool.MobEntry entry, Location location) {
+    private UUID spawnMob(MobPool.MobEntry entry, Location where) {
+        Location location = standingRoom(where);
+        if (location == null) {
+            return null;   // nowhere here a mob could stand without being buried
+        }
         if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
             UUID mythic = MythicHook.spawn(entry.type(), location, entry.level());
             if (mythic != null) {
@@ -235,6 +239,53 @@ public final class MobSpawner extends BukkitRunnable {
                     + " — it will never spawn");
         }
         return null;
+    }
+
+    /**
+     * The nearest spot to a spawn point with enough clear air over it for a
+     * big mob, or {@code null} if there is none.
+     *
+     * <p>Spawn points are single marker blocks, and a marker only guarantees
+     * that <em>it</em> is clear. A Naxian Abomination is taller than one
+     * block, so a marker under a low ceiling — a garrison hut, the underside
+     * of a stair, the lip of a vault — put the mob's head inside stone and it
+     * took suffocation damage from the moment it arrived. Anything that walked
+     * out of its own accord was fine, which is why it only happened
+     * "sometimes".
+     *
+     * <p>The search is deliberately small: straight up first, since the usual
+     * miss is a marker one block too low, then the four neighbouring columns.
+     * A spawn with nowhere to stand is skipped rather than nudged somewhere
+     * arbitrary — a mob that appears across the island from its marker is a
+     * worse bug than one that does not appear.
+     */
+    private Location standingRoom(Location at) {
+        int clearance = plugin.settings().mobSpawning().spawnClearance();
+        int[][] nudges = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int dy = 0; dy <= 2; dy++) {
+            for (int[] nudge : nudges) {
+                Location candidate = at.clone().add(nudge[0], dy, nudge[1]);
+                if (hasClearance(candidate, clearance)) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Whether {@code height} blocks of air stand over this spot. */
+    private boolean hasClearance(Location at, int height) {
+        World world = at.getWorld();
+        if (world == null) {
+            return false;
+        }
+        for (int dy = 0; dy < height; dy++) {
+            if (!world.getBlockAt(at.getBlockX(), at.getBlockY() + dy, at.getBlockZ())
+                    .isPassable()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

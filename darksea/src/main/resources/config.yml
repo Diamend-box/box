@@ -177,6 +177,27 @@ generation:
     # Devouring Rim (tier 6) stays island-free by design.
     5: 2
 
+  # Which built-in island shapes a ring raises, and how often. Weights are
+  # relative within a ring, so 20 against 5 is four times as common; a shape
+  # you do not list keeps its own built-in rarity, and one set to 0 is kept
+  # out of the sea. `default` applies to every ring that has no block of its
+  # own. This is the other half of island distribution: islands-per-ring above
+  # controls how many a ring gets, this controls what they are.
+  #
+  # Shape ids: rocky-spire, twin-atoll, ruined-watchtower, sea-beast-bones,
+  # corrupted-forest, volcanic-cone, abyssal-monolith, mariphage-nest,
+  # ruined-castle. (cultist-landfall is placed by hand and cannot be rolled.)
+  #
+  # Commented out because the built-in rarities are the intended sea. Uncomment
+  # to take control, then /ds reload and /ds reset full confirm to see it.
+  #shape-weights:
+  #  default:
+  #    ruined-castle: 4        # rare landmark; raise for more castles everywhere
+  #  4:
+  #    mariphage-nest: 0       # keep Cores out of the fourth ring entirely
+  #  5:
+  #    mariphage-nest: 50      # and make the Trench almost all nests
+
 # Marker blocks scanned inside pasted schematics (then replaced):
 #   chest      -> becomes a registered, refilling loot chest
 #   mob-spawn  -> removed; becomes a MythicMobs spawn point
@@ -207,6 +228,14 @@ mob-spawning:
   # out a dozen Cores back to back until its budget ran dry. Killing one now
   # buys you the island for a while.
   boss-respawn-minutes: 15
+
+  # Blocks of clear air a spawn point needs before a mob is put there. Spawn
+  # markers only guarantee that the marker block itself is open, and a Naxian
+  # Abomination is taller than one block — under a low roof its head ended up
+  # inside stone and it suffocated on arrival. 3 covers everything in the
+  # roster; raising it makes spawns pickier, and a point with nowhere to stand
+  # is skipped rather than moved somewhere arbitrary.
+  spawn-clearance: 3
 
 # Timed sea reset. The whole Dark Sea resets on a cycle so loot can't be
 # hoarded or camp-farmed forever — a countdown warns players, then the sea

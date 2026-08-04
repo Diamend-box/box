@@ -1,6 +1,7 @@
 package com.diamend.darksea.boat;
 
 import com.diamend.darksea.boat.BoatService.UpgradeResult;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -117,5 +118,66 @@ class BoatServiceTest {
     void aMaxedBoatCannotUpgradeRegardlessOfToken() {
         assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(3, 4, false));
         assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(3, 0, false));
+    }
+
+    @Test
+    @DisplayName("the throttle climbs to the cap, holds there, and never overshoots")
+    void throttleIsMonotoneTowardTheCap() {
+        double cap = 0.56;
+        double speed = 0.0;
+        double previous = -1.0;
+        for (int tick = 0; tick < 200; tick++) {
+            speed = BoatService.driveStep(speed, cap, true);
+            assertTrue(speed > previous, "holding forward must never slow the boat down");
+            assertTrue(speed <= cap, "the throttle must not overshoot the cap, saw " + speed);
+            previous = speed;
+        }
+        assertEquals(cap, speed, 1e-6, "a long hold should settle on the cap");
+    }
+
+    @Test
+    @DisplayName("a steady cap gives a steady speed — no per-tick wobble at cruise")
+    void cruiseIsSteady() {
+        // The jitter was the boat being pushed one tick and left alone the
+        // next. At the cap the step must be a fixed point, not an alternation.
+        double cap = 0.56;
+        double speed = cap;
+        for (int tick = 0; tick < 50; tick++) {
+            speed = BoatService.driveStep(speed, cap, true);
+            assertEquals(cap, speed, 1e-9, "cruise wobbled on tick " + tick);
+        }
+    }
+
+    @Test
+    @DisplayName("letting go coasts down toward a stop instead of stopping dead")
+    void releasingForwardCoasts() {
+        double speed = 0.56;
+        double afterOne = BoatService.driveStep(speed, 0.56, false);
+        assertTrue(afterOne < speed, "coasting must shed speed");
+        assertTrue(afterOne > speed * 0.5,
+                "one tick must not halve the speed — that is the wall you feel");
+        for (int tick = 0; tick < 500; tick++) {
+            speed = BoatService.driveStep(speed, 0.56, false);
+        }
+        assertEquals(0.0, speed, 1e-3, "coasting should eventually stop the boat");
+    }
+
+    @Test
+    @DisplayName("a surge decays back to cruise rather than being clamped away")
+    void aSurgeBleedsOff() {
+        double cap = 0.56;
+        double burst = cap * 3.0;
+        double speed = BoatService.driveStep(burst, cap, true);
+        assertTrue(speed < burst, "the burst has to decay");
+        assertTrue(speed > cap, "one tick must not erase the surge");
+        // Still above cruise several ticks later: the shove is felt, not blinked.
+        for (int tick = 0; tick < 5; tick++) {
+            speed = BoatService.driveStep(speed, cap, true);
+        }
+        assertTrue(speed > cap, "the surge should still be carrying after six ticks");
+        for (int tick = 0; tick < 300; tick++) {
+            speed = BoatService.driveStep(speed, cap, true);
+        }
+        assertEquals(cap, speed, 1e-6, "and it should settle back to the hull's own cruise");
     }
 }
