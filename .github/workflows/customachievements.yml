@@ -6,6 +6,11 @@ on:
     paths:
       - "customachievements/**"
       - ".github/workflows/customachievements.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "customachievements/**"
+      - ".github/workflows/customachievements.yml"
   workflow_dispatch:
 
 permissions:

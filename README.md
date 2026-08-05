@@ -74,9 +74,11 @@ Drop the jar you want into your server's `plugins/` folder and restart.
 ## CI
 
 Every plugin has its own workflow, triggered only by changes under its own
-directory. Each one packages the jar, runs the unit tests (against a real
-Bukkit/Paper API via MockBukkit) and boots a real headless Paper 1.21.4 server
-to confirm the plugin enables cleanly and answers its command.
+directory — on pushes to `main` (or that plugin's development branch) and on
+pull requests into `main`. Each one packages the jar, runs the unit tests
+(against a real Bukkit/Paper API via MockBukkit) and boots a real headless
+Paper 1.21.4 server to confirm the plugin enables cleanly and answers its
+command.
 
 | Plugin | Workflow | Jar artifact |
 | --- | --- | --- |

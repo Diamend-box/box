@@ -6,6 +6,11 @@ on:
     paths:
       - "anticheat/**"
       - ".github/workflows/anticheat.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "anticheat/**"
+      - ".github/workflows/anticheat.yml"
   workflow_dispatch:
 
 permissions:
