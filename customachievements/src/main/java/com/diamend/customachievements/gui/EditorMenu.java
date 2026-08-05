@@ -379,14 +379,20 @@ public class EditorMenu implements Menu {
     }
 
     private void promptText(String prompt, java.util.function.Consumer<String> apply) {
-        if (plugin.getConfig().getBoolean("use-anvil-input", true)) {
-            new AnvilInputMenu(plugin, viewer, prompt, input -> {
-                if (input != null && !input.isBlank()) {
-                    apply.accept(input);
-                }
-                open(viewer);
-            }, () -> open(viewer)).open(viewer);
-            return;
+        if (plugin.isAnvilInputEnabled()) {
+            try {
+                AnvilPrompt.open(plugin, viewer, prompt, input -> {
+                    if (input != null && !input.isBlank()) {
+                        apply.accept(input);
+                    }
+                    open(viewer);
+                }, () -> open(viewer));
+                return;
+            } catch (Throwable ex) {
+                // AnvilGUI couldn't build a menu on this server build; fall back
+                // to chat so the editor still works.
+                plugin.getLogger().warning("Anvil input unavailable, using chat instead: " + ex.getMessage());
+            }
         }
         viewer.closeInventory();
         viewer.sendMessage(Text.parse("<gold>» <yellow>" + prompt));

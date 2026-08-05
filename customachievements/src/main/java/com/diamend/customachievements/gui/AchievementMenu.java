@@ -142,9 +142,27 @@ public class AchievementMenu implements Menu {
 
         // Secret achievements stay hidden (to non-admins) until unlocked.
         if (achievement.isHidden() && !completed && !admin) {
-            return Items.of(Material.GRAY_DYE, Text.item("<dark_gray><obfuscated>???</obfuscated>"),
-                    List.of(Text.item("<dark_gray>A secret achievement."),
-                            Text.item("<dark_gray>Unlock it to reveal it.")));
+            if (!plugin.isSecretHintsEnabled()) {
+                // Fully hidden: no name, no hint.
+                return Items.of(Material.GRAY_DYE, Text.item("<dark_gray><obfuscated>???</obfuscated>"),
+                        List.of(Text.item("<dark_gray>A secret achievement."),
+                                Text.item("<dark_gray>Unlock it to reveal it.")));
+            }
+            // Hint mode: reveal the name and a single line of lore so players
+            // have a clue how to earn it, but keep the objectives concealed.
+            List<Component> hintLore = new ArrayList<>();
+            String firstLine = achievement.getDescription().isEmpty()
+                    ? "" : achievement.getDescription().get(0);
+            if (firstLine != null && !firstLine.isBlank()) {
+                hintLore.add(Text.item(firstLine));
+            } else {
+                hintLore.add(Text.item("<gray>A secret achievement."));
+            }
+            hintLore.add(Component.empty());
+            hintLore.add(Text.item("<dark_gray><italic>Secret — unlock it to reveal the details."));
+            Material hintIcon = achievement.getIcon() != null ? achievement.getIcon() : Material.NETHER_STAR;
+            return Items.of(hintIcon, Text.item("<gray>" + achievement.getDisplayName()
+                    + " <dark_gray>(secret)"), hintLore);
         }
 
         List<Component> lore = new ArrayList<>();
@@ -173,6 +191,7 @@ public class AchievementMenu implements Menu {
                     + (achievement.getCategory().isBlank() ? "" : "  •  " + achievement.getCategory())));
             lore.add(Component.empty());
             lore.add(Text.item("<yellow>Click to edit"));
+            lore.add(Text.item("<gray>Shift-Left: move up  <dark_gray>•  <gray>Shift-Right: move down"));
         }
 
         Material icon = achievement.getIcon() != null ? achievement.getIcon() : Material.NETHER_STAR;
@@ -247,6 +266,20 @@ public class AchievementMenu implements Menu {
             int index = page * CONTENT_SIZE + slot;
             if (index < cachedList.size()) {
                 Achievement achievement = cachedList.get(index);
+                org.bukkit.event.inventory.ClickType click = event.getClick();
+                // Shift-click reorders the achievement in the menu/list order.
+                if (click == org.bukkit.event.inventory.ClickType.SHIFT_LEFT) {
+                    if (plugin.getAchievementManager().move(achievement.getId(), -1)) {
+                        rebuild();
+                    }
+                    return;
+                }
+                if (click == org.bukkit.event.inventory.ClickType.SHIFT_RIGHT) {
+                    if (plugin.getAchievementManager().move(achievement.getId(), +1)) {
+                        rebuild();
+                    }
+                    return;
+                }
                 new EditorMenu(plugin, viewer, achievement.copy(), false).open(viewer);
             }
         }

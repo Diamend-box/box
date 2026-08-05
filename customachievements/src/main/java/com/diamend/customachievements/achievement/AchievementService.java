@@ -255,14 +255,28 @@ public class AchievementService {
         if (achievement.getRewardXp() > 0) {
             player.giveExp(achievement.getRewardXp());
         }
+        boolean storeOverflow = config.getBoolean("store-overflow-rewards", true);
+        boolean overflowed = false;
         for (org.bukkit.inventory.ItemStack item : achievement.getRewardItems()) {
             if (item == null || item.getType().isAir()) {
                 continue;
             }
             for (org.bukkit.inventory.ItemStack leftover
                     : player.getInventory().addItem(item.clone()).values()) {
-                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+                if (storeOverflow) {
+                    // Inventory full: keep the item in claimable storage rather
+                    // than dropping it on the ground where it could be lost.
+                    data.addPendingReward(leftover);
+                    overflowed = true;
+                } else {
+                    player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+                }
             }
+        }
+        if (overflowed) {
+            player.sendMessage(prefix().append(Text.parse(
+                    "<yellow>Your inventory was full — some rewards are waiting. "
+                            + "Use <white>/ca claim<yellow> to collect them.")));
         }
         for (String command : achievement.getRewardCommands()) {
             if (command == null || command.isBlank()) {

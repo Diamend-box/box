@@ -47,17 +47,17 @@ public class GuiListener implements Listener {
     }
 
     @EventHandler
-    public void onClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
-        if (event.getView().getTopInventory().getHolder() instanceof Menu menu) {
-            menu.onClose();
+    public void onOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        // Remember the plugin menu a player opens so /reopen can restore it.
+        if (event.getInventory().getHolder() instanceof Menu menu) {
+            plugin.setLastMenu(event.getPlayer().getUniqueId(), menu);
         }
     }
 
     @EventHandler
-    public void onPrepareAnvil(org.bukkit.event.inventory.PrepareAnvilEvent event) {
-        if (event.getView().getTopInventory().getHolder()
-                instanceof com.diamend.customachievements.gui.AnvilInputMenu anvil) {
-            anvil.onPrepare(event);
+    public void onClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof Menu menu) {
+            menu.onClose();
         }
     }
 

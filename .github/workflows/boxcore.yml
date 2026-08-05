@@ -2,7 +2,7 @@ name: Verify BoxCore
 
 on:
   push:
-    branches: [ "claude/box-server-utility-plugin-eukbic" ]
+    branches: [ "main", "claude/box-server-utility-plugin-eukbic" ]
     paths:
       - "boxcore/**"
       - ".github/workflows/boxcore.yml"

@@ -4,6 +4,7 @@ import com.diamend.customachievements.achievement.Achievement;
 import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.data.PlayerData;
+import com.diamend.customachievements.data.PlayerDataManager;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
@@ -241,5 +242,98 @@ class CustomAchievementsPluginTest {
         assertNotNull(reloaded, "seeded multi-objective achievement should exist");
         assertEquals(2, reloaded.getRequirements().size(),
                 "multiple requirements should survive the save/load round-trip");
+    }
+
+    @Test
+    void leaderboardIgnoresDeletedAchievements() {
+        PlayerMock player = server.addPlayer();
+        Achievement real = new Achievement("still_here");
+        real.setTrigger(TriggerType.MANUAL);
+        plugin.getAchievementManager().put(real);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        data.setCompleted("still_here");
+        data.setCompleted("was_deleted"); // no longer a real achievement
+
+        java.util.Set<String> validIds = plugin.getAchievementManager().ids();
+        assertEquals(1,
+                plugin.getPlayerDataManager().completedCounts(validIds).get(player.getUniqueId()).intValue(),
+                "only achievements that still exist should be counted");
+        assertEquals(2,
+                plugin.getPlayerDataManager().completedCounts(null).get(player.getUniqueId()).intValue(),
+                "with no filter the raw completed count includes the stale id");
+    }
+
+    @Test
+    void achievementsCanBeReordered() {
+        Achievement first = new Achievement("order_a");
+        Achievement second = new Achievement("order_b");
+        plugin.getAchievementManager().put(first);
+        plugin.getAchievementManager().put(second);
+
+        // order_a was added before order_b.
+        assertTrue(indexOf("order_a") < indexOf("order_b"), "initial insertion order");
+
+        assertTrue(plugin.getAchievementManager().move("order_b", -1), "moving up succeeds");
+        assertTrue(indexOf("order_b") < indexOf("order_a"), "order_b now precedes order_a");
+
+        // The new order must survive a reload from disk.
+        plugin.getAchievementManager().load();
+        assertTrue(indexOf("order_b") < indexOf("order_a"), "reordering persists across reload");
+    }
+
+    private int indexOf(String id) {
+        java.util.List<Achievement> all = plugin.getAchievementManager().asList();
+        for (int i = 0; i < all.size(); i++) {
+            if (all.get(i).getId().equalsIgnoreCase(id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    @Test
+    void fullInventoryRewardGoesToStorage() {
+        PlayerMock player = server.addPlayer();
+        // Fill the inventory so a reward item can't be added directly.
+        for (int i = 0; i < 100; i++) {
+            if (!player.getInventory().addItem(new ItemStack(Material.COBBLESTONE, 64)).isEmpty()) {
+                break;
+            }
+        }
+        Achievement gift = new Achievement("overflow_gift");
+        gift.setTrigger(TriggerType.MANUAL);
+        gift.getRewardItems().add(new ItemStack(Material.DIAMOND, 5));
+        plugin.getAchievementManager().put(gift);
+
+        plugin.getAchievementService().grant(player, gift);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        assertTrue(data.hasPendingRewards(), "a reward that doesn't fit should be kept for later");
+        assertEquals(Material.DIAMOND, data.getPendingRewards().get(0).getType(),
+                "the stored reward should be the overflow item");
+    }
+
+    @Test
+    void pendingRewardsSurviveReload() {
+        PlayerMock player = server.addPlayer();
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        data.addPendingReward(new ItemStack(Material.EMERALD, 2));
+        plugin.getPlayerDataManager().saveNow(data);
+
+        // A fresh manager reads the file from disk with an empty cache.
+        PlayerDataManager fresh = new PlayerDataManager(plugin);
+        PlayerData reloaded = fresh.get(player.getUniqueId());
+        assertTrue(reloaded.hasPendingRewards(), "pending rewards should persist to disk");
+        assertEquals(Material.EMERALD, reloaded.getPendingRewards().get(0).getType(),
+                "the stored reward item should round-trip");
+    }
+
+    @Test
+    void reopenAndClaimCommandsDispatch() {
+        PlayerMock player = server.addPlayer();
+        assertTrue(player.performCommand("careopen"), "the standalone reopen command should dispatch");
+        assertTrue(player.performCommand("achievements reopen"), "/ca reopen should dispatch");
+        assertTrue(player.performCommand("achievements claim"), "/ca claim should dispatch");
     }
 }

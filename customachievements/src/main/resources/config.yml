@@ -22,7 +22,12 @@ advancement-toast: false
 
 # Use an anvil GUI for text entry in the editor instead of chat. This keeps
 # typed text out of chat entirely (so chat-bridge plugins like DiscordSRV can't
-# relay it). Set to false to fall back to typing in chat.
+# relay it). Type in the anvil's rename field, then click the right-hand result
+# slot to confirm. Set this to false to use the old method (typing in chat).
+#
+# The anvil input is powered by the bundled AnvilGUI library. If it can't open
+# on your server build for any reason, the editor automatically falls back to
+# chat input, so the editor always works either way.
 use-anvil-input: true
 
 # Track playtime so PLAYTIME_HOURS achievements can be earned.
@@ -30,6 +35,17 @@ playtime-tracking: true
 
 # Show an action-bar progress update as players make progress (throttled).
 progress-feedback: true
+
+# Secret (hidden) achievements: when true, players see the achievement's name
+# and its first description line as a hint before unlocking it (the objectives
+# stay concealed). Set to false to fully hide them as an obfuscated "???".
+secret-show-hints: true
+
+# When a player's inventory is full as they unlock an achievement, keep the
+# reward items in a claimable storage (accessed with /ca claim or /reopen) so
+# they can't be lost, instead of dropping them on the ground. Set to false to
+# use the old behaviour (drop overflow items at the player's feet).
+store-overflow-rewards: true
 
 # When false, breaking a block you placed yourself won't count toward
 # BLOCK_BREAK achievements (prevents place-and-break farming).

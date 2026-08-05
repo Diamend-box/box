@@ -20,7 +20,7 @@ separately.
 
 | Plugin | What it is | Module | Version |
 | --- | --- | --- | --- |
-| **[CustomAchievements](customachievements/README.md)** | Fully custom achievements built through an in-game GUI, with a player-facing menu, progress tracking, triggers and rewards. | `customachievements/` | 1.6.0 |
+| **[CustomAchievements](customachievements/README.md)** | Fully custom achievements built through an in-game GUI, with a player-facing menu, progress tracking, triggers and rewards. | `customachievements/` | 1.8.0 |
 | **[BoxCore](boxcore/README.md)** | The server's utility and progression core — a modular plugin holding skill trees, collections, boosts, a personal compactor and fast travel. | `boxcore/` | 1.0.0 |
 | **[AntiCheat](anticheat/README.md)** | A packet-level anticheat aimed at the blatant free clients (Meteor, Wurst) — combat, movement, world and passive protections. | `anticheat/` | 2.0.0 |
 
@@ -31,7 +31,7 @@ permissions, configuration and developer notes. Start there.
 
 | Plugin | Command | Package | Soft dependencies |
 | --- | --- | --- | --- |
-| CustomAchievements | `/achievements` (`/ca`) | `com.diamend.customachievements` | MythicMobs, AuraSkills, PlaceholderAPI |
+| CustomAchievements | `/achievements` (`/ca`), `/reopen` | `com.diamend.customachievements` | MythicMobs, AuraSkills, PlaceholderAPI (AnvilGUI is shaded in) |
 | BoxCore | `/box` | `com.diamend.boxcore` | PlaceholderAPI |
 | AntiCheat | `/anticheat` (`/ac`) | `com.diamend.anticheat` | — (packetevents is shaded in) |
 
@@ -58,16 +58,16 @@ There is no top-level build. Each plugin is a standalone Maven project — build
 the one you want from its own directory:
 
 ```bash
-cd customachievements && mvn -B clean package   # -> target/CustomAchievements-1.6.0.jar
+cd customachievements && mvn -B clean package   # -> target/CustomAchievements-1.8.0.jar
 cd boxcore           && mvn -B clean package    # -> target/BoxCore-1.0.0.jar
 cd anticheat         && mvn -B clean package    # -> target/AntiCheat-2.0.0.jar
 ```
 
 Drop the jar you want into your server's `plugins/` folder and restart.
 
-> The builds pull `paper-api` (and packetevents / PlaceholderAPI) from external
-> Maven repositories, so the build machine needs network access to them. In
-> practice **CI is the build** — see below.
+> The builds pull `paper-api` (and packetevents / AnvilGUI / PlaceholderAPI)
+> from external Maven repositories, so the build machine needs network access to
+> them. In practice **CI is the build** — see below.
 
 ---
 

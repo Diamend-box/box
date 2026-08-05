@@ -97,6 +97,40 @@ public class AchievementManager {
         return achievements.size();
     }
 
+    /** A snapshot of every achievement's (lower-cased) id — safe to hand to another thread. */
+    public java.util.Set<String> ids() {
+        return new java.util.HashSet<>(achievements.keySet());
+    }
+
+    /**
+     * Moves an achievement earlier ({@code delta < 0}) or later ({@code delta > 0})
+     * in the display/menu order and persists the new order. Returns false if the
+     * id is unknown or the move would fall off either end of the list.
+     */
+    public boolean move(String id, int delta) {
+        if (id == null || delta == 0) {
+            return false;
+        }
+        List<String> keys = new ArrayList<>(achievements.keySet());
+        int from = keys.indexOf(id.toLowerCase(Locale.ROOT));
+        if (from < 0) {
+            return false;
+        }
+        int to = from + delta;
+        if (to < 0 || to >= keys.size()) {
+            return false;
+        }
+        keys.add(to, keys.remove(from));
+        Map<String, Achievement> reordered = new LinkedHashMap<>();
+        for (String key : keys) {
+            reordered.put(key, achievements.get(key));
+        }
+        achievements.clear();
+        achievements.putAll(reordered);
+        save();
+        return true;
+    }
+
     /** Distinct non-empty categories, in first-seen order. */
     public List<String> categories() {
         List<String> categories = new ArrayList<>();

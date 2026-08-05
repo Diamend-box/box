@@ -5,6 +5,8 @@ import com.diamend.customachievements.achievement.Achievement;
 import com.diamend.customachievements.data.PlayerData;
 import com.diamend.customachievements.gui.AchievementMenu;
 import com.diamend.customachievements.gui.EditorMenu;
+import com.diamend.customachievements.gui.Menu;
+import com.diamend.customachievements.gui.RewardClaimMenu;
 import com.diamend.customachievements.util.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -35,6 +38,12 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // Standalone /reopen (and /careopen) command.
+        if (command.getName().equalsIgnoreCase("careopen")) {
+            reopen(sender);
+            return true;
+        }
+
         if (args.length == 0) {
             openMenu(sender, false);
             return true;
@@ -51,6 +60,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "reset" -> reset(sender, args);
             case "top", "leaderboard" -> top(sender);
             case "info", "inspect" -> info(sender, args);
+            case "claim" -> claim(sender);
+            case "reopen" -> reopen(sender);
             case "reload" -> reload(sender);
             default -> help(sender);
         }
@@ -228,9 +239,13 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             return;
         }
         sender.sendMessage(Text.parse("<gray>Building the leaderboard..."));
+        // Snapshot the current achievement ids on the main thread so the async
+        // count only credits achievements that still exist (deleted ones don't
+        // inflate a player's total).
+        Set<String> validIds = plugin.getAchievementManager().ids();
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             List<Map.Entry<UUID, Integer>> ranked =
-                    new ArrayList<>(plugin.getPlayerDataManager().completedCounts().entrySet());
+                    new ArrayList<>(plugin.getPlayerDataManager().completedCounts(validIds).entrySet());
             ranked.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 sender.sendMessage(Text.parse("<gold><bold>Achievement Leaderboard"));
@@ -309,6 +324,40 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
                 + (achievement.isAnnounce() ? "yes" : "no")));
     }
 
+    private void claim(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Only players can claim rewards.");
+            return;
+        }
+        if (!player.hasPermission(PERM_USE)) {
+            noPermission(player);
+            return;
+        }
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        if (!data.hasPendingRewards()) {
+            player.sendMessage(Text.parse("<gray>You have no unclaimed rewards."));
+            return;
+        }
+        new RewardClaimMenu(plugin, player).open(player);
+    }
+
+    private void reopen(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Only players can reopen a menu.");
+            return;
+        }
+        if (!player.hasPermission(PERM_USE)) {
+            noPermission(player);
+            return;
+        }
+        Menu menu = plugin.getLastMenu(player.getUniqueId());
+        if (menu == null) {
+            player.sendMessage(Text.parse("<gray>There's no recent achievements menu to reopen."));
+            return;
+        }
+        menu.open(player);
+    }
+
     private void reload(CommandSender sender) {
         if (!hasAdmin(sender)) {
             return;
@@ -325,6 +374,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Text.parse("<yellow>/ca list <gray>- List achievements in chat"));
         sender.sendMessage(Text.parse("<yellow>/ca info <id> <gray>- Show an achievement's details"));
         sender.sendMessage(Text.parse("<yellow>/ca top <gray>- Completion leaderboard"));
+        sender.sendMessage(Text.parse("<yellow>/ca claim <gray>- Collect unclaimed reward items"));
+        sender.sendMessage(Text.parse("<yellow>/reopen <gray>- Reopen the last menu you closed"));
         if (sender.hasPermission(PERM_ADMIN)) {
             sender.sendMessage(Text.parse("<yellow>/ca admin <gray>- Manage achievements (GUI)"));
             sender.sendMessage(Text.parse("<yellow>/ca create <gray>- Create a new achievement"));
@@ -351,7 +402,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("list", "info", "top"));
+            List<String> subs = new ArrayList<>(List.of("list", "info", "top", "claim", "reopen"));
             if (sender.hasPermission(PERM_ADMIN)) {
                 subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "reload"));
             }

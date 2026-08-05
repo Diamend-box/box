@@ -30,18 +30,28 @@ still **locked** (with live progress bars).
   once; it unlocks only when every objective is complete.
 - 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
   menus (no typing IDs from memory).
+- ⌨️ **Off-chat text entry** – editor prompts use an anvil GUI so typed values
+  never hit chat (keeps them away from chat-bridge plugins like DiscordSRV);
+  toggle off in the config to type in chat instead.
 - 🎨 **Flexible text** – names/descriptions accept classic `&` colour codes
   *and* MiniMessage, mixed freely.
 - 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
   skill-level achievements; the plugin runs fine without either.
 - 🪧 **PlaceholderAPI** – optional expansion exposing per-player completion and
   progress placeholders for holograms, scoreboards and signs.
-- 🕵️ **Secret achievements** – hidden entries show as `???` until unlocked.
+- 🕵️ **Secret achievements** – hidden entries reveal only their name and a
+  one-line hint until unlocked (or fully hide as `???` if you prefer).
 - 🗂️ **Optional categories** – group achievements into tabs (only shown once you
   actually use categories).
+- ↕️ **Reorderable in the GUI** – admins shift-click achievements in the manage
+  menu to move them up/down; the order is saved and drives every player's menu.
 - 🏆 **Rewards** – grant XP, give **items**, and/or run console commands on unlock.
-- 📊 **Leaderboard & progress** – `/ca top`, per-category completion %, and an
-  optional action-bar progress readout as players advance.
+- 📦 **Never lose a reward** – if a player's inventory is full on unlock, item
+  rewards go into a claimable storage (`/ca claim`) instead of being dropped.
+- ↩️ **`/reopen`** – accidentally closed the editor? Reopen it right where you
+  left off, draft intact.
+- 📊 **Leaderboard & progress** – `/ca top` (only counts achievements that still
+  exist), per-category completion %, and an optional action-bar progress readout.
 - 🛡️ **Anti-farm option** – optionally ignore player-placed blocks so
   place-and-break can't farm break achievements.
 - 📢 **Unlock feedback** – toast sound, on-screen title, personal message and an
@@ -69,13 +79,15 @@ mvn clean package
 ```
 
 The finished plugin is written to
-`customachievements/target/CustomAchievements-1.6.0.jar`. Drop that jar into
+`customachievements/target/CustomAchievements-1.8.0.jar`. Drop that jar into
 your server's `plugins/` folder and restart.
 
-> The build downloads the Paper API from `https://repo.papermc.io`, so the build
-> machine needs access to that repository (any normal dev machine or CI runner
-> does). No other third-party libraries are shaded in — MiniMessage/Adventure
-> ship with Paper.
+> The build downloads the Paper API from `https://repo.papermc.io` and the
+> [AnvilGUI](https://github.com/WesJD/AnvilGUI) library from
+> `https://mvn.wesjd.net`, so the build machine needs access to those
+> repositories (any normal dev machine or CI runner does). AnvilGUI is shaded
+> in (relocated) to power the off-chat anvil editor; MiniMessage/Adventure ship
+> with Paper.
 
 ---
 
@@ -88,6 +100,8 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
 | `/ca` | Open **your** achievements menu | `customachievements.use` |
 | `/ca list` | List achievements in chat | `customachievements.use` |
 | `/ca top` | Completion leaderboard | `customachievements.use` |
+| `/ca claim` | Collect reward items that didn't fit in your inventory | `customachievements.use` |
+| `/reopen` (or `/ca reopen`) | Reopen the last menu you had open | `customachievements.use` |
 | `/ca admin` | Open the **management** menu (edit / create) | `customachievements.admin` |
 | `/ca create` | Open the editor to build a new achievement | `customachievements.admin` |
 | `/ca grant <player> <id>` | Grant an achievement (online or offline) | `customachievements.admin` |
@@ -133,7 +147,15 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    and appears in every player's menu.
 
 To edit an existing achievement, open `/ca admin` and click its icon. To delete
-one, open it in the editor and **shift-click** the Delete button.
+one, open it in the editor and click the **Delete** button, then click it again
+to confirm (a two-step guard so you can't wipe an achievement by accident).
+
+**Reordering:** in the `/ca admin` menu, **shift-left-click** an achievement to
+move it up and **shift-right-click** to move it down. The new order is saved to
+`achievements.yml` and is the order everyone sees in their menu and `/ca list`.
+
+**Accidentally closed the editor?** Run **`/reopen`** (or `/ca reopen`) to bring
+it back exactly where you left off — the in-progress draft is preserved.
 
 ---
 
@@ -167,6 +189,36 @@ per-line in the menu). Add/edit objectives from the editor, or in
 Names and descriptions accept **both** classic colour codes (`&a`, `&l`,
 `&#ff8800`) **and** [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
 (`<green>`, `<bold>`, `<gradient:…>`) — you can mix them.
+
+### Editor text entry (anvil vs chat)
+
+When the editor asks you to type something (a name, a number, a command…), it
+opens a small **anvil GUI**: type into the rename field and click the right-hand
+result slot to confirm, or close the menu to cancel. Nothing you type reaches
+chat, so chat-bridge plugins (DiscordSRV, etc.) never relay editor input. This
+is powered by the bundled [AnvilGUI](https://github.com/WesJD/AnvilGUI) library.
+
+Prefer the old behaviour? Set `use-anvil-input: false` in `config.yml` to type
+in chat instead. Either way, if the anvil can't open on your server build the
+editor falls back to chat automatically, so it always works.
+
+### Secret achievements
+
+Mark an achievement **Secret** in the editor to keep it a surprise. By default
+(`secret-show-hints: true`) a locked secret still shows its **name** and its
+**first description line** as a hint, so players know it exists and roughly how
+to earn it — but its objectives stay hidden until they unlock it. Prefer them
+completely opaque? Set `secret-show-hints: false` and locked secrets render as a
+bare obfuscated `???` instead.
+
+### Reward items & the claim storage
+
+Item rewards are added straight to the player's inventory on unlock. If their
+inventory is **full**, the leftover items are kept in a per-player **claim
+storage** rather than dropped on the ground where they could despawn. Players
+collect them with **`/ca claim`** (drag items out, or hit **Claim All**), and are
+reminded on join if anything is waiting. Set `store-overflow-rewards: false` to
+go back to dropping overflow at the player's feet.
 
 ### AuraSkills
 
@@ -233,8 +285,12 @@ their own progress. (Ids may contain underscores — that's fine.)
 announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
+advancement-toast: false    # EXPERIMENTAL native advancement-toast pop-up on unlock
+use-anvil-input: true        # editor prompts use the off-chat anvil GUI (false = type in chat)
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
 progress-feedback: true     # action-bar progress readout as players advance
+secret-show-hints: true     # secret achievements reveal name + 1-line hint (false = bare "???")
+store-overflow-rewards: true  # keep reward items for /ca claim when the inventory is full (false = drop)
 count-player-placed-blocks: true  # false = don't count breaking blocks you placed
 autosave-minutes: 5         # periodic save of online players (0 to disable)
 
