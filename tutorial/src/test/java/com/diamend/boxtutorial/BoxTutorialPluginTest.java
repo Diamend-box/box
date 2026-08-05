@@ -36,6 +36,9 @@ class BoxTutorialPluginTest {
         // Stand the arena world up first: the plugin uses an existing world of
         // that name rather than creating one, which keeps world generation out
         // of the tests entirely.
+        // A main world first: MockBukkit starts with none, and "home" is
+        // defined as the first world that isn't the arena.
+        server.addSimpleWorld("world");
         server.addSimpleWorld("tutorial_arena");
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         // Titles and boss bars are client-side dressing this mock has no need

@@ -35,6 +35,9 @@ public enum StepTrigger {
     /** Simply be carrying it — the check for "you now have a pickaxe". */
     HAVE_ITEM("Carry an item", true),
 
+    /** Be holding it in the off hand — the check for "put the charm on". */
+    OFFHAND_ITEM("Hold it in your off hand", true),
+
     /** Entering a world by name, e.g. a {@code warzone} world. */
     ENTER_WORLD("Enter a world", true),
 

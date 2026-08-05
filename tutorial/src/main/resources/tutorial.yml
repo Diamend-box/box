@@ -7,8 +7,9 @@
 #
 # The default steps run inside the practice yard (see `arena:` in config.yml):
 # a wood mine, an ore mine, and a villager who trades ore for gear. The ladder
-# is wood → axe → more wood → pickaxe → ore → sword → armour, which is the
-# boxpvp loop in miniature. Everything they make is theirs to keep.
+# is wood → axe → more wood → pickaxe → ore → sword → armour → compressed log
+# → charm, which is the boxpvp loop in miniature. Everything they make is
+# theirs to keep.
 #
 # Step settings
 # -------------
@@ -16,8 +17,9 @@
 #   name:        the title, in colour
 #   description: lines shown in chat and in the tile's lore
 #   trigger:     what completes it (see the list below)
-#   target:      what counts — a material, a command, a world, a place.
-#                Blank or ANY counts everything. Comma-separated for a list.
+#   target:      what counts. A material (or a comma-separated list of them),
+#                or `item:<id>` for one of the named items in config.yml —
+#                which is what makes a step follow your own custom sword.
 #   amount:      how many times (default 1)
 #   command:     a command worth offering; shown click-to-run in chat
 #   hint:        one extra line of advice
@@ -28,7 +30,8 @@
 # --------
 #   BREAK_BLOCK      target is a material — the mines are the only breakables
 #   BUY_ITEM         target is what the trade gives you
-#   HAVE_ITEM        target is a material; done when they're carrying it
+#   HAVE_ITEM        target is an item; done when they're carrying it
+#   OFFHAND_ITEM     target is an item; done when it's in their off hand
 #   READ             done when the player clicks the step in the menu
 #   MANUAL           done only by /tutorial complete
 #   RUN_COMMAND      target is the command, without the slash
@@ -37,9 +40,9 @@
 #   REACH_LOCATION   target is world;x;y;z;radius
 #   PLAYTIME_MINUTES amount is the minutes, no target
 #
-# HAVE_ITEM is used for the gear rather than BUY_ITEM on purpose: it completes
+# The gear steps use HAVE_ITEM rather than BUY_ITEM on purpose: it completes
 # however they got the thing, so a player who buys ahead of the step isn't told
-# to buy a second one.
+# to go and buy a second one.
 # ---------------------------------------------------------------------------
 
 steps:
@@ -51,7 +54,7 @@ steps:
       - "<gray>The wood mine is on your left. Punch it — no tool needed yet."
       - "<gray>Everything on this server starts as something you dug up."
     trigger: BREAK_BLOCK
-    target: OAK_LOG
+    target: "OAK_LOG, DARK_OAK_LOG"
     amount: 8
     hint: "<dark_gray>Hold left-click on the logs."
 
@@ -63,9 +66,9 @@ steps:
       - "<gray>Put your logs in the left slot and take the axe."
       - "<gray>There is no money here — <white>what you dig up is the money<gray>."
     trigger: BUY_ITEM
-    target: WOODEN_AXE
+    target: "item:axe"
     amount: 1
-    hint: "<dark_gray>8 logs → wooden axe."
+    hint: "<dark_gray>Dark oak trades one-for-one for oak, if you're short."
 
   chop-more:
     icon: OAK_LOG
@@ -75,7 +78,7 @@ steps:
       - "<gray>that's how every mine on the server works, so you can never"
       - "<gray>run it dry and nobody can take it from you."
     trigger: BREAK_BLOCK
-    target: OAK_LOG
+    target: "OAK_LOG, DARK_OAK_LOG"
     amount: 16
     hint: "<dark_gray>Better tools are always worth the ore they cost."
 
@@ -86,9 +89,9 @@ steps:
       - "<gray>Stone and ore need a pickaxe — punching them gets you nothing."
       - "<gray>Back to the Trader."
     trigger: HAVE_ITEM
-    target: STONE_PICKAXE
+    target: "item:pickaxe"
     amount: 1
-    hint: "<dark_gray>16 logs → stone pickaxe."
+    hint: "<dark_gray>16 logs → pickaxe."
 
   mine-ore:
     icon: IRON_ORE
@@ -100,30 +103,64 @@ steps:
     trigger: BREAK_BLOCK
     target: "STONE, COAL_ORE, IRON_ORE"
     amount: 24
-    hint: "<dark_gray>Raw iron is the one that matters. Short? Keep mining — it refills."
+    hint: "<dark_gray>Raw iron is the one that matters."
 
   get-sword:
     icon: IRON_SWORD
-    name: "<yellow>Buy an iron sword"
+    name: "<yellow>Buy a sword"
     description:
       - "<gray>3 raw iron. On the real server this is the moment you stop"
       - "<gray>being somebody else's loot."
     trigger: HAVE_ITEM
-    target: IRON_SWORD
+    target: "item:sword"
     amount: 1
     hint: "<dark_gray>Not enough iron? The mine is still there."
 
   get-armour:
     icon: IRON_CHESTPLATE
-    name: "<yellow>Buy an iron chestplate"
+    name: "<yellow>Buy armour, and put it on"
     description:
-      - "<gray>5 raw iron. Then put it on."
+      - "<gray>5 raw iron. Then wear it."
       - "<gray>Out there you'll lose this eventually — everyone does."
       - "<gray>Gear is something you <white>spend<gray>, not something you keep."
     trigger: HAVE_ITEM
-    target: IRON_CHESTPLATE
+    target: "item:armor"
     amount: 1
-    hint: "<dark_gray>That's the whole loop: dig, trade, gear up, repeat."
+
+  compress-logs:
+    icon: OAK_LOG
+    name: "<gold>Fold 64 logs into one"
+    description:
+      - "<gray>Now the long one: 64 logs buys a <gold>Compressed Log<gray>."
+      - "<gray>Compacting is how anybody carries a real haul — a full"
+      - "<gray>inventory of ore is a full inventory you can't mine into."
+      - "<gray>The mine refills. Keep going."
+    trigger: HAVE_ITEM
+    target: "item:compressed_log"
+    amount: 1
+    hint: "<dark_gray>This is the grind. It's meant to be — the charm is worth it."
+
+  get-charm:
+    icon: NETHER_STAR
+    name: "<light_purple>Trade it for the charm"
+    description:
+      - "<gray>One compressed log, one charm. It's the only thing in here"
+      - "<gray>that makes <white>you<gray> stronger rather than your gear."
+    trigger: HAVE_ITEM
+    target: "item:charm"
+    amount: 1
+
+  equip-charm:
+    icon: SHIELD
+    name: "<light_purple>Put the charm in your off hand"
+    description:
+      - "<gray>A charm does nothing in your backpack. Off-hand slot —"
+      - "<gray>press <white>F<gray> while holding it."
+      - "<gray>Watch your hearts when it lands."
+    trigger: OFFHAND_ITEM
+    target: "item:charm"
+    amount: 1
+    hint: "<dark_gray>That's everything. You're done after this one."
     rewards:
       message: "<green>Kitted out. Everything you're carrying comes with you."
 

@@ -176,6 +176,21 @@ public class InstanceManager {
         return blueprint.maxInstances();
     }
 
+    /**
+     * Re-issues every live trader's offers.
+     *
+     * <p>Called when a staff member points an item slot somewhere else, so the
+     * villager in front of a player mid-tutorial starts selling the new thing
+     * instead of waiting for the next claim.
+     */
+    public void refreshTraders() {
+        for (Instance instance : instances.values()) {
+            if (!instance.isFree()) {
+                instance.spawnTrader();
+            }
+        }
+    }
+
     /** Clears every instance — on reload, and on shutdown. */
     public void releaseAll() {
         for (Instance instance : instances.values()) {

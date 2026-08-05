@@ -3,8 +3,12 @@
 A **Paper 1.21.4** plugin that teaches boxpvp by making somebody play a tiny
 version of it. `/tutorial` puts a new player in their own private arena with a
 mine that fills itself back up and a villager who trades ore for gear, walks
-them up the ladder — **wood → axe → more wood → pickaxe → ore → sword →
-armour** — and sends them back to spawn with everything they made.
+them up the ladder — **wood → axe → more wood → pickaxe → ore → sword → armour
+→ compressed log → charm** — and sends them back to spawn with everything they
+made.
+
+Every reward is a named slot you can point at **your own item**: hold it, click
+the slot in `/tutorial items`, done.
 
 > ℹ️ **Made with AI.** Written by an AI assistant (Anthropic's Claude) from a
 > human's design, and maintained the same way. Review it and test it on your own
@@ -34,16 +38,19 @@ So the tutorial is a place, not a list of instructions.
 1. They join. A clickable line offers the tutorial (it doesn't grab them).
 2. `/tutorial` — the world fades and they're standing on a small platform.
    A **wood mine** on the left, an **ore mine** on the right, a **Trader**
-   in front of them, and a boss bar reading *Step 1/7 — Break 8 logs*.
+   in front of them, and a boss bar reading *Step 1/10 — Break 8 logs*.
 3. They punch 8 logs. The step ticks over. Right-click the Trader: the ordinary
    vanilla trade screen, 8 logs in, one wooden axe out. **The ore is the money** —
    there is no currency in the arena and no economy plugin behind it.
 4. Sixteen more logs — and while they're cutting, the mine refills in front of
    them. That's the moment the gamemode lands.
-5. Pickaxe. Then the ore mine: stone, coal, iron. Then an iron sword, then an
-   iron chestplate.
-6. Done. Three seconds to read the message, then they're at spawn — carrying
-   the axe, the pickaxe, the sword, the armour and the leftovers.
+5. Pickaxe. Then the ore mine: stone, coal, iron. Then a sword, then armour.
+6. The long one: **64 logs for a compressed log** — a glowing log worth a stack,
+   which teaches compacting the only way that sticks. That buys the **charm**.
+7. Last step: put the charm in the off hand. Their hearts go up, because the
+   charm's stats are real off-hand attribute modifiers.
+8. Done. Three seconds to read the message, then they're at spawn — carrying
+   the axe, the pickaxe, the sword, the armour, the charm and the leftovers.
 
 Everything above is `tutorial.yml` and `config.yml`. Change the ladder, the
 mines, the trades, the layout — none of it is compiled in.
@@ -60,8 +67,17 @@ mines, the trades, the layout — none of it is compiled in.
   happens where the player can see it.
 - 🧑‍🌾 **A real villager with real trades** — vanilla trade window, vanilla
   behaviour, nothing to learn. Trades are config; ore is the price.
-- 📋 **Steps that watch what they do** — break blocks, buy something, be
-  carrying something, run a command, reach a place, play for N minutes.
+- 🗡️ **Your items, not mine** — sword, axe, pickaxe, armour, charm and
+  compressed log are named slots. `/tutorial items` binds any of them to the
+  item in your hand, stored whole so a custom item keeps its model data, tags
+  and attributes. Nothing is ever taken from your hand to do it.
+- 🔮 **A charm that does something** — configured stats become off-hand
+  attribute modifiers, so vanilla applies them while it's in the off hand,
+  writes them in the tooltip, and removes them when it isn't. No ticking task,
+  nothing to leak if the server stops mid-tutorial.
+- 📋 **Steps that watch what they do** — break blocks, buy something, carry
+  something, hold something in the off hand, run a command, reach a place, play
+  for N minutes.
 - 🧭 **A boss bar** with the current step and its count, on screen only while
   they're actually in the arena.
 - 🔒 **Nothing can go wrong in there** — only the mines can be broken, nothing
@@ -115,6 +131,8 @@ Base command: `/tutorial` (aliases `/guide`, `/howto`, `/tut`)
 | `/tutorial next` | Skip the step you're stuck on | `boxtutorial.use` |
 | `/tutorial stop` | Leave the arena and turn it off | `boxtutorial.use` |
 | `/tutorial steps` | List every step, with its trigger | `boxtutorial.admin` |
+| `/tutorial items` | Bind the reward items to your own | `boxtutorial.admin` |
+| `/tutorial item set\|clear\|give\|list <id>` | The same, by command | `boxtutorial.admin` |
 | `/tutorial start <player>` | Put someone else in it | `boxtutorial.admin` |
 | `/tutorial complete <player> <step>` | Mark a step done | `boxtutorial.admin` |
 | `/tutorial reset <player>` | Wipe their progress | `boxtutorial.admin` |
@@ -152,8 +170,9 @@ arena:
       min: [-9, 1, -2]     # offsets from the middle of the platform;
       max: [-6, 3, 1]      # y: 1 is the first block above the floor
       refill-at: 50        # refill once it's down to 50% left
-      blocks:
-        OAK_LOG: 100
+      blocks:              # weights, not percentages
+        OAK_LOG: 90
+        DARK_OAK_LOG: 10
     ore:
       min: [6, 1, -2]
       max: [9, 3, 1]
@@ -166,7 +185,10 @@ arena:
   trades:
     axe:
       cost: [ "OAK_LOG 8" ]     # up to two different items (a vanilla limit)
-      result: "WOODEN_AXE 1"
+      result: "item:axe"        # a named slot — see `items:` below
+    charm:
+      cost: [ "item:compressed_log 1" ]
+      result: "item:charm"
 
   return:
     mode: WORLD_SPAWN     # or LOCATION (world/x/y/z), or COMMAND (e.g. spawn)
@@ -186,7 +208,53 @@ idea in the gamemode.
 
 **Trades** become real `MerchantRecipe`s on a real villager. That's the whole
 integration — the player sees the trade window they already know, and the plugin
-watches Paper's `PlayerTradeEvent` to tick the step off.
+watches Paper's `PlayerTradeEvent` to tick the step off. A trade whose *price*
+is one of the named items is checked against the registry before it goes
+through: vanilla decides for itself how closely an ingredient has to match, and
+a charm that costs one compressed log must not be buyable with an ordinary log.
+
+---
+
+## Your items (`config.yml` → `items:`)
+
+```yaml
+items:
+  sword:
+    label: "Sword"
+    material: IRON_SWORD
+    name: "<white>Practice Sword"
+    lore: [ "<dark_gray>From the practice yard." ]
+  charm:
+    label: "Charm"
+    material: NETHER_STAR
+    name: "<light_purple>Novice Charm"
+    glow: true
+    stats:                 # applied as off-hand attribute modifiers
+      max_health: 4        # +2 hearts while it's in the off hand
+      attack_damage: 1
+      armor: 2
+```
+
+Six slots ship: `axe`, `pickaxe`, `sword`, `armor`, `compressed_log`, `charm`.
+What's above is only the **default** — to use your own:
+
+- **`/tutorial items`** — a menu of every slot. **Click holding an item** and
+  that item becomes the slot (your item stays in your hand; a copy is stored).
+  **Click empty-handed** for a copy of the current one. **Right-click** to go
+  back to the default.
+- **`/tutorial item set <id>`** — the same thing without the menu.
+- `/tutorial item clear|give|list <id>` — reset one, get one, see them all.
+
+Bindings live in `items.yml`, stored as the item's own bytes, so an item from
+ItemsAdder, Oraxen, MMOItems or a datapack keeps everything the plugin doesn't
+understand. Villagers already standing in front of a player are re-issued their
+trades the moment you bind something, so you can retune the ladder live.
+
+`stats:` uses vanilla attribute names (`max_health`, `attack_damage`, `armor`,
+`armor_toughness`, `movement_speed`, `attack_speed`, `knockback_resistance`,
+`luck`). They're looked up in the registry rather than by constant, so both the
+1.21.2 renames and the older `generic.` spellings work. If your own charm brings
+its own attributes, leave `stats:` out and nothing is added.
 
 ---
 
@@ -212,7 +280,8 @@ steps:
 |---------|--------|-----------------|
 | `BREAK_BLOCK` | a material | they break that many |
 | `BUY_ITEM` | what the trade gives | they take it from the trader |
-| `HAVE_ITEM` | a material | they're carrying that many |
+| `HAVE_ITEM` | a material or `item:<id>` | they're carrying that many |
+| `OFFHAND_ITEM` | a material or `item:<id>` | it's in their off hand |
 | `READ` | – | they click the step in the menu |
 | `MANUAL` | – | staff run `/tutorial complete` |
 | `RUN_COMMAND` | the command, no slash | they type it (`sell` also matches `/sell all`) |
@@ -265,8 +334,9 @@ fails the build rather than stranding a player.
 
 ```
 plugins/BoxTutorial/
-├── config.yml      # behaviour, the arena, and messages
+├── config.yml      # behaviour, the arena, the items and messages
 ├── tutorial.yml    # the steps and the glossary
+├── items.yml       # the items you've bound (written by the plugin)
 └── progress.yml    # one short entry per player
 ```
 
@@ -281,5 +351,5 @@ claim, so it needs no backing up and nothing in it is worth keeping.
   tutorial can't be farmed for money because there is no money in it.
 - **No inventory confiscation.** They keep what they made.
 - **No forced tutorial.** It offers, it can be stopped, and it can be run again.
-- **No achievement system.** Seven steps and it's finished. *CustomAchievements*
+- **No achievement system.** Ten steps and it's finished. *CustomAchievements*
   in this repo is the plugin for long-run objectives.

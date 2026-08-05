@@ -68,6 +68,9 @@ class TutorialProgressTest {
     @BeforeEach
     void setUp() throws IOException {
         server = MockBukkit.mock();
+        // A main world first: MockBukkit starts with none, and "home" is
+        // defined as the first world that isn't the arena.
+        server.addSimpleWorld("world");
         server.addSimpleWorld("tutorial_arena");
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         plugin.getConfig().set("show-welcome-title", false);
@@ -203,6 +206,9 @@ class TutorialProgressTest {
         plugin.service().completeStep(player, plugin.tutorial().step("read-me"), true);
 
         World world = server.addSimpleWorld("mine-test");
+        // Out of the arena: in there only the mine may be broken, and this test
+        // is about the listener rather than the protection.
+        player.teleport(world.getSpawnLocation());
         Block block = world.getBlockAt(0, 64, 0);
         block.setType(Material.STONE);
         Bukkit.getPluginManager().callEvent(new BlockBreakEvent(block, player));

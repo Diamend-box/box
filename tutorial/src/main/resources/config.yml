@@ -79,6 +79,63 @@ next-step-delay-ticks: 30
 return-delay-ticks: 60
 
 # ---------------------------------------------------------------------------
+# The items the tutorial hands out
+#
+# Each of these is a named slot. What you see here is the built-in default;
+# point a slot at your own item with /tutorial items (hold it, click the slot)
+# or /tutorial item set <id>, and every trade uses yours from then on. The
+# binding is stored whole, so a custom item from another plugin keeps its model
+# data, its tags and its own attributes.
+#
+# `stats:` are applied as off-hand attribute modifiers — vanilla then gives the
+# player the numbers while the item is in their off hand, shows them in the
+# tooltip, and takes them away when it isn't. Attribute names are the vanilla
+# ones (max_health, attack_damage, armor, armor_toughness, movement_speed,
+# attack_speed, knockback_resistance, luck).
+# ---------------------------------------------------------------------------
+items:
+  axe:
+    label: "Axe"
+    material: WOODEN_AXE
+    name: "<white>Practice Axe"
+    lore: [ "<dark_gray>From the practice yard." ]
+  pickaxe:
+    label: "Pickaxe"
+    material: STONE_PICKAXE
+    name: "<white>Practice Pickaxe"
+    lore: [ "<dark_gray>From the practice yard." ]
+  sword:
+    label: "Sword"
+    material: IRON_SWORD
+    name: "<white>Practice Sword"
+    lore: [ "<dark_gray>From the practice yard." ]
+  armor:
+    label: "Armour"
+    material: IRON_CHESTPLATE
+    name: "<white>Practice Chestplate"
+    lore: [ "<dark_gray>From the practice yard." ]
+  compressed_log:
+    label: "Compressed Log"
+    material: OAK_LOG
+    name: "<gold>Compressed Log"
+    lore:
+      - "<gray>Sixty-four logs, folded up."
+      - "<dark_gray>The trader takes these."
+    glow: true
+  charm:
+    label: "Charm"
+    material: NETHER_STAR
+    name: "<light_purple>Novice Charm"
+    lore:
+      - "<gray>Keep it in your <white>off hand<gray>."
+      - "<dark_gray>It does nothing in a chest."
+    glow: true
+    stats:
+      max_health: 4
+      attack_damage: 1
+      armor: 2
+
+# ---------------------------------------------------------------------------
 # The arena
 #
 # One void world holds every instance, spaced far enough apart that nobody can
@@ -116,7 +173,8 @@ arena:
       max: [-6, 3, 1]
       refill-at: 50       # refill once it's down to 50% left
       blocks:
-        OAK_LOG: 100
+        OAK_LOG: 90
+        DARK_OAK_LOG: 10
     ore:
       name: "The ore mine"
       min: [6, 1, -2]
@@ -131,19 +189,31 @@ arena:
   # the ordinary trade window — two cost slots and an arrow, nothing to learn.
   # A trade may cost at most two different items (a vanilla limit).
   # Ore is the currency: no economy plugin is involved anywhere.
+  # `item:<id>` means one of the slots above, so binding your own sword changes
+  # what this trade hands over without touching this file.
   trades:
     axe:
       cost: [ "OAK_LOG 8" ]
-      result: "WOODEN_AXE 1"
+      result: "item:axe"
     pickaxe:
       cost: [ "OAK_LOG 16" ]
-      result: "STONE_PICKAXE 1"
+      result: "item:pickaxe"
     sword:
       cost: [ "RAW_IRON 3" ]
-      result: "IRON_SWORD 1"
-    chestplate:
+      result: "item:sword"
+    armor:
       cost: [ "RAW_IRON 5" ]
-      result: "IRON_CHESTPLATE 1"
+      result: "item:armor"
+    compressed_log:
+      cost: [ "OAK_LOG 64" ]
+      result: "item:compressed_log"
+    charm:
+      cost: [ "item:compressed_log 1" ]
+      result: "item:charm"
+    # So the dark oak from the mine isn't dead weight in their inventory.
+    swap-dark-oak:
+      cost: [ "DARK_OAK_LOG 1" ]
+      result: "OAK_LOG 1"
     food:
       cost: [ "COBBLESTONE 8" ]
       result: "COOKED_BEEF 4"
@@ -201,6 +271,7 @@ messages:
   arena-full: "<gray>Every practice yard is busy. Try <white>/tutorial<gray> again in a minute."
   arena-left: "<gray>You've left the practice yard. <white>/tutorial<gray> takes you back."
   arena-not-the-mine: "<gray>Only the <white>mines<gray> can be broken in here."
+  arena-wrong-payment: "<gray>That isn't what this trade costs."
 
   welcome-title: "<gold>The practice yard"
   welcome-subtitle: "<gray>Mine, trade, gear up"

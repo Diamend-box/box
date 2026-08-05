@@ -3,7 +3,9 @@ package com.diamend.boxtutorial.listener;
 import com.diamend.boxtutorial.BoxTutorialPlugin;
 import com.diamend.boxtutorial.arena.Instance;
 import com.diamend.boxtutorial.arena.MineSpec;
+import com.diamend.boxtutorial.arena.TradeSpec;
 import com.diamend.boxtutorial.guide.StepTrigger;
+import com.diamend.boxtutorial.items.ItemRef;
 import io.papermc.paper.event.player.PlayerTradeEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -101,8 +103,54 @@ public class ArenaListener implements Listener {
         if (result == null) {
             return;
         }
-        plugin.service().record(player, StepTrigger.BUY_ITEM,
-                result.getType().name(), Math.max(1, result.getAmount()));
+        if (!canAfford(player, result)) {
+            event.setCancelled(true);
+            plugin.messages().send(player, "arena-wrong-payment");
+            return;
+        }
+        plugin.service().recordItem(player, StepTrigger.BUY_ITEM,
+                result, Math.max(1, result.getAmount()));
+    }
+
+    /**
+     * Checks a trade whose price is one of the plugin's own items.
+     *
+     * <p>Vanilla decides for itself how closely an ingredient has to match, and
+     * "closely enough" has moved between versions. A charm that costs one
+     * compressed log must not be buyable with an ordinary log, so the cost is
+     * confirmed against the registry before the trade is allowed through.
+     */
+    private boolean canAfford(Player player, ItemStack result) {
+        TradeSpec trade = tradeFor(result);
+        if (trade == null || !trade.hasCustomCost()) {
+            return true;
+        }
+        for (ItemRef ref : trade.cost()) {
+            if (!ref.isCustom()) {
+                continue;
+            }
+            int held = 0;
+            for (ItemStack item : player.getInventory().getContents()) {
+                if (ref.matches(plugin.items(), item)) {
+                    held += item.getAmount();
+                }
+            }
+            if (held < ref.amount()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The configured trade that hands over this item. */
+    private TradeSpec tradeFor(ItemStack result) {
+        for (TradeSpec trade : plugin.blueprint().trades()) {
+            ItemStack product = trade.result().resolve(plugin.items());
+            if (product != null && product.isSimilar(result)) {
+                return trade;
+            }
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------

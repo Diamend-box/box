@@ -155,29 +155,31 @@ public class GuideBar {
         }
     }
 
-    /** Completes a "be carrying it" step by looking in their inventory. */
+    /** Completes the "be carrying it" and "hold it in your off hand" steps. */
     private void checkCarrying(Player player, Progress progress) {
         for (TutorialStep step : plugin.service().armed(progress)) {
-            if (step.trigger() != StepTrigger.HAVE_ITEM) {
-                continue;
-            }
-            int carried = carried(player, step);
-            if (carried >= step.amount()) {
+            if (step.trigger() == StepTrigger.HAVE_ITEM) {
+                int carried = carried(player, step);
+                if (carried >= step.amount()) {
+                    plugin.service().completeStep(player, step, true);
+                } else {
+                    progress.setCount(step.id(), carried);
+                }
+            } else if (step.trigger() == StepTrigger.OFFHAND_ITEM
+                    && step.matchesItem(player.getInventory().getItemInOffHand(), plugin.items())) {
                 plugin.service().completeStep(player, step, true);
-            } else {
-                progress.setCount(step.id(), carried);
             }
         }
     }
 
-    /** How many matching items they have, armour and offhand included. */
+    /** How many matching items they have, armour and off hand included. */
     private int carried(Player player, TutorialStep step) {
         int total = 0;
         for (ItemStack item : player.getInventory().getContents()) {
             if (item == null || item.getType().isAir()) {
                 continue;
             }
-            if (step.matchesTarget(item.getType().name())) {
+            if (step.matchesItem(item, plugin.items())) {
                 total += item.getAmount();
             }
         }

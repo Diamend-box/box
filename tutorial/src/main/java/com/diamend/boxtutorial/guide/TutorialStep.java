@@ -1,7 +1,9 @@
 package com.diamend.boxtutorial.guide;
 
+import com.diamend.boxtutorial.items.ItemRegistry;
 import com.diamend.boxtutorial.util.Text;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +40,8 @@ public class TutorialStep {
             }
         }
     }
+
+    private static final String ITEM_PREFIX = "item:";
 
     private final String id;
     private final Material icon;
@@ -136,6 +140,10 @@ public class TutorialStep {
      * list in YAML or a tag system nobody asked for.
      */
     public boolean matchesTarget(String actual) {
+        if (targetsItem()) {
+            // A named slot is matched against the item itself, never its name.
+            return false;
+        }
         if (!trigger.usesTarget() || target.isBlank() || target.equalsIgnoreCase("ANY")) {
             return true;
         }
@@ -159,6 +167,33 @@ public class TutorialStep {
             }
         }
         return false;
+    }
+
+    /** True when the target names one of the registry's items, not a material. */
+    public boolean targetsItem() {
+        return target.toLowerCase(Locale.ROOT).startsWith(ITEM_PREFIX);
+    }
+
+    /** The registry id this step wants, for an {@code item:} target. */
+    public String itemId() {
+        return targetsItem() ? Text.lower(target.substring(ITEM_PREFIX.length())).trim() : "";
+    }
+
+    /**
+     * Whether that stack counts for this step.
+     *
+     * <p>{@code item:charm} means the charm as it is <em>now</em> — including
+     * whatever a staff member bound it to five minutes ago — so the comparison
+     * goes through the registry rather than looking at the material.
+     */
+    public boolean matchesItem(ItemStack stack, ItemRegistry registry) {
+        if (stack == null || stack.getType().isAir()) {
+            return false;
+        }
+        if (targetsItem()) {
+            return registry != null && registry.matches(itemId(), stack);
+        }
+        return matchesTarget(stack.getType().name());
     }
 
     /** Leading slashes are noise: {@code /sell} and {@code sell} are one target. */
@@ -186,7 +221,8 @@ public class TutorialStep {
             case KILL_PLAYER -> "Win " + amount + " fight" + (amount == 1 ? "" : "s");
             case BUY_ITEM -> "Buy " + (amount > 1 ? amount + " " : "") + things
                     + " from the trader";
-            case HAVE_ITEM -> "Be carrying " + amount + " " + things;
+            case HAVE_ITEM -> "Be carrying " + (amount > 1 ? amount + " " : "") + things;
+            case OFFHAND_ITEM -> "Hold " + things + " in your off hand";
             case ENTER_WORLD -> "Go to " + (target.isBlank() ? "another world" : firstTarget());
             case REACH_LOCATION -> place == null ? "Go to the marked place"
                     : "Go to " + (int) place.x() + ", " + (int) place.y() + ", " + (int) place.z();
@@ -196,6 +232,9 @@ public class TutorialStep {
 
     /** How the target reads in {@link #objective()}: {@code Iron Ore}, {@code blocks}. */
     private String targetWords() {
+        if (targetsItem()) {
+            return Text.prettify(itemId());
+        }
         if (target.isBlank() || target.equalsIgnoreCase("ANY")) {
             return switch (trigger) {
                 case BREAK_BLOCK, PLACE_BLOCK -> "blocks";

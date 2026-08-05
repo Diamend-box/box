@@ -44,8 +44,10 @@ class ArenaTest {
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
-        // The plugin adopts an existing world of this name rather than creating
-        // one, so the tests never go near world generation.
+        // A main world to be sent home to, then the arena. The plugin adopts
+        // an existing world of that name rather than creating one, so the tests
+        // never go near world generation.
+        server.addSimpleWorld("world");
         arena = server.addSimpleWorld(ARENA_WORLD);
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         plugin.getConfig().set("show-welcome-title", false);
@@ -99,11 +101,19 @@ class ArenaTest {
                             step.id() + " wants " + material + ", which no mine contains");
                 }
             }
-            if (step.trigger() == StepTrigger.BUY_ITEM || step.trigger() == StepTrigger.HAVE_ITEM) {
-                Material material = Material.matchMaterial(step.target().trim());
-                assertNotNull(material, step.id() + " wants '" + step.target() + "'");
-                assertTrue(sold(material),
-                        step.id() + " wants " + material + ", which the trader doesn't sell");
+            if (step.trigger() == StepTrigger.BUY_ITEM || step.trigger() == StepTrigger.HAVE_ITEM
+                    || step.trigger() == StepTrigger.OFFHAND_ITEM) {
+                if (step.targetsItem()) {
+                    assertTrue(plugin.items().isKnown(step.itemId()),
+                            step.id() + " wants item '" + step.itemId() + "', which isn't defined");
+                    assertTrue(soldAsItem(step.itemId()),
+                            step.id() + " wants " + step.itemId() + ", which no trade hands over");
+                } else {
+                    Material material = Material.matchMaterial(step.target().trim());
+                    assertNotNull(material, step.id() + " wants '" + step.target() + "'");
+                    assertTrue(sold(material),
+                            step.id() + " wants " + material + ", which the trader doesn't sell");
+                }
             }
         }
     }
@@ -119,7 +129,17 @@ class ArenaTest {
 
     private boolean sold(Material material) {
         for (TradeSpec trade : plugin.blueprint().trades()) {
-            if (trade.result().getType() == material) {
+            ItemStack result = trade.result().resolve(plugin.items());
+            if (result != null && result.getType() == material) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean soldAsItem(String itemId) {
+        for (TradeSpec trade : plugin.blueprint().trades()) {
+            if (trade.result().isCustom() && trade.result().itemId().equals(itemId)) {
                 return true;
             }
         }
@@ -130,10 +150,32 @@ class ArenaTest {
     void theTradesAreRealVanillaTrades() {
         TradeSpec first = plugin.blueprint().trades().get(0);
         assertFalse(first.cost().isEmpty(), "a trade costs something");
-        assertEquals(first.result().getType(), first.toRecipe().getResult().getType(),
+        assertNotNull(first.toRecipe(plugin.items()), "it resolves to a vanilla recipe");
+        assertEquals(first.result().resolve(plugin.items()).getType(),
+                first.toRecipe(plugin.items()).getResult().getType(),
                 "the recipe hands over what the trade promised");
-        assertFalse(first.toRecipe().getIngredients().isEmpty(),
+        assertFalse(first.toRecipe(plugin.items()).getIngredients().isEmpty(),
                 "and asks for the ore in the cost slot");
+    }
+
+    @Test
+    void theCharmIsBoughtWithACompressedLogAndNotWithAnyOldLog() {
+        // Vanilla decides for itself how closely a trade ingredient has to
+        // match. The charm costing "one compressed log" has to mean that one.
+        TradeSpec charm = null;
+        for (TradeSpec trade : plugin.blueprint().trades()) {
+            if (trade.result().isCustom() && trade.result().itemId().equals("charm")) {
+                charm = trade;
+            }
+        }
+        assertNotNull(charm, "the charm is for sale");
+        assertTrue(charm.hasCustomCost(), "and it costs one of our own items");
+
+        ItemStack real = plugin.items().get("compressed_log");
+        assertNotNull(real, "the compressed log is defined");
+        assertTrue(plugin.items().matches("compressed_log", real), "it recognises its own");
+        assertFalse(plugin.items().matches("compressed_log", new ItemStack(Material.OAK_LOG)),
+                "a plain log is not a compressed one");
     }
 
     // ------------------------------------------------------------------

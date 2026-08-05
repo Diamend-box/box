@@ -126,6 +126,8 @@ jobs:
           sleep 2
           echo "tutorial what combat-tag" >&3
           sleep 2
+          echo "tutorial item list" >&3
+          sleep 2
           echo "tutorial reload" >&3
           sleep 3
           echo "stop" >&3
@@ -145,12 +147,13 @@ jobs:
           need "BoxTutorial enabled with"  "onEnable completed without throwing"
           need "topic(s)"                  "tutorial.yml parsed"
           need "mine(s)"                   "the arena config parsed"
-          need "get-armour"                "/tutorial steps listed the shipped ladder"
+          need "equip-charm"               "/tutorial steps listed the shipped ladder"
+          need "compressed_log"            "/tutorial item list showed the item slots"
           need "Combat tag"                "/tutorial what printed a glossary topic"
           need "Reloaded configuration"    "/tutorial reload worked"
           # A warning here means a step, topic, mine or trade in the shipped
           # defaults references something this server version doesn't have.
-          if grep -nE "tutorial\.yml:|arena config:" "$LOG"; then
+          if grep -nE "tutorial\.yml:|arena config:|items config:" "$LOG"; then
             echo "::error::the shipped configuration produced warnings on a real server"
             fail=1
           fi

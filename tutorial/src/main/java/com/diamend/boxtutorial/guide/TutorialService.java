@@ -17,11 +17,13 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * The tutorial itself: who is on which step, what finishes one, and what
@@ -219,7 +221,7 @@ public class TutorialService {
             player.performCommand(command.startsWith("/") ? command.substring(1) : command);
             // A command that didn't move them would strand them in the arena.
             if (plugin.instances().isArenaWorld(player.getWorld())) {
-                player.teleport(fallbackHome());
+                teleportHome(player);
             }
             return;
         }
@@ -233,17 +235,33 @@ public class TutorialService {
             plugin.getLogger().warning("return.world '" + blueprint.returnWorld()
                     + "' isn't loaded; sending them to the main spawn instead.");
         }
-        player.teleport(fallbackHome());
+        teleportHome(player);
     }
 
-    /** The main world's spawn — the one place that always exists. */
+    /**
+     * The main world's spawn.
+     *
+     * <p>Never the arena, even if the arena is somehow the only world loaded:
+     * "sending them home" into the room they were trying to leave is worse than
+     * leaving them where they stand and saying so in the log.
+     */
     private Location fallbackHome() {
         for (World world : Bukkit.getWorlds()) {
             if (!plugin.instances().isArenaWorld(world)) {
                 return world.getSpawnLocation();
             }
         }
-        return Bukkit.getWorlds().get(0).getSpawnLocation();
+        return null;
+    }
+
+    private void teleportHome(Player player) {
+        Location home = fallbackHome();
+        if (home == null) {
+            plugin.getLogger().warning("No world to send " + player.getName()
+                    + " home to — every loaded world is the tutorial arena.");
+            return;
+        }
+        player.teleport(home);
     }
 
     /** Empties the arena on shutdown or reload, so nobody is left in a void. */
@@ -267,6 +285,25 @@ public class TutorialService {
      * armed and what counts live in exactly one place.
      */
     public void record(Player player, StepTrigger trigger, String target, int amount) {
+        recordMatching(player, trigger, step -> step.matchesTarget(target), amount);
+    }
+
+    /**
+     * The same, for the steps that care about an item rather than a name.
+     *
+     * <p>A step wanting {@code item:charm} has to compare against the actual
+     * stack: the charm might be a staff member's own item, and its material
+     * says nothing about whether this is it.
+     */
+    public void recordItem(Player player, StepTrigger trigger, ItemStack stack, int amount) {
+        if (stack == null || stack.getType().isAir()) {
+            return;
+        }
+        recordMatching(player, trigger, step -> step.matchesItem(stack, plugin.items()), amount);
+    }
+
+    private void recordMatching(Player player, StepTrigger trigger,
+                                Predicate<TutorialStep> matches, int amount) {
         if (player == null || amount <= 0) {
             return;
         }
@@ -275,7 +312,7 @@ public class TutorialService {
             return;
         }
         for (TutorialStep step : armed(progress)) {
-            if (step.trigger() != trigger || !step.matchesTarget(target)) {
+            if (step.trigger() != trigger || !matches.test(step)) {
                 continue;
             }
             int total = progress.addCount(step.id(), amount);

@@ -7,6 +7,7 @@ import com.diamend.boxtutorial.data.ProgressStore;
 import com.diamend.boxtutorial.gui.GuiListener;
 import com.diamend.boxtutorial.guide.TutorialManager;
 import com.diamend.boxtutorial.guide.TutorialService;
+import com.diamend.boxtutorial.items.ItemRegistry;
 import com.diamend.boxtutorial.listener.ArenaListener;
 import com.diamend.boxtutorial.listener.ConnectionListener;
 import com.diamend.boxtutorial.listener.StepListener;
@@ -36,6 +37,7 @@ public class BoxTutorialPlugin extends JavaPlugin {
     private TutorialManager tutorial;
     private TutorialService service;
     private GuideBar guide;
+    private ItemRegistry items;
     private ArenaBlueprint blueprint;
     private InstanceManager instances;
 
@@ -53,7 +55,8 @@ public class BoxTutorialPlugin extends JavaPlugin {
         this.tutorial = new TutorialManager(this);
         this.service = new TutorialService(this);
         this.guide = new GuideBar(this);
-        this.blueprint = new ArenaBlueprint(this);
+        this.items = new ItemRegistry(this);
+        this.blueprint = new ArenaBlueprint(this, items);
         this.instances = new InstanceManager(this, blueprint);
 
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
@@ -74,7 +77,8 @@ public class BoxTutorialPlugin extends JavaPlugin {
 
         getLogger().info("BoxTutorial enabled with " + tutorial.stepCount() + " step(s), "
                 + tutorial.topics().size() + " topic(s), " + blueprint.mines().size()
-                + " mine(s) and " + blueprint.trades().size() + " trade(s).");
+                + " mine(s), " + blueprint.trades().size() + " trade(s) and "
+                + items.ids().size() + " item(s).");
     }
 
     @Override
@@ -111,7 +115,9 @@ public class BoxTutorialPlugin extends JavaPlugin {
         // Arenas are built from the blueprint at claim time, so the players
         // already inside one keep the room they're standing in; the next claim
         // uses the new numbers.
+        items.load();
         blueprint.load();
+        instances.refreshTraders();
         guide.start();
         for (Player player : getServer().getOnlinePlayers()) {
             guide.refresh(player);
@@ -184,6 +190,10 @@ public class BoxTutorialPlugin extends JavaPlugin {
 
     public GuideBar guide() {
         return guide;
+    }
+
+    public ItemRegistry items() {
+        return items;
     }
 
     public ArenaBlueprint blueprint() {

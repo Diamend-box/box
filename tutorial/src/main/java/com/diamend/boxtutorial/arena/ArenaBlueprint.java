@@ -1,10 +1,11 @@
 package com.diamend.boxtutorial.arena;
 
+import com.diamend.boxtutorial.items.ItemRef;
+import com.diamend.boxtutorial.items.ItemRegistry;
 import com.diamend.boxtutorial.util.Items;
 import com.diamend.boxtutorial.util.Text;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public class ArenaBlueprint {
     public enum ReturnMode { WORLD_SPAWN, LOCATION, COMMAND }
 
     private final Plugin plugin;
+    private final ItemRegistry registry;
     private final List<String> warnings = new ArrayList<>();
 
     private String worldName = "tutorial_arena";
@@ -53,9 +55,15 @@ public class ArenaBlueprint {
     private double returnZ;
     private String returnCommand = "";
 
-    public ArenaBlueprint(Plugin plugin) {
+    public ArenaBlueprint(Plugin plugin, ItemRegistry registry) {
         this.plugin = plugin;
+        this.registry = registry;
         load();
+    }
+
+    /** The item slots the trades draw from. */
+    public ItemRegistry registry() {
+        return registry;
     }
 
     // ------------------------------------------------------------------
@@ -150,15 +158,15 @@ public class ArenaBlueprint {
                 warnings.add("trade '" + key + "' is not a block of settings; skipped");
                 continue;
             }
-            ItemStack result = Items.parse(entry.getString("result", ""));
-            if (result == null) {
+            ItemRef result = ItemRef.parse(entry.getString("result", ""));
+            if (result == null || !known(key, result)) {
                 warnings.add("trade '" + key + "' has no usable 'result'; skipped");
                 continue;
             }
-            List<ItemStack> cost = new ArrayList<>();
+            List<ItemRef> cost = new ArrayList<>();
             for (String line : entry.getStringList("cost")) {
-                ItemStack item = Items.parse(line);
-                if (item == null) {
+                ItemRef item = ItemRef.parse(line);
+                if (item == null || !known(key, item)) {
                     warnings.add("trade '" + key + "' asks for '" + line + "', which isn't an item");
                     continue;
                 }
@@ -175,6 +183,16 @@ public class ArenaBlueprint {
             found.add(new TradeSpec(Text.lower(key), cost, result));
         }
         return found;
+    }
+
+    /** Named slots have to exist, or the trade quietly sells nothing. */
+    private boolean known(String tradeId, ItemRef ref) {
+        if (!ref.isCustom() || (registry != null && registry.isKnown(ref.itemId()))) {
+            return true;
+        }
+        warnings.add("trade '" + tradeId + "' uses item '" + ref.itemId()
+                + "', which isn't defined under items:");
+        return false;
     }
 
     private void readReturn(ConfigurationSection section) {

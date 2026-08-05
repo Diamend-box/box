@@ -2,6 +2,7 @@ package com.diamend.boxtutorial.command;
 
 import com.diamend.boxtutorial.BoxTutorialPlugin;
 import com.diamend.boxtutorial.data.Progress;
+import com.diamend.boxtutorial.gui.ItemsMenu;
 import com.diamend.boxtutorial.gui.TopicsMenu;
 import com.diamend.boxtutorial.gui.TutorialMenu;
 import com.diamend.boxtutorial.guide.Topic;
@@ -14,6 +15,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +53,8 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
             case "what", "explain", "help" -> explain(sender, args);
             case "status", "progress" -> status(sender, args);
             case "steps" -> steps(sender);
+            case "items" -> items(sender);
+            case "item" -> item(sender, args);
             case "complete", "done" -> complete(sender, args);
             case "reset" -> reset(sender, args);
             case "reload" -> reload(sender);
@@ -250,6 +254,96 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /** {@code /tutorial items} — the binding screen. */
+    private void items(CommandSender sender) {
+        if (!sender.hasPermission(ADMIN)) {
+            plugin.messages().send(sender, "no-permission");
+            return;
+        }
+        if (sender instanceof Player player) {
+            ItemsMenu.openFor(plugin, player);
+            return;
+        }
+        listItems(sender);
+    }
+
+    /**
+     * {@code /tutorial item set|clear|give|list <id>} — the same thing for
+     * people who would rather type than click, and the only way to do it from
+     * the console.
+     */
+    private void item(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(ADMIN)) {
+            plugin.messages().send(sender, "no-permission");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        if (action.equals("list")) {
+            listItems(sender);
+            return;
+        }
+        if (args.length < 3) {
+            plugin.messages().sendLiteral(sender,
+                    "<gray>Usage: <white>/tutorial item <set|clear|give> <id>");
+            return;
+        }
+        String id = args[2].toLowerCase(Locale.ROOT);
+        if (!plugin.items().isKnown(id)) {
+            plugin.messages().sendLiteral(sender, "<gray>No item slot called <white>" + id
+                    + "<gray>. Try <white>/tutorial item list<gray>.");
+            return;
+        }
+        switch (action) {
+            case "set", "bind" -> requirePlayer(sender, player -> {
+                ItemStack held = player.getInventory().getItemInMainHand();
+                if (held == null || held.getType().isAir()) {
+                    plugin.messages().sendLiteral(player,
+                            "<gray>Hold the item you want to use, then run it again.");
+                    return;
+                }
+                plugin.items().bind(id, held);
+                plugin.instances().refreshTraders();
+                plugin.messages().sendLiteral(player,
+                        "<green>The tutorial's <white>" + id + "<green> is now that item.");
+            });
+            case "clear", "reset" -> {
+                plugin.items().clear(id);
+                plugin.instances().refreshTraders();
+                plugin.messages().sendLiteral(sender,
+                        "<gray>Back to the default for <white>" + id + "<gray>.");
+            }
+            case "give" -> {
+                Player target = args.length >= 4
+                        ? Bukkit.getPlayerExact(args[3])
+                        : (sender instanceof Player player ? player : null);
+                if (target == null) {
+                    plugin.messages().send(sender, "player-offline",
+                            "player", args.length >= 4 ? args[3] : "you");
+                    return;
+                }
+                ItemStack copy = plugin.items().get(id);
+                if (copy == null) {
+                    plugin.messages().sendLiteral(sender, "<gray>That slot has no item.");
+                    return;
+                }
+                target.getInventory().addItem(copy);
+                plugin.messages().sendLiteral(sender,
+                        "<green>Gave <white>" + target.getName() + "<green> the " + id + ".");
+            }
+            default -> plugin.messages().sendLiteral(sender,
+                    "<gray>Usage: <white>/tutorial item <set|clear|give|list> <id>");
+        }
+    }
+
+    private void listItems(CommandSender sender) {
+        plugin.messages().sendLiteral(sender, "<gold>Tutorial items:");
+        for (String id : plugin.items().ids()) {
+            plugin.messages().sendPlain(sender, "  <yellow>" + id + " <dark_gray>- <white>"
+                    + plugin.items().label(id)
+                    + (plugin.items().isBound(id) ? " <green>(custom)" : " <dark_gray>(default)"));
+        }
+    }
+
     private void complete(CommandSender sender, String[] args) {
         if (!sender.hasPermission(ADMIN)) {
             plugin.messages().send(sender, "no-permission");
@@ -323,6 +417,7 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
         plugin.messages().sendPlain(sender, "  <yellow>/tutorial stop <dark_gray>- <gray>turn it off");
         if (sender.hasPermission(ADMIN)) {
             plugin.messages().sendPlain(sender, "  <yellow>/tutorial steps <dark_gray>- <gray>list the steps (staff)");
+            plugin.messages().sendPlain(sender, "  <yellow>/tutorial items <dark_gray>- <gray>set the reward items (staff)");
             plugin.messages().sendPlain(sender, "  <yellow>/tutorial complete <player> <step> <dark_gray>- <gray>(staff)");
             plugin.messages().sendPlain(sender, "  <yellow>/tutorial reset <player> <dark_gray>- <gray>(staff)");
             plugin.messages().sendPlain(sender, "  <yellow>/tutorial reload <dark_gray>- <gray>(staff)");
@@ -363,7 +458,7 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
             options.addAll(List.of("menu", "start", "continue", "next", "stop",
                     "topics", "what", "status"));
             if (admin) {
-                options.addAll(List.of("steps", "complete", "reset", "reload"));
+                options.addAll(List.of("steps", "items", "item", "complete", "reset", "reload"));
             }
             return filter(options, args[0]);
         }
@@ -374,6 +469,9 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
                     for (Topic topic : plugin.tutorial().topics()) {
                         options.add(topic.id());
                     }
+                }
+                case "item" -> {
+                    options.addAll(List.of("set", "clear", "give", "list"));
                 }
                 case "status", "complete", "reset", "start", "restart" -> {
                     if (admin || sub.equals("status")) {
@@ -392,6 +490,10 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
             for (TutorialStep step : plugin.tutorial().steps()) {
                 options.add(step.id());
             }
+            return filter(options, args[2]);
+        }
+        if (args.length == 3 && admin && sub.equals("item")) {
+            options.addAll(plugin.items().ids());
             return filter(options, args[2]);
         }
         return List.of();

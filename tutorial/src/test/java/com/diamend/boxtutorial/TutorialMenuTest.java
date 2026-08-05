@@ -69,6 +69,9 @@ class TutorialMenuTest {
     @BeforeEach
     void setUp() throws IOException {
         server = MockBukkit.mock();
+        // A main world first: MockBukkit starts with none, and "home" is
+        // defined as the first world that isn't the arena.
+        server.addSimpleWorld("world");
         server.addSimpleWorld("tutorial_arena");
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         plugin.getConfig().set("show-welcome-title", false);

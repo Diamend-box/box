@@ -19,6 +19,8 @@ commands:
       /tutorial next                - Skip the step you're on
       /tutorial stop                - Turn it off
       /tutorial steps               - List every step (staff)
+      /tutorial items               - Set the reward items in game (staff)
+      /tutorial item <set|clear|give|list> <id> - The same, by command (staff)
       /tutorial complete <player> <step> - Mark a step done (staff)
       /tutorial reset <player>      - Wipe someone's progress (staff)
       /tutorial reload              - Reload config and steps (staff)

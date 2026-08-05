@@ -209,7 +209,13 @@ public class Instance {
         removeTrader();
         List<MerchantRecipe> recipes = new ArrayList<>();
         for (TradeSpec trade : blueprint.trades()) {
-            recipes.add(trade.toRecipe());
+            MerchantRecipe recipe = trade.toRecipe(blueprint.registry());
+            if (recipe == null) {
+                plugin.getLogger().warning("Trade '" + trade.id()
+                        + "' refers to an item that isn't defined; it isn't being offered.");
+                continue;
+            }
+            recipes.add(recipe);
         }
         try {
             Villager villager = world.spawn(shopPoint(), Villager.class, spawned -> {
