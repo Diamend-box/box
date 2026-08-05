@@ -87,6 +87,16 @@ class ItemsTest {
     }
 
     @Test
+    void whatTheTutorialHandsOutKnowsItself() {
+        // Two slots could be bound to the same material; the mark is what tells
+        // them apart, and what a renamed anvil copy can't forge.
+        ItemStack charm = items().get("charm");
+
+        assertTrue(items().matches("charm", charm), "it recognises what it gave out");
+        assertFalse(items().matches("sword", charm), "and knows which slot it came from");
+    }
+
+    @Test
     void bindingReplacesTheDefaultEverywhere() {
         ItemStack mine = custom();
         items().bind("sword", mine);

@@ -12,9 +12,12 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -47,6 +50,9 @@ public class ItemRegistry {
     private final Plugin plugin;
     private final File file;
 
+    /** Stamped on everything the tutorial hands out, so it knows its own. */
+    private final NamespacedKey stamp;
+
     /** Slot ids in the order they're declared, for a stable menu. */
     private final List<String> ids = new ArrayList<>();
     private final Map<String, String> labels = new LinkedHashMap<>();
@@ -59,6 +65,7 @@ public class ItemRegistry {
     public ItemRegistry(Plugin plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "items.yml");
+        this.stamp = new NamespacedKey(plugin, "item_id");
         load();
     }
 
@@ -207,16 +214,20 @@ public class ItemRegistry {
      */
     public ItemStack get(String id) {
         String key = Text.lower(id);
-        ItemStack base = bound.get(key);
-        if (base == null) {
-            base = defaults.get(key);
-        }
+        ItemStack base = base(key);
         if (base == null) {
             return null;
         }
         ItemStack copy = base.clone();
         applyStats(key, copy);
+        mark(key, copy);
         return copy;
+    }
+
+    /** The slot's item as configured or bound, without the plugin's mark. */
+    private ItemStack base(String key) {
+        ItemStack bound = this.bound.get(key);
+        return bound != null ? bound : defaults.get(key);
     }
 
     /** The same item in a given quantity. */
@@ -228,13 +239,86 @@ public class ItemRegistry {
         return item;
     }
 
-    /** True when that stack is this slot's item — ignoring how many. */
+    /**
+     * True when that stack is this slot's item — ignoring how many.
+     *
+     * <p>Anything the tutorial handed out carries a mark naming its slot, and
+     * that is the answer when it's there: it survives a name change, tells two
+     * slots bound to the same material apart, and can't be forged by renaming
+     * an anvil. Items that came from somewhere else are compared on what a
+     * player can actually see — the type, the name and the lore — because
+     * that's the only claim worth making about an item this plugin didn't
+     * create.
+     */
     public boolean matches(String id, ItemStack stack) {
         if (stack == null || stack.getType().isAir()) {
             return false;
         }
-        ItemStack canonical = get(id);
-        return canonical != null && canonical.isSimilar(stack);
+        String key = Text.lower(id);
+        String marked = markOf(stack);
+        if (!marked.isEmpty()) {
+            return marked.equals(key);
+        }
+        ItemStack canonical = base(key);
+        return canonical != null && looksLike(canonical, stack);
+    }
+
+    /** Writes the slot id onto the item. */
+    private void mark(String id, ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        try {
+            meta.getPersistentDataContainer().set(stamp, PersistentDataType.STRING, id);
+            item.setItemMeta(meta);
+        } catch (Throwable ignored) {
+            // Without the mark it still matches on how it looks.
+        }
+    }
+
+    /** The slot this item was handed out as, or "" if it wasn't. */
+    private String markOf(ItemStack item) {
+        try {
+            ItemMeta meta = item.getItemMeta();
+            if (meta == null) {
+                return "";
+            }
+            String value = meta.getPersistentDataContainer()
+                    .get(stamp, PersistentDataType.STRING);
+            return value == null ? "" : Text.lower(value);
+        } catch (Throwable ex) {
+            return "";
+        }
+    }
+
+    /** Same type, same name, same lore — as much as a player can tell. */
+    private static boolean looksLike(ItemStack canonical, ItemStack other) {
+        if (canonical.getType() != other.getType()) {
+            return false;
+        }
+        return name(canonical).equals(name(other)) && lore(canonical).equals(lore(other));
+    }
+
+    private static String name(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || meta.displayName() == null) {
+            return "";
+        }
+        return PlainTextComponentSerializer.plainText().serialize(meta.displayName());
+    }
+
+    private static List<String> lore(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        List<Component> lines = meta == null ? null : meta.lore();
+        if (lines == null) {
+            return List.of();
+        }
+        List<String> plain = new ArrayList<>();
+        for (Component line : lines) {
+            plain.add(PlainTextComponentSerializer.plainText().serialize(line));
+        }
+        return plain;
     }
 
     /** Points a slot at a copy of this item. Nothing is taken from anybody. */
@@ -244,6 +328,18 @@ public class ItemRegistry {
         }
         ItemStack copy = item.clone();
         copy.setAmount(1);
+        // Binding one of our own items back (they can take a copy from the
+        // menu) must not store the mark, or the slot ends up defined in terms
+        // of the slot it used to be.
+        ItemMeta meta = copy.getItemMeta();
+        if (meta != null) {
+            try {
+                meta.getPersistentDataContainer().remove(stamp);
+                copy.setItemMeta(meta);
+            } catch (Throwable ignored) {
+                // Nothing to strip.
+            }
+        }
         bound.put(Text.lower(id), copy);
         save();
     }
