@@ -18,6 +18,62 @@ time.
 
 ---
 
+## 0.5.2 — 2026-08-05
+
+Everything reported from playtest 6, including the chests — which were
+reported for the third time and reproduced for the first.
+
+### Fixed
+
+- **Boats stopped dead at the end of a coast.** The throttle handed the boat
+  back to the client while it was still travelling at the hull's cruise speed,
+  and a rider who has released W is giving the client no forward input, so the
+  client's own speed had already decayed to nothing underneath it. Handing over
+  there dropped the boat from cruise to a standstill in one tick. The coast now
+  runs all the way down to a crawl before letting go, and a little faster, so it
+  still reads as stopping.
+- **48 chests you could see and not open, and this time the right ones.** One
+  mistake made in five places: every buried stair was cut two blocks of air
+  high. Climbing a one-block step is a jump, and a jump needs room over your
+  head as well as somewhere to land — so all of them worked going down and
+  could not be walked back up. The castle's undercroft had no stair at all, the
+  watchtower's crypt trench cleared three cells over each tread but not over the
+  one below it, and the beast's tail cache was a two-high room with nowhere to
+  jump even inside it.
+- **The reachability sweep, which had been passing them.** It counted any of
+  the twenty-six cells around a chest as "in reach", so a corridor on the far
+  side of a wall qualified; and it let a player fall any distance without ever
+  asking whether they could get back. Steps are now recorded backwards as well,
+  a cell only counts if open water can be reached from it, and being in reach
+  means a clear line from the eye to the chest. It also runs against the exact
+  islands from `/ds islands` — an island's seed comes from where it sits, so
+  the only way to test the castle somebody stood in is to ask for that castle.
+- **Naxian Abominations still suffocated.** 0.5.1 checked height and not width.
+  A Ravager is about as wide as it is tall, so a marker in a one-block slot — a
+  doorway, the gap between two crenellations — had all the headroom it needed
+  and still buried its flanks. Spawns need a box now
+  (`mob-spawning.spawn-width`, default 2), and it may sit anywhere touching the
+  marker rather than being centred on it.
+- **No boss rose, even at the nest.** An island that had never raised its boss
+  was treated as one whose boss had just died, so every nest in a fresh sea sat
+  out a fifteen-minute respawn wait for something that had never existed. The
+  wait now applies only where something actually fell.
+- **Floating amethyst in the geodes.** A cluster is a directional block that has
+  to be attached to something, and setting the material alone left it on its
+  default facing with nothing underneath. Buds grow out of a face of real rock
+  now, and a cell with nothing to hold on to gets plain shell instead.
+- **The vault lever on the battlements.** "Furthest spawn point from the vault"
+  is a crenellation gap on a castle. Levers prefer a marker standing on open
+  floor — three of its four neighbours walkable — and fall back to the old rule
+  only where a shape has nowhere better.
+
+### Changed
+
+- The shop band reads **"▲ buy from them · sell to them ▼"**, from the side of
+  the counter the player is standing on.
+
+---
+
 ## 0.5.1 — 2026-08-04
 
 Four things from a partial playtest 5.

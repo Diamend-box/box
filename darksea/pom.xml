@@ -6,7 +6,7 @@
 
     <groupId>com.diamend</groupId>
     <artifactId>DarkSea</artifactId>
-    <version>0.5.1</version>
+    <version>0.5.2</version>
     <packaging>jar</packaging>
 
     <name>DarkSea</name>

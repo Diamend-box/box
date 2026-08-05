@@ -1,232 +1,217 @@
-# Playtest 6 — nothing dropped
+# Playtest 7 — the chests are actually fixed this time
 
-You ran out of time partway through playtest 5. So the rule for this document
-is: **anything you did not explicitly report on is still untested, and stays
-here until you have looked at it.** Nothing gets quietly retired because a
-build went past it. The status column below says exactly how much confidence
-each line has, and most of it says "none".
+Same rule as last time: **anything you did not explicitly report on is still
+untested and stays in this document.** Nothing is retired because a build went
+past it.
 
-Order is by **how likely I am to have got it wrong**, not by importance.
+One thing did change status for real. The unreachable chests have been
+**reproduced, diagnosed and fixed** — three rounds after you first reported
+them. Your `/ds islands` output is what made that possible, so if something like
+it happens again, that is the thing to send.
 
-**Build: 0.5.1 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
-`/version DarkSea` reports the same string, so you can always check what is
-actually loaded. CHANGELOG.md has what each version changed.
+Order is by how likely I am to have got it wrong, not by importance.
+
+**Build: 0.5.2 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
+`/version DarkSea` reports the same string. CHANGELOG.md has what each version
+changed.
 
 ---
 
 ## The full ledger
 
-Everything outstanding, and what stands behind it.
-
 | Item | Status | Where |
 | --- | --- | --- |
-| Boat jitter | **You retested: still jittery.** Second, deeper cause found and fixed | Pass 1 |
-| Releasing W stops you dead | You retested — no longer reported | Done |
-| Surge resets momentum | You reported it; fixed, **untested** | Pass 1 |
-| Abominations suffocate on spawn | You reported it; fixed, **untested** | Pass 2 |
-| Keep inventory off in the caves | Fixed in 0.5.0, **never tested** | Pass 3 |
-| Indicator leads to a mined-out geode | Fixed in 0.5.0, **never tested** | Pass 3 |
-| "crystal does." chat spam | Fixed in 0.5.0, **never tested** | Pass 3 |
-| Godspore was amethyst | Changed in 0.5.0, **never seen** | Pass 3 |
-| ~12 Cores in a row at a t5 castle | Fixed in 0.5.0, **never tested** | Pass 4 |
-| Relic wake text too long | Cut in 0.5.0, **never seen** | Pass 5 |
-| 48 sealed chests (watchtower, spire) | Fixed in 0.5.0, **never walked** | Pass 6 |
-| Unreachable castle chests | **Still not reproduced.** Needs an island id | Pass 6 |
-| Vein-sense arrows | You confirmed these were fine | Done |
-| Island counts / ring spread | Was already `islands-per-ring`; shapes now too | Pass 7 |
+| Boat jitter | **You confirmed it: good now.** Three rounds, done | Done |
+| Boats stop dead at the end of a coast | You reported it; fixed, **untested** | Pass 1 |
+| Surge resets momentum | Fixed in 0.5.1, **never retested** | Pass 1 |
+| Unreachable chests | **Reproduced and fixed.** Never walked | Pass 2 |
+| Ravagers suffocate | Fixed twice now, **untested** | Pass 3 |
+| No boss at the nest | Fixed, **untested** | Pass 4 |
+| 15-minute boss respawn | Shipped 0.5.0, **never seen** — nothing rose at all | Pass 4 |
+| Floating amethyst | You reported it; fixed, **untested** | Pass 5 |
+| Vault lever on the battlements | You reported it; fixed, **untested** | Pass 6 |
+| "above: they sell" | You called it awkward; reworded, **unseen** | Pass 6 |
+| Vein indicator | **You confirmed it: fine for now** | Done |
+| Keep inventory in the caves | Fixed in 0.5.0, **never tested** | Pass 5 |
+| "crystal does." chat spam | Fixed in 0.5.0, **never confirmed** | Pass 5 |
+| Godspore as a slime ball | Changed in 0.5.0, **never seen** | Pass 5 |
+| Relic wake text | Cut in 0.5.0, **never seen** | Pass 7 |
+| Rebuilt watchtower and spire stairs | Built in 0.5.0, **never judged by eye** | Pass 2 |
+| Island counts / ring spread / shape mix | Config, **untried** | Pass 8 |
 
-Five decisions are still open at the bottom. None have been answered across
-three rounds, and none of them block anything — but each one gets more
-expensive as more is built on top.
+Five decisions are still open at the bottom. None have been answered across four
+rounds.
 
 ---
 
 ## Pass 0 — before you sail
 
-`/ds diag` first. Nothing since 0.5.0 touches startup, so anything other than
+`/ds diag`. Nothing since 0.5.0 touches startup, so anything other than
 all-steps-OK is news.
 
-NPCs are still hand-placed and nothing spawns them. On a fresh world:
-`/ds npc create` for `refugee_trader`, `artificer`, `black_market`,
-`boat_expert`, `apothecary`.
+NPCs are still hand-placed: `/ds npc create` for `refugee_trader`, `artificer`,
+`black_market`, `boat_expert`, `apothecary`.
 
 ---
 
-## Pass 1 — boats and the surge
+## Pass 1 — the end of a coast
 
-You said "better but still very jittery", and you were right — I fixed one
-cause and left the bigger one sitting there.
+You said the boats feel good now, which closes the jitter after three attempts.
+What is left is the stop.
 
-The one I fixed in 0.5.0: thrust was computed from the boat's measured step,
-which is noisy because the client owns a ridden boat's physics, so the speed
-being written back wobbled several times a second.
+Letting go of W dropped you dead after about a second because the throttle
+handed the boat back to the client while it was still doing cruise speed — and a
+rider not holding W is feeding the client no input, so the client's own speed
+had already decayed to nothing underneath it. There was a cliff at the handover.
+The coast now runs all the way down to a crawl before letting go, and slightly
+faster, so it still reads as slowing rather than gliding forever.
 
-The one I missed: `boostFactor` returns "leave this alone" once a boat is at its
-cap. At cruise that alternated — a tick over the cap was ignored and the hull
-slowed, the next tick was under and got pushed, and round again. **The boat was
-being shoved and dropped a few times a second by design.** Smoothing the input
-could never have fixed that, because the shaking was the on/off decision itself.
+- **Let go of W at full speed.** It should slow over a bit more than a second
+  and roll to a stop. Neither a wall nor a glide that never ends.
+- **Hold W at top speed**, confirming the jitter fix held.
+- **Surge at speed.** You never got back to this one: it should shove you and
+  settle to cruise over a couple of seconds, not snap back the moment it fires.
+- **Tap W repeatedly**, and **turn hard at speed**.
 
-There is no per-tick decision any more. The throttle aims at the cap — a fixed
-number for a given hull — ramps to it and holds it. Nothing measured feeds in.
-
-**The surge** was the same bug from the other side: it set the boat's velocity,
-and the next movement tick wrote cruise speed straight over the top, so the
-burst lived about a fortieth of a second. That is your "resets momentum after".
-It hands its speed to the throttle now and bleeds down from it.
-
-- **Hold W at top speed on open water.** Any judder at all is a fail.
-- **Surge at speed.** It should shove you and settle back to cruise over a
-  couple of seconds, not snap back the instant it fires.
-- **Let go of W.** Coast down over roughly a second — not a wall, not a glide
-  that never ends. You didn't re-report this, so I think it's right; say if not.
-- **Turn hard at speed.** The 0.4.0 steering fix should still hold.
-- **Tap W repeatedly.** Most likely case to feel sluggish.
-- Level 1 vs. Maelstrom — the gap should be obvious.
-
-Three numbers control the feel: ramp-up, coast-down, surge bleed. If it is
-*nearly* right, name which one is wrong.
-
-If it is **still** juddering, say so plainly and don't soften it. Two attempts
-in, the next step isn't another tuning pass — it's accepting that writing
-velocity to a client-driven boat can't be made smooth, and building the speed
-some other way.
+If the stop is *nearly* right, say whether it is still too abrupt or now too
+floaty — those are two different numbers.
 
 ---
 
-## Pass 2 — mobs that spawn buried
+## Pass 2 — the chests
 
-A spawn marker only guarantees the marker block itself is clear, and a Naxian
-Abomination is taller than one block, so a marker under a low roof — a garrison
-hut, the underside of a stair — put its head inside stone. Anything that walked
-clear on its own was fine, which is why it only happened sometimes.
+**Found it.** One mistake made in five places: every buried stair was cut two
+blocks of air high. Climbing a one-block step is a jump, and a jump needs room
+over your head as well as somewhere to land. All five worked perfectly walking
+*down* and could not be walked back up — which is exactly what you hit: drop
+into a cellar, stand next to the chest, no way home.
 
-Spawns now need three blocks of air (`mob-spawning.spawn-clearance`), searching
-up first and then sideways, and a point with nowhere to stand is skipped rather
-than moved somewhere arbitrary.
+- the castle's undercroft had no stair at all
+- the watchtower's crypt trench cleared three cells over each tread but not over
+  the one below it, putting a ceiling where a jumping head goes
+- the beast's tail cache was a two-high room, so there was nowhere to jump even
+  inside it
+- the stair-cutter shared by the castle and the forest was two high everywhere
 
-- Watch a garrison spawn in. Nothing should arrive already taking damage.
-- **Watch for the opposite failure:** if islands feel emptier than they did,
-  real spawn points are being skipped and the clearance is too strict.
+It survived two rounds because **my test was wrong in two ways at once**: it
+counted any of the twenty-six cells around a chest as "in reach", so a corridor
+on the far side of a wall passed; and it let a player fall any distance without
+ever asking whether they could get back out. Both fixed, and the sweep now runs
+against the exact islands from `/ds islands` as well as its own seeds — an
+island's seed comes from where it sits, so the only way to test the castle you
+stood in is to ask for that castle.
 
----
+Clean at 1284 chests across every shape, tier and seed, and on both islands you
+sent.
 
-## Pass 3 — the caves (untested since 0.5.0)
-
-Four fixes here, none of which you have seen.
-
-- **Die in the caves.** You should keep your inventory. The death handler that
-  drops run loot checked *that* you died, never *where*, so it fired in every
-  world.
-- **The vein indicator** should now name a geode that is actually **live**. It
-  ranks unmined veins first and only falls back to a regrowing one when nothing
-  is live, with different wording so you can tell which you're being sent to
-  without walking there. Walk to whatever it names and confirm crystal is in it.
-- **Hit an amethyst cluster** in a geode shell. The "unbreakable" line should
-  appear **once**, not once per swing. That was your screenshot.
-- **Godspore** drops as a slime ball now, not an amethyst shard, so it no longer
-  looks identical to the shell it grows out of.
-
-Navigation down there is still hard on purpose. If the indicator doesn't fix
-it, the next lever is decision 5 below.
+- **Walk a t5 castle and open everything.** The undercroft, the chapel
+  reliquary, the cistern and the crypts are what changed.
+- **The watchtower's crypt** and **the beast's tail cache**.
+- If you find another, `/ds islands` again — it worked.
+- Also: the watchtower and spire stairs have never been judged by eye. Do they
+  look like part of the building or like a fire escape?
 
 ---
 
-## Pass 4 — the resident boss (untested since 0.5.0)
+## Pass 3 — mobs that spawn buried
 
-A t5 castle gave you about twelve Cores in a row because the boss slot refilled
-the instant it emptied. An island now waits **15 minutes** after its boss falls
-(`boss-respawn-minutes`, `/ds reload`-able).
+Second attempt. The first fix checked how much air was *above* a spawn point and
+never how much was beside it, and a Ravager is about as wide as it is tall — so
+a marker in a doorway or a crenellation gap had all the headroom it needed and
+still had its flanks in stone.
 
-- Kill a t5 castle's boss and stay there. Nothing should replace it.
-- Come back after 15 minutes; it should be up.
-- Ordinary mobs are unaffected — they still fill in on the island budget.
+Spawns now need a two-by-two footprint three blocks tall, and the box may sit
+anywhere touching the marker rather than being centred on it, so it should cost
+far fewer spawn points than it sounds like.
 
-15 is a guess. If clearing a castle now feels dead afterwards I'll drop it; if a
-second Core in the same run still feels cheap I'll raise it.
-
----
-
-## Pass 5 — waking a relic (untested since 0.5.0)
-
-The tile said four things; it now says two — what waking does, and either "click
-to wake" or how many Chronons short you are. The anvil, sounds, particles and
-boon are unchanged from playtest 4, which you didn't complain about.
-
-Hold a dormant relic, open the artificer, confirm it reads cleanly at a glance.
-Ten seconds of your time.
+- Watch a garrison spawn. Nothing should arrive already taking damage.
+- **Watch for the opposite failure too:** if islands feel emptier, real spawn
+  points are being skipped and `mob-spawning.spawn-width` is too strict.
 
 ---
 
-## Pass 6 — the chests
+## Pass 4 — the boss that never came
 
-**I still have not found your castle chests.** Being plain about that before
-describing what I did find, because they are not the same thing.
+Nothing rose at the nest because an island that had **never** raised its boss was
+treated as one whose boss had just died — so every nest in a fresh sea sat out a
+fifteen-minute respawn wait for a boss that had never existed. That was my 0.5.0
+fix for the twelve-Cores-in-a-row problem, aimed at the wrong condition.
 
-The shape suite had always asked "is there a cell beside this chest a player
-could stand in?" That is adjacency, and it says nothing about whether that cell
-connects to anywhere — which is why it passed on every seed while chests were
-sealed. The test I wrote asks the real question: flood the island from open sea
-with a player's actual movement (walk, step up one, fall any distance, swim) and
-check whether the flood ever gets within arm's reach. It's deliberately generous
-— no fall damage, no drowning — so a failure means genuinely walled in.
+- **Sail to a nest.** A Core should be standing, or rise shortly after you
+  arrive.
+- **Kill it and stay.** Nothing should replace it.
+- **Come back after 15 minutes.** It should be up. This is the half that has
+  never once been observed, because until now nothing rose at all.
 
-It found **48 sealed chests**, all in the **watchtower and the spire**:
-
-- The watchtower's spiral was a single jutting stone every sixty degrees at
-  radius three. Three blocks of gap per one of rise is not a stair.
-- The spire's ledges rose **two blocks at a time**, which cannot be jumped.
-
-Both are rebuilt on a primitive that can't produce an unwalkable route: at most
-one block of rise per step, three cells of air over every tread.
-
-The spire's summit chest I gave up on — one seed in thirty-six still sealed the
-wind-hollow after many attempts, so that chest moved to a new grotto passage and
-the hollow is now a landmark with nothing in it. A retreat, not a fix.
-
-**The castle passes clean at 40 seeds.** So either yours hit something the model
-can't see, or it's a placement case rather than a geometry one. If you hit it
-again:
-
-1. Your **coordinates** at the opening.
-2. `/ds islands` — the **island id and origin**. This is the piece I've been
-   missing both times; with the origin I can rebuild that exact castle offline
-   and walk it myself.
-3. Whether the chest is visible from where you're standing.
-
-Also: the watchtower and spire now have real staircases where they had
-decoration. Tell me if they **look** worse — I optimised for walkable and have
-never seen either rendered.
+If clearing a castle feels dead afterwards I'll lower it; if a second Core in the
+same run still feels cheap I'll raise it.
 
 ---
 
-## Pass 7 — island generation, if you want to tune it
+## Pass 5 — the caves
 
-Half of what you asked for already existed and you may not have found it, so:
+The floating amethyst was a cluster placed with no support: it is a directional
+block that must attach to something, and setting the material alone left it
+facing up with nothing underneath. Buds now grow out of a face of real rock, and
+a cell with nothing to hold on to gets plain shell.
 
-- **`generation.islands-per-ring`** — how many islands each ring gets. Currently
-  6 / 8 / 8 / 10 / 2, so 34 plus the home island and the landfall. This is both
-  the total count and the ring distribution; change a number, `/ds reload`,
-  `/ds reset full confirm`.
-- **`generation.shape-weights`** (new) — *which* shapes a ring raises and how
-  often, per ring or as a `default` block. Unlisted shapes keep their built-in
-  rarity, 0 keeps a shape out of the sea entirely. Shipped commented out with
-  examples, because the built-in rarities are the intended sea.
+The vein indicator you have already confirmed is fine. Everything else down here
+has been shipped for two builds and never tested:
 
-If what you actually wanted was one knob to scale the whole sea up or down at
-once, say so — that's a small addition and I'd rather build the thing you meant.
+- **Any floating crystal left?** Walk a couple of geodes.
+- **Die in the caves.** You should keep your inventory.
+- **Hit an amethyst cluster.** The "unbreakable" line should appear once, not
+  once per swing.
+- **Godspore** should drop as a slime ball, not an amethyst shard.
+
+---
+
+## Pass 6 — the outpost and the vault lever
+
+Your lever was on a redstone lamp wedged between two crenellations on the castle
+roof, because "furthest spawn point from the vault" is a battlement. It now
+prefers a marker standing on open floor — three of its four neighbours walkable —
+and only falls back to the old rule where a shape has nowhere better.
+
+- **Find the lever on a castle and a couple of other shapes.** It should be
+  somewhere you would walk past, not somewhere you would climb to.
+- The shop band now reads **"▲ buy from them · sell to them ▼"**, from your side
+  of the counter rather than the trader's. Open a shop and say if it still reads
+  awkwardly — it is one config line either way.
+
+---
+
+## Pass 7 — waking a relic
+
+Ten seconds of your time, and untested for three builds. Hold a dormant relic,
+open the artificer, confirm the tile reads cleanly at a glance: what waking does,
+and either "click to wake" or how many Chronons short you are. Nothing else.
+
+---
+
+## Pass 8 — island generation, if you want to tune it
+
+Untried so far:
+
+- **`generation.islands-per-ring`** — how many islands each ring gets, currently
+  6 / 8 / 8 / 10 / 2. This is both the total count and the distribution.
+- **`generation.shape-weights`** — which shapes a ring raises and how often, per
+  ring or as a `default` block. 0 keeps a shape out entirely. Shipped commented
+  out, because the built-in rarities are the intended sea.
+
+Change, `/ds reload`, `/ds reset full confirm`. If what you actually wanted was
+one knob to scale the whole sea at once, say so.
 
 ---
 
 ## Decisions still open
 
-Unchanged for three rounds. None block anything; all get more expensive later.
+Unchanged for four rounds. None block anything; all get more expensive later.
 
 1. **The rename.** "The Mariphage" or "The Naxian Sea" over "Vironic Sea".
-   Player-visible strings only, so it's cheap either way.
-2. **What crystals buy.** Still no sink whatsoever. Three cave materials that do
-   nothing is the reason that dimension feels optional. Waking relics for
-   crystals is still my suggestion.
+2. **What crystals buy.** Still no sink at all — three cave materials that do
+   nothing is why that dimension feels optional. Waking relics for crystals is
+   still my suggestion.
 3. **Should `/ds tp` land you on the highest block?**
 4. **Chest placement** — redo it so every chest has a square-on face, or leave
    the 124 that are diagonal-only?
@@ -237,18 +222,14 @@ Unchanged for three rounds. None block anything; all get more expensive later.
 
 ## What to send me, ranked
 
-1. **Boat feel** — smooth or not, and if not, whether it's ramp-up, coast-down
-   or the surge. Third round on this; a blunt "still bad" is more useful than a
-   polite "better".
-2. **Another unreachable chest, with the island id.** Without it I'm guessing,
-   and I've guessed twice.
-3. Whether anything still spawns suffocating — and whether islands now feel
-   emptier, which would be my fix going too far.
-4. Whether the vein indicator ever sends you somewhere already stripped.
-5. Whether 15 minutes is right for the boss.
-6. Whether the rebuilt watchtower and spire stairs look like part of the
-   building or like a fire escape.
-7. Answers to any of the five decisions.
+1. **Whether the coast stops right** — still too abrupt, or now too floaty.
+2. **Whether any chest is still sealed** — and if so, `/ds islands`.
+3. Whether anything spawns suffocating, and whether islands feel emptier.
+4. Whether a Core is standing at the nest, and whether 15 minutes is right.
+5. Whether the surge still resets your momentum.
+6. Whether the lever is somewhere sensible now.
+7. Whether the watchtower and spire stairs look like part of the building.
+8. Answers to any of the five decisions.
 
-Everything else only if it annoyed you. And if you run out of time again, just
-say where you stopped — I'll carry the rest forward the same way.
+Everything else only if it annoyed you. If you run out of time, just say where
+you stopped — I'll carry the rest forward the same way.
