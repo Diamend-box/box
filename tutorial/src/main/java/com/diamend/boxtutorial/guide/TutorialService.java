@@ -236,12 +236,15 @@ public class TutorialService {
     }
 
     /**
-     * Steps past a step without completing it.
+     * Steps past a step the player can't or won't do.
      *
-     * <p>A step is skipped, not completed: it stays unticked in the menu, so the
-     * checklist keeps telling the truth about what the player actually did. It's
-     * here because a tutorial that traps someone on step four — the one wired to
-     * a command this server doesn't have — is worse than one they can walk past.
+     * <p>It's here because a tutorial that traps someone on step four — the one
+     * wired to a command this server doesn't have — is worse than one they can
+     * walk past.
+     *
+     * <p>The step is closed out so it stops being armed, but it is also recorded
+     * as <em>skipped</em>, and the menu draws that differently: a checklist that
+     * ticks off something the player never did is lying to them.
      */
     public boolean skipStep(Player player, TutorialStep step) {
         if (player == null || step == null || !canSkip(step)) {
@@ -253,7 +256,6 @@ public class TutorialService {
         }
         progress.complete(step.id());
         progress.markSkipped(step.id());
-        progress.setCount(step.id(), 0);
         plugin.store().touch();
         plugin.messages().send(player, "step-skipped", "step", step.name());
 
