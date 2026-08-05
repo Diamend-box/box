@@ -12,6 +12,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,11 +33,16 @@ class BoxTutorialPluginTest {
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
+        // Stand the arena world up first: the plugin uses an existing world of
+        // that name rather than creating one, which keeps world generation out
+        // of the tests entirely.
+        server.addSimpleWorld("tutorial_arena");
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         // Titles and boss bars are client-side dressing this mock has no need
         // to implement; the tests here are about what the plugin decides.
         plugin.getConfig().set("show-welcome-title", false);
         plugin.getConfig().set("bossbar", false);
+        plugin.getConfig().set("completion.title", false);
         // The guide read the config when it started; make it read this one.
         plugin.guide().start();
     }
@@ -115,19 +121,42 @@ class BoxTutorialPluginTest {
     }
 
     @Test
-    void joiningStartsTheTutorialByItself() {
+    void joiningOffersTheTutorialRatherThanGrabbingThem() {
+        // The default is an invitation. A brand-new player teleported into a
+        // private world four seconds after joining thinks the server broke.
         plugin.getConfig().set("auto-start", true);
         plugin.getConfig().set("auto-start-existing", true);
         plugin.getConfig().set("join-delay-seconds", 1);
 
         PlayerMock player = server.addPlayer();
+        server.getScheduler().performTicks(60);
+
+        assertFalse(plugin.store().get(player.getUniqueId()).started(),
+                "invited, not enrolled");
+        boolean offered = false;
+        String message;
+        while ((message = player.nextMessage()) != null) {
+            if (message.contains("walkthrough") || message.contains("Click here")) {
+                offered = true;
+            }
+        }
+        assertTrue(offered, "they should be told the tutorial exists");
+    }
+
+    @Test
+    void aServerThatWantsToCanTeleportThemStraightIn() {
+        plugin.getConfig().set("auto-start", true);
+        plugin.getConfig().set("auto-start-existing", true);
+        plugin.getConfig().set("auto-start-mode", "enter");
+        plugin.getConfig().set("join-delay-seconds", 1);
+
+        PlayerMock player = server.addPlayer();
+        server.getScheduler().performTicks(60);
+
         Progress progress = plugin.store().get(player.getUniqueId());
-        assertFalse(progress.started(), "nothing happens in the same tick as the join");
-
-        server.getScheduler().performTicks(40);
-
         assertTrue(progress.started(), "the tutorial starts by itself shortly after joining");
         assertTrue(plugin.service().isActive(progress), "and it is running");
+        assertEquals("tutorial_arena", player.getWorld().getName(), "they're in the arena");
     }
 
     @Test

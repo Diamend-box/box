@@ -64,6 +64,33 @@ public final class Items {
     }
 
     /**
+     * Parses {@code MATERIAL} or {@code MATERIAL 8} into a stack.
+     *
+     * <p>Returns null for anything unrecognised so the caller can complain with
+     * the context it has — a bad item in a trade is worth a warning naming the
+     * trade, not a silent stone block.
+     */
+    public static ItemStack parse(String spec) {
+        if (spec == null || spec.isBlank()) {
+            return null;
+        }
+        String[] parts = spec.trim().split("[\\s:x*]+");
+        Material material = Material.matchMaterial(parts[0].trim());
+        if (material == null || material.isAir()) {
+            return null;
+        }
+        int amount = 1;
+        if (parts.length > 1) {
+            try {
+                amount = Integer.parseInt(parts[1].trim());
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return new ItemStack(material, Math.max(1, Math.min(material.getMaxStackSize(), amount)));
+    }
+
+    /**
      * Stack size clamped to what an inventory slot can show — used to put a
      * step number on an icon without producing an illegal stack.
      */

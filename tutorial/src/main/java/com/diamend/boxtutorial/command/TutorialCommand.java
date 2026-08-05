@@ -38,7 +38,7 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            requirePlayer(sender, player -> TutorialMenu.openFor(plugin, player));
+            requirePlayer(sender, this::openOrEnter);
             return true;
         }
         switch (args[0].toLowerCase(Locale.ROOT)) {
@@ -62,6 +62,31 @@ public class TutorialCommand implements CommandExecutor, TabCompleter {
     // ------------------------------------------------------------------
     // Player commands
     // ------------------------------------------------------------------
+
+    /**
+     * Bare {@code /tutorial}: the one command a new player will be told about,
+     * so it has to do the obvious thing from wherever they are.
+     *
+     * <p>Not started, or stopped earlier — take them in. Half way through and
+     * standing at spawn — take them back in. Already in the arena — show the
+     * board. Finished — show the board, which is where the restart button is.
+     */
+    private void openOrEnter(Player player) {
+        Progress progress = plugin.store().get(player.getUniqueId());
+        if (progress.finished()) {
+            TutorialMenu.openFor(plugin, player);
+            return;
+        }
+        if (!plugin.service().isActive(progress)) {
+            plugin.service().start(player, false);
+            return;
+        }
+        if (plugin.service().isInArena(player)) {
+            TutorialMenu.openFor(plugin, player);
+            return;
+        }
+        plugin.service().enter(player);
+    }
 
     /** {@code /tutorial start [player]} — staff may aim it at someone else. */
     private void start(CommandSender sender, String[] args, boolean fresh) {

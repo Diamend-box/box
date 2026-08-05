@@ -1,10 +1,13 @@
 package com.diamend.boxtutorial;
 
+import com.diamend.boxtutorial.arena.ArenaBlueprint;
+import com.diamend.boxtutorial.arena.InstanceManager;
 import com.diamend.boxtutorial.command.TutorialCommand;
 import com.diamend.boxtutorial.data.ProgressStore;
 import com.diamend.boxtutorial.gui.GuiListener;
 import com.diamend.boxtutorial.guide.TutorialManager;
 import com.diamend.boxtutorial.guide.TutorialService;
+import com.diamend.boxtutorial.listener.ArenaListener;
 import com.diamend.boxtutorial.listener.ConnectionListener;
 import com.diamend.boxtutorial.listener.StepListener;
 import com.diamend.boxtutorial.ui.GuideBar;
@@ -15,13 +18,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 /**
- * BoxTutorial — the first ten minutes on a boxpvp server, explained.
+ * BoxTutorial — a first-run sandbox for people who've never played boxpvp.
  *
- * <p>Deliberately small and standalone. It knows nothing about BoxCore, an
- * economy plugin or a warp plugin: what a step asks for is a line of
- * {@code tutorial.yml}, and what happens when it's done is a command the server
- * owner chose. That is the whole plugin — a config-driven sequence, a boss bar
- * and a checklist.
+ * <p>{@code /tutorial} puts a player in their own copy of a small arena: a mine
+ * that fills itself back up, and a villager who trades ore for gear. They're
+ * walked through the loop the gamemode is made of — mine, sell, gear up — and
+ * then sent back to spawn with what they made.
+ *
+ * <p>Standalone by design. It knows nothing about BoxCore, an economy plugin or
+ * a warp plugin: the arena, the mines and the trades are all config, and the
+ * only currency is the ore in the player's hands.
  */
 public class BoxTutorialPlugin extends JavaPlugin {
 
@@ -30,6 +36,8 @@ public class BoxTutorialPlugin extends JavaPlugin {
     private TutorialManager tutorial;
     private TutorialService service;
     private GuideBar guide;
+    private ArenaBlueprint blueprint;
+    private InstanceManager instances;
 
     private BukkitTask autosaveTask;
 
@@ -45,9 +53,12 @@ public class BoxTutorialPlugin extends JavaPlugin {
         this.tutorial = new TutorialManager(this);
         this.service = new TutorialService(this);
         this.guide = new GuideBar(this);
+        this.blueprint = new ArenaBlueprint(this);
+        this.instances = new InstanceManager(this, blueprint);
 
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new StepListener(this), this);
+        getServer().getPluginManager().registerEvents(new ArenaListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         registerCommand();
@@ -61,8 +72,9 @@ public class BoxTutorialPlugin extends JavaPlugin {
             guide.refresh(player);
         }
 
-        getLogger().info("BoxTutorial enabled with " + tutorial.stepCount() + " step(s) and "
-                + tutorial.topics().size() + " topic(s).");
+        getLogger().info("BoxTutorial enabled with " + tutorial.stepCount() + " step(s), "
+                + tutorial.topics().size() + " topic(s), " + blueprint.mines().size()
+                + " mine(s) and " + blueprint.trades().size() + " trade(s).");
     }
 
     @Override
@@ -79,6 +91,10 @@ public class BoxTutorialPlugin extends JavaPlugin {
             autosaveTask.cancel();
             autosaveTask = null;
         }
+        if (service != null) {
+            // Nobody gets logged out inside a world whose plugin has gone.
+            service.evacuate();
+        }
         if (guide != null) {
             guide.stop();
         }
@@ -92,6 +108,10 @@ public class BoxTutorialPlugin extends JavaPlugin {
     public void reloadEverything() {
         reloadConfig();
         tutorial.load();
+        // Arenas are built from the blueprint at claim time, so the players
+        // already inside one keep the room they're standing in; the next claim
+        // uses the new numbers.
+        blueprint.load();
         guide.start();
         for (Player player : getServer().getOnlinePlayers()) {
             guide.refresh(player);
@@ -164,5 +184,13 @@ public class BoxTutorialPlugin extends JavaPlugin {
 
     public GuideBar guide() {
         return guide;
+    }
+
+    public ArenaBlueprint blueprint() {
+        return blueprint;
+    }
+
+    public InstanceManager instances() {
+        return instances;
     }
 }

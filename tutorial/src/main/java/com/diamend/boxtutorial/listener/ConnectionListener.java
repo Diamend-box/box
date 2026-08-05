@@ -16,9 +16,15 @@ import java.util.UUID;
  * Who gets the tutorial, and when.
  *
  * <p>The interesting case is the second join. A player who logged off halfway
- * through step three comes back to the same step three, the same boss bar and a
- * reminder of what it wanted — a tutorial that only exists during the first
- * session is a tutorial most people never finish.
+ * through step three comes back to a freshly built arena on step three — a
+ * tutorial that only exists during the first session is one most people never
+ * finish.
+ *
+ * <p>Logging out inside the arena is also the one way to end up in a world with
+ * no instance behind it (the instance goes back in the pool the moment they
+ * disconnect), so a join from in there is either put back into a new arena or
+ * sent to spawn. Nobody is left standing on a platform that belongs to somebody
+ * else.
  */
 public class ConnectionListener implements Listener {
 
@@ -41,21 +47,43 @@ public class ConnectionListener implements Listener {
 
         long delay = Math.max(0L, plugin.getConfig().getLong("join-delay-seconds", 4L)) * 20L;
 
+        // Logged out inside the arena: put them back in one, or take them home.
+        if (plugin.instances().isArenaWorld(player.getWorld())) {
+            later(uuid, 1L, online -> {
+                if (plugin.service().isActive(plugin.store().get(uuid))) {
+                    plugin.messages().send(online, "resumed");
+                    if (!plugin.service().enter(online)) {
+                        plugin.service().sendHome(online);
+                    }
+                } else {
+                    plugin.service().sendHome(online);
+                }
+            });
+            return;
+        }
+
         if (!progress.started() && !progress.finished() && !progress.stopped()) {
             if (shouldAutoStart(player, known)) {
-                later(uuid, delay, online -> plugin.service().start(online, false));
+                later(uuid, delay, online -> {
+                    if (invites()) {
+                        plugin.messages().send(online, "invited");
+                        plugin.service().sendInvite(online);
+                    } else {
+                        plugin.service().start(online, false);
+                    }
+                });
             }
             return;
         }
         if (!plugin.service().isActive(progress)) {
             return;
         }
-        // Mid-tutorial: put the bar back, and say where they left off.
+        // Mid-tutorial but out at spawn: remind them it's waiting, and make the
+        // way back one click rather than one remembered command.
         later(uuid, delay, online -> {
-            plugin.guide().refresh(online);
             if (plugin.getConfig().getBoolean("remind-on-join", true)) {
                 plugin.messages().send(online, "resumed");
-                plugin.service().announceCurrent(online);
+                plugin.service().sendInvite(online);
             }
         });
     }
@@ -76,8 +104,24 @@ public class ConnectionListener implements Listener {
         return !known && !player.hasPlayedBefore();
     }
 
+    /**
+     * Offer it, or teleport them into it?
+     *
+     * <p>Inviting is the default. Pulling somebody into a private dimension
+     * four seconds after their first ever join, before they have seen spawn or
+     * read a single message, is startling — and the players who most need the
+     * tutorial are the ones most likely to think the server broke.
+     */
+    private boolean invites() {
+        return !"enter".equalsIgnoreCase(plugin.getConfig().getString("auto-start-mode", "invite"));
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
+        // The arena goes back in the pool immediately; they get a new one when
+        // they come back. Nothing in it was theirs to keep except what they're
+        // carrying, which they are.
+        plugin.instances().release(event.getPlayer().getUniqueId());
         plugin.guide().forget(event.getPlayer().getUniqueId());
     }
 

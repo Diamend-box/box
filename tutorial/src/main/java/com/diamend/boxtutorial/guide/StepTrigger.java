@@ -29,6 +29,12 @@ public enum StepTrigger {
     KILL_MOB("Kill mobs", true),
     KILL_PLAYER("Kill players", false),
 
+    /** Buy something from the tutorial trader. Target is what you get. */
+    BUY_ITEM("Buy from the trader", true),
+
+    /** Simply be carrying it — the check for "you now have a pickaxe". */
+    HAVE_ITEM("Carry an item", true),
+
     /** Entering a world by name, e.g. a {@code warzone} world. */
     ENTER_WORLD("Enter a world", true),
 

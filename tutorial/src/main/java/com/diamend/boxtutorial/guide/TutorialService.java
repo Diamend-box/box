@@ -1,6 +1,8 @@
 package com.diamend.boxtutorial.guide;
 
 import com.diamend.boxtutorial.BoxTutorialPlugin;
+import com.diamend.boxtutorial.arena.ArenaBlueprint;
+import com.diamend.boxtutorial.arena.Instance;
 import com.diamend.boxtutorial.data.Progress;
 import com.diamend.boxtutorial.util.Messages;
 import com.diamend.boxtutorial.util.Sounds;
@@ -10,7 +12,9 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -101,12 +105,22 @@ public class TutorialService {
     // ------------------------------------------------------------------
 
     /**
-     * Starts (or restarts) the tutorial for a player.
+     * Starts (or restarts) the tutorial: claims an arena and puts them in it.
      *
      * @param fresh clear any progress first — a deliberate restart rather than
      *              picking up where they left off
      */
     public void start(Player player, boolean fresh) {
+        if (plugin.tutorial().stepCount() == 0) {
+            plugin.messages().send(player, "nothing-to-teach");
+            return;
+        }
+        // Claimed before anything is written down, so a server with every arena
+        // busy doesn't wipe somebody's progress on the way to refusing them.
+        if (plugin.instances().claim(player) == null) {
+            plugin.messages().send(player, "arena-full");
+            return;
+        }
         Progress progress = progress(player);
         if (fresh) {
             progress.reset();
@@ -117,17 +131,53 @@ public class TutorialService {
         progress.setName(player.getName());
         plugin.store().touch();
 
-        if (plugin.tutorial().stepCount() == 0) {
-            plugin.messages().send(player, "nothing-to-teach");
-            return;
-        }
         if (plugin.getConfig().getBoolean("show-welcome-title", true)) {
             showTitle(player, plugin.messages().raw("welcome-title"),
                     plugin.messages().raw("welcome-subtitle"));
         }
         plugin.messages().send(player, "started");
+        enter(player);
+    }
+
+    /**
+     * Puts a player into their arena — new, or coming back to a half-finished
+     * one — and tells them what they're on.
+     *
+     * @return false when there was no arena to give them
+     */
+    public boolean enter(Player player) {
+        Instance instance = plugin.instances().claim(player);
+        if (instance == null) {
+            plugin.messages().send(player, "arena-full");
+            return false;
+        }
+        player.teleport(instance.spawnPoint());
         plugin.guide().refresh(player);
         announceLater(player, plugin.getConfig().getLong("first-step-delay-ticks", 40L));
+        return true;
+    }
+
+    /** True while this player is standing in the arena they were given. */
+    public boolean isInArena(Player player) {
+        Instance instance = plugin.instances().of(player);
+        return instance != null && instance.contains(player.getLocation());
+    }
+
+    /**
+     * Called when a player turns up outside the arena world mid-tutorial.
+     *
+     * <p>Their progress is kept — they're one {@code /tutorial} from being back
+     * where they were — but the arena goes back in the pool. Reserving a room
+     * for somebody who walked out of it is how a 32-instance server runs out at
+     * eleven players.
+     */
+    public void leftArena(Player player) {
+        boolean had = plugin.instances().of(player) != null;
+        plugin.instances().release(player.getUniqueId());
+        plugin.guide().hide(player);
+        if (had && isActive(progress(player))) {
+            plugin.messages().send(player, "arena-left");
+        }
     }
 
     /** The player asked to be left alone; nothing is lost, it just goes quiet. */
@@ -136,6 +186,7 @@ public class TutorialService {
         progress.setStopped(true);
         plugin.store().touch();
         plugin.guide().hide(player);
+        sendHome(player);
         plugin.messages().send(player, "stopped");
     }
 
@@ -145,7 +196,64 @@ public class TutorialService {
         Player online = Bukkit.getPlayer(uuid);
         if (online != null) {
             plugin.guide().hide(online);
+            sendHome(online);
         }
+    }
+
+    /**
+     * Sends a player back out to spawn and hands their arena back.
+     *
+     * <p>Nothing is taken off them on the way out: the axe they bought and the
+     * ore they dug are theirs. The arena is a place they were, not a sandbox
+     * that gets confiscated.
+     */
+    public void sendHome(Player player) {
+        boolean inside = plugin.instances().isArenaWorld(player.getWorld());
+        plugin.instances().release(player.getUniqueId());
+        if (!inside) {
+            return;
+        }
+        ArenaBlueprint blueprint = plugin.blueprint();
+        if (blueprint.returnMode() == ArenaBlueprint.ReturnMode.COMMAND) {
+            String command = blueprint.returnCommand();
+            player.performCommand(command.startsWith("/") ? command.substring(1) : command);
+            // A command that didn't move them would strand them in the arena.
+            if (plugin.instances().isArenaWorld(player.getWorld())) {
+                player.teleport(fallbackHome());
+            }
+            return;
+        }
+        if (blueprint.returnMode() == ArenaBlueprint.ReturnMode.LOCATION) {
+            World world = Bukkit.getWorld(blueprint.returnWorld());
+            if (world != null) {
+                player.teleport(new Location(world, blueprint.returnX(),
+                        blueprint.returnY(), blueprint.returnZ()));
+                return;
+            }
+            plugin.getLogger().warning("return.world '" + blueprint.returnWorld()
+                    + "' isn't loaded; sending them to the main spawn instead.");
+        }
+        player.teleport(fallbackHome());
+    }
+
+    /** The main world's spawn — the one place that always exists. */
+    private Location fallbackHome() {
+        for (World world : Bukkit.getWorlds()) {
+            if (!plugin.instances().isArenaWorld(world)) {
+                return world.getSpawnLocation();
+            }
+        }
+        return Bukkit.getWorlds().get(0).getSpawnLocation();
+    }
+
+    /** Empties the arena on shutdown or reload, so nobody is left in a void. */
+    public void evacuate() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (plugin.instances().isArenaWorld(player.getWorld())) {
+                sendHome(player);
+            }
+        }
+        plugin.instances().releaseAll();
     }
 
     // ------------------------------------------------------------------
@@ -292,6 +400,20 @@ public class TutorialService {
                 }
             }
         }
+
+        // A beat before the teleport, so the last thing they read isn't
+        // interrupted by the loading screen. What they made comes with them.
+        UUID uuid = player.getUniqueId();
+        long delay = Math.max(1L, plugin.getConfig().getLong("return-delay-ticks", 60L));
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null && online.isOnline()) {
+                sendHome(online);
+                plugin.messages().send(online, "sent-home");
+            } else {
+                plugin.instances().release(uuid);
+            }
+        }, delay);
     }
 
     // ------------------------------------------------------------------
@@ -350,6 +472,16 @@ public class TutorialService {
             player.sendMessage(Component.empty());
         }
         Sounds.play(player, Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 1.6f);
+    }
+
+    /** A click-to-run line that takes them into the arena. */
+    public void sendInvite(Player player) {
+        String template = plugin.messages().raw("invite-button");
+        Component line = Text.parse(template.isBlank()
+                ? "  <yellow>» <white><u>Click here to start the tutorial</u>" : template);
+        player.sendMessage(line
+                .clickEvent(ClickEvent.runCommand("/tutorial"))
+                .hoverEvent(HoverEvent.showText(Text.parse("<gray>Runs <white>/tutorial"))));
     }
 
     /** A click-to-run line for the step's suggested command, when it has one. */

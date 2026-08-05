@@ -144,13 +144,14 @@ jobs:
           need "Enabling BoxTutorial"      "plugin began enabling"
           need "BoxTutorial enabled with"  "onEnable completed without throwing"
           need "topic(s)"                  "tutorial.yml parsed"
-          need "settled-in"                "/tutorial steps listed the shipped steps"
+          need "mine(s)"                   "the arena config parsed"
+          need "get-armour"                "/tutorial steps listed the shipped ladder"
           need "Combat tag"                "/tutorial what printed a glossary topic"
           need "Reloaded configuration"    "/tutorial reload worked"
-          # A warning here means a step or topic in the shipped defaults
-          # references something this server version doesn't have.
-          if grep -n "tutorial\.yml:" "$LOG"; then
-            echo "::error::the shipped tutorial.yml produced warnings on a real server"
+          # A warning here means a step, topic, mine or trade in the shipped
+          # defaults references something this server version doesn't have.
+          if grep -nE "tutorial\.yml:|arena config:" "$LOG"; then
+            echo "::error::the shipped configuration produced warnings on a real server"
             fail=1
           fi
           if grep -nE "Error occurred while enabling BoxTutorial|Could not load .plugins.*BoxTutorial|NoClassDefFoundError|NoSuchMethodError|NoSuchFieldError|IncompatibleClassChangeError|Exception while enabling" "$LOG"; then

@@ -184,6 +184,9 @@ public class TutorialStep {
             case CRAFT_ITEM -> "Craft " + amount + " " + things;
             case KILL_MOB -> "Kill " + amount + " " + things;
             case KILL_PLAYER -> "Win " + amount + " fight" + (amount == 1 ? "" : "s");
+            case BUY_ITEM -> "Buy " + (amount > 1 ? amount + " " : "") + things
+                    + " from the trader";
+            case HAVE_ITEM -> "Be carrying " + amount + " " + things;
             case ENTER_WORLD -> "Go to " + (target.isBlank() ? "another world" : firstTarget());
             case REACH_LOCATION -> place == null ? "Go to the marked place"
                     : "Go to " + (int) place.x() + ", " + (int) place.y() + ", " + (int) place.z();

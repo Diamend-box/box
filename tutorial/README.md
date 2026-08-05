@@ -1,8 +1,10 @@
 # BoxTutorial
 
-A small **Paper 1.21.4** plugin that walks a first-time player through a
-**boxpvp** server: what the gamemode *is*, what they're supposed to do first,
-and what the words everyone else is using mean.
+A **Paper 1.21.4** plugin that teaches boxpvp by making somebody play a tiny
+version of it. `/tutorial` puts a new player in their own private arena with a
+mine that fills itself back up and a villager who trades ore for gear, walks
+them up the ladder — **wood → axe → more wood → pickaxe → ore → sword →
+armour** — and sends them back to spawn with everything they made.
 
 > ℹ️ **Made with AI.** Written by an AI assistant (Anthropic's Claude) from a
 > human's design, and maintained the same way. Review it and test it on your own
@@ -11,55 +13,67 @@ and what the words everyone else is using mean.
 > This is a separate project from *CustomAchievements*, *BoxCore* and
 > *AntiCheat* in the same repository: different module (`tutorial/`), different
 > package (`com.diamend.boxtutorial`), different purpose. It has **no dependency
-> on any of them** — drop it into a server that runs none of the others and it
-> works.
+> on any of them**, and none on a mine-reset, shop, economy or world-management
+> plugin either — it builds and runs the arena itself.
 
 ---
 
-## The problem it solves
+## Why a sandbox instead of a checklist
 
-Someone who has never played boxpvp joins, spawns in a lobby, and has no idea
-that the mine regenerates, that gear is a consumable, that money is the score,
-or that hitting somebody stops them from warping away for ten seconds. They read
-`/help`, learn nothing, and leave.
+Telling a newcomer "mine ore, sell it, buy gear" is a sentence they'll forget
+before they've found the mine. Having them *do it once*, in a room with exactly
+two things in it, is a thing they'll remember — and the version they learn in
+can't be griefed, can't be lost, and can't be got wrong.
 
-BoxTutorial is the thing that tells them — as a short, ordered walkthrough with a
-boss bar keeping their place, plus a glossary they can come back to.
+So the tutorial is a place, not a list of instructions.
+
+---
+
+## What a player sees
+
+1. They join. A clickable line offers the tutorial (it doesn't grab them).
+2. `/tutorial` — the world fades and they're standing on a small platform.
+   A **wood mine** on the left, an **ore mine** on the right, a **Trader**
+   in front of them, and a boss bar reading *Step 1/7 — Break 8 logs*.
+3. They punch 8 logs. The step ticks over. Right-click the Trader: the ordinary
+   vanilla trade screen, 8 logs in, one wooden axe out. **The ore is the money** —
+   there is no currency in the arena and no economy plugin behind it.
+4. Sixteen more logs — and while they're cutting, the mine refills in front of
+   them. That's the moment the gamemode lands.
+5. Pickaxe. Then the ore mine: stone, coal, iron. Then an iron sword, then an
+   iron chestplate.
+6. Done. Three seconds to read the message, then they're at spawn — carrying
+   the axe, the pickaxe, the sword, the armour and the leftovers.
+
+Everything above is `tutorial.yml` and `config.yml`. Change the ladder, the
+mines, the trades, the layout — none of it is compiled in.
 
 ---
 
 ## Features
 
-- 📋 **An ordered walkthrough**, defined entirely in `tutorial.yml`. Only the
-  step a player is on is armed, so mining while reading step one can't silently
-  tick off step three.
-- 🎯 **Steps complete themselves** from what the player actually does: break
-  blocks, run a command, kill a player, enter a world, reach a place, play for
-  N minutes — or simply read the step and click it, which is the right trigger
-  for the things a newcomer is missing (knowledge, not actions).
-- 🧭 **A boss bar** naming the current step and counting its progress, so the
-  tutorial survives the player closing chat. It disappears the moment they
-  finish or ask it to.
-- 💬 **Click-to-run hints** — a step can offer a command, and it arrives in chat
-  as a line they can click instead of retype.
-- 📖 **A glossary** of the things every boxpvp server assumes you know — box,
-  mine, warzone, combat tag, KOTH, kits, dying — on `/tutorial topics` and
-  `/tutorial what <topic>`, readable at any time, tutorial or no tutorial.
-- 🚪 **Nothing can trap you.** Optional steps can always be skipped, and by
-  default any step can. A skipped step is recorded as *skipped*, not as done —
-  the checklist keeps telling the truth.
-- 🔁 **It survives a logout.** Progress is stored, and a player who left
-  half-way through step three comes back to step three, the bar, and a reminder
-  of what it wanted.
-- 🎁 **Rewards** — console commands per step and on completion (`%player%`,
-  `%uuid%`), for a starter kit that lands when someone actually finishes.
-- 🛠️ **Staff tools** — `/tutorial start <player>`, `complete`, `reset`, `steps`
-  and `reload`, all without a restart.
-- 🪧 **PlaceholderAPI** support (optional) for scoreboards and welcome
-  holograms.
-- 🪶 **Lightweight** — one boss-bar pass per second for the players actually
-  mid-tutorial, seven small event handlers, and a single `progress.yml`. No
-  `PlayerMoveEvent` handler, no database, no scheduler per player.
+- 🏝️ **A private arena per player** — one void world, instances 512 blocks
+  apart, built fresh when claimed and handed back when they leave. Dozens of
+  players can be in "their own tutorial" while the server holds one world.
+- ⛏️ **Mines that regenerate** — a cuboid and a weighted block table, like any
+  mine-reset plugin. The shipped ones are deliberately small so the refill
+  happens where the player can see it.
+- 🧑‍🌾 **A real villager with real trades** — vanilla trade window, vanilla
+  behaviour, nothing to learn. Trades are config; ore is the price.
+- 📋 **Steps that watch what they do** — break blocks, buy something, be
+  carrying something, run a command, reach a place, play for N minutes.
+- 🧭 **A boss bar** with the current step and its count, on screen only while
+  they're actually in the arena.
+- 🔒 **Nothing can go wrong in there** — only the mines can be broken, nothing
+  can be placed, nothing can hurt them, and the walls are barriers. A player
+  who logs out inside is put back into a new arena when they return.
+- 🎒 **They keep what they made.** The arena isn't a sandbox that gets
+  confiscated at the door.
+- 📖 **A glossary** of the words every boxpvp server assumes you know — box,
+  mine, warzone, combat tag, KOTH, kits, dying — on `/tutorial topics`.
+- 🛠️ **Staff tools** — `/tutorial start <player>`, `complete`, `reset`,
+  `steps`, `reload`, all without a restart.
+- 🪧 **PlaceholderAPI** support (optional).
 
 ---
 
@@ -68,6 +82,10 @@ boss bar keeping their place, plus a glossary they can come back to.
 - Java **21**
 - **Paper** (or Paper-compatible) **1.21.4**
 - Optional: **PlaceholderAPI**
+
+The tutorial world is created on first use. Multiverse and friends are welcome
+but not needed; if a world with the configured name already exists, it's adopted
+rather than created.
 
 ---
 
@@ -78,9 +96,7 @@ cd tutorial
 mvn clean package
 ```
 
-The jar lands in `tutorial/target/BoxTutorial-1.0.0.jar`. Drop it into
-`plugins/` and restart. The build fetches the Paper API from
-`https://repo.papermc.io`.
+The jar lands in `tutorial/target/BoxTutorial-1.0.0.jar`.
 
 ---
 
@@ -90,22 +106,19 @@ Base command: `/tutorial` (aliases `/guide`, `/howto`, `/tut`)
 
 | Command | Description | Permission |
 |---------|-------------|------------|
-| `/tutorial` | Open the checklist | `boxtutorial.use` |
+| `/tutorial` | Go in — or, if you're already in there, open the board | `boxtutorial.use` |
+| `/tutorial menu` | The step board, wherever you are | `boxtutorial.use` |
 | `/tutorial topics` | Browse the glossary | `boxtutorial.use` |
 | `/tutorial what <topic>` | Explain one topic in chat | `boxtutorial.use` |
 | `/tutorial status` | How far you got | `boxtutorial.use` |
 | `/tutorial start` | Run it again from the top | `boxtutorial.use` |
-| `/tutorial continue` | Pick up where you left off | `boxtutorial.use` |
 | `/tutorial next` | Skip the step you're stuck on | `boxtutorial.use` |
-| `/tutorial stop` | Turn it off (keeps your progress) | `boxtutorial.use` |
+| `/tutorial stop` | Leave the arena and turn it off | `boxtutorial.use` |
 | `/tutorial steps` | List every step, with its trigger | `boxtutorial.admin` |
-| `/tutorial start <player>` | Start it for someone else | `boxtutorial.admin` |
-| `/tutorial status <player>` | Their progress | `boxtutorial.admin` |
+| `/tutorial start <player>` | Put someone else in it | `boxtutorial.admin` |
 | `/tutorial complete <player> <step>` | Mark a step done | `boxtutorial.admin` |
 | `/tutorial reset <player>` | Wipe their progress | `boxtutorial.admin` |
-| `/tutorial reload` | Reload config and steps | `boxtutorial.admin` |
-
-### Permissions
+| `/tutorial reload` | Reload config, steps and arena | `boxtutorial.admin` |
 
 | Node | Default | Grants |
 |------|---------|--------|
@@ -114,100 +127,124 @@ Base command: `/tutorial` (aliases `/guide`, `/howto`, `/tut`)
 
 ---
 
-## Writing the tutorial (`tutorial.yml`)
+## The arena (`config.yml` → `arena:`)
 
-Steps run in **the order they appear in the file**. Move a block up, and it
-happens sooner.
+```yaml
+arena:
+  world: tutorial_arena
+  spacing: 512          # blocks between one instance and the next
+  max-instances: 32     # how many people can be in the tutorial at once
+  y: 64
+  radius: 12            # half-width of the platform (12 = 25x25)
+  wall-height: 3
+  floor: STONE_BRICKS
+  wall: BARRIER
+  spawn-offset: [0, 1, 8]
+
+  shopkeeper:
+    offset: [0, 1, -8]
+    name: "<gold>Trader <gray>(right-click)"
+    profession: toolsmith
+    type: plains
+
+  mines:
+    wood:
+      min: [-9, 1, -2]     # offsets from the middle of the platform;
+      max: [-6, 3, 1]      # y: 1 is the first block above the floor
+      refill-at: 50        # refill once it's down to 50% left
+      blocks:
+        OAK_LOG: 100
+    ore:
+      min: [6, 1, -2]
+      max: [9, 3, 1]
+      refill-at: 50
+      blocks:              # weights, not percentages
+        STONE: 40
+        COAL_ORE: 20
+        IRON_ORE: 40
+
+  trades:
+    axe:
+      cost: [ "OAK_LOG 8" ]     # up to two different items (a vanilla limit)
+      result: "WOODEN_AXE 1"
+
+  return:
+    mode: WORLD_SPAWN     # or LOCATION (world/x/y/z), or COMMAND (e.g. spawn)
+```
+
+**Instances** are numbered from the origin outwards: instance 0 sits at x=0,
+instance 1 at x=512, and so on. Each is rebuilt from the blueprint when it's
+claimed, so whatever the last player did to it stops mattering. Leaving the
+world — walking out, `/spawn`, being summoned by staff, logging off — hands the
+instance straight back to the pool; the player's progress is untouched and
+`/tutorial` drops them into a new one at the same step.
+
+**Mines** count what comes out of them rather than scanning for gaps, and refill
+when enough has gone. Sizing matters more than it looks: a mine large enough
+never to refill teaches nothing, and the refill is the single most important
+idea in the gamemode.
+
+**Trades** become real `MerchantRecipe`s on a real villager. That's the whole
+integration — the player sees the trade window they already know, and the plugin
+watches Paper's `PlayerTradeEvent` to tick the step off.
+
+---
+
+## The steps (`tutorial.yml`)
+
+Steps run in the order they appear in the file. Move a block up, and it happens
+sooner.
 
 ```yaml
 steps:
-  mine:
-    icon: IRON_PICKAXE
-    name: "<yellow>Break some rock"
+  chop-wood:
+    icon: OAK_LOG
+    name: "<yellow>Break 8 logs"
     description:
-      - "<gray>The mine is shared, and it regenerates."
-      - "<gray>This is where your money starts."
+      - "<gray>The wood mine is on your left. Punch it — no tool needed yet."
     trigger: BREAK_BLOCK
-    target: ANY          # or "IRON_ORE, GOLD_ORE, DIAMOND_ORE"
-    amount: 16
-    command: "/warp mine"   # offered in chat, click to run
-    hint: "<gray>Take a pickaxe."
-    optional: false
-    rewards:
-      message: "<green>That's the loop."
-      commands: [ "eco give %player% 100" ]
+    target: OAK_LOG
+    amount: 8
+    hint: "<dark_gray>Hold left-click on the logs."
 ```
-
-### Triggers
 
 | Trigger | Target | Completes when… |
 |---------|--------|-----------------|
+| `BREAK_BLOCK` | a material | they break that many |
+| `BUY_ITEM` | what the trade gives | they take it from the trader |
+| `HAVE_ITEM` | a material | they're carrying that many |
 | `READ` | – | they click the step in the menu |
 | `MANUAL` | – | staff run `/tutorial complete` |
 | `RUN_COMMAND` | the command, no slash | they type it (`sell` also matches `/sell all`) |
-| `BREAK_BLOCK` | a material | they break that many |
-| `PLACE_BLOCK` | a material | they place that many |
-| `PICK_UP_ITEM` | a material | they pick up that many |
-| `CRAFT_ITEM` | a material | they craft it |
-| `KILL_MOB` | an entity type | they kill that many |
-| `KILL_PLAYER` | – | they win a fight |
+| `PLACE_BLOCK` / `PICK_UP_ITEM` / `CRAFT_ITEM` | a material | the obvious thing |
+| `KILL_MOB` / `KILL_PLAYER` | an entity type / – | the obvious thing |
 | `ENTER_WORLD` | a world name | they arrive in it |
 | `REACH_LOCATION` | `world;x;y;z;radius` | they stand inside it |
 | `PLAYTIME_MINUTES` | – | `amount` minutes of tutorial time pass |
 
-A blank target (or `ANY`) counts everything. A target may be a comma-separated
-list — `target: "sell, shop"` accepts either command.
+The gear steps use `HAVE_ITEM` rather than `BUY_ITEM` on purpose: it completes
+however they got the thing, so a player who buys ahead of the step isn't told to
+go and buy a second one.
 
-> **The shipped defaults are a starting point.** They describe boxpvp the
-> gamemode, which is the part a first-timer is missing, but the *commands* are
-> guesses at yours. Point `command:` and `target:` at whatever your server
-> actually uses, then `/tutorial reload`. Anything server-specific in the
-> defaults is marked `optional: true`, so nobody gets stuck on a `/sell` that
-> doesn't exist here.
-
-### The glossary
-
-```yaml
-topics:
-  combat-tag:
-    icon: CLOCK
-    title: "<red>Combat tag"
-    lines:
-      - "<gray>The moment you hit a player, you're tagged for a few seconds."
-      - "<gray>While tagged you can't teleport, warp or fly."
-```
-
-Topics are found by id, by prefix, or by a word in the title, so
-`/tutorial what combat` works.
-
-### Text formatting
-
-Names, descriptions, hints and messages accept **both**
-[MiniMessage](https://docs.advntr.dev/minimessage/format.html) (`<green>`,
-`<bold>`, `<gradient:…>`) and classic colour codes (`&a`, `&l`, `&#ff8800`) —
-mixed freely.
+A test enforces that **every shipped step asks for something the arena can
+provide** — a step wanting a block no mine contains, or gear no trade sells,
+fails the build rather than stranding a player.
 
 ---
 
-## Configuration (`config.yml`)
-
-The settings worth knowing about; the file itself documents the rest.
+## Configuration highlights (`config.yml`)
 
 | Setting | Default | Does |
 |---------|---------|------|
-| `auto-start` | `true` | Start the tutorial by itself on a player's first join |
-| `auto-start-existing` | `false` | Also start it for players who joined before install |
-| `join-delay-seconds` | `4` | Wait, so it lands after the join spam |
-| `remind-on-join` | `true` | Re-state the current step on a later join |
+| `auto-start` | `true` | Offer the tutorial on a player's first join |
+| `auto-start-mode` | `invite` | `invite` = a clickable line; `enter` = teleport them straight in |
+| `auto-start-existing` | `false` | Also offer it to players who joined before install |
 | `sequential` | `true` | Arm one step at a time (`false` = free-order checklist) |
 | `allow-step-skip` | `true` | Players may walk past a step they can't finish |
-| `allow-restart` | `true` | Players may run the whole thing again |
 | `bossbar` | `true` | The on-screen step tracker |
-| `actionbar` | `false` | An actionbar line as well |
-| `nudge-interval-ticks` | `20` | How often the bar refreshes and places are checked |
-| `completion.commands` | `[]` | Console commands when someone finishes |
-| `completion.broadcast` | `false` | Tell the server when someone finishes |
-| `autosave-minutes` | `5` | How often progress is written out |
+| `nudge-interval-ticks` | `20` | How often the bar refreshes and "carrying it" is checked |
+| `return-delay-ticks` | `60` | Beat between the last step and the teleport out |
+| `completion.commands` | `[]` | Console commands when someone finishes (`%player%`) |
 
 ---
 
@@ -217,13 +254,9 @@ The settings worth knowing about; the file itself documents the rest.
 |---|---|
 | `%boxtutorial_step%` | the current step's name |
 | `%boxtutorial_step_goal%` | what it's asking for |
-| `%boxtutorial_step_number%` | which step they're on |
-| `%boxtutorial_total%` | how many there are |
-| `%boxtutorial_completed%` / `_remaining%` | done / left |
-| `%boxtutorial_percent%` | 0–100 |
-| `%boxtutorial_bar%` | a ten-segment progress bar |
-| `%boxtutorial_active%` | `true` while it's running |
-| `%boxtutorial_finished%` | `true` once they've been through it |
+| `%boxtutorial_step_number%` / `_total%` | position and length |
+| `%boxtutorial_completed%` / `_remaining%` / `_percent%` / `_bar%` | progress |
+| `%boxtutorial_active%` / `_finished%` | `true` / `false` |
 | `%boxtutorial_done_<id>%` | `true` when that step is done |
 
 ---
@@ -232,23 +265,21 @@ The settings worth knowing about; the file itself documents the rest.
 
 ```
 plugins/BoxTutorial/
-├── config.yml      # behaviour and messages
+├── config.yml      # behaviour, the arena, and messages
 ├── tutorial.yml    # the steps and the glossary
 └── progress.yml    # one short entry per player
 ```
 
-`progress.yml` is written by the plugin — it holds a name, three flags, a list
-of step ids and any part-finished counts, for everyone who has ever joined.
-`config.yml` and `tutorial.yml` are yours; the plugin only reads them.
+The arena world (`tutorial_arena` by default) is generated empty and rebuilt per
+claim, so it needs no backing up and nothing in it is worth keeping.
 
 ---
 
 ## What it deliberately doesn't do
 
-- **No achievement system.** Steps aren't goals to grind; there are a handful
-  and then it's finished. *CustomAchievements* in this repo is the plugin for
-  long-run objectives.
-- **No economy, warps or kits.** It teaches yours. Every action it suggests is a
-  command you configured, run by the plugin that owns it.
-- **No forced tutorial.** It can always be stopped, skipped and reopened. A
-  player who wants to work it out for themselves is allowed to.
+- **No economy.** Ore is the currency, inside the arena and nowhere else. The
+  tutorial can't be farmed for money because there is no money in it.
+- **No inventory confiscation.** They keep what they made.
+- **No forced tutorial.** It offers, it can be stopped, and it can be run again.
+- **No achievement system.** Seven steps and it's finished. *CustomAchievements*
+  in this repo is the plugin for long-run objectives.

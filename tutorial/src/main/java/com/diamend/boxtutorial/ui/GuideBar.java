@@ -1,6 +1,7 @@
 package com.diamend.boxtutorial.ui;
 
 import com.diamend.boxtutorial.BoxTutorialPlugin;
+import com.diamend.boxtutorial.arena.Instance;
 import com.diamend.boxtutorial.data.Progress;
 import com.diamend.boxtutorial.guide.StepTrigger;
 import com.diamend.boxtutorial.guide.TutorialService;
@@ -11,6 +12,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
@@ -125,13 +127,61 @@ public class GuideBar {
                     plugin.store().touch();
                 }
             }
+            keepInside(player);
             checkPlaytime(player, progress);
+            checkCarrying(player, progress);
             checkPlace(player, progress);
             refresh(player);
         }
 
         lastPass.keySet().retainAll(online);
         bars.keySet().retainAll(online);
+    }
+
+    /**
+     * Puts a player back on the platform if they somehow got off it.
+     *
+     * <p>The barrier wall means this should never fire. It exists because the
+     * failure it catches — a new player falling out of the world on their first
+     * five minutes — is the one worth a belt as well as braces.
+     */
+    private void keepInside(Player player) {
+        Instance instance = plugin.instances().of(player);
+        if (instance == null || !plugin.instances().isArenaWorld(player.getWorld())) {
+            return;
+        }
+        if (!instance.contains(player.getLocation())) {
+            player.teleport(instance.spawnPoint());
+        }
+    }
+
+    /** Completes a "be carrying it" step by looking in their inventory. */
+    private void checkCarrying(Player player, Progress progress) {
+        for (TutorialStep step : plugin.service().armed(progress)) {
+            if (step.trigger() != StepTrigger.HAVE_ITEM) {
+                continue;
+            }
+            int carried = carried(player, step);
+            if (carried >= step.amount()) {
+                plugin.service().completeStep(player, step, true);
+            } else {
+                progress.setCount(step.id(), carried);
+            }
+        }
+    }
+
+    /** How many matching items they have, armour and offhand included. */
+    private int carried(Player player, TutorialStep step) {
+        int total = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getType().isAir()) {
+                continue;
+            }
+            if (step.matchesTarget(item.getType().name())) {
+                total += item.getAmount();
+            }
+        }
+        return total;
     }
 
     /** Completes a "play for N minutes" step once the clock says so. */
@@ -186,7 +236,9 @@ public class GuideBar {
         Progress progress = plugin.store().get(player.getUniqueId());
         TutorialStep step = plugin.service().isActive(progress)
                 ? plugin.service().current(progress) : null;
-        if (!enabled || step == null) {
+        // Only while they're actually in the arena: a bar telling somebody at
+        // spawn to mine eight logs is a bar that's lying.
+        if (!enabled || step == null || !plugin.service().isInArena(player)) {
             hide(player);
             return;
         }

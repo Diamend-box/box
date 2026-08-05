@@ -68,6 +68,7 @@ class TutorialProgressTest {
     @BeforeEach
     void setUp() throws IOException {
         server = MockBukkit.mock();
+        server.addSimpleWorld("tutorial_arena");
         plugin = MockBukkit.load(BoxTutorialPlugin.class);
         plugin.getConfig().set("show-welcome-title", false);
         plugin.getConfig().set("bossbar", false);

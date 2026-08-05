@@ -2,14 +2,13 @@
 # BoxTutorial — what the tutorial teaches.
 #
 # Two sections:
-#   steps:   the ordered walkthrough. Order in this file is the order players
-#            see; move a block up and it happens sooner.
-#   topics:  the glossary, browsable at any time with /tutorial topics.
+#   steps:   the walkthrough, in order. Move a block up and it happens sooner.
+#   topics:  the glossary, readable any time with /tutorial topics.
 #
-# THESE DEFAULTS ARE A STARTING POINT. They describe boxpvp the gamemode, which
-# is the part a first-timer is missing, but the commands are guesses at yours.
-# Change `command:` and `target:` to whatever your server actually uses, then
-# run /tutorial reload.
+# The default steps run inside the practice yard (see `arena:` in config.yml):
+# a wood mine, an ore mine, and a villager who trades ore for gear. The ladder
+# is wood → axe → more wood → pickaxe → ore → sword → armour, which is the
+# boxpvp loop in miniature. Everything they make is theirs to keep.
 #
 # Step settings
 # -------------
@@ -27,122 +26,106 @@
 #
 # Triggers
 # --------
+#   BREAK_BLOCK      target is a material — the mines are the only breakables
+#   BUY_ITEM         target is what the trade gives you
+#   HAVE_ITEM        target is a material; done when they're carrying it
 #   READ             done when the player clicks the step in the menu
 #   MANUAL           done only by /tutorial complete
 #   RUN_COMMAND      target is the command, without the slash
-#   BREAK_BLOCK      target is a material
-#   PLACE_BLOCK      target is a material
-#   PICK_UP_ITEM     target is a material
-#   CRAFT_ITEM       target is a material
-#   KILL_MOB         target is an entity type
-#   KILL_PLAYER      no target
+#   PLACE_BLOCK / PICK_UP_ITEM / CRAFT_ITEM / KILL_MOB / KILL_PLAYER
 #   ENTER_WORLD      target is a world name
 #   REACH_LOCATION   target is world;x;y;z;radius
 #   PLAYTIME_MINUTES amount is the minutes, no target
+#
+# HAVE_ITEM is used for the gear rather than BUY_ITEM on purpose: it completes
+# however they got the thing, so a player who buys ahead of the step isn't told
+# to buy a second one.
 # ---------------------------------------------------------------------------
 
 steps:
 
-  welcome:
-    icon: WRITTEN_BOOK
-    name: "<gold>What a boxpvp server is"
+  chop-wood:
+    icon: OAK_LOG
+    name: "<yellow>Break 8 logs"
     description:
-      - "<gray>It's a short loop, run over and over:"
-      - "<white>mine <dark_gray>→ <white>sell <dark_gray>→ <white>buy gear <dark_gray>→ <white>fight <dark_gray>→ <white>repeat<gray>."
-      - "<gray>Nobody spends a week building a base out in the wild."
-      - "<gray>Ore comes back, money is the score, and armour is"
-      - "<gray>something you spend rather than something you keep."
-    hint: "<dark_gray>Read it, then click this step in the menu."
-    trigger: READ
-
-  your-box:
-    icon: CHEST
-    name: "<gold>Your box is yours"
-    description:
-      - "<gray>Everyone gets a private space — the box the mode is named for."
-      - "<gray>It's where your chests live and where nobody can touch you."
-      - "<gray>Store what you can't afford to lose <white>before<gray> you go out."
-    command: "/box"
-    hint: "<gray>If that isn't the command here, ask staff what is."
-    trigger: READ
-
-  mine:
-    icon: IRON_PICKAXE
-    name: "<yellow>Break some rock"
-    description:
-      - "<gray>The mine is shared, and it regenerates — the ore you take"
-      - "<gray>comes back for everyone, so mining out a wall is fine."
-      - "<gray>This is where your money starts."
+      - "<gray>The wood mine is on your left. Punch it — no tool needed yet."
+      - "<gray>Everything on this server starts as something you dug up."
     trigger: BREAK_BLOCK
-    target: ANY
+    target: OAK_LOG
+    amount: 8
+    hint: "<dark_gray>Hold left-click on the logs."
+
+  buy-axe:
+    icon: WOODEN_AXE
+    name: "<yellow>Trade 8 logs for an axe"
+    description:
+      - "<gray>Right-click the <gold>Trader<gray> behind you to open his trades."
+      - "<gray>Put your logs in the left slot and take the axe."
+      - "<gray>There is no money here — <white>what you dig up is the money<gray>."
+    trigger: BUY_ITEM
+    target: WOODEN_AXE
+    amount: 1
+    hint: "<dark_gray>8 logs → wooden axe."
+
+  chop-more:
+    icon: OAK_LOG
+    name: "<yellow>Break 16 more logs"
+    description:
+      - "<gray>Faster with the axe. Notice the mine filling itself back up —"
+      - "<gray>that's how every mine on the server works, so you can never"
+      - "<gray>run it dry and nobody can take it from you."
+    trigger: BREAK_BLOCK
+    target: OAK_LOG
     amount: 16
-    command: "/warp mine"
-    hint: "<gray>Take a pickaxe. Any 16 blocks count."
+    hint: "<dark_gray>Better tools are always worth the ore they cost."
 
-  sell:
-    icon: EMERALD
-    name: "<yellow>Turn rock into money"
+  get-pickaxe:
+    icon: STONE_PICKAXE
+    name: "<yellow>Trade 16 logs for a pickaxe"
     description:
-      - "<gray>Ore is not the point — money is. Most servers take"
-      - "<gray>everything in your inventory at once."
-      - "<gray>Sell early and often; carrying loot is how you lose it."
-    trigger: RUN_COMMAND
-    target: "sell, shop, warp shop"
+      - "<gray>Stone and ore need a pickaxe — punching them gets you nothing."
+      - "<gray>Back to the Trader."
+    trigger: HAVE_ITEM
+    target: STONE_PICKAXE
     amount: 1
-    command: "/sell all"
-    hint: "<gray>No <white>/sell<gray> here? Skip this one and find the shop."
-    optional: true
+    hint: "<dark_gray>16 logs → stone pickaxe."
 
-  gear-up:
-    icon: IRON_CHESTPLATE
-    name: "<gold>Gear is a consumable"
+  mine-ore:
+    icon: IRON_ORE
+    name: "<yellow>Mine 24 blocks of ore"
     description:
-      - "<gray>Buy armour you can afford to lose, because you will lose it."
-      - "<gray>The player who wins a boxpvp server isn't the one with the"
-      - "<gray>best set — it's the one who can replace theirs fastest."
-      - "<gray>Keep enough money banked to gear up again."
-    trigger: READ
-    hint: "<gray>Never take out gear you'd be upset to see dropped."
+      - "<gray>The ore mine is on your right: stone, coal and iron."
+      - "<gray>Iron is what gear costs. Take everything — the cobblestone"
+      - "<gray>trades for food, and nothing you dig up is worthless."
+    trigger: BREAK_BLOCK
+    target: "STONE, COAL_ORE, IRON_ORE"
+    amount: 24
+    hint: "<dark_gray>Raw iron is the one that matters. Short? Keep mining — it refills."
 
-  safety:
-    icon: SHIELD
-    name: "<gold>Where you can be killed"
-    description:
-      - "<gray>Spawn and your box are <green>safe<gray>. The warzone, the mine"
-      - "<gray>and the KOTH arena usually are <red>not<gray>."
-      - "<gray>Hitting or being hit by a player <white>combat tags<gray> you:"
-      - "<gray>for the next few seconds you can't warp, fly or teleport out,"
-      - "<gray>and logging off won't save you — most servers kill you for it."
-    trigger: READ
-    hint: "<gray>Check <white>/tutorial what combat-tag<gray> for the details."
-
-  first-fight:
+  get-sword:
     icon: IRON_SWORD
-    name: "<red>Lose a fight on purpose"
+    name: "<yellow>Buy an iron sword"
     description:
-      - "<gray>Go to the warzone in gear you don't care about and take a fight."
-      - "<gray>Dying costs you what you're carrying and nothing else."
-      - "<gray>The players farming you today learned it exactly this way."
-    trigger: KILL_PLAYER
+      - "<gray>3 raw iron. On the real server this is the moment you stop"
+      - "<gray>being somebody else's loot."
+    trigger: HAVE_ITEM
+    target: IRON_SWORD
     amount: 1
-    command: "/warp pvp"
-    hint: "<gray>This one is optional — skip it if you'd rather build up first."
-    optional: true
+    hint: "<dark_gray>Not enough iron? The mine is still there."
 
-  settled-in:
-    icon: CLOCK
-    name: "<green>You're set"
+  get-armour:
+    icon: IRON_CHESTPLATE
+    name: "<yellow>Buy an iron chestplate"
     description:
-      - "<gray>That's the whole loop. Everything else is detail,"
-      - "<gray>and the detail is in <white>/tutorial topics<gray>."
-      - "<gray>Ask in chat when something makes no sense — on a server"
-      - "<gray>this size, someone always answers."
-    trigger: PLAYTIME_MINUTES
-    amount: 20
-    hint: "<gray>Finishes on its own once you've played 20 minutes."
+      - "<gray>5 raw iron. Then put it on."
+      - "<gray>Out there you'll lose this eventually — everyone does."
+      - "<gray>Gear is something you <white>spend<gray>, not something you keep."
+    trigger: HAVE_ITEM
+    target: IRON_CHESTPLATE
+    amount: 1
+    hint: "<dark_gray>That's the whole loop: dig, trade, gear up, repeat."
     rewards:
-      message: "<green>Nice. You're not new any more."
-      commands: []
+      message: "<green>Kitted out. Everything you're carrying comes with you."
 
 # ---------------------------------------------------------------------------
 # The glossary. /tutorial topics, or /tutorial what <id>.
@@ -171,9 +154,9 @@ topics:
     icon: STONE
     title: "<gold>The mine"
     lines:
-      - "<gray>A shared pit that fills itself back in. Mining it out doesn't"
-      - "<gray>ruin it for anyone, so dig freely."
-      - "<gray>Most mines are <red>not<gray> safezones — someone can turn up"
+      - "<gray>A shared pit that fills itself back in — the one you just"
+      - "<gray>used, but bigger and full of people."
+      - "<gray>Most mines are <red>not<gray> safezones: someone can turn up"
       - "<gray>while your inventory is full. That's the trade."
 
   money:

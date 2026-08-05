@@ -1,17 +1,26 @@
 # ---------------------------------------------------------------------------
-# BoxTutorial — the first ten minutes on a boxpvp server, explained.
+# BoxTutorial — a first-run sandbox for people who've never played boxpvp.
 #
-# The steps and the glossary live in tutorial.yml. This file is how the
-# tutorial behaves: who gets it, how loudly, and what happens at the end.
+# /tutorial drops a player into their own copy of a small arena: a mine that
+# fills itself back up, and a villager who trades ore for gear. The steps walk
+# them through mine → trade → gear up, and then send them back to spawn with
+# whatever they made.
+#
+# The steps and the glossary live in tutorial.yml. This file is the arena, and
+# how loudly the tutorial talks.
 #
 # Every string here accepts MiniMessage (<green>, <bold>, <gradient:...>) and
 # classic colour codes (&a, &l, &#ff8800). You can mix them.
 # ---------------------------------------------------------------------------
 
-# Start the tutorial by itself the first time a player joins the server.
+# Offer the tutorial the first time a player joins the server.
 auto-start: true
 
-# Also start it for players who joined before this plugin was installed.
+# invite = send them a clickable line they can ignore (recommended)
+# enter  = teleport them straight into the arena
+auto-start-mode: invite
+
+# Also offer it to players who joined before this plugin was installed.
 # Off by default: handing your existing playerbase a tutorial they didn't ask
 # for is a support ticket, not a feature. Turn it on for a fresh server, or
 # after a map reset, when everybody genuinely is new.
@@ -22,17 +31,16 @@ auto-start-existing: false
 # them.
 join-delay-seconds: 4
 
-# On a later join, remind a half-finished player which step they were on.
+# On a later join, remind a half-finished player that it's waiting.
 remind-on-join: true
 
 # Run the steps in order, arming only the one the player is on. Set to false to
-# make it a free-order checklist: any step can be completed at any time.
+# make it a free-order checklist.
 sequential: true
 
-# Let players walk past a step they can't finish (shift-click it in the menu, or
-# /tutorial next). Steps marked `optional: true` in tutorial.yml can always be
-# skipped, whatever this says. Leaving this on is strongly recommended: a
-# tutorial that can trap somebody is worse than one they can leave.
+# Let players walk past a step they can't finish (shift-click it in the menu,
+# or /tutorial next). Steps marked `optional: true` in tutorial.yml can always
+# be skipped, whatever this says.
 allow-step-skip: true
 
 # Let players run the whole thing again from the menu or /tutorial start.
@@ -42,8 +50,8 @@ allow-restart: true
 # On-screen guidance
 # ---------------------------------------------------------------------------
 
-# A boss bar naming the step the player is on. This is what keeps the tutorial
-# on screen once they've closed chat, so leaving it on is the point.
+# A boss bar naming the step the player is on. It only shows while they're
+# actually in the arena.
 bossbar: true
 bossbar-color: YELLOW   # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
 
@@ -51,8 +59,8 @@ bossbar-color: YELLOW   # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
 # actionbar for something, and two plugins fighting over it helps nobody.
 actionbar: false
 
-# How often the guide refreshes, in ticks. This is also how often "go to this
-# place" and "play for N minutes" steps are checked. 20 = once a second.
+# How often the guide refreshes. This is also how often "be carrying it" steps
+# are checked. 20 = once a second.
 nudge-interval-ticks: 20
 
 # Blank lines around the step briefings in chat, so they read as a block.
@@ -61,11 +69,96 @@ chat-spacers: true
 # A title on screen when the tutorial starts.
 show-welcome-title: true
 
-# Ticks to wait before the first step's briefing, and between one step being
-# completed and the next one being explained. Both exist so the "step done!"
-# line isn't immediately buried.
+# Ticks before the first step's briefing, and between one step being completed
+# and the next being explained. Both exist so "step done!" isn't buried.
 first-step-delay-ticks: 40
 next-step-delay-ticks: 30
+
+# Ticks between finishing the last step and being teleported out, so the last
+# thing they read isn't interrupted by a loading screen.
+return-delay-ticks: 60
+
+# ---------------------------------------------------------------------------
+# The arena
+#
+# One void world holds every instance, spaced far enough apart that nobody can
+# see or reach anybody else's. Each is built fresh when it's claimed, so what
+# the last player did to it never matters.
+# ---------------------------------------------------------------------------
+arena:
+  world: tutorial_arena
+  spacing: 512          # blocks between one instance and the next
+  max-instances: 32     # how many people can be in the tutorial at once
+  y: 64                 # floor height
+  radius: 12            # half-width of the platform (12 = 25x25)
+  wall-height: 3
+  floor: STONE_BRICKS
+  wall: BARRIER         # invisible, unbreakable, and nobody falls out
+
+  # Where the player lands, relative to the middle of the platform.
+  spawn-offset: [0, 1, 8]
+
+  shopkeeper:
+    offset: [0, 1, -8]
+    name: "<gold>Trader <gray>(right-click)"
+    profession: toolsmith   # cosmetic; any vanilla villager profession
+    type: plains
+
+  # Mines are cuboids with a block table, like any mine-reset plugin. Offsets
+  # are relative to the middle of the platform, and y: 1 is the first block
+  # above the floor. A mine refills once enough has come out of it — the
+  # defaults are sized so a player *sees* it happen, because "the ore comes
+  # back" is the single most important thing about the gamemode.
+  mines:
+    wood:
+      name: "The wood mine"
+      min: [-9, 1, -2]
+      max: [-6, 3, 1]
+      refill-at: 50       # refill once it's down to 50% left
+      blocks:
+        OAK_LOG: 100
+    ore:
+      name: "The ore mine"
+      min: [6, 1, -2]
+      max: [9, 3, 1]
+      refill-at: 50
+      blocks:
+        STONE: 40
+        COAL_ORE: 20
+        IRON_ORE: 40
+
+  # What the villager offers. These become real vanilla trades, so players see
+  # the ordinary trade window — two cost slots and an arrow, nothing to learn.
+  # A trade may cost at most two different items (a vanilla limit).
+  # Ore is the currency: no economy plugin is involved anywhere.
+  trades:
+    axe:
+      cost: [ "OAK_LOG 8" ]
+      result: "WOODEN_AXE 1"
+    pickaxe:
+      cost: [ "OAK_LOG 16" ]
+      result: "STONE_PICKAXE 1"
+    sword:
+      cost: [ "RAW_IRON 3" ]
+      result: "IRON_SWORD 1"
+    chestplate:
+      cost: [ "RAW_IRON 5" ]
+      result: "IRON_CHESTPLATE 1"
+    food:
+      cost: [ "COBBLESTONE 8" ]
+      result: "COOKED_BEEF 4"
+
+  # Where they go when they're done.
+  #   WORLD_SPAWN - the spawn of your main world (default)
+  #   LOCATION    - the world/x/y/z below
+  #   COMMAND     - run a command as the player, e.g. spawn
+  return:
+    mode: WORLD_SPAWN
+    world: world
+    x: 0.5
+    y: 64.0
+    z: 0.5
+    command: "spawn"
 
 # ---------------------------------------------------------------------------
 # Finishing
@@ -73,12 +166,12 @@ next-step-delay-ticks: 30
 completion:
   title: true
   broadcast: false
-  # Console commands run once, when a player completes the last step.
-  # %player% and %uuid% are replaced. A starter kit is the usual thing here.
+  # Console commands run once, when a player completes the last step. They keep
+  # everything they made in the arena, so this is a bonus on top of that.
+  # %player% and %uuid% are replaced.
   commands: []
   # Examples:
   #   - "give %player% cooked_beef 16"
-  #   - "eco give %player% 500"
   #   - "kit starter %player%"
 
 # Save progress.yml every N minutes (0 disables the timer; it is always saved
@@ -95,14 +188,22 @@ messages:
 
   menu-title: "<dark_gray>Tutorial <gray>| <gold>Getting started"
 
-  started: "<gray>New here? This walks you through it. <white>/tutorial<gray> reopens it any time."
-  resumed: "<gray>Picking up where you left off."
-  stopped: "<gray>Tutorial off. <white>/tutorial start<gray> brings it back — nothing was lost."
-  finished: "<green>That's the tutorial done. You know enough to be dangerous."
+  invited: "<gray>New to boxpvp? There's a two-minute walkthrough."
+  invite-button: "  <yellow>» <white><u>Click here to start the tutorial</u>"
+
+  started: "<gray>Welcome to the practice yard. Follow the bar at the top."
+  resumed: "<gray>Your tutorial is still waiting where you left it."
+  stopped: "<gray>Tutorial off. <white>/tutorial<gray> brings it back — nothing was lost."
+  finished: "<green>That's the loop. Mine, trade, gear up — the whole server is that."
+  sent-home: "<gray>Back at spawn. Everything you made is yours to keep."
   nothing-to-teach: "<gray>The tutorial has no steps set up yet."
 
-  welcome-title: "<gold>Welcome"
-  welcome-subtitle: "<gray>Follow the bar at the top"
+  arena-full: "<gray>Every practice yard is busy. Try <white>/tutorial<gray> again in a minute."
+  arena-left: "<gray>You've left the practice yard. <white>/tutorial<gray> takes you back."
+  arena-not-the-mine: "<gray>Only the <white>mines<gray> can be broken in here."
+
+  welcome-title: "<gold>The practice yard"
+  welcome-subtitle: "<gray>Mine, trade, gear up"
   finished-title: "<green>Tutorial complete"
   finished-subtitle: "<gray>Go make some enemies"
   finished-broadcast: "<white><player></white> <gray>finished the tutorial."
@@ -118,7 +219,7 @@ messages:
 
   topic-header: "<gold><title>"
 
-  not-running: "<gray>The tutorial isn't running. <white>/tutorial start<gray> begins it."
+  not-running: "<gray>The tutorial isn't running. <white>/tutorial<gray> begins it."
   cannot-skip: "<gray>That step can't be skipped."
   restart-not-allowed: "<gray>You've already been through the tutorial."
   no-permission: "<red>You don't have permission to do that."
