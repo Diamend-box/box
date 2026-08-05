@@ -496,6 +496,11 @@ final class RuinedCastle implements DemoShape {
         chests.add(new Rel(ux - 1, -2, 0));
         s.put(ux + 1, -2, 0, p.glow());
         s.put(ux - 1, -2, 2, "COBWEB");
+        // The undercroft's own stair trench drops in and does not come back
+        // out; every other vault here is routed through climbOut and this one
+        // was not, which is the chest at the west end of the hall that the
+        // sixth playtest could get to and not leave.
+        climbOut(s, rng, p::rockMix, ux - 1, -2, 0, 0, 1, 6);   // south into the bailey
 
         // 3. The chapel reliquary: a crawl space under the altar, opened
         //    from the nave floor in front of it.
@@ -648,7 +653,7 @@ final class RuinedCastle implements DemoShape {
     /**
      * Carves a guaranteed-climbable stepped shaft out of a buried vault: from
      * the chest cell it rises one block per step in a cardinal direction until
-     * it breaks the surface, each tread a solid block under two clear ones, so
+     * it breaks the surface, each tread a solid block under three clear ones, so
      * a player can walk down to the chest and back up without breaking
      * anything. Island blocks are protected on the live server — a sealed
      * vault would be dead loot — so every buried chest is routed through here.
@@ -665,7 +670,13 @@ final class RuinedCastle implements DemoShape {
                 return;
             }
             s.put(x, y - 1, z, tread.apply(rng));   // the tread you stand on
-            s.carveBox(x, y, z, x, y + 1, z);       // head-and-shoulders clearance
+            // Three cells, not two. Climbing a one-block step is a jump, and a
+            // jump needs room over your head as well as room to land in — so a
+            // stair cut two cells high is a stair you can only walk *down*.
+            // Every buried vault in this shape was a one-way drop because of
+            // that missing cell, and the reachability sweep could not see it
+            // while it let a player fall in and never asked them to leave.
+            s.carveBox(x, y, z, x, y + 2, z);
         }
     }
 

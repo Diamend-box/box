@@ -162,10 +162,15 @@ final class SeaBeastBones implements DemoShape {
             int tailX = spineStart + 3;
             int zcT = (int) Math.round(zc(tailX, rx, bend));
             s.fillBox(tailX - 2, -3, zcT - 2, tailX + 2, 0, zcT + 2, gut);
-            s.carveBox(tailX - 1, -2, zcT - 1, tailX + 1, -1, zcT + 1);
-            s.put(tailX, -2, zcT + 3, gut.apply(rng));
-            s.carveBox(tailX, -1, zcT + 3, tailX, 1, zcT + 3);
-            s.carveBox(tailX, -2, zcT + 2, tailX, 0, zcT + 2);
+            // Three cells of ceiling, not two: a room two blocks high is a
+            // room you cannot jump inside, so the last step up out of this
+            // cache was unmakeable and the chest was a one-way drop.
+            s.carveBox(tailX - 1, -2, zcT - 1, tailX + 1, 0, zcT + 1);
+            // And the way in and out laid by ClimbPath, which cannot produce
+            // a riser too tall to climb.
+            ClimbPath gullet = new ClimbPath();
+            gullet.connect(gut, tailX, -2, zcT - 1, tailX, 1, zcT + 3);
+            gullet.cut(s, rng);
             chests.add(new Rel(tailX, -2, zcT - 1));
             s.put(tailX + 1, -2, zcT + 1, p.glow());
         }

@@ -246,13 +246,15 @@ final class RuinedWatchtower implements DemoShape {
             // enterable by crawling — which survival players cannot choose to
             // do, so the chest down here was sealed on every tier-3+ seed.
             s.carveBox(-1, -3, -8, 1, -1, -6);
-            s.put(0, 0, -4, p.rockMix(rng));
-            s.carveBox(0, 1, -4, 0, 3, -4);
-            s.put(0, -1, -5, p.rockMix(rng));
-            s.carveBox(0, 0, -5, 0, 2, -5);
-            s.put(0, -2, -6, p.rockMix(rng));
-            s.carveBox(0, -1, -6, 0, 1, -6);
-            s.put(0, -3, -7, p.rockMix(rng));
+            // The trench up to the yard, laid by ClimbPath rather than by
+            // hand. Cut by hand it cleared three cells over each tread but
+            // not over the tread *below* it, so the last riser out of the
+            // crypt had a ceiling exactly where a jumping player's head goes:
+            // you could walk down to this chest and never walk back up.
+            ClimbPath trench = new ClimbPath();
+            trench.connect(p::rockMix, 0, -3, -8, 2, 0, -6);
+            trench.connect(p::rockMix, 2, 0, -6, 0, 3, -4);
+            trench.cut(s, rng);
             chests.add(new Rel(0, -3, -8));
             s.put(1, -3, -8, p.glow());
             s.put(-1, -3, -6, "SKELETON_SKULL");

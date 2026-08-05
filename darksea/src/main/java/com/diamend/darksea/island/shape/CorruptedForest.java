@@ -446,7 +446,10 @@ final class CorruptedForest implements DemoShape {
         for (int i = 1; i <= steps; i++) {
             int x = cx + dx * i, z = cz + dz * i, y = cy - 1 + i;
             s.put(x, y - 1, z, tread.apply(rng));
-            s.carveBox(x, y, z, x, y + 1, z);
+            // Three cells: climbing a one-block step is a jump, and a jump
+            // needs headroom as well as somewhere to land. Cut two high, this
+            // was a stair you could only walk down.
+            s.carveBox(x, y, z, x, y + 2, z);
         }
     }
 }
