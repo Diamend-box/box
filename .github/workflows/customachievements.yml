@@ -1,13 +1,19 @@
-name: Verify plugin
+name: Verify CustomAchievements
 
 on:
   push:
     branches: [ "claude/minecraft-custom-achievements-uznj9d" ]
-    paths-ignore: [ "**/*.md" ]
+    paths:
+      - "customachievements/**"
+      - ".github/workflows/customachievements.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    working-directory: customachievements
 
 jobs:
   # ---------------------------------------------------------------
@@ -28,8 +34,8 @@ jobs:
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-jar
-          path: target/*.jar
+          name: CustomAchievements-jar
+          path: customachievements/target/CustomAchievements-*.jar
           if-no-files-found: error
 
   # ---------------------------------------------------------------
@@ -51,8 +57,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-reports
-          path: target/surefire-reports/**
+          name: customachievements-surefire-reports
+          path: customachievements/target/surefire-reports/**
           if-no-files-found: warn
 
   # ---------------------------------------------------------------
@@ -71,9 +77,10 @@ jobs:
       - name: Download built jar
         uses: actions/download-artifact@v4
         with:
-          name: plugin-jar
+          name: CustomAchievements-jar
           path: artifact
       - name: Fetch latest Paper 1.21.4
+        working-directory: .
         run: |
           set -uo pipefail
           VER=1.21.4
@@ -92,6 +99,7 @@ jobs:
           curl -sf -H "User-Agent: $UA" -o paper.jar "$URL" || { echo "::error::download failed"; exit 1; }
           ls -la paper.jar
       - name: Boot server with the plugin
+        working-directory: .
         run: |
           set -uo pipefail
           mkdir -p run/plugins
@@ -118,6 +126,7 @@ jobs:
           echo "=================== server.log (tail) ==================="
           tail -n 80 server.log || true
       - name: Assert clean enable and working command
+        working-directory: .
         run: |
           set -uo pipefail
           LOG=run/server.log
@@ -136,6 +145,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: server-log
+          name: customachievements-server-log
           path: run/server.log
           if-no-files-found: warn

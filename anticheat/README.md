@@ -10,8 +10,8 @@ reading ambient server data. This plugin fights them on the same layer.
 > human's design. Review it and test it on your own server before trusting it in
 > production — movement checks in particular reward tuning to your playstyle.
 
-> This is a completely separate project from the *CustomAchievements* plugin in
-> the same repository: different module (`anticheat/`), different package
+> This is a completely separate project from *CustomAchievements* and *BoxCore*
+> in the same repository: different module (`anticheat/`), different package
 > (`com.diamend.anticheat`), different purpose.
 
 ---
