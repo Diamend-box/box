@@ -87,7 +87,8 @@ public record DarkSeaSettings(
     public record MobSpawnSettings(int scanIntervalTicks, double activationRadius, int perIslandCap,
                                    int globalCap, int abandonCooldownMinutes,
                                    int islandBudget, int budgetRefillMinutes,
-                                   int bossRespawnMinutes, int spawnClearance) {
+                                   int bossRespawnMinutes, int spawnClearance,
+                                   int spawnWidth) {
     }
 
     /**
@@ -313,7 +314,8 @@ public record DarkSeaSettings(
                 Math.max(1, cfg.getInt("mob-spawning.island-budget", 14)),
                 Math.max(1, cfg.getInt("mob-spawning.budget-refill-minutes", 20)),
                 Math.max(0, cfg.getInt("mob-spawning.boss-respawn-minutes", 15)),
-                Math.max(1, cfg.getInt("mob-spawning.spawn-clearance", 3)));
+                Math.max(1, cfg.getInt("mob-spawning.spawn-clearance", 3)),
+                Math.max(1, cfg.getInt("mob-spawning.spawn-width", 2)));
 
         CombatSettings combat = new CombatSettings(
                 cfg.getBoolean("combat.protect-islands", true),

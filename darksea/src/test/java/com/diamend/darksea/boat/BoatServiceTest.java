@@ -167,6 +167,25 @@ class BoatServiceTest {
     }
 
     @Test
+    @DisplayName("a coast reaches the handover speed in about a second")
+    void theCoastEndsWhereTheClientTakesOver() {
+        // The abrupt stop the sixth playtest felt was the handover, not the
+        // ramp: the service used to stop writing velocity while the boat was
+        // still at cruise, and a rider holding no forward input has a client
+        // that is already at a standstill, so the boat fell off a cliff. The
+        // coast now runs all the way down to RELEASE_SPEED, and it has to get
+        // there quickly enough to still read as stopping.
+        double speed = 0.56;
+        int ticks = 0;
+        while (speed > BoatService.RELEASE_SPEED && ticks < 200) {
+            speed = BoatService.driveStep(speed, 0.56, false);
+            ticks++;
+        }
+        assertTrue(ticks < 40, "a coast longer than two seconds is a boat that will not stop");
+        assertTrue(ticks > 10, "and one shorter than half a second is the wall again");
+    }
+
+    @Test
     @DisplayName("a surge decays back to cruise rather than being clamped away")
     void aSurgeBleedsOff() {
         double cap = 0.56;

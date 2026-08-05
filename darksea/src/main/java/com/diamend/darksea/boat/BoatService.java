@@ -309,11 +309,19 @@ public final class BoatService implements Listener {
         double cap = plugin.settings().boat().speedCapBase() * multiplier * wounded;
         Drive drive = drives.computeIfAbsent(rider.getUniqueId(), id -> new Drive());
         drive.speed = driveStep(drive.speed, cap, rider.getCurrentInput().isForward());
-        if (drive.speed <= plugin.settings().boat().speedCapBase() * wounded) {
-            // Down to what the hull makes unaided: stop writing velocity at
-            // all and hand the boat back. Every tick we do not touch is a tick
-            // the client is not being corrected, which is most of what
-            // "smooth" means here.
+        if (drive.speed <= RELEASE_SPEED) {
+            // Nearly stopped: hand the boat back. Every tick we do not touch
+            // is a tick the client is not being corrected, which is most of
+            // what "smooth" means here.
+            //
+            // This used to hand back at the hull's *unaided* cap, and that was
+            // the abrupt stop at the end of a coast. A rider who has let go of
+            // W is giving the client no forward input, so the client's own
+            // speed has already decayed to nothing — handing over at cruise
+            // speed dropped the boat from cruise to a standstill in one tick.
+            // Coasting the whole way down to a crawl means there is no step
+            // left to fall off.
+            drives.remove(rider.getUniqueId());
             return;
         }
         // Along the hull, not along the momentum. Scaling the measured step
@@ -333,11 +341,25 @@ public final class BoatService implements Listener {
     /** How much of the gap to the target speed a tick of holding forward closes. */
     private static final double THROTTLE_UP = 0.22;
 
-    /** And how much of it a tick of not holding forward gives back. */
-    private static final double COAST_DOWN = 0.06;
+    /**
+     * And how much of it a tick of not holding forward gives back. Sized so a
+     * boat at cruise reaches {@link #RELEASE_SPEED} in a little over a second:
+     * the coast now runs all the way to a crawl rather than stopping at the
+     * hull's own cap, so a gentler rate would read as a boat that will not
+     * slow down.
+     */
+    private static final double COAST_DOWN = 0.12;
 
     /** How fast speed above the cap — only a surge puts it there — bleeds off. */
     private static final double SURGE_BLEED = 0.05;
+
+    /**
+     * The speed at which a coasting boat is handed back to the client. Low
+     * enough that the handover is not a step you can feel: whatever the client
+     * is doing with a boat this slow, it is within a rounding error of what we
+     * were writing.
+     */
+    static final double RELEASE_SPEED = 0.03;
 
     /**
      * One tick of the throttle: eases the carried speed toward the hull's cap

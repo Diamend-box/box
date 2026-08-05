@@ -7,6 +7,9 @@ import com.diamend.darksea.world.ManagedWorld;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -206,12 +209,66 @@ public final class NodeService extends BukkitRunnable implements Listener {
             if (carve.isOpen(x, y, z)) {
                 continue;   // the face of the geode, left open so it can be seen
             }
-            Material material = shell;
-            if (bud != null && OreVein.isBud(node.seed(), offset, type.budOneIn())) {
-                material = bud;
+            if (bud != null && OreVein.isBud(node.seed(), offset, type.budOneIn())
+                    && placeBud(caves, carve, x, y, z, bud)) {
+                continue;
             }
-            caves.getBlockAt(x, y, z).setType(material, false);
+            caves.getBlockAt(x, y, z).setType(shell, false);
         }
+    }
+
+    /**
+     * Places a bud facing out of the rock it grows from, or reports that it
+     * cannot.
+     *
+     * <p>An amethyst cluster is a directional block that has to be attached to
+     * something. Setting the material and nothing else leaves it on its default
+     * facing — up, supported by the block underneath — so a bud on the roof of
+     * an opened geode, or on a cell whose floor is open cave, hung unsupported
+     * in mid-air. That is the floating amethyst from the sixth playtest. Here
+     * the bud picks a neighbouring cell that is rock and points away from it,
+     * and gives up if it has nothing to hold on to, in which case the caller
+     * lays plain shell instead.
+     */
+    private boolean placeBud(World caves, CultistCarve carve, int x, int y, int z, Material bud) {
+        // Down first: a cluster growing up off the floor is the shape a player
+        // expects, and the walls are the fallback.
+        int[][] faces = {{0, -1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
+        for (int[] face : faces) {
+            int nx = x + face[0];
+            int ny = y + face[1];
+            int nz = z + face[2];
+            if (!carve.inBounds(nx, nz) || carve.isOpen(nx, ny, nz)) {
+                continue;
+            }
+            Block block = caves.getBlockAt(x, y, z);
+            block.setType(bud, false);
+            BlockData data = block.getBlockData();
+            if (data instanceof Directional directional) {
+                // Away from the support, which is the opposite of the step we
+                // took to find it.
+                directional.setFacing(faceOf(-face[0], -face[1], -face[2]));
+                block.setBlockData(directional, false);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static BlockFace faceOf(int dx, int dy, int dz) {
+        if (dy > 0) {
+            return BlockFace.UP;
+        }
+        if (dy < 0) {
+            return BlockFace.DOWN;
+        }
+        if (dx > 0) {
+            return BlockFace.EAST;
+        }
+        if (dx < 0) {
+            return BlockFace.WEST;
+        }
+        return dz > 0 ? BlockFace.SOUTH : BlockFace.NORTH;
     }
 
     // ------------------------------------------------------------------

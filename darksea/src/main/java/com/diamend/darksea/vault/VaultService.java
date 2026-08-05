@@ -92,9 +92,28 @@ public final class VaultService implements Listener {
      */
     private Pos leverSpot(World world, IslandInstance island) {
         Pos vault = island.vaultChest();
+        // Two passes. The first only considers markers standing on open floor,
+        // because "furthest from the vault" on a castle is a battlement, and a
+        // lever on a lamp wedged between two crenellations is what the sixth
+        // playtest photographed: it reads as scenery, it is a nuisance to
+        // click, and it is nowhere a player would look. The second pass drops
+        // that requirement so a cramped shape still gets a lever at all.
+        Pos best = pickAnchor(world, island, vault, true);
+        if (best == null) {
+            best = pickAnchor(world, island, vault, false);
+        }
+        Pos anchor = best != null ? best : island.origin();
+        return standingSpot(world, anchor);
+    }
+
+    private Pos pickAnchor(World world, IslandInstance island, Pos vault, boolean openFloorOnly) {
         Pos best = null;
         double bestDist = -1.0;
         for (Pos point : island.spawnPoints()) {
+            Pos spot = standingSpot(world, point);
+            if (spot == null || (openFloorOnly && !onOpenFloor(world, spot))) {
+                continue;
+            }
             double dist = vault == null ? 0.0
                     : point.distanceSquared2D(vault.x(), vault.z());
             if (dist > bestDist) {
@@ -102,8 +121,26 @@ public final class VaultService implements Listener {
                 best = point;
             }
         }
-        Pos anchor = best != null ? best : island.origin();
-        return standingSpot(world, anchor);
+        return best;
+    }
+
+    /**
+     * Whether this is floor a player would walk over rather than a perch: at
+     * least three of the four neighbouring columns must be standable too.
+     * A crenellation gap fails on the walls either side of it, and a roof edge
+     * or a jutting stone fails on the nothing underneath it.
+     */
+    private boolean onOpenFloor(World world, Pos spot) {
+        int[][] around = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int walkable = 0;
+        for (int[] step : around) {
+            Block here = world.getBlockAt(spot.x() + step[0], spot.y(), spot.z() + step[1]);
+            Block below = world.getBlockAt(spot.x() + step[0], spot.y() - 1, spot.z() + step[1]);
+            if (here.isPassable() && below.getType().isSolid()) {
+                walkable++;
+            }
+        }
+        return walkable >= 3;
     }
 
     /**

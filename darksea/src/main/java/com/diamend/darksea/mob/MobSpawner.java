@@ -56,6 +56,13 @@ public final class MobSpawner extends BukkitRunnable {
     private final Map<String, Long> lastNear = new HashMap<>();
     /** When each island last noticed its resident boss missing, for the respawn wait. */
     private final Map<String, Long> bossFell = new HashMap<>();
+    /**
+     * Islands whose resident boss has stood at least once since the plugin
+     * loaded. An island not in here has nothing to respawn, so the wait does
+     * not apply to it — that distinction is the difference between a cooldown
+     * and a nest that is simply empty.
+     */
+    private final Set<String> bossEverRaised = new HashSet<>();
     /** Per-island spawn budgets: what stops an island being an endless farm. */
     private final Map<String, SpawnBudget> budgets = new HashMap<>();
     private final Set<String> warnedTypes = new HashSet<>();
@@ -157,9 +164,18 @@ public final class MobSpawner extends BukkitRunnable {
                 String boss = island.bossMob();
                 if (boss != null && countLive(mobs, boss) == 0) {
                     Long fellAt = bossFell.get(island.id());
-                    if (fellAt == null) {
+                    if (fellAt == null && bossEverRaised.contains(island.id())) {
+                        // It was standing when we last looked and is not now,
+                        // so it has just died: start the wait.
                         bossFell.put(island.id(), now);
                         continue;
+                    }
+                    if (fellAt == null) {
+                        // Never raised here at all. Waiting fifteen minutes to
+                        // populate an island for the first time is not a
+                        // respawn cooldown, it is an empty nest — which is
+                        // exactly what the sixth playtest sailed to.
+                        fellAt = 0L;
                     }
                     if (now - fellAt < cfg.bossRespawnMinutes() * 60_000L) {
                         continue;
@@ -172,12 +188,14 @@ public final class MobSpawner extends BukkitRunnable {
                             budget.tryConsume(now);
                             mobs.add(spawned);
                             bossFell.remove(island.id());
+                            bossEverRaised.add(island.id());
                         }
                     }
                     continue;
                 }
                 if (boss != null) {
                     bossFell.remove(island.id());   // one is standing again
+                    bossEverRaised.add(island.id());
                 }
 
                 if (island.spawnPoints().isEmpty()
@@ -261,28 +279,66 @@ public final class MobSpawner extends BukkitRunnable {
      */
     private Location standingRoom(Location at) {
         int clearance = plugin.settings().mobSpawning().spawnClearance();
+        int width = plugin.settings().mobSpawning().spawnWidth();
         int[][] nudges = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         for (int dy = 0; dy <= 2; dy++) {
             for (int[] nudge : nudges) {
                 Location candidate = at.clone().add(nudge[0], dy, nudge[1]);
-                if (hasClearance(candidate, clearance)) {
-                    return candidate;
+                Location room = clearBox(candidate, clearance, width);
+                if (room != null) {
+                    return room;
                 }
             }
         }
         return null;
     }
 
-    /** Whether {@code height} blocks of air stand over this spot. */
-    private boolean hasClearance(Location at, int height) {
+    /**
+     * Whether a box {@code width} columns on a side and {@code height} blocks
+     * tall stands clear here, centred on this spot.
+     *
+     * <p>Height alone was not enough, and that is why the Abominations were
+     * still suffocating after the last fix. A Ravager is about 1.95 blocks
+     * wide as well as 2.2 tall, so it occupies two columns in each direction
+     * whichever way it faces — a marker in a one-block-wide slot, a doorway or
+     * the gap between two crenellations gives it all the headroom in the world
+     * and still buries its flanks.
+     */
+    private Location clearBox(Location at, int height, int width) {
         World world = at.getWorld();
         if (world == null) {
-            return false;
+            return null;
         }
-        for (int dy = 0; dy < height; dy++) {
-            if (!world.getBlockAt(at.getBlockX(), at.getBlockY() + dy, at.getBlockZ())
-                    .isPassable()) {
-                return false;
+        int span = Math.max(1, width);
+        // The box has to include the marker column but need not be centred on
+        // it, so try every placement that touches it — four for a 2-wide mob.
+        // Requiring a symmetric 3x3 instead would be a block wider than a
+        // Ravager actually is, and the cost of over-strictness here is an
+        // island that spawns nothing.
+        for (int ox = -(span - 1); ox <= 0; ox++) {
+            for (int oz = -(span - 1); oz <= 0; oz++) {
+                if (boxIsClear(world, at.getBlockX() + ox, at.getBlockY(),
+                        at.getBlockZ() + oz, height, span)) {
+                    // Centre of the box it actually fits in, so a mob two
+                    // columns wide is not straddling the wall it just cleared.
+                    return new Location(world,
+                            at.getBlockX() + ox + span / 2.0,
+                            at.getBlockY(),
+                            at.getBlockZ() + oz + span / 2.0);
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean boxIsClear(World world, int x, int y, int z, int height, int span) {
+        for (int dx = 0; dx < span; dx++) {
+            for (int dz = 0; dz < span; dz++) {
+                for (int dy = 0; dy < height; dy++) {
+                    if (!world.getBlockAt(x + dx, y + dy, z + dz).isPassable()) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
@@ -442,6 +498,8 @@ public final class MobSpawner extends BukkitRunnable {
     /** Resets and shutdown: remove every mob this plugin spawned. */
     public void despawnAll() {
         budgets.clear();
+        bossFell.clear();
+        bossEverRaised.clear();   // a reset sea has never raised anything
         for (Set<UUID> mobs : tracked.values()) {
             despawn(mobs);
         }

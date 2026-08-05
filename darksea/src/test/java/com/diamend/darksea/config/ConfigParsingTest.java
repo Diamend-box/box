@@ -247,6 +247,8 @@ class ConfigParsingTest {
                 "a resident boss must wait before it rises again");
         assertTrue(settings.mobSpawning().spawnClearance() >= 3,
                 "big mobs need at least three blocks of air or they spawn suffocating");
+        assertTrue(settings.mobSpawning().spawnWidth() >= 2,
+                "a Ravager is two columns wide; one is what buried them");
     }
 
     @Test
