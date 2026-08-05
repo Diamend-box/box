@@ -1,0 +1,240 @@
+# ---------------------------------------------------------------------------
+# BoxTutorial — what the tutorial teaches.
+#
+# Two sections:
+#   steps:   the ordered walkthrough. Order in this file is the order players
+#            see; move a block up and it happens sooner.
+#   topics:  the glossary, browsable at any time with /tutorial topics.
+#
+# THESE DEFAULTS ARE A STARTING POINT. They describe boxpvp the gamemode, which
+# is the part a first-timer is missing, but the commands are guesses at yours.
+# Change `command:` and `target:` to whatever your server actually uses, then
+# run /tutorial reload.
+#
+# Step settings
+# -------------
+#   icon:        the material shown in the menu
+#   name:        the title, in colour
+#   description: lines shown in chat and in the tile's lore
+#   trigger:     what completes it (see the list below)
+#   target:      what counts — a material, a command, a world, a place.
+#                Blank or ANY counts everything. Comma-separated for a list.
+#   amount:      how many times (default 1)
+#   command:     a command worth offering; shown click-to-run in chat
+#   hint:        one extra line of advice
+#   optional:    true = the player may always skip it
+#   rewards:     commands: [] run from console (%player%), and message:
+#
+# Triggers
+# --------
+#   READ             done when the player clicks the step in the menu
+#   MANUAL           done only by /tutorial complete
+#   RUN_COMMAND      target is the command, without the slash
+#   BREAK_BLOCK      target is a material
+#   PLACE_BLOCK      target is a material
+#   PICK_UP_ITEM     target is a material
+#   CRAFT_ITEM       target is a material
+#   KILL_MOB         target is an entity type
+#   KILL_PLAYER      no target
+#   ENTER_WORLD      target is a world name
+#   REACH_LOCATION   target is world;x;y;z;radius
+#   PLAYTIME_MINUTES amount is the minutes, no target
+# ---------------------------------------------------------------------------
+
+steps:
+
+  welcome:
+    icon: WRITTEN_BOOK
+    name: "<gold>What a boxpvp server is"
+    description:
+      - "<gray>It's a short loop, run over and over:"
+      - "<white>mine <dark_gray>→ <white>sell <dark_gray>→ <white>buy gear <dark_gray>→ <white>fight <dark_gray>→ <white>repeat<gray>."
+      - "<gray>Nobody spends a week building a base out in the wild."
+      - "<gray>Ore comes back, money is the score, and armour is"
+      - "<gray>something you spend rather than something you keep."
+    hint: "<dark_gray>Read it, then click this step in the menu."
+    trigger: READ
+
+  your-box:
+    icon: CHEST
+    name: "<gold>Your box is yours"
+    description:
+      - "<gray>Everyone gets a private space — the box the mode is named for."
+      - "<gray>It's where your chests live and where nobody can touch you."
+      - "<gray>Store what you can't afford to lose <white>before<gray> you go out."
+    command: "/box"
+    hint: "<gray>If that isn't the command here, ask staff what is."
+    trigger: READ
+
+  mine:
+    icon: IRON_PICKAXE
+    name: "<yellow>Break some rock"
+    description:
+      - "<gray>The mine is shared, and it regenerates — the ore you take"
+      - "<gray>comes back for everyone, so mining out a wall is fine."
+      - "<gray>This is where your money starts."
+    trigger: BREAK_BLOCK
+    target: ANY
+    amount: 16
+    command: "/warp mine"
+    hint: "<gray>Take a pickaxe. Any 16 blocks count."
+
+  sell:
+    icon: EMERALD
+    name: "<yellow>Turn rock into money"
+    description:
+      - "<gray>Ore is not the point — money is. Most servers take"
+      - "<gray>everything in your inventory at once."
+      - "<gray>Sell early and often; carrying loot is how you lose it."
+    trigger: RUN_COMMAND
+    target: "sell, shop, warp shop"
+    amount: 1
+    command: "/sell all"
+    hint: "<gray>No <white>/sell<gray> here? Skip this one and find the shop."
+    optional: true
+
+  gear-up:
+    icon: IRON_CHESTPLATE
+    name: "<gold>Gear is a consumable"
+    description:
+      - "<gray>Buy armour you can afford to lose, because you will lose it."
+      - "<gray>The player who wins a boxpvp server isn't the one with the"
+      - "<gray>best set — it's the one who can replace theirs fastest."
+      - "<gray>Keep enough money banked to gear up again."
+    trigger: READ
+    hint: "<gray>Never take out gear you'd be upset to see dropped."
+
+  safety:
+    icon: SHIELD
+    name: "<gold>Where you can be killed"
+    description:
+      - "<gray>Spawn and your box are <green>safe<gray>. The warzone, the mine"
+      - "<gray>and the KOTH arena usually are <red>not<gray>."
+      - "<gray>Hitting or being hit by a player <white>combat tags<gray> you:"
+      - "<gray>for the next few seconds you can't warp, fly or teleport out,"
+      - "<gray>and logging off won't save you — most servers kill you for it."
+    trigger: READ
+    hint: "<gray>Check <white>/tutorial what combat-tag<gray> for the details."
+
+  first-fight:
+    icon: IRON_SWORD
+    name: "<red>Lose a fight on purpose"
+    description:
+      - "<gray>Go to the warzone in gear you don't care about and take a fight."
+      - "<gray>Dying costs you what you're carrying and nothing else."
+      - "<gray>The players farming you today learned it exactly this way."
+    trigger: KILL_PLAYER
+    amount: 1
+    command: "/warp pvp"
+    hint: "<gray>This one is optional — skip it if you'd rather build up first."
+    optional: true
+
+  settled-in:
+    icon: CLOCK
+    name: "<green>You're set"
+    description:
+      - "<gray>That's the whole loop. Everything else is detail,"
+      - "<gray>and the detail is in <white>/tutorial topics<gray>."
+      - "<gray>Ask in chat when something makes no sense — on a server"
+      - "<gray>this size, someone always answers."
+    trigger: PLAYTIME_MINUTES
+    amount: 20
+    hint: "<gray>Finishes on its own once you've played 20 minutes."
+    rewards:
+      message: "<green>Nice. You're not new any more."
+      commands: []
+
+# ---------------------------------------------------------------------------
+# The glossary. /tutorial topics, or /tutorial what <id>.
+# ---------------------------------------------------------------------------
+topics:
+
+  boxpvp:
+    icon: GRASS_BLOCK
+    title: "<gold>BoxPvP"
+    lines:
+      - "<gray>A PvP gamemode built around a short economy loop instead"
+      - "<gray>of survival. You mine in a shared, regenerating mine, sell"
+      - "<gray>for money, buy gear, and fight over the areas worth fighting"
+      - "<gray>over. Progress is money and rank, not a base."
+
+  your-box:
+    icon: CHEST
+    title: "<gold>Your box"
+    lines:
+      - "<gray>Your own private space: storage, safety, and somewhere to"
+      - "<gray>stand while you sort your inventory. Nobody can hit you or"
+      - "<gray>take anything there. Everything you'd hate to drop belongs"
+      - "<gray>in it before you go anywhere dangerous."
+
+  the-mine:
+    icon: STONE
+    title: "<gold>The mine"
+    lines:
+      - "<gray>A shared pit that fills itself back in. Mining it out doesn't"
+      - "<gray>ruin it for anyone, so dig freely."
+      - "<gray>Most mines are <red>not<gray> safezones — someone can turn up"
+      - "<gray>while your inventory is full. That's the trade."
+
+  money:
+    icon: GOLD_INGOT
+    title: "<gold>Money"
+    lines:
+      - "<gray>The actual score. It comes from selling what you gather and"
+      - "<gray>goes on gear, kits and rank."
+      - "<gray>Money in the bank survives your death; the diamonds in your"
+      - "<gray>backpack don't. Sell early."
+
+  warzone:
+    icon: NETHERITE_SWORD
+    title: "<red>The warzone"
+    lines:
+      - "<gray>Wherever PvP is switched on. Loot, events and the best"
+      - "<gray>money live there, and so does everyone hunting you."
+      - "<gray>Go in with gear you can replace, and leave when you're"
+      - "<gray>carrying more than you're willing to lose."
+
+  combat-tag:
+    icon: CLOCK
+    title: "<red>Combat tag"
+    lines:
+      - "<gray>The moment you hit a player or get hit, you're tagged for a"
+      - "<gray>few seconds. While tagged you usually can't teleport, warp"
+      - "<gray>or fly, and quitting is treated as dying."
+      - "<gray>It exists so nobody escapes a fight they're losing."
+
+  dying:
+    icon: BONE
+    title: "<gold>Dying"
+    lines:
+      - "<gray>You drop what you were carrying and respawn. That's it —"
+      - "<gray>no lost levels, no lost box, no lost money."
+      - "<gray>Everyone here has died hundreds of times. Treat gear as"
+      - "<gray>ammunition and it stops stinging."
+
+  kits-and-crates:
+    icon: ENDER_CHEST
+    title: "<gold>Kits and crates"
+    lines:
+      - "<gray>Kits hand you a set of gear on a cooldown; claim yours every"
+      - "<gray>time it's up, even when you don't need it, and sell the"
+      - "<gray>spares."
+      - "<gray>Crates are the keyed reward chests at spawn."
+
+  koth:
+    icon: BEACON
+    title: "<gold>KOTH"
+    lines:
+      - "<gray>King of the hill: stand in a marked area for long enough"
+      - "<gray>without being knocked out of it, and the reward is yours."
+      - "<gray>It's the fight everyone shows up for, and the fastest way to"
+      - "<gray>learn how the server's best players fight."
+
+  getting-help:
+    icon: PAPER
+    title: "<gold>Getting help"
+    lines:
+      - "<gray>Ask in chat first — most questions are answered in seconds."
+      - "<gray>Read the rules before you test them; being griefed is part"
+      - "<gray>of the game, being scammed usually isn't."
+      - "<gray>Staff are the ones with coloured names."

@@ -1,0 +1,33 @@
+name: BoxTutorial
+version: '${project.version}'
+main: com.diamend.boxtutorial.BoxTutorialPlugin
+api-version: '1.21'
+softdepend: [PlaceholderAPI]
+author: diamend
+description: First-run tutorial for the Box PvP server — teaches the gamemode, not just the commands.
+website: https://github.com/diamend-box/box
+
+commands:
+  tutorial:
+    description: Open the server tutorial.
+    usage: |
+      /tutorial                     - Open the tutorial
+      /tutorial topics              - What the words mean
+      /tutorial what <topic>        - Explain one of them
+      /tutorial status              - How far you got
+      /tutorial start               - Run it from the top
+      /tutorial next                - Skip the step you're on
+      /tutorial stop                - Turn it off
+      /tutorial steps               - List every step (staff)
+      /tutorial complete <player> <step> - Mark a step done (staff)
+      /tutorial reset <player>      - Wipe someone's progress (staff)
+      /tutorial reload              - Reload config and steps (staff)
+    aliases: [guide, howto, tut]
+
+permissions:
+  boxtutorial.use:
+    description: Allows opening the tutorial and the glossary.
+    default: true
+  boxtutorial.admin:
+    description: Allows starting, completing and resetting the tutorial for others.
+    default: op

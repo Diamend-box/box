@@ -1,0 +1,128 @@
+# ---------------------------------------------------------------------------
+# BoxTutorial — the first ten minutes on a boxpvp server, explained.
+#
+# The steps and the glossary live in tutorial.yml. This file is how the
+# tutorial behaves: who gets it, how loudly, and what happens at the end.
+#
+# Every string here accepts MiniMessage (<green>, <bold>, <gradient:...>) and
+# classic colour codes (&a, &l, &#ff8800). You can mix them.
+# ---------------------------------------------------------------------------
+
+# Start the tutorial by itself the first time a player joins the server.
+auto-start: true
+
+# Also start it for players who joined before this plugin was installed.
+# Off by default: handing your existing playerbase a tutorial they didn't ask
+# for is a support ticket, not a feature. Turn it on for a fresh server, or
+# after a map reset, when everybody genuinely is new.
+auto-start-existing: false
+
+# Seconds to wait after someone joins before the tutorial says anything, so it
+# lands after the join messages and the resource pack prompt rather than under
+# them.
+join-delay-seconds: 4
+
+# On a later join, remind a half-finished player which step they were on.
+remind-on-join: true
+
+# Run the steps in order, arming only the one the player is on. Set to false to
+# make it a free-order checklist: any step can be completed at any time.
+sequential: true
+
+# Let players walk past a step they can't finish (shift-click it in the menu, or
+# /tutorial next). Steps marked `optional: true` in tutorial.yml can always be
+# skipped, whatever this says. Leaving this on is strongly recommended: a
+# tutorial that can trap somebody is worse than one they can leave.
+allow-step-skip: true
+
+# Let players run the whole thing again from the menu or /tutorial start.
+allow-restart: true
+
+# ---------------------------------------------------------------------------
+# On-screen guidance
+# ---------------------------------------------------------------------------
+
+# A boss bar naming the step the player is on. This is what keeps the tutorial
+# on screen once they've closed chat, so leaving it on is the point.
+bossbar: true
+bossbar-color: YELLOW   # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
+
+# An actionbar line as well. Off by default: most servers already use the
+# actionbar for something, and two plugins fighting over it helps nobody.
+actionbar: false
+
+# How often the guide refreshes, in ticks. This is also how often "go to this
+# place" and "play for N minutes" steps are checked. 20 = once a second.
+nudge-interval-ticks: 20
+
+# Blank lines around the step briefings in chat, so they read as a block.
+chat-spacers: true
+
+# A title on screen when the tutorial starts.
+show-welcome-title: true
+
+# Ticks to wait before the first step's briefing, and between one step being
+# completed and the next one being explained. Both exist so the "step done!"
+# line isn't immediately buried.
+first-step-delay-ticks: 40
+next-step-delay-ticks: 30
+
+# ---------------------------------------------------------------------------
+# Finishing
+# ---------------------------------------------------------------------------
+completion:
+  title: true
+  broadcast: false
+  # Console commands run once, when a player completes the last step.
+  # %player% and %uuid% are replaced. A starter kit is the usual thing here.
+  commands: []
+  # Examples:
+  #   - "give %player% cooked_beef 16"
+  #   - "eco give %player% 500"
+  #   - "kit starter %player%"
+
+# Save progress.yml every N minutes (0 disables the timer; it is always saved
+# on shutdown).
+autosave-minutes: 5
+
+# ---------------------------------------------------------------------------
+# Messages
+#
+# Placeholders are written <like_this>. Set any message to "" to skip it.
+# ---------------------------------------------------------------------------
+messages:
+  prefix: "<dark_gray>[<gold>Tutorial<dark_gray>] <reset>"
+
+  menu-title: "<dark_gray>Tutorial <gray>| <gold>Getting started"
+
+  started: "<gray>New here? This walks you through it. <white>/tutorial<gray> reopens it any time."
+  resumed: "<gray>Picking up where you left off."
+  stopped: "<gray>Tutorial off. <white>/tutorial start<gray> brings it back — nothing was lost."
+  finished: "<green>That's the tutorial done. You know enough to be dangerous."
+  nothing-to-teach: "<gray>The tutorial has no steps set up yet."
+
+  welcome-title: "<gold>Welcome"
+  welcome-subtitle: "<gray>Follow the bar at the top"
+  finished-title: "<green>Tutorial complete"
+  finished-subtitle: "<gray>Go make some enemies"
+  finished-broadcast: "<white><player></white> <gray>finished the tutorial."
+
+  step-header: "<gold>Step <number><gray>/<gold><total> <dark_gray>» <white><step>"
+  step-goal: "  <gray>Goal: <white><goal>"
+  step-command: "  <yellow>» <white><command> <gray>(click to run)"
+  step-complete: "<green>Step <number><dark_green>/<green><total> done <dark_gray>- <white><step>"
+  step-skipped: "<gray>Skipped: <white><step>"
+
+  bossbar: "<gold>Step <number><gray>/<gold><total> <dark_gray>» <white><step><progress>"
+  actionbar: "<gray><goal>"
+
+  topic-header: "<gold><title>"
+
+  not-running: "<gray>The tutorial isn't running. <white>/tutorial start<gray> begins it."
+  cannot-skip: "<gray>That step can't be skipped."
+  restart-not-allowed: "<gray>You've already been through the tutorial."
+  no-permission: "<red>You don't have permission to do that."
+  player-offline: "<red><player> isn't online."
+  player-unknown: "<red>Never seen a player called <white><player></white>."
+  no-such-topic: "<gray>Nothing here about <white><topic></white>. Try <white>/tutorial topics<gray>."
+  no-such-step: "<gray>No step called <white><step></white>."
