@@ -28,11 +28,58 @@ going quiet, or on something outside the code.
 | The tower | Design pass |
 | The god fight | Everything above it |
 | Real `.schem` islands replacing generated shapes | Your FAWE update — pipeline is in `SCHEMATICS.md` |
+| Diving + underwater caves | Design pass — sketch below |
 | One knob to scale the whole sea's island count | Offered, never asked for |
 | Shop mechanics revision | **Closed — you said no** |
 
 The five design questions still open are at the bottom of `PLAYTEST.md`, not
 here, because they block playtesting rather than building.
+
+### Sketch: diving and the Raging Deep
+
+Not built, not scheduled. Written down so the idea does not have to be had
+twice.
+
+**The hook is already in the lore.** The Naxian harbor towns went under when
+the sea turned — `LORE.md` says so and nothing in game shows it. That is the
+content: you are not exploring generic underwater caves, you are swimming
+through the streets of the civilization whose ruins you have been looting on
+the surface. Same architecture, same mob names, drowned.
+
+**Depth as a second danger axis.** The sea's danger is horizontal — rings
+measured from spawn. Depth gives a vertical one that crosses it, so a shallow
+dive in ring 4 and a deep dive in ring 1 can be equally lethal for different
+reasons. That is a bigger content multiplier than another ring would be,
+because it reuses every island position twice.
+
+**Air is the run timer, and it should be gear, not a bar to watch.** Sea
+armor answers "can I be here at all"; diving gear should answer "for how
+long". A tier ladder that buys *depth* and *time* parallels the armor ladder
+players already understand, and gives Chronons a second sink — which is
+half of open decision 2.
+
+**What makes this cheap to build, if it ever gets picked up:**
+
+- `CultistCarve` already carves and validates a bounded cave world offline.
+  A drowned one is the same machinery with the air replaced by water.
+- The reachability sweep's movement model already includes **swim**, and
+  underwater there is no jump — which is precisely the mistake that cost
+  three playtests. A flooded space is far harder to seal by accident.
+- `NodeService` and the extraction channel are dimension-agnostic. Whatever
+  is worth mining down there needs numbers, not new systems.
+- Danger rings, zone crossing and the protection listener are all
+  "what world am I in, what does it do to me" — the `ManagedWorld` rules pass
+  already generalised that.
+
+**The one genuinely new problem** is that a drowning player cannot read a
+message, cannot fight well, and cannot easily retreat. Whatever goes down
+there has to be readable at a glance and escapable — an air pocket every so
+often is probably the difference between tense and miserable.
+
+**Smallest version worth shipping:** one drowned harbor town, at a fixed
+spot in ring 2, reached by swimming with a single tier of diving gear. No
+new dimension, no new mobs — sea mobs and the existing loot tables. If it is
+fun to be down there for five minutes, the rest is worth building.
 
 ---
 
