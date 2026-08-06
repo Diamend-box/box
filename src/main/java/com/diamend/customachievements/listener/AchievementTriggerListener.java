@@ -16,8 +16,10 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Translates in-game events into achievement progress via {@link AchievementService}.
@@ -28,9 +30,23 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AchievementTriggerListener implements Listener {
 
+    /**
+     * Upper bound on remembered placed-block positions. Block break/place events
+     * are main-thread, so this is a best-effort, non-persistent anti-farm guard;
+     * capping it stops the set from growing without limit on build-heavy servers
+     * (the oldest positions are evicted first).
+     */
+    private static final int MAX_TRACKED_PLACED = 50_000;
+
     private final Plugin plugin;
     private final AchievementService service;
-    private final Set<String> playerPlaced = ConcurrentHashMap.newKeySet();
+    private final Set<String> playerPlaced = Collections.synchronizedSet(
+            Collections.newSetFromMap(new LinkedHashMap<>(1024, 0.75f, false) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > MAX_TRACKED_PLACED;
+                }
+            }));
 
     public AchievementTriggerListener(Plugin plugin, AchievementService service) {
         this.plugin = plugin;

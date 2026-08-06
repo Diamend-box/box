@@ -80,7 +80,7 @@ class CustomAchievementsPluginTest {
 
         plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
         plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
-        assertEquals(2, data.getProgress("break_stone"), "progress accumulates");
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("break_stone", 0)), "progress accumulates");
         assertFalse(data.isCompleted("break_stone"), "not complete before reaching the amount");
 
         plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);

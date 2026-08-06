@@ -149,6 +149,16 @@ public class AchievementService {
     private final java.util.Map<String, Long> lastProgress = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
+     * Drops a player's cached action-bar throttle timestamps. Called when a
+     * player disconnects so the throttle map doesn't accumulate stale entries
+     * for the lifetime of the server.
+     */
+    public void forgetPlayer(java.util.UUID uuid) {
+        String prefix = uuid + "#";
+        lastProgress.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    /**
      * How close an in-progress achievement is to completion, as a fraction in
      * {@code [0, 1)}. Each requirement contributes its own capped progress ratio
      * and the results are averaged, so a single event that nudges several

@@ -50,6 +50,7 @@ public class ConnectionListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         plugin.getChatInput().cancel(event.getPlayer().getUniqueId());
         plugin.clearLastMenu(event.getPlayer().getUniqueId());
+        plugin.getAchievementService().forgetPlayer(event.getPlayer().getUniqueId());
         plugin.getPlayerDataManager().unload(event.getPlayer().getUniqueId());
     }
 }

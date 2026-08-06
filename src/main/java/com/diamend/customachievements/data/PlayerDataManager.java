@@ -113,7 +113,7 @@ public class PlayerDataManager {
 
     private void writeToFile(YamlConfiguration config, File file, UUID uuid) {
         try {
-            config.save(file);
+            com.diamend.customachievements.util.AtomicYaml.save(config, file);
         } catch (IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Could not save player data for " + uuid, ex);
         }
