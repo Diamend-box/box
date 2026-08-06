@@ -26,6 +26,9 @@ All notable changes to **CustomAchievements** are documented here.
   world's namespaced key (and the play-time statistic) as optional, as they are
   on the mock server, so the player-based behaviour tests actually execute in CI
   instead of aborting.
+- Unclaimed item rewards are now persisted in Bukkit's portable serialized-map
+  form instead of as a raw `ItemStack` object, so the player-data file no longer
+  embeds a server-specific implementation class. Existing saves are still read.
 
 ## [1.8.1]
 ### Changed
