@@ -4,6 +4,14 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.8.1]
+### Changed
+- **Action-bar progress now points at the nearest goal.** When a single event
+  advanced several achievements at once, the action bar could end up showing
+  whichever was processed last — often the one *furthest* from completion. It now
+  shows the achievement *closest* to completion (highest average requirement
+  progress), so the hint always points at the most achievable next goal.
+
 ## [1.8.0]
 ### Added
 - **`/reopen` command** (also `/ca reopen`) — reopens the last CustomAchievements
