@@ -282,11 +282,21 @@ public class AchievementService {
             return;
         }
         String name = world.getName();
-        String key = world.getKey().toString();
         String environment = world.getEnvironment().name();
+        // The namespaced key is optional metadata: some server implementations
+        // (and the MockBukkit test server) don't expose it. Fall back to
+        // name/environment matching when it's unavailable rather than letting
+        // the whole join handler abort.
+        String key;
+        try {
+            key = world.getKey().toString();
+        } catch (RuntimeException ex) {
+            key = null;
+        }
+        final String keyForMatch = key;
         handle(player, TriggerType.REACH_DIMENSION, requirement ->
                 requirement.matchesTarget(name)
-                        || requirement.matchesTarget(key)
+                        || (keyForMatch != null && requirement.matchesTarget(keyForMatch))
                         || requirement.matchesTarget(environment), false, 1);
     }
 

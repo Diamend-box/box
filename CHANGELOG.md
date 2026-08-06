@@ -22,9 +22,10 @@ All notable changes to **CustomAchievements** are documented here.
   entries are now cleared when they disconnect instead of lingering for the
   server's lifetime.
 ### Internal
-- The MockBukkit test suite no longer silently skips: the join path now tolerates
-  a missing play-time statistic (as on the mock server), so the player-based
-  behaviour tests actually execute in CI instead of aborting.
+- The MockBukkit test suite no longer silently skips: the join path now treats a
+  world's namespaced key (and the play-time statistic) as optional, as they are
+  on the mock server, so the player-based behaviour tests actually execute in CI
+  instead of aborting.
 
 ## [1.8.1]
 ### Changed
