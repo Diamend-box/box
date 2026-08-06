@@ -46,7 +46,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
+        setupConfig();
 
         this.achievementManager = new AchievementManager(this);
         this.achievementManager.load();
@@ -87,6 +87,40 @@ public class CustomAchievementsPlugin extends JavaPlugin {
             playerDataManager.saveAllAndShutdown();
         }
         getLogger().info("CustomAchievements disabled.");
+    }
+
+    /**
+     * Writes the bundled config on first run and, on upgrades, merges any new
+     * options introduced by this version into the server owner's existing
+     * config.yml. Only missing keys are added — existing values (and the file's
+     * comments) are left untouched — so newly-added options no longer sit silently
+     * at their code defaults after an update.
+     */
+    private void setupConfig() {
+        saveDefaultConfig();
+        reloadConfig();
+        org.bukkit.configuration.file.FileConfiguration config = getConfig();
+        java.io.InputStream defaultsStream = getResource("config.yml");
+        if (defaultsStream == null) {
+            return;
+        }
+        org.bukkit.configuration.file.YamlConfiguration defaults =
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                        new java.io.InputStreamReader(defaultsStream, java.nio.charset.StandardCharsets.UTF_8));
+        int added = 0;
+        for (String key : defaults.getKeys(true)) {
+            if (defaults.isConfigurationSection(key)) {
+                continue; // sections are recreated implicitly by their leaf keys
+            }
+            if (!config.contains(key)) {
+                config.set(key, defaults.get(key));
+                added++;
+            }
+        }
+        if (added > 0) {
+            saveConfig();
+            getLogger().info("Added " + added + " new option(s) to config.yml from this version's defaults.");
+        }
     }
 
     private void registerListeners() {
@@ -133,7 +167,16 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     /** Reads a player's total playtime (hours) and updates gauge objectives. */
     public void syncPlaytime(Player player) {
-        int hours = player.getStatistic(org.bukkit.Statistic.PLAY_ONE_MINUTE) / 72000; // 20 ticks * 3600s
+        int ticks;
+        try {
+            ticks = player.getStatistic(org.bukkit.Statistic.PLAY_ONE_MINUTE);
+        } catch (RuntimeException ex) {
+            // The play-time statistic isn't readable on every server
+            // implementation (notably the mock server used in unit tests); when
+            // it can't be read we skip the sync rather than breaking the join.
+            return;
+        }
+        int hours = ticks / 72000; // 20 ticks * 3600s
         achievementService.handleGauge(player, TriggerType.PLAYTIME_HOURS, null, hours);
     }
 

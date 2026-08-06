@@ -63,11 +63,7 @@ public class AchievementManager {
             write(config, achievement);
         }
         try {
-            File parent = file.getParentFile();
-            if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                plugin.getLogger().warning("Could not create data folder for achievements.yml");
-            }
-            config.save(file);
+            com.diamend.customachievements.util.AtomicYaml.save(config, file);
         } catch (IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Could not save achievements.yml", ex);
         }

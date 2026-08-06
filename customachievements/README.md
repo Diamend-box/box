@@ -79,7 +79,7 @@ mvn clean package
 ```
 
 The finished plugin is written to
-`customachievements/target/CustomAchievements-1.8.0.jar`. Drop that jar into
+`customachievements/target/CustomAchievements-1.8.2.jar`. Drop that jar into
 your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io` and the

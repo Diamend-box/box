@@ -20,7 +20,7 @@ separately.
 
 | Plugin | What it is | Module | Version |
 | --- | --- | --- | --- |
-| **[CustomAchievements](customachievements/README.md)** | Fully custom achievements built through an in-game GUI, with a player-facing menu, progress tracking, triggers and rewards. | `customachievements/` | 1.8.0 |
+| **[CustomAchievements](customachievements/README.md)** | Fully custom achievements built through an in-game GUI, with a player-facing menu, progress tracking, triggers and rewards. | `customachievements/` | 1.8.2 |
 | **[BoxCore](boxcore/README.md)** | The server's utility and progression core — a modular plugin holding skill trees, collections, boosts, a personal compactor and fast travel. | `boxcore/` | 1.0.0 |
 | **[AntiCheat](anticheat/README.md)** | A packet-level anticheat aimed at the blatant free clients (Meteor, Wurst) — combat, movement, world and passive protections. | `anticheat/` | 2.0.0 |
 
@@ -58,7 +58,7 @@ There is no top-level build. Each plugin is a standalone Maven project — build
 the one you want from its own directory:
 
 ```bash
-cd customachievements && mvn -B clean package   # -> target/CustomAchievements-1.8.0.jar
+cd customachievements && mvn -B clean package   # -> target/CustomAchievements-1.8.2.jar
 cd boxcore           && mvn -B clean package    # -> target/BoxCore-1.0.0.jar
 cd anticheat         && mvn -B clean package    # -> target/AntiCheat-2.0.0.jar
 ```

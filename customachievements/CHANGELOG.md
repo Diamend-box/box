@@ -4,6 +4,36 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.8.2]
+### Changed
+- **Player data and `achievements.yml` are now saved atomically.** Saves write to
+  a temporary file and then atomically rename it into place, so a crash, kill, or
+  full disk part-way through a write can no longer leave a corrupt (half-written)
+  file where a complete one used to be.
+- **New config options are added automatically on upgrade.** On startup any
+  options introduced by a newer version are merged into your existing
+  `config.yml` (existing values and comments are left untouched), so newly-added
+  settings no longer sit silently at their code defaults after an update.
+### Fixed
+- **Bounded the anti-farm placed-block memory.** When `count-player-placed-blocks`
+  is `false`, the set of remembered placed blocks is now capped (oldest entries
+  evicted first) so it can't grow without limit on build-heavy servers.
+- **Stopped the action-bar progress throttle from leaking.** A player's throttle
+  entries are now cleared when they disconnect instead of lingering for the
+  server's lifetime.
+### Internal
+- The MockBukkit test suite no longer silently skips: the join path now tolerates
+  a missing play-time statistic (as on the mock server), so the player-based
+  behaviour tests actually execute in CI instead of aborting.
+
+## [1.8.1]
+### Changed
+- **Action-bar progress now points at the nearest goal.** When a single event
+  advanced several achievements at once, the action bar could end up showing
+  whichever was processed last — often the one *furthest* from completion. It now
+  shows the achievement *closest* to completion (highest average requirement
+  progress), so the hint always points at the most achievable next goal.
+
 ## [1.8.0]
 ### Added
 - **`/reopen` command** (also `/ca reopen`) — reopens the last CustomAchievements

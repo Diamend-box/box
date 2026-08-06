@@ -59,6 +59,8 @@ public class AchievementService {
             return;
         }
         PlayerData data = playerData.get(player.getUniqueId());
+        Achievement closest = null;
+        double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
             if (data.isCompleted(achievement.getId())) {
                 continue;
@@ -82,9 +84,16 @@ public class AchievementService {
                 if (isComplete(achievement, data)) {
                     award(player, achievement, data);
                 } else {
-                    sendProgress(player, achievement, data);
+                    double fraction = completionFraction(achievement, data);
+                    if (fraction > closestFraction) {
+                        closestFraction = fraction;
+                        closest = achievement;
+                    }
                 }
             }
+        }
+        if (closest != null) {
+            sendProgress(player, closest, data);
         }
     }
 
@@ -99,6 +108,8 @@ public class AchievementService {
             return;
         }
         PlayerData data = playerData.get(player.getUniqueId());
+        Achievement closest = null;
+        double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
             if (data.isCompleted(achievement.getId())) {
                 continue;
@@ -121,16 +132,64 @@ public class AchievementService {
                 if (isComplete(achievement, data)) {
                     award(player, achievement, data);
                 } else {
-                    sendProgress(player, achievement, data);
+                    double fraction = completionFraction(achievement, data);
+                    if (fraction > closestFraction) {
+                        closestFraction = fraction;
+                        closest = achievement;
+                    }
                 }
             }
+        }
+        if (closest != null) {
+            sendProgress(player, closest, data);
         }
     }
 
     // Throttle for action-bar progress messages, keyed by uuid#achievementId.
     private final java.util.Map<String, Long> lastProgress = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Shows an unobtrusive action-bar progress update (if enabled), throttled per achievement. */
+    /**
+     * Drops a player's cached action-bar throttle timestamps. Called when a
+     * player disconnects so the throttle map doesn't accumulate stale entries
+     * for the lifetime of the server.
+     */
+    public void forgetPlayer(java.util.UUID uuid) {
+        String prefix = uuid + "#";
+        lastProgress.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    /**
+     * How close an in-progress achievement is to completion, as a fraction in
+     * {@code [0, 1)}. Each requirement contributes its own capped progress ratio
+     * and the results are averaged, so a single event that nudges several
+     * achievements can pick the one nearest the finish line for the action bar.
+     *
+     * <p>Package-private and static so it can be unit-tested directly against
+     * plain {@link Achievement}/{@link PlayerData} objects without a live server.
+     */
+    static double completionFraction(Achievement achievement, PlayerData data) {
+        List<Requirement> requirements = achievement.getRequirements();
+        if (requirements.isEmpty()) {
+            return 1.0;
+        }
+        double total = 0.0;
+        for (int i = 0; i < requirements.size(); i++) {
+            int required = requirements.get(i).requiredAmount();
+            if (required <= 0) {
+                total += 1.0;
+                continue;
+            }
+            int current = Math.min(data.getProgress(PlayerData.requirementKey(achievement.getId(), i)), required);
+            total += (double) current / required;
+        }
+        return total / requirements.size();
+    }
+
+    /**
+     * Shows an unobtrusive action-bar progress update (if enabled), throttled per
+     * achievement. When one event advances several achievements at once, callers
+     * pass the one closest to completion so the hint points at the nearest goal.
+     */
     private void sendProgress(Player player, Achievement achievement, PlayerData data) {
         if (!plugin.getConfig().getBoolean("progress-feedback", true)) {
             return;
