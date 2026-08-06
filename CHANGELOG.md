@@ -2,6 +2,10 @@
 
 All notable changes to **CustomAchievements** are documented here.
 
+The other plugins in this repository keep their own, next to their `pom.xml`:
+[`boxcore/CHANGELOG.md`](boxcore/CHANGELOG.md) and
+[`tutorial/CHANGELOG.md`](tutorial/CHANGELOG.md).
+
 > This plugin was written with AI assistance (Anthropic's Claude).
 
 ## [1.6.0]

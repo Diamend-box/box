@@ -4,8 +4,8 @@ A **Paper 1.21.4** plugin that teaches boxpvp by making somebody play a tiny
 version of it. `/tutorial` puts a new player in their own private arena with a
 mine that fills itself back up and a villager who trades ore for gear, walks
 them up the ladder — **wood → axe → more wood → pickaxe → ore → sword → armour
-→ compressed log → charm** — and sends them back to spawn with everything they
-made.
+→ a better axe → compressed log → charm** — and sends them back to spawn with
+everything they made.
 
 Every reward is a named slot you can point at **your own item**: hold it, click
 the slot in `/tutorial items`, done.
@@ -38,19 +38,22 @@ So the tutorial is a place, not a list of instructions.
 1. They join. A clickable line offers the tutorial (it doesn't grab them).
 2. `/tutorial` — the world fades and they're standing on a small platform.
    A **wood mine** on the left, an **ore mine** on the right, a **Trader**
-   in front of them, and a boss bar reading *Step 1/10 — Break 8 logs*.
+   in front of them, and a boss bar reading *Step 1/11 — Break 8 logs*.
 3. They punch 8 logs. The step ticks over. Right-click the Trader: the ordinary
    vanilla trade screen, 8 logs in, one wooden axe out. **The ore is the money** —
    there is no currency in the arena and no economy plugin behind it.
 4. Sixteen more logs — and while they're cutting, the mine refills in front of
    them. That's the moment the gamemode lands.
 5. Pickaxe. Then the ore mine: stone, coal, iron. Then a sword, then armour.
-6. The long one: **64 logs for a compressed log** — a glowing log worth a stack,
+6. An **axe upgrade** — 24 logs and 2 raw iron for an Efficiency II iron axe,
+   bought right before the grind it shortens. Spending on a tool feels like
+   going backwards; it isn't, and that's the lesson.
+7. The long one: **64 logs for a compressed log** — a glowing log worth a stack,
    which teaches compacting the only way that sticks. That buys the **charm**.
-7. Last step: put the charm in the off hand. Their hearts go up, because the
+8. Last step: put the charm in the off hand. Their hearts go up, because the
    charm's stats are real off-hand attribute modifiers.
-8. Done. Three seconds to read the message, then they're at spawn — carrying
-   the axe, the pickaxe, the sword, the armour, the charm and the leftovers.
+9. Done. Three seconds to read the message, then they're at spawn — carrying
+   the axes, the pickaxe, the sword, the armour, the charm and the leftovers.
 
 Everything above is `tutorial.yml` and `config.yml`. Change the ladder, the
 mines, the trades, the layout — none of it is compiled in.
@@ -112,7 +115,8 @@ cd tutorial
 mvn clean package
 ```
 
-The jar lands in `tutorial/target/BoxTutorial-1.0.0.jar`.
+The jar lands in `tutorial/target/BoxTutorial-1.1.0.jar`. Release notes are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -173,6 +177,8 @@ arena:
       blocks:              # weights, not percentages
         OAK_LOG: 90
         DARK_OAK_LOG: 10
+      drops:               # what a block gives instead of its own drop
+        DARK_OAK_LOG: "OAK_LOG 4"
     ore:
       min: [6, 1, -2]
       max: [9, 3, 1]
@@ -186,6 +192,9 @@ arena:
     axe:
       cost: [ "OAK_LOG 8" ]     # up to two different items (a vanilla limit)
       result: "item:axe"        # a named slot — see `items:` below
+    axe_t2:
+      cost: [ "OAK_LOG 24", "RAW_IRON 2" ]
+      result: "item:axe_t2"
     charm:
       cost: [ "item:compressed_log 1" ]
       result: "item:charm"
@@ -202,9 +211,16 @@ instance straight back to the pool; the player's progress is untouched and
 `/tutorial` drops them into a new one at the same step.
 
 **Mines** count what comes out of them rather than scanning for gaps, and refill
-when enough has gone. Sizing matters more than it looks: a mine large enough
-never to refill teaches nothing, and the refill is the single most important
-idea in the gamemode.
+when enough has gone — and refill *immediately* if the whole thing is cleared,
+whatever `refill-at` says, because the counter is only a guess and nobody should
+be left standing in an empty room waiting on it. Sizing matters more than it
+looks: a mine large enough never to refill teaches nothing, and the refill is the
+single most important idea in the gamemode.
+
+A mine's `drops:` table overrides what a block gives when it's broken there, so
+a rarer block in the table can simply be worth more of the common one — which is
+how the shipped wood mine makes dark oak worth four oak logs, instead of a
+second item a first-day player has to work out what to do with.
 
 **Trades** become real `MerchantRecipe`s on a real villager. That's the whole
 integration — the player sees the trade window they already know, and the plugin
@@ -212,6 +228,9 @@ watches Paper's `PlayerTradeEvent` to tick the step off. A trade whose *price*
 is one of the named items is checked against the registry before it goes
 through: vanilla decides for itself how closely an ingredient has to match, and
 a charm that costs one compressed log must not be buyable with an ordinary log.
+What that check reads is the **trade window's cost slots** — the item actually
+being handed over — and not the player's inventory, which by then no longer
+holds it.
 
 ---
 
@@ -224,6 +243,12 @@ items:
     material: IRON_SWORD
     name: "<white>Practice Sword"
     lore: [ "<dark_gray>From the practice yard." ]
+  axe_t2:
+    label: "Axe II"
+    material: IRON_AXE
+    name: "<aqua>Reinforced Axe <gray>(II)"
+    enchants:              # default only — a bound item is never edited
+      efficiency: 2
   charm:
     label: "Charm"
     material: NETHER_STAR
@@ -235,7 +260,8 @@ items:
       armor: 2
 ```
 
-Six slots ship: `axe`, `pickaxe`, `sword`, `armor`, `compressed_log`, `charm`.
+Seven slots ship: `axe`, `axe_t2`, `pickaxe`, `sword`, `armor`,
+`compressed_log`, `charm`.
 What's above is only the **default** — to use your own:
 
 - **`/tutorial items`** — a menu of every slot. **Click holding an item** and
@@ -255,6 +281,11 @@ trades the moment you bind something, so you can retune the ladder live.
 `luck`). They're looked up in the registry rather than by constant, so both the
 1.21.2 renames and the older `generic.` spellings work. If your own charm brings
 its own attributes, leave `stats:` out and nothing is added.
+
+`enchants:` takes vanilla enchantment names (`efficiency`, `unbreaking`,
+`sharpness`, `fortune`, …) and applies only to the built-in default. An item you
+bind arrives with whatever enchantments it already had, and nothing here adds
+to them.
 
 ---
 

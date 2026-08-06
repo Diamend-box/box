@@ -62,10 +62,36 @@ class ItemsTest {
     void theShippedItemsAreAllUsable() {
         assertTrue(items().warnings().isEmpty(),
                 "the shipped items should load cleanly: " + items().warnings());
-        for (String id : List.of("axe", "pickaxe", "sword", "armor", "compressed_log", "charm")) {
+        for (String id : List.of("axe", "axe_t2", "pickaxe", "sword", "armor",
+                "compressed_log", "charm")) {
             assertTrue(items().isKnown(id), id + " should be defined");
             assertNotNull(items().get(id), id + " should produce an item");
         }
+    }
+
+    @Test
+    void theSecondAxeIsActuallyBetterThanTheFirst() {
+        // "Buy the upgrade" only teaches anything if the upgrade is one.
+        ItemStack first = items().get("axe");
+        ItemStack second = items().get("axe_t2");
+        assertNotNull(second, "the tier-two axe is defined");
+
+        assertTrue(second.getEnchantments().size() > first.getEnchantments().size()
+                        || second.getType() != first.getType(),
+                "the second axe is a better tool than the first one");
+        assertFalse(second.getEnchantments().isEmpty(),
+                "and it carries the enchantment the config asked for");
+    }
+
+    @Test
+    void enchantingOnlyTouchesTheDefault() {
+        // Somebody's own axe arrives with whatever it already had. Adding to it
+        // would be this plugin editing an item it was only asked to hand out.
+        ItemStack mine = new ItemStack(Material.NETHERITE_AXE);
+        items().bind("axe_t2", mine);
+
+        assertTrue(items().get("axe_t2").getEnchantments().isEmpty(),
+                "no enchantment was bolted onto the bound item");
     }
 
     @Test

@@ -7,9 +7,9 @@
 #
 # The default steps run inside the practice yard (see `arena:` in config.yml):
 # a wood mine, an ore mine, and a villager who trades ore for gear. The ladder
-# is wood → axe → more wood → pickaxe → ore → sword → armour → compressed log
-# → charm, which is the boxpvp loop in miniature. Everything they make is
-# theirs to keep.
+# is wood → axe → more wood → pickaxe → ore → sword → armour → a better axe →
+# compressed log → charm, which is the boxpvp loop in miniature. Everything
+# they make is theirs to keep.
 #
 # Step settings
 # -------------
@@ -53,6 +53,7 @@ steps:
     description:
       - "<gray>The wood mine is on your left. Punch it — no tool needed yet."
       - "<gray>Everything on this server starts as something you dug up."
+      - "<gray>The <white>dark<gray> logs in there are worth four of the pale ones."
     trigger: BREAK_BLOCK
     target: "OAK_LOG, DARK_OAK_LOG"
     amount: 8
@@ -68,7 +69,7 @@ steps:
     trigger: BUY_ITEM
     target: "item:axe"
     amount: 1
-    hint: "<dark_gray>Dark oak trades one-for-one for oak, if you're short."
+    hint: "<dark_gray>Short? A dark log is four logs. Go and find one."
 
   chop-more:
     icon: OAK_LOG
@@ -127,6 +128,18 @@ steps:
     target: "item:armor"
     amount: 1
 
+  upgrade-axe:
+    icon: IRON_AXE
+    name: "<aqua>Upgrade your axe"
+    description:
+      - "<gray>24 logs and 2 raw iron buys the <aqua>Reinforced Axe<gray>."
+      - "<gray>Spending on a tool feels like going backwards. It isn't —"
+      - "<gray>everything after this costs less of your evening."
+    trigger: HAVE_ITEM
+    target: "item:axe_t2"
+    amount: 1
+    hint: "<dark_gray>Buy the upgrade before the grind, not after it."
+
   compress-logs:
     icon: OAK_LOG
     name: "<gold>Fold 64 logs into one"
@@ -138,7 +151,7 @@ steps:
     trigger: HAVE_ITEM
     target: "item:compressed_log"
     amount: 1
-    hint: "<dark_gray>This is the grind. It's meant to be — the charm is worth it."
+    hint: "<dark_gray>Dark logs are four each, and the new axe is quick. Sixteen of them does it."
 
   get-charm:
     icon: NETHER_STAR

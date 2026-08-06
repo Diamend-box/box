@@ -92,6 +92,10 @@ return-delay-ticks: 60
 # tooltip, and takes them away when it isn't. Attribute names are the vanilla
 # ones (max_health, attack_damage, armor, armor_toughness, movement_speed,
 # attack_speed, knockback_resistance, luck).
+#
+# `enchants:` are vanilla enchantment names (efficiency, unbreaking, sharpness,
+# fortune, ...). They only apply to the built-in default — an item you bind
+# arrives with whatever it already had, and nothing here edits it.
 # ---------------------------------------------------------------------------
 items:
   axe:
@@ -99,6 +103,15 @@ items:
     material: WOODEN_AXE
     name: "<white>Practice Axe"
     lore: [ "<dark_gray>From the practice yard." ]
+  axe_t2:
+    label: "Axe II"
+    material: IRON_AXE
+    name: "<aqua>Reinforced Axe <gray>(II)"
+    lore:
+      - "<gray>Faster than the one you started with."
+      - "<dark_gray>There is always a better tool."
+    enchants:
+      efficiency: 2
   pickaxe:
     label: "Pickaxe"
     material: STONE_PICKAXE
@@ -165,7 +178,11 @@ arena:
   # are relative to the middle of the platform, and y: 1 is the first block
   # above the floor. A mine refills once enough has come out of it — the
   # defaults are sized so a player *sees* it happen, because "the ore comes
-  # back" is the single most important thing about the gamemode.
+  # back" is the single most important thing about the gamemode. Empty it
+  # completely and it comes straight back, whatever `refill-at` says.
+  #
+  # `drops:` overrides what a block gives when it's broken in that mine, so a
+  # rarer block in the table can simply be worth more of the common one.
   mines:
     wood:
       name: "The wood mine"
@@ -175,6 +192,8 @@ arena:
       blocks:
         OAK_LOG: 90
         DARK_OAK_LOG: 10
+      drops:
+        DARK_OAK_LOG: "OAK_LOG 4"
     ore:
       name: "The ore mine"
       min: [6, 1, -2]
@@ -195,6 +214,11 @@ arena:
     axe:
       cost: [ "OAK_LOG 8" ]
       result: "item:axe"
+    # The upgrade. Two ingredients, one of each currency, right before the
+    # grind it makes shorter — which is the whole argument for buying tools.
+    axe_t2:
+      cost: [ "OAK_LOG 24", "RAW_IRON 2" ]
+      result: "item:axe_t2"
     pickaxe:
       cost: [ "OAK_LOG 16" ]
       result: "item:pickaxe"
@@ -210,10 +234,6 @@ arena:
     charm:
       cost: [ "item:compressed_log 1" ]
       result: "item:charm"
-    # So the dark oak from the mine isn't dead weight in their inventory.
-    swap-dark-oak:
-      cost: [ "DARK_OAK_LOG 1" ]
-      result: "OAK_LOG 1"
     food:
       cost: [ "COBBLESTONE 8" ]
       result: "COOKED_BEEF 4"

@@ -175,19 +175,47 @@ public class Instance {
     }
 
     /**
-     * Notes a block coming out of a mine, and refills it once enough have.
+     * Notes a block coming out of a mine, and refills it when it's time.
      *
-     * <p>Counted rather than measured: reading a few hundred blocks every second
-     * to ask whether a mine looks empty is work the break event already did.
+     * <p>Two things trigger a refill. The counter is the ordinary one: enough
+     * has come out, so top it up before the player is scraping the corners.
+     * The other is the mine being genuinely empty, which is asked of the blocks
+     * rather than of the counter.
      *
-     * @return true when this block emptied it enough to trigger a refill
+     * <p>The counter is a guess. It's a good one, but anything that removes a
+     * block without going through a break event — a reload, a staff member with
+     * worldedit, a mine resized in config while somebody is standing in it —
+     * makes it a guess that is too high, and the player is left in an empty room
+     * waiting for a mine that thinks it is still half full. So the last word
+     * belongs to the world, and the scan only runs once the count says being
+     * empty is even possible.
+     *
+     * @return true when this block triggered a refill
      */
     public boolean noteMined(MineSpec mine) {
         int taken = mined.merge(mine.id(), 1, Integer::sum);
-        if (taken < mine.minedBeforeRefill()) {
+        boolean thresholdReached = taken >= mine.minedBeforeRefill();
+        if (!thresholdReached && (taken < mine.volume() / 4 || !isEmpty(mine))) {
             return false;
         }
         fill(mine);
+        return true;
+    }
+
+    /** True when there is nothing left to break in that mine. */
+    public boolean isEmpty(MineSpec mine) {
+        int baseX = origin.getBlockX();
+        int baseY = origin.getBlockY();
+        int baseZ = origin.getBlockZ();
+        for (int x = mine.min().x(); x <= mine.max().x(); x++) {
+            for (int y = mine.min().y(); y <= mine.max().y(); y++) {
+                for (int z = mine.min().z(); z <= mine.max().z(); z++) {
+                    if (!world.getBlockAt(baseX + x, baseY + y, baseZ + z).getType().isAir()) {
+                        return false;
+                    }
+                }
+            }
+        }
         return true;
     }
 

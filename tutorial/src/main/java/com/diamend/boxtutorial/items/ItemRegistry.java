@@ -12,6 +12,7 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.inventory.EquipmentSlotGroup;
@@ -107,6 +108,7 @@ public class ItemRegistry {
                     entry.getString("name", Text.prettify(id)),
                     entry.getStringList("lore"),
                     entry.getBoolean("glow", false));
+            enchant(id, item, entry.getConfigurationSection("enchants"));
 
             ids.add(id);
             labels.put(id, entry.getString("label", Text.prettify(id)));
@@ -122,6 +124,52 @@ public class ItemRegistry {
             if (!values.isEmpty()) {
                 stats.put(id, values);
             }
+        }
+    }
+
+    /**
+     * Applies a slot's {@code enchants:} block — {@code efficiency: 2}.
+     *
+     * <p>Only ever touches the built-in default. An item somebody bound arrives
+     * with whatever enchantments it already had, and adding to those would be
+     * this plugin quietly editing a staff member's item.
+     */
+    private void enchant(String id, ItemStack item, ConfigurationSection section) {
+        if (section == null) {
+            return;
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        for (String name : section.getKeys(false)) {
+            Enchantment enchantment = enchantment(name);
+            if (enchantment == null) {
+                warnings.add("item '" + id + "' asks for an enchantment called '" + name
+                        + "', which this server doesn't have; ignored");
+                continue;
+            }
+            meta.addEnchant(enchantment, Math.max(1, section.getInt(name, 1)), true);
+        }
+        item.setItemMeta(meta);
+    }
+
+    /**
+     * Finds an enchantment by name, with or without a namespace.
+     *
+     * <p>Looked up in the registry rather than named as a constant, for the same
+     * reason the attributes are: the constants have moved around, and a server
+     * on a slightly different version should lose one enchantment rather than
+     * the whole plugin.
+     */
+    private Enchantment enchantment(String name) {
+        String cleaned = name.trim().toLowerCase(Locale.ROOT);
+        try {
+            NamespacedKey enchantKey = NamespacedKey.fromString(
+                    cleaned.indexOf(':') >= 0 ? cleaned : "minecraft:" + cleaned);
+            return enchantKey == null ? null : Registry.ENCHANTMENT.get(enchantKey);
+        } catch (Throwable ex) {
+            return null;
         }
     }
 

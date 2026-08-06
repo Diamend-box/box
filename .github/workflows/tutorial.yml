@@ -148,7 +148,9 @@ jobs:
           need "topic(s)"                  "tutorial.yml parsed"
           need "mine(s)"                   "the arena config parsed"
           need "equip-charm"               "/tutorial steps listed the shipped ladder"
+          need "upgrade-axe"               "the tier-two axe step is in the ladder"
           need "compressed_log"            "/tutorial item list showed the item slots"
+          need "axe_t2"                    "the tier-two axe slot loaded (so its enchantment resolved)"
           need "Combat tag"                "/tutorial what printed a glossary topic"
           need "Reloaded configuration"    "/tutorial reload worked"
           # A warning here means a step, topic, mine or trade in the shipped

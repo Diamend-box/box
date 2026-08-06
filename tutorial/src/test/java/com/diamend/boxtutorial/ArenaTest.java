@@ -207,9 +207,71 @@ class ArenaTest {
                 "there is a floor under them");
         MineSpec wood = plugin.blueprint().mine("wood");
         assertNotNull(wood, "the wood mine is configured");
-        assertEquals(Material.OAK_LOG,
-                block(instance, wood.min().x(), wood.min().y(), wood.min().z()).getType(),
+        // Which block it is comes off the weighted table, so the assertion is
+        // that it's one of them — not that a 10% roll went the other way.
+        assertTrue(wood.produces(
+                        block(instance, wood.min().x(), wood.min().y(), wood.min().z()).getType()),
                 "and the wood mine is full");
+    }
+
+    @Test
+    void aDarkLogIsWorthFourOrdinaryOnes() {
+        // The dark oak is a tenth of the wood mine. It has to be worth finding,
+        // and it has to be worth finding as *logs* — a second item to work out
+        // what to do with is not a reward for a player on their first day.
+        MineSpec wood = plugin.blueprint().mine("wood");
+        assertNotNull(wood, "the wood mine is configured");
+
+        ItemStack drop = wood.dropFor(Material.DARK_OAK_LOG);
+        assertNotNull(drop, "breaking dark oak gives something other than itself");
+        assertEquals(Material.OAK_LOG, drop.getType(), "and that something is oak");
+        assertEquals(4, drop.getAmount(), "four of them");
+        assertNull(wood.dropFor(Material.OAK_LOG),
+                "an ordinary log is left to drop the ordinary way");
+    }
+
+    @Test
+    void breakingADarkLogHandsOverTheOverriddenDrop() {
+        PlayerMock player = started();
+        Instance instance = plugin.instances().of(player);
+        MineSpec wood = plugin.blueprint().mine("wood");
+        Block log = block(instance, wood.min().x(), wood.min().y(), wood.min().z());
+        log.setType(Material.DARK_OAK_LOG);
+
+        BlockBreakEvent event = new BlockBreakEvent(log, player);
+        Bukkit.getPluginManager().callEvent(event);
+
+        assertFalse(event.isCancelled(), "the mine is still breakable");
+        assertFalse(event.isDropItems(),
+                "the block's own drop is suppressed, so they don't get both");
+    }
+
+    @Test
+    void anEmptiedMineComesStraightBack() {
+        // The counter refills at a threshold, which is a guess. A player who has
+        // somehow cleared the whole thing is standing in an empty room, and no
+        // threshold should keep them waiting there.
+        PlayerMock player = started();
+        Instance instance = plugin.instances().of(player);
+        MineSpec wood = plugin.blueprint().mine("wood");
+
+        for (int x = wood.min().x(); x <= wood.max().x(); x++) {
+            for (int y = wood.min().y(); y <= wood.max().y(); y++) {
+                for (int z = wood.min().z(); z <= wood.max().z(); z++) {
+                    block(instance, x, y, z).setType(Material.AIR);
+                }
+            }
+        }
+        assertTrue(instance.isEmpty(wood), "the mine really is empty");
+        assertTrue(wood.volume() / 4 < wood.minedBeforeRefill(),
+                "and the counter is nowhere near its threshold yet");
+
+        // One break, well short of the refill count.
+        for (int taken = 0; taken <= wood.volume() / 4; taken++) {
+            instance.noteMined(wood);
+        }
+
+        assertFalse(instance.isEmpty(wood), "it filled itself back up anyway");
     }
 
     @Test
@@ -225,7 +287,7 @@ class ArenaTest {
             instance.noteMined(wood);
         }
 
-        assertEquals(Material.OAK_LOG, dug.getType(), "the mine refilled itself");
+        assertTrue(wood.produces(dug.getType()), "the mine refilled itself");
     }
 
     // ------------------------------------------------------------------

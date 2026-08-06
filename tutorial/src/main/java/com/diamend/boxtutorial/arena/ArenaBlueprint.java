@@ -6,6 +6,7 @@ import com.diamend.boxtutorial.util.Items;
 import com.diamend.boxtutorial.util.Text;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What one tutorial instance is made of, read from the {@code arena:} section.
@@ -140,8 +142,44 @@ public class ArenaBlueprint {
                     offset(entry, "min", new MineSpec.Offset(-8, 1, -4)),
                     offset(entry, "max", new MineSpec.Offset(-3, 4, 1)),
                     entry.getInt("refill-at", 40),
-                    blocks);
+                    blocks,
+                    readDrops(key, entry.getConfigurationSection("drops"), blocks.keySet()));
             found.add(mine);
+        }
+        return found;
+    }
+
+    /**
+     * Reads a mine's {@code drops:} table — {@code DARK_OAK_LOG: "OAK_LOG 4"}.
+     *
+     * @param mined the blocks this mine actually contains, so an override for
+     *              something the mine can't produce is reported rather than
+     *              sitting there quietly doing nothing
+     */
+    private Map<Material, ItemStack> readDrops(String mineId, ConfigurationSection section,
+                                               Set<Material> mined) {
+        if (section == null) {
+            return Map.of();
+        }
+        Map<Material, ItemStack> found = new LinkedHashMap<>();
+        for (String name : section.getKeys(false)) {
+            Material broken = Items.material(name, null);
+            if (broken == null) {
+                warnings.add("mine '" + mineId + "' has a drop for '" + name
+                        + "', which this server doesn't have; skipped");
+                continue;
+            }
+            ItemStack drop = Items.parse(section.getString(name, ""));
+            if (drop == null) {
+                warnings.add("mine '" + mineId + "' says " + broken.name() + " drops '"
+                        + section.getString(name, "") + "', which isn't an item; skipped");
+                continue;
+            }
+            if (!mined.contains(broken)) {
+                warnings.add("mine '" + mineId + "' has a drop for " + broken.name()
+                        + ", which isn't one of its blocks");
+            }
+            found.put(broken, drop);
         }
         return found;
     }

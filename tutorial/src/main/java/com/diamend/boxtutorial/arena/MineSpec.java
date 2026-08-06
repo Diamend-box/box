@@ -1,6 +1,7 @@
 package com.diamend.boxtutorial.arena;
 
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,12 +27,14 @@ public class MineSpec {
     private final Offset max;
     private final int refillAtPercent;
     private final Map<Material, Integer> blocks;
+    private final Map<Material, ItemStack> drops;
     private final int totalWeight;
 
     public MineSpec(String id, String name, Offset min, Offset max, int refillAtPercent,
-                    Map<Material, Integer> blocks) {
+                    Map<Material, Integer> blocks, Map<Material, ItemStack> drops) {
         this.id = id;
         this.name = name;
+        this.drops = new LinkedHashMap<>(drops);
         // Normalise the corners so a config that writes them the other way
         // round still describes the same box.
         this.min = new Offset(Math.min(min.x(), max.x()), Math.min(min.y(), max.y()),
@@ -111,5 +114,25 @@ public class MineSpec {
     /** True when this mine can produce that material — used to check a step. */
     public boolean produces(Material material) {
         return blocks.containsKey(material);
+    }
+
+    /**
+     * What breaking that block gives here instead of its ordinary drop, or null
+     * when the mine has nothing to say about it.
+     *
+     * <p>This is where a mine stops being decoration and starts being a rate:
+     * one block can be worth four of another, so a rarer block in the table is
+     * worth hoping for without being a second thing to understand.
+     *
+     * @return a fresh stack, safe to hand out
+     */
+    public ItemStack dropFor(Material broken) {
+        ItemStack drop = drops.get(broken);
+        return drop == null ? null : drop.clone();
+    }
+
+    /** The whole override table, for the config check and the tests. */
+    public Map<Material, ItemStack> drops() {
+        return Map.copyOf(drops);
     }
 }
