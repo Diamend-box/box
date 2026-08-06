@@ -1,20 +1,44 @@
-# DarkSea — Camp Roadmap (Jul 18 → ~Aug 1, 2026)
+# DarkSea — Build Log
 
-**The situation:** two weeks of phone-only contact — Minehut website works,
-but no server console and no in-game testing. So this window is for work that
-can be **proven by CI alone**: code with unit tests, content files, and docs.
-Every push to the working branch compiles and tests in GitHub Actions, and a
-fresh `DarkSea` jar hangs off every green run, ready for return day.
+**What this file is:** the record of what was built and why, written during
+the camp window (Jul 18 → Aug 1, 2026) when there was no server to test on
+and CI was the only proof available. It is history plus the design reasoning
+behind each system — useful when you want to know *why* something works the
+way it does.
 
-**The target on return:** Minehut Pro (**6 GB**), updated FAWE, and
-(optional but recommended) MythicMobs — the stack this plugin was designed
-for. The README now has a paste-ready **6 GB profile** for that day.
+**It is not the live to-do.** Those are:
+
+- **`PLAYTEST.md`** — what to test next, and everything still untested.
+- **`CHANGELOG.md`** — what each build actually changed.
+
+---
+
+## Parked — playtesting before new features
+
+Since playtest 5 the rule has been: fix what the sea already has before
+adding to it. Nothing below is cancelled; each is waiting on the bug list
+going quiet, or on something outside the code.
+
+| Parked | Waiting on |
+| --- | --- |
+| Rebirth (perk pool, inventory + ender-chest wipe) | Your call; specced, unbuilt, last in the queue |
+| The cultist base | Your FAWE update |
+| The temple | Your FAWE update |
+| The inner dimension | Design pass, after the caves prove out |
+| The tower | Design pass |
+| The god fight | Everything above it |
+| Real `.schem` islands replacing generated shapes | Your FAWE update — pipeline is in `SCHEMATICS.md` |
+| One knob to scale the whole sea's island count | Offered, never asked for |
+| Shop mechanics revision | **Closed — you said no** |
+
+The five design questions still open are at the bottom of `PLAYTEST.md`, not
+here, because they block playtesting rather than building.
 
 ---
 
 ## Workstreams (biggest payoff first)
 
-### 1. Demo island variety — code — IN PROGRESS
+### 1. Demo island variety — code — BUILT
 Today every demo island is the same sand pad. Add built-in shapes, picked
 randomly per island, with the shape math in pure functions so JUnit can
 verify sizes and marker placement without a server. *Effect: the sea stops
@@ -104,7 +128,7 @@ grief a block. PvP itself still rides `server.properties` `pvp: true`;
 the listener only carves out spawn. Shrink `pvp-safe-radius` to hug just
 the spawn island if the 500 bubble feels wide.
 
-### 2. MythicMobs content pack — content + small code — IN PROGRESS
+### 2. MythicMobs content pack — content + small code — BUILT
 A ready-to-copy `mythicmobs-pack/` with mob YAMLs themed per zone, plus a
 `fallback:` field per entry in `mobs.yml` so the config can name Mythic mobs
 and still degrade gracefully to vanilla mobs when MythicMobs isn't installed.
@@ -146,7 +170,7 @@ rhythm: an inhale that drags players in every ~12s, a Poison II plague
 burst punishing melee, Darkness blows, Vessel sheds, and a lurch (Speed II)
 when wounded — sprint out, trade hits, back off, repeat.
 
-### 3. Loot 2.0 — content + code — IN PROGRESS
+### 3. Loot 2.0 — content + code — BUILT
 Named and lored themed items per tier, junk/mid/treasure weighting, tuned
 boat-token rarity, small next-tier teases. CI gets a parse test so a typo
 can never brick loot loading.
@@ -1100,34 +1124,25 @@ something to invent under a deadline.
 
 ---
 
-## Return-day checklist
+## Return-day checklist — done
 
-1. Upgrade the Minehut plan (6 GB).
-2. Update **FAWE** — kills the "Unsupported class file major version 69" error.
-3. Optionally install **MythicMobs** 5.x.
-4. Download the newest **DarkSea jar** from the latest green Actions run and
-   replace the old one in `plugins/`.
-5. Apply the **6 GB profile** from the README (config values +
-   `view-distance`), restart.
-6. If using the Mythic pack: copy `mythicmobs-pack/` contents into
-   `plugins/MythicMobs/`, restart.
-6b. **`/ds diag` before anything else.** It says whether every startup step
-   actually completed — the plugin now stays enabled through a failure, so
-   "it loaded" is no longer proof that it all loaded. Follow with
-   `/ds diag warnings` if the count is non-zero.
-7. `/ds reset full confirm` → brand-new layout with the new shapes and loot.
-8. Note: the **timed sea reset ships enabled** (6h soft cycle,
-   `reset.auto` in config). Turn it off or re-time it there if it gets in
-   the way while you're setting up.
+Kept for the record. All of it happened except **FAWE**, which is still
+outstanding and is what the cultist base, the temple and real `.schem`
+islands are waiting on.
 
-## Live tests still owed (carry-over from before camp)
+1. ~~Upgrade the Minehut plan (6 GB).~~
+2. **Update FAWE** — still owed. Kills the "Unsupported class file major
+   version 69" error, and unblocks three parked items.
+3. ~~Optionally install MythicMobs 5.x.~~
+4. ~~Install the newest jar from a green Actions run.~~ Ongoing: see
+   `CHANGELOG.md` for which build is current.
+5. ~~Apply the 6 GB profile from the README.~~
+6. ~~Copy `mythicmobs-pack/` into `plugins/MythicMobs/`.~~
+6b. ~~`/ds diag` before anything else.~~ Still the first thing to run after
+   any install — it reports whether every startup step completed.
+7. ~~`/ds reset full confirm`.~~
+8. Note: the **timed sea reset ships enabled** (6h soft cycle, `reset.auto`
+   in config).
 
-- **Chest refill cooldown:** open the same chest twice quickly — the second
-  open must NOT restock until the tier's cooldown has passed.
-- **Phase 4 boats end-to-end:** find a token in loot → `/ds boat upgrade` →
-  measurable speed + shield ring → level survives relog and restart.
-- **Decide (a phone message is enough):** should `/ds tp` land you on the
-  highest block instead of the configured spawn spot?
-
-Everything above stays on this branch; nothing merges or ships anywhere
-until you're back and say so.
+Everything still owed a live test now lives in `PLAYTEST.md`, under the rule
+that nothing is retired because a build went past it.

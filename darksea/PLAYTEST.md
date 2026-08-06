@@ -38,6 +38,8 @@ changed.
 | Relic wake text | Cut in 0.5.0, **never seen** | Pass 7 |
 | Rebuilt watchtower and spire stairs | Built in 0.5.0, **never judged by eye** | Pass 2 |
 | Island counts / ring spread / shape mix | Config, **untried** | Pass 8 |
+| Chest refill cooldown | Shipped pre-camp, **never tested** | Pass 9 |
+| Boat tokens end-to-end | Shipped pre-camp, **never tested** | Pass 9 |
 
 Five decisions are still open at the bottom. None have been answered across four
 rounds.
@@ -201,6 +203,20 @@ Untried so far:
 
 Change, `/ds reload`, `/ds reset full confirm`. If what you actually wanted was
 one knob to scale the whole sea at once, say so.
+
+---
+
+## Pass 9 — two I nearly lost
+
+These were owed a live test before camp and were sitting in `ROADMAP.md`
+where the ledger could not see them. Same rule as everything else: they stay
+here until you say otherwise.
+
+- **Chest refill cooldown.** Open the same chest twice quickly. The second
+  open must *not* restock until the tier's cooldown has passed.
+- **Boat tokens end-to-end.** Find a token in loot → `/ds boat upgrade` →
+  measurable speed and shield ring → the level survives a relog and a
+  restart.
 
 ---
 
