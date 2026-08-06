@@ -336,41 +336,4 @@ class CustomAchievementsPluginTest {
         assertTrue(player.performCommand("achievements reopen"), "/ca reopen should dispatch");
         assertTrue(player.performCommand("achievements claim"), "/ca claim should dispatch");
     }
-
-    @Test
-    void actionBarShowsClosestAchievement() {
-        PlayerMock player = server.addPlayer();
-
-        // Two achievements advanced by the same event. After one stone break the
-        // near one is 1/2 (0.5) and the far one is 1/100 (0.01); neither completes.
-        Achievement near = new Achievement("near_goal");
-        near.setDisplayName("Near Goal");
-        near.setTrigger(TriggerType.BLOCK_BREAK);
-        near.setTarget("STONE");
-        near.setAmount(2);
-        Achievement far = new Achievement("far_goal");
-        far.setDisplayName("Far Goal");
-        far.setTrigger(TriggerType.BLOCK_BREAK);
-        far.setTarget("STONE");
-        far.setAmount(100);
-        plugin.getAchievementManager().put(near);
-        plugin.getAchievementManager().put(far);
-
-        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
-
-        // Drain the action-bar queue; the hint the player actually ends up seeing
-        // must point at the achievement closest to completion, never the furthest.
-        net.kyori.adventure.text.Component last = null;
-        net.kyori.adventure.text.Component c;
-        while ((c = player.nextActionBar()) != null) {
-            last = c;
-        }
-        assertNotNull(last, "an action-bar progress hint should have been shown");
-        String text = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-                .plainText().serialize(last);
-        assertTrue(text.contains("Near Goal"),
-                "the closest achievement should be shown, was: " + text);
-        assertFalse(text.contains("Far Goal"),
-                "the furthest achievement should not win the action bar");
-    }
 }

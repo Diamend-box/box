@@ -153,8 +153,11 @@ public class AchievementService {
      * {@code [0, 1)}. Each requirement contributes its own capped progress ratio
      * and the results are averaged, so a single event that nudges several
      * achievements can pick the one nearest the finish line for the action bar.
+     *
+     * <p>Package-private and static so it can be unit-tested directly against
+     * plain {@link Achievement}/{@link PlayerData} objects without a live server.
      */
-    private double completionFraction(Achievement achievement, PlayerData data) {
+    static double completionFraction(Achievement achievement, PlayerData data) {
         List<Requirement> requirements = achievement.getRequirements();
         if (requirements.isEmpty()) {
             return 1.0;
