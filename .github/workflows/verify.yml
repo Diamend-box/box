@@ -66,6 +66,13 @@ jobs:
           cache: maven
       - name: Run tests
         run: mvn -B -ntp test
+      - name: Dump surefire reports (diagnostic)
+        if: always()
+        run: |
+          for f in target/surefire-reports/*.xml target/surefire-reports/*.txt; do
+            echo "===================== $f ====================="
+            cat "$f" 2>/dev/null || true
+          done
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
