@@ -9,9 +9,9 @@ and is built to keep growing into whatever the server needs next.
 > server before trusting it in production — progression plugins change server
 > balance, and the shipped numbers are a starting point, not gospel.
 
-> This is a separate project from *CustomAchievements* and *AntiCheat* in the
-> same repository: different module (`boxcore/`), different package
-> (`com.diamend.boxcore`), different purpose.
+> This is a separate project from *CustomAchievements*, *AntiCheat* and
+> *RoboBear* in the same repository: different module (`boxcore/`), different
+> package (`com.diamend.boxcore`), different purpose.
 
 ---
 
