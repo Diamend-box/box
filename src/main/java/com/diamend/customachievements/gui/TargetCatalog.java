@@ -1,6 +1,7 @@
 package com.diamend.customachievements.gui;
 
-import com.diamend.customachievements.achievement.MaterialGroup;
+import com.diamend.customachievements.achievement.TargetGroup;
+import com.diamend.customachievements.achievement.TargetGroups;
 import com.diamend.customachievements.achievement.TriggerType;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -38,7 +39,7 @@ public final class TargetCatalog {
         List<TargetOption> options = new ArrayList<>();
         switch (trigger) {
             case BLOCK_BREAK, BLOCK_PLACE -> {
-                addGroups(options);
+                addGroups(options, trigger);
                 for (Material material : Material.values()) {
                     if (material.isBlock() && material.isItem() && !material.isAir()) {
                         options.add(new TargetOption(material.name(), material));
@@ -46,7 +47,7 @@ public final class TargetCatalog {
                 }
             }
             case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN -> {
-                addGroups(options);
+                addGroups(options, trigger);
                 for (Material material : Material.values()) {
                     if (material.isItem() && !material.isAir()) {
                         options.add(new TargetOption(material.name(), material));
@@ -54,6 +55,7 @@ public final class TargetCatalog {
                 }
             }
             case ENTITY_KILL -> {
+                addGroups(options, trigger);
                 for (EntityType type : EntityType.values()) {
                     if (type == EntityType.UNKNOWN) {
                         continue;
@@ -82,16 +84,16 @@ public final class TargetCatalog {
     }
 
     /**
-     * Puts the material groups ("Any Logs", "Any Ores", ...) at the front of the
-     * list so a whole family can be picked in one click, before the long tail of
-     * individual materials.
+     * Puts the trigger's groups ("Any Logs", "Any Hostile Mobs", ...) at the
+     * front of the list so a whole family can be picked in one click, before the
+     * long tail of individual values.
      */
-    private static void addGroups(List<TargetOption> options) {
-        for (MaterialGroup group : MaterialGroup.values()) {
+    private static void addGroups(List<TargetOption> options, TriggerType trigger) {
+        for (TargetGroup group : TargetGroups.forTrigger(trigger)) {
             options.add(new TargetOption(group.targetValue(), group.icon(),
                     "Any " + group.label(),
                     List.of(group.description(),
-                            "Matches " + group.members().size() + " material(s)")));
+                            "Matches " + group.memberCount() + " type(s)")));
         }
     }
 }

@@ -23,7 +23,7 @@ import java.util.function.Predicate;
  * list of enum constants, so wood and ore types added by later Minecraft
  * versions are included automatically without a plugin update.
  */
-public enum MaterialGroup {
+public enum MaterialGroup implements TargetGroup {
 
     LOGS("Logs", "Any log, stem, hyphae or wood block — every tree type, stripped or not",
             Material.OAK_LOG,
@@ -114,9 +114,6 @@ public enum MaterialGroup {
     DOORS("Doors", "Any door or trapdoor", Material.OAK_DOOR,
             name -> name.endsWith("_DOOR") || name.endsWith("_TRAPDOOR"));
 
-    /** Marks a target string as a group rather than a single material. */
-    public static final String PREFIX = "#";
-
     private final String label;
     private final String description;
     private final Material icon;
@@ -135,32 +132,20 @@ public enum MaterialGroup {
         this.extras = Set.copyOf(Arrays.asList(extras));
     }
 
-    /** Whether a target string refers to a group (i.e. starts with {@code #}). */
-    public static boolean isGroup(String target) {
-        return target != null && target.startsWith(PREFIX);
-    }
-
     /**
      * Resolves a group from a target string, accepting {@code #LOGS}, {@code LOGS},
      * {@code #minecraft:logs} and the singular {@code #LOG}. Returns null when no
      * group matches, in which case the target is treated as a plain material name.
      */
     public static MaterialGroup byId(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String id = raw.trim();
-        if (id.startsWith(PREFIX)) {
-            id = id.substring(PREFIX.length());
-        }
-        int colon = id.indexOf(':'); // tolerate a "minecraft:" namespace
-        if (colon >= 0) {
-            id = id.substring(colon + 1);
-        }
-        id = id.toUpperCase(Locale.ROOT).replace(' ', '_');
-        MaterialGroup direct = lookup(id);
         // Be forgiving about hand-edited YAML: "#LOG" also finds LOGS.
-        return direct != null ? direct : lookup(id + "S");
+        for (String id : TargetGroups.candidateIds(raw)) {
+            MaterialGroup group = lookup(id);
+            if (group != null) {
+                return group;
+            }
+        }
+        return null;
     }
 
     private static MaterialGroup lookup(String id) {
@@ -171,7 +156,7 @@ public enum MaterialGroup {
         }
     }
 
-    /** Whether the named material belongs to this group. */
+    @Override
     public boolean matches(String materialName) {
         if (materialName == null || materialName.isBlank()) {
             return false;
@@ -205,22 +190,28 @@ public enum MaterialGroup {
         return cached;
     }
 
-    /** The value stored in an objective's target field, e.g. {@code #LOGS}. */
-    public String targetValue() {
-        return PREFIX + name();
+    @Override
+    public String id() {
+        return name();
     }
 
-    /** Human-readable name, e.g. "Logs". */
+    @Override
     public String label() {
         return label;
     }
 
+    @Override
     public String description() {
         return description;
     }
 
-    /** Icon used to represent the group in the picker GUI. */
+    @Override
     public Material icon() {
         return icon;
+    }
+
+    @Override
+    public int memberCount() {
+        return members().size();
     }
 }

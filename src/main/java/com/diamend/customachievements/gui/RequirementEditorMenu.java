@@ -3,7 +3,7 @@ package com.diamend.customachievements.gui;
 import com.diamend.customachievements.CustomAchievementsPlugin;
 import com.diamend.customachievements.achievement.Achievement;
 import com.diamend.customachievements.achievement.LocationTarget;
-import com.diamend.customachievements.achievement.MaterialGroup;
+import com.diamend.customachievements.achievement.TargetGroups;
 import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.util.Items;
@@ -126,8 +126,8 @@ public class RequirementEditorMenu implements Menu {
                             "<yellow>Click to type"));
             default -> Items.of(Material.TARGET, Text.item("<aqua>Target: <white>" + requirement.targetLabel()),
                     lore("<gray>What to match.",
-                            "<gray>Pick a whole family (Any Logs, Any Ores)",
-                            "<gray>or one specific material.",
+                            "<gray>Pick a whole family (Any Logs, Any Ores,",
+                            "<gray>Any Hostile Mobs) or one specific value.",
                             "", "<yellow>Click to pick from a list"));
         };
     }
@@ -221,8 +221,8 @@ public class RequirementEditorMenu implements Menu {
         if (value == null || value.equalsIgnoreCase("ANY")) {
             return "ANY";
         }
-        if (MaterialGroup.isGroup(value)) {
-            return value; // a material family, stored verbatim as "#LOGS"
+        if (TargetGroups.isGroup(value)) {
+            return value; // a whole family, stored verbatim as "#LOGS" / "#HOSTILE"
         }
         if (trigger == TriggerType.ENTITY_KILL) {
             try {

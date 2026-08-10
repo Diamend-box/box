@@ -21,8 +21,9 @@ public class Requirement {
     private transient String cachedLocationSource;
 
     // Lazily resolved "#GROUP" target, cached against the source string.
-    private transient MaterialGroup cachedGroup;
+    private transient TargetGroup cachedGroup;
     private transient String cachedGroupSource;
+    private transient TriggerType cachedGroupTrigger;
 
     public Requirement() {
         this(TriggerType.MANUAL, "ANY", 1);
@@ -48,7 +49,7 @@ public class Requirement {
         if (isWildcard()) {
             return true;
         }
-        MaterialGroup group = getGroup();
+        TargetGroup group = getGroup();
         if (group != null) {
             return group.matches(key);
         }
@@ -67,7 +68,7 @@ public class Requirement {
         if (matchByName) {
             return itemName != null && target.equalsIgnoreCase(itemName);
         }
-        MaterialGroup group = getGroup();
+        TargetGroup group = getGroup();
         if (group != null) {
             return group.matches(materialName);
         }
@@ -80,17 +81,19 @@ public class Requirement {
     }
 
     /**
-     * The material group this requirement targets, or null when it targets a
-     * single value. An unrecognised {@code #GROUP} (e.g. one written by a newer
-     * version) resolves to null and so simply matches nothing.
+     * The group this requirement targets (a material family for block/item
+     * triggers, a mob family for {@code ENTITY_KILL}), or null when it targets a
+     * single value. A {@code #GROUP} that this trigger doesn't support — or one
+     * written by a newer version — resolves to null and so matches nothing.
      */
-    public MaterialGroup getGroup() {
-        if (!MaterialGroup.isGroup(target)) {
+    public TargetGroup getGroup() {
+        if (!TargetGroups.isGroup(target)) {
             return null;
         }
-        if (!Objects.equals(cachedGroupSource, target)) {
-            cachedGroup = MaterialGroup.byId(target);
+        if (!Objects.equals(cachedGroupSource, target) || cachedGroupTrigger != trigger) {
+            cachedGroup = TargetGroups.resolve(trigger, target);
             cachedGroupSource = target;
+            cachedGroupTrigger = trigger;
         }
         return cachedGroup;
     }
@@ -129,7 +132,7 @@ public class Requirement {
         if (matchByName) {
             return "\"" + target + "\"";
         }
-        MaterialGroup group = getGroup();
+        TargetGroup group = getGroup();
         return group != null ? "Any " + group.label() : target;
     }
 

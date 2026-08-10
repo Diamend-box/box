@@ -358,6 +358,26 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void mobGroupTargetCountsEveryHostileMob() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("monster_hunter");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("#HOSTILE"); // any hostile mob, not one specific type
+        achievement.setAmount(3);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "ZOMBIE", 1);
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "CREEPER", 1);
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "COW", 1);
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("monster_hunter", 0)),
+                "different hostile mobs all count, a cow does not");
+
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "ENDERMAN", 1);
+        assertTrue(data.isCompleted("monster_hunter"), "any three hostile mobs should finish it");
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

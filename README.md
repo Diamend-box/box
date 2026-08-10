@@ -26,9 +26,10 @@ still **locked** (with live progress bars).
   once; it unlocks only when every objective is complete.
 - 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
   menus (no typing IDs from memory).
-- 🪵 **Material groups** – target a whole family instead of one block: "mine 100
-  **logs**" or "mine 50 **ores**" in a single objective, covering every wood/ore
-  type (including ones added by future Minecraft versions).
+- 🪵 **Target groups** – aim a whole family instead of one value: "mine 100
+  **logs**", "mine 50 **ores**" or "kill 100 **hostile mobs**" in a single
+  objective, covering every wood/ore/mob type (including ones added by future
+  Minecraft versions).
 - ⌨️ **Off-chat text entry** – editor prompts use an anvil GUI so typed values
   never hit chat (keeps them away from chat-bridge plugins like DiscordSRV);
   toggle off in the config to type in chat instead.
@@ -135,9 +136,9 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    - **Trigger** – click to open the **trigger picker** (a menu of all triggers).
    - **Target** – click to open the **target picker**, a paginated, searchable
      grid of the relevant options (materials / entities / skills / dimensions).
-     For blocks and items the list starts with **material groups** — "Any Logs",
-     "Any Ores", … — so an objective can cover a whole family at once (see
-     [Material groups](#material-groups-mine-100-logs-not-100-oak-logs)).
+     For blocks, items and mobs the list starts with **groups** — "Any Logs",
+     "Any Ores", "Any Hostile Mobs", … — so an objective can cover a whole family
+     at once (see [Target groups](#target-groups-mine-100-logs-kill-100-hostile-mobs)).
      Special cases: *Reach a Location* captures your current position on
      left-click (or type `world x y z [radius]`); *Kill Mythic Mobs* is typed.
    - **Required Amount** – click to type a number.
@@ -230,13 +231,13 @@ without it.
 `target: ANY` (or a blank target) matches everything for that trigger
 (except `REACH_LOCATION`, which always needs a concrete location).
 
-### Material groups (mine 100 *logs*, not 100 *oak* logs)
+### Target groups (mine 100 *logs*, kill 100 *hostile mobs*)
 
-Block and item objectives can target a **whole family of materials** instead of
-one specific block, so "mine 100 logs" or "mine 50 ores" is a single objective.
-In the target picker the groups are listed **first**, named **"Any Logs"**,
-**"Any Ores"**, and so on — pick one and you're done. Each shows how many
-materials it currently covers.
+Objectives can target a **whole family** instead of one specific value, so
+"mine 100 logs", "mine 50 ores" or "kill 100 hostile mobs" is a single
+objective. In the target picker the groups are listed **first**, named
+**"Any Logs"**, **"Any Ores"**, **"Any Hostile Mobs"**, and so on — pick one and
+you're done. Each shows how many types it currently covers.
 
 In `achievements.yml` a group is written with a leading `#`, mirroring
 Minecraft's own `#minecraft:logs` tag syntax:
@@ -246,7 +247,8 @@ target: '#LOGS'   # any log, of any wood type
 amount: 100
 ```
 
-Available groups:
+**Material groups** — for `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`,
+`ITEM_CONSUME` and `ITEM_OBTAIN`:
 
 | Group | Covers |
 | --- | --- |
@@ -269,11 +271,30 @@ Available groups:
 | `#MUSHROOMS` | Mushrooms and mushroom blocks |
 | `#SLABS` / `#STAIRS` / `#FENCES` / `#DOORS` | Any slab / stairs / fence or gate / door or trapdoor |
 
-Groups work with `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`, `ITEM_CONSUME` and
-`ITEM_OBTAIN`. Membership is worked out from the material's name on the running
-server, so **wood and ore types added by future Minecraft versions are picked up
-automatically** without a plugin update. Objectives that name a single material
-are unaffected — `target: OAK_LOG` still means only oak logs.
+**Mob groups** — for `ENTITY_KILL`:
+
+| Group | Covers |
+| --- | --- |
+| `#HOSTILE` | Anything that attacks you — zombies, creepers, slimes, ghasts, bosses … |
+| `#ANIMALS` | Farm and wild animals — cows, pigs, sheep, wolves, horses, bees … |
+| `#UNDEAD` | Everything that takes extra damage from Smite — zombies, skeletons, drowned, phantoms, wither … |
+| `#ARTHROPODS` | Spiders, cave spiders, silverfish, endermites, bees |
+| `#ILLAGERS` | The raid roster — pillagers, vindicators, evokers, ravagers, witches, vexes |
+| `#BOSSES` | Ender dragon, wither, warden, elder guardians |
+| `#AQUATIC` | Fish, squid, dolphins, axolotls, turtles, guardians, drowned |
+| `#NETHER` | Blazes, ghasts, magma cubes, piglins, hoglins, striders, wither skeletons |
+| `#END` | Endermen, endermites, shulkers, the ender dragon |
+
+Membership is worked out on the running server — from the material's **name**
+for material groups, and from the mob's own **Bukkit category** (`Enemy`,
+`Animals`, `Raider`, `Boss`, …) for the mob groups where vanilla models one — so
+**blocks and mobs added by future Minecraft versions are picked up
+automatically** without a plugin update.
+
+Groups are scoped to the triggers they make sense for: `#HOSTILE` on a
+`BLOCK_BREAK` objective (or `#LOGS` on a kill objective) matches nothing rather
+than silently matching everything. Objectives that name a single value are
+unaffected — `target: OAK_LOG` still means only oak logs.
 
 ### Location & dimension targets
 

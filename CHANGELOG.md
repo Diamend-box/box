@@ -6,20 +6,28 @@ All notable changes to **CustomAchievements** are documented here.
 
 ## [1.9.0]
 ### Added
-- **Material groups for block and item objectives.** An objective can now target
-  a whole family of materials instead of a single one, so *"mine 100 logs"* is a
-  single objective covering every wood type rather than "100 oak logs". The
-  target picker lists the groups first — **Any Logs**, **Any Ores**, **Any
-  Planks**, **Any Leaves**, **Any Saplings**, **Any Flowers**, **Any Crops**, any
-  **Stone Types**, **Dirt & Grass**, **Sand & Gravel**, **Wool**, **Terracotta**,
-  **Concrete**, **Glass**, **Coral**, **Ice**, **Mushrooms**, **Slabs**,
-  **Stairs**, **Fences** and **Doors** — each showing how many materials it
-  covers. In `achievements.yml` they're written with a leading `#` (e.g.
-  `target: '#LOGS'`), mirroring Minecraft's own `#minecraft:logs` tag syntax.
-  Groups work with `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`, `ITEM_CONSUME` and
-  `ITEM_OBTAIN`, and membership is derived from material names on the running
-  server, so wood and ore types added by later Minecraft versions are included
-  automatically. Objectives naming a single material are unchanged.
+- **Target groups — aim an objective at a whole family instead of one value.**
+  *"Mine 100 logs"* or *"kill 100 hostile mobs"* is now a single objective
+  rather than one per wood type or mob. The target picker lists the groups
+  first, each showing how many types it covers, and in `achievements.yml`
+  they're written with a leading `#` (e.g. `target: '#LOGS'`), mirroring
+  Minecraft's own `#minecraft:logs` tag syntax.
+  - **Material groups** (for `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`,
+    `ITEM_CONSUME`, `ITEM_OBTAIN`): **Logs**, **Ores**, **Planks**, **Leaves**,
+    **Saplings**, **Flowers**, **Crops**, **Stone Types**, **Dirt & Grass**,
+    **Sand & Gravel**, **Wool**, **Terracotta**, **Concrete**, **Glass**,
+    **Coral**, **Ice**, **Mushrooms**, **Slabs**, **Stairs**, **Fences**,
+    **Doors**.
+  - **Mob groups** (for `ENTITY_KILL`): **Hostile Mobs**, **Animals**,
+    **Undead**, **Arthropods**, **Illagers & Raiders**, **Bosses**, **Aquatic
+    Mobs**, **Nether Mobs**, **End Mobs**.
+
+  Membership is resolved on the running server — from the material's name, and
+  from the mob's own Bukkit category (`Enemy`, `Animals`, `Raider`, `Boss`, …)
+  where vanilla models one — so blocks and mobs added by later Minecraft
+  versions are included automatically. Groups are scoped to the triggers they
+  suit, so a mob family on a block objective matches nothing rather than
+  everything. Objectives naming a single value are unchanged.
 
 ## [1.8.3]
 ### Changed
