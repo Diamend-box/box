@@ -1,19 +1,27 @@
-name: Release
+name: Release CustomAchievements
 
 # Builds the shippable jar in CI (where the plugin's dependencies are
 # reachable) and publishes a GitHub release with the jar attached. Run it
 # from the Actions tab ("Run workflow") and give it the tag to cut, e.g.
-# v1.8.3. The tag is created at the commit the workflow runs on.
+# v1.9.0. The tag is created at the commit the workflow runs on.
+#
+# This builds the customachievements/ module only. A bare vX.Y.Z tag in this
+# repository means CustomAchievements; the other plugins scope their tags
+# (robobear-v*), so they don't collide.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create (e.g. v1.8.3)"
+        description: "Release tag to create (e.g. v1.9.0)"
         required: true
-        default: "v1.8.3"
+        default: "v1.9.0"
 
 permissions:
   contents: write # needed to create the tag and the release
+
+defaults:
+  run:
+    working-directory: customachievements
 
 jobs:
   release:
@@ -46,9 +54,12 @@ jobs:
           if echo "$LIST" | grep -qE " net/wesjd/anvilgui/"; then
             echo "::error::un-relocated net.wesjd.anvilgui classes present in jar"; exit 1
           fi
-          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          # Repo-relative, so the publish step below can find it from the root
+          # (where the release-notes files live).
+          echo "path=customachievements/$JAR" >> "$GITHUB_OUTPUT"
           echo "jar verified: $JAR"
       - name: Publish release
+        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag }}
