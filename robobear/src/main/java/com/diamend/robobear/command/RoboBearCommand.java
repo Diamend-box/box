@@ -62,7 +62,7 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             case "retire", "stop" -> retire(sender);
             case "cancel", "quit" -> cancel(sender);
             case "stats" -> stats(sender, args);
-            case "mines" -> listMines(sender);
+            case "mines" -> listMines(sender, args);
             case "milestones", "edit", "admin" -> milestones(sender);
             case "pos1" -> setCorner(sender, 0);
             case "pos2" -> setCorner(sender, 1);
@@ -177,15 +177,19 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean listMines(CommandSender sender) {
+    private boolean listMines(CommandSender sender, String[] args) {
         if (!sender.hasPermission("robobear.admin")) {
             plugin.messages().send(sender, "no-permission");
             return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("debug")) {
+            return debugMines(sender);
         }
         sender.sendMessage(Text.parse("<gold>Mines from <white>"
                 + plugin.mines().activeSource() + "<gold>:"));
         if (plugin.mines().size() == 0) {
             sender.sendMessage(Text.parse("<gray>  none"));
+            sender.sendMessage(Text.parse("<gray>Run <white>/rb mines debug<gray> to find out why."));
             return true;
         }
         for (MineRegion mine : plugin.mines().all()) {
@@ -193,6 +197,30 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
                     + " <gray>" + mine.boundsDescription()
                     + " <dark_gray>(" + Text.number(mine.volume()) + " blocks)"));
         }
+        return true;
+    }
+
+    /**
+     * Explains, on demand, exactly what the MineResetLite reader can see.
+     *
+     * <p>The startup warning fires once and can be scrolled past or rotated out
+     * of the log before anyone goes looking. This can be asked for at any time,
+     * and its output is what's needed to add support for an unrecognised build.
+     */
+    private boolean debugMines(CommandSender sender) {
+        sender.sendMessage(Text.parse("<gold>RoboBear mine detection"));
+        sender.sendMessage(Text.parse("<gray>Configured source: <white>"
+                + plugin.getConfig().getString("mines.source", "auto")
+                + " <gray>— active: <white>" + plugin.mines().activeSource()));
+        sender.sendMessage(Text.parse("<gray>Manual regions defined: <white>"
+                + plugin.mines().manualProvider().mines().size()));
+        sender.sendMessage(Text.parse("<dark_gray>— MineResetLite —"));
+
+        for (String line : plugin.mines().mineResetLiteProvider().diagnose()) {
+            sender.sendMessage(Text.parse("<gray>" + Text.escape(line)));
+            plugin.getLogger().info("[mines debug] " + line);
+        }
+        sender.sendMessage(Text.parse("<dark_gray>The same report is in the server log."));
         return true;
     }
 
@@ -335,6 +363,11 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
                 case "mine" -> {
                     if (sender.hasPermission("robobear.admin")) {
                         options.addAll(List.of("set", "delete"));
+                    }
+                }
+                case "mines" -> {
+                    if (sender.hasPermission("robobear.admin")) {
+                        options.add("debug");
                     }
                 }
                 case "stats", "reset" -> {

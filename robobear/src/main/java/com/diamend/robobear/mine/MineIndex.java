@@ -44,6 +44,11 @@ public class MineIndex {
         return manual;
     }
 
+    /** The MineResetLite reader, for {@code /rb mines debug}. */
+    public MineResetLiteProvider mineResetLiteProvider() {
+        return mineResetLite;
+    }
+
     public String activeSource() {
         return activeSource;
     }

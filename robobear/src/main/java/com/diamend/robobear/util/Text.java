@@ -67,6 +67,18 @@ public final class Text {
         return parse(input).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
+    /**
+     * Neutralises MiniMessage tags in text RoboBear did not author.
+     *
+     * <p>Diagnostic output carries class and method names straight from another
+     * plugin; a generic signature or an angle-bracketed name would otherwise be
+     * read as a tag and either vanish or throw. Java identifiers can't contain
+     * {@code &}, so legacy codes need no handling here.
+     */
+    public static String escape(String input) {
+        return input == null ? "" : MM.escapeTags(input);
+    }
+
     /** Renders a component back to a MiniMessage string. */
     public static String serialize(Component component) {
         return component == null ? "" : MM.serialize(component);

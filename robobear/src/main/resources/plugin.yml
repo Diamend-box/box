@@ -17,6 +17,7 @@ commands:
       /rb cancel                - Abandon the run
       /rb stats [player]        - Runs, deepest round and payouts
       /rb mines                 - List the mines RoboBear can see (admin)
+      /rb mines debug           - Explain what the MineResetLite reader sees (admin)
       /rb milestones            - Edit the milestone payouts (admin)
       /rb pos1 | /rb pos2       - Select a corner for a manual mine (admin)
       /rb mine set <id>         - Save the selection as a mine (admin)

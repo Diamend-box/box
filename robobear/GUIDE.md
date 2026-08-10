@@ -100,11 +100,29 @@ Mines from mineresetlite:
  • iron     world (200,30,200) → (230,50,230)  (14,161 blocks)
 ```
 
-**If that list is empty but MineResetLite is installed**, RoboBear could not
-read its internals. It logs the real class and method names it found, once, at
-startup — send that to us and use the manual list meanwhile. This integration
-is reflective on purpose (several forks share the name and none publish an API),
-which makes it adaptable but not guaranteed against your particular build.
+**If that list is empty but MineResetLite is installed**, run:
+
+```
+/rb mines debug
+```
+
+It reports exactly what the reader can see: which plugin object it bound to,
+its main class, whether a mine collection was found and how big it is, the mine
+class name, and — when it can't read the bounds — that class's actual methods
+and fields. The same report goes to the server log. That output is precisely
+what's needed to add support for your build, so paste it into an issue.
+
+Common answers it gives:
+
+| Report says | Meaning |
+|---|---|
+| "No loaded plugin matches MineResetLite" | Your fork registers under another name — it lists what *is* loaded |
+| "Mine collection found: 0 entries" | MineResetLite has no mines defined yet; check `/mrl list`, then `/rb reload` |
+| "Could not work out how to read its bounds" | A fork with a shape we don't know yet — the member dump is the fix |
+
+This integration is reflective on purpose (several forks share the name and
+none publish an API), which makes it adaptable but not guaranteed against your
+particular build. `mines.source: manual` keeps you running meanwhile.
 
 ### Without it, or as a fallback
 
@@ -241,6 +259,7 @@ one that exists on the workshop screen.
 | Command | Does |
 |---|---|
 | `/rb mines` | List the mines and which source they came from |
+| `/rb mines debug` | Explain what the MineResetLite reader can and can't see |
 | `/rb milestones` | Open the payout editor |
 | `/rb pos1` / `/rb pos2` | Select corners for a manual mine |
 | `/rb mine set <id>` | Save the selection |
@@ -380,7 +399,7 @@ the server is stopped; payouts and mines survive.
 | What you see | Why | Fix |
 |---|---|---|
 | "Nothing is set up for a run yet" | No mines *and* mob objectives off | Set up a mine, or enable `objectives.kill-mobs` |
-| `/rb mines` empty, MineResetLite installed | Reflection couldn't read that build | Check startup log for the class dump, use `mines.source: manual` |
+| `/rb mines` empty, MineResetLite installed | Fork under another name, no mines defined, or a shape we can't read | **`/rb mines debug`** — it names which of the three it is |
 | Mining doesn't count | Wrong mine, or blocks the player placed | `/rb mines` for bounds; self-placed blocks never count |
 | A run pays nothing | Tiers are empty placeholders | `/rb milestones`, fill the boxes |
 | Payout vanished | `delivery: ground` and they didn't pick it up, or someone else did | Working as designed; use `inventory` to soften it |

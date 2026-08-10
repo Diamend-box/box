@@ -87,6 +87,18 @@ class RoboBearPluginTest {
     }
 
     @Test
+    @DisplayName("the mine diagnostic explains itself when MineResetLite is absent")
+    void diagnoseSaysWhatItSees() {
+        java.util.List<String> report = plugin.mines().mineResetLiteProvider().diagnose();
+
+        assertFalse(report.isEmpty(), "the report must never come back blank");
+        assertTrue(report.get(0).contains("No loaded plugin matches"),
+                "with nothing installed it should say so first, not report a reflection failure");
+        assertTrue(String.join(" ", report).contains("Plugins loaded:"),
+                "it should list what is loaded, so a differently-named fork is visible");
+    }
+
+    @Test
     @DisplayName("a run can't start when there's nothing to do")
     void refusesToStartWithNothingSetUp() {
         plugin.getConfig().set("objectives.kill-mobs.enabled", false);
