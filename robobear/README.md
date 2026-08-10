@@ -14,6 +14,11 @@ upgrades between them, and payouts at milestone rounds.
 > in the same repository: different module (`robobear/`), different package
 > (`com.diamend.robobear`), different purpose.
 
+📖 **Setting it up on a server? Read the [operator's guide](GUIDE.md).** This
+README explains why the plugin is shaped the way it is; the guide walks through
+installing it, pointing it at your mines, filling in the payouts and tuning the
+numbers once players get hold of it.
+
 ---
 
 ## What it is
