@@ -26,6 +26,9 @@ still **locked** (with live progress bars).
   once; it unlocks only when every objective is complete.
 - 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
   menus (no typing IDs from memory).
+- 🪵 **Material groups** – target a whole family instead of one block: "mine 100
+  **logs**" or "mine 50 **ores**" in a single objective, covering every wood/ore
+  type (including ones added by future Minecraft versions).
 - ⌨️ **Off-chat text entry** – editor prompts use an anvil GUI so typed values
   never hit chat (keeps them away from chat-bridge plugins like DiscordSRV);
   toggle off in the config to type in chat instead.
@@ -73,7 +76,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.8.3.jar`.
+The finished plugin is written to `target/CustomAchievements-1.9.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io` and the
@@ -132,6 +135,9 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    - **Trigger** – click to open the **trigger picker** (a menu of all triggers).
    - **Target** – click to open the **target picker**, a paginated, searchable
      grid of the relevant options (materials / entities / skills / dimensions).
+     For blocks and items the list starts with **material groups** — "Any Logs",
+     "Any Ores", … — so an objective can cover a whole family at once (see
+     [Material groups](#material-groups-mine-100-logs-not-100-oak-logs)).
      Special cases: *Reach a Location* captures your current position on
      left-click (or type `world x y z [radius]`); *Kill Mythic Mobs* is typed.
    - **Required Amount** – click to type a number.
@@ -223,6 +229,51 @@ without it.
 
 `target: ANY` (or a blank target) matches everything for that trigger
 (except `REACH_LOCATION`, which always needs a concrete location).
+
+### Material groups (mine 100 *logs*, not 100 *oak* logs)
+
+Block and item objectives can target a **whole family of materials** instead of
+one specific block, so "mine 100 logs" or "mine 50 ores" is a single objective.
+In the target picker the groups are listed **first**, named **"Any Logs"**,
+**"Any Ores"**, and so on — pick one and you're done. Each shows how many
+materials it currently covers.
+
+In `achievements.yml` a group is written with a leading `#`, mirroring
+Minecraft's own `#minecraft:logs` tag syntax:
+
+```yaml
+target: '#LOGS'   # any log, of any wood type
+amount: 100
+```
+
+Available groups:
+
+| Group | Covers |
+| --- | --- |
+| `#LOGS` | Every log, stem, hyphae and wood block — all tree types, stripped or not (plus bamboo blocks) |
+| `#ORES` | Every ore, including deepslate and nether variants, plus ancient debris |
+| `#PLANKS` | Any wooden planks |
+| `#LEAVES` | Any tree leaves |
+| `#SAPLINGS` | Any sapling or propagule |
+| `#FLOWERS` | Any flower, small or tall |
+| `#CROPS` | Wheat, carrots, potatoes, beetroot, nether wart, melon, pumpkin, sugar cane, bamboo, cactus, berries, kelp |
+| `#STONES` | Naturally generated stone — stone, deepslate, tuff, basalt, netherrack, obsidian … |
+| `#DIRT` | Dirt, grass, podzol, mycelium, farmland, mud, soul sand … |
+| `#SAND` | Sand, red sand and gravel (incl. suspicious variants) |
+| `#WOOL` | Any colour of wool |
+| `#TERRACOTTA` | Any terracotta, glazed or plain |
+| `#CONCRETE` | Any colour of concrete (powder not included) |
+| `#GLASS` | Any glass block or pane, stained or not |
+| `#CORAL` | Any coral, coral block or coral fan |
+| `#ICE` | Ice, packed ice, blue ice, frosted ice |
+| `#MUSHROOMS` | Mushrooms and mushroom blocks |
+| `#SLABS` / `#STAIRS` / `#FENCES` / `#DOORS` | Any slab / stairs / fence or gate / door or trapdoor |
+
+Groups work with `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`, `ITEM_CONSUME` and
+`ITEM_OBTAIN`. Membership is worked out from the material's name on the running
+server, so **wood and ore types added by future Minecraft versions are picked up
+automatically** without a plugin update. Objectives that name a single material
+are unaffected — `target: OAK_LOG` still means only oak logs.
 
 ### Location & dimension targets
 

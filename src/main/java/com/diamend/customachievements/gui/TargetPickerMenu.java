@@ -68,7 +68,9 @@ public class TargetPickerMenu implements Menu {
         filtered = new ArrayList<>();
         String needle = filter.toLowerCase(Locale.ROOT);
         for (TargetOption option : all) {
-            if (needle.isEmpty() || option.value().toLowerCase(Locale.ROOT).contains(needle)) {
+            if (needle.isEmpty()
+                    || option.value().toLowerCase(Locale.ROOT).contains(needle)
+                    || option.display().toLowerCase(Locale.ROOT).contains(needle)) {
                 filtered.add(option);
             }
         }
@@ -79,9 +81,16 @@ public class TargetPickerMenu implements Menu {
         int end = Math.min(start + CONTENT_SIZE, filtered.size());
         for (int i = start; i < end; i++) {
             TargetOption option = filtered.get(i);
+            List<Component> optionLore = new ArrayList<>();
+            for (String line : option.lore()) {
+                optionLore.add(Text.item("<gray>" + line));
+            }
+            if (!optionLore.isEmpty()) {
+                optionLore.add(Component.empty());
+            }
+            optionLore.add(Text.item("<yellow>Click to select"));
             inventory.setItem(i - start, Items.of(option.icon(),
-                    Text.item("<yellow>" + option.value()),
-                    List.of(Text.item("<gray>Click to select"))));
+                    Text.item("<yellow>" + option.display()), optionLore));
         }
 
         for (int slot = CONTENT_SIZE; slot < SIZE; slot++) {

@@ -20,6 +20,10 @@ public class Requirement {
     private transient LocationTarget cachedLocation;
     private transient String cachedLocationSource;
 
+    // Lazily resolved "#GROUP" target, cached against the source string.
+    private transient MaterialGroup cachedGroup;
+    private transient String cachedGroupSource;
+
     public Requirement() {
         this(TriggerType.MANUAL, "ANY", 1);
     }
@@ -41,22 +45,54 @@ public class Requirement {
         if (!trigger.usesTarget()) {
             return true;
         }
-        if (target == null || target.isBlank() || target.equalsIgnoreCase("ANY")) {
+        if (isWildcard()) {
             return true;
+        }
+        MaterialGroup group = getGroup();
+        if (group != null) {
+            return group.matches(key);
         }
         return key != null && target.equalsIgnoreCase(key);
     }
 
     /**
      * Item matching: when {@link #matchByName} is set, compares the target
-     * against the item's custom display name; otherwise against its material.
+     * against the item's custom display name; otherwise against its material
+     * (which may be a {@code #GROUP} covering a whole family of materials).
      */
     public boolean matchesItem(String materialName, String itemName) {
-        if (target == null || target.isBlank() || target.equalsIgnoreCase("ANY")) {
+        if (isWildcard()) {
             return true;
         }
-        String candidate = matchByName ? itemName : materialName;
-        return candidate != null && target.equalsIgnoreCase(candidate);
+        if (matchByName) {
+            return itemName != null && target.equalsIgnoreCase(itemName);
+        }
+        MaterialGroup group = getGroup();
+        if (group != null) {
+            return group.matches(materialName);
+        }
+        return materialName != null && target.equalsIgnoreCase(materialName);
+    }
+
+    /** True when the target matches everything (unset or "ANY"). */
+    private boolean isWildcard() {
+        return target == null || target.isBlank() || target.equalsIgnoreCase("ANY");
+    }
+
+    /**
+     * The material group this requirement targets, or null when it targets a
+     * single value. An unrecognised {@code #GROUP} (e.g. one written by a newer
+     * version) resolves to null and so simply matches nothing.
+     */
+    public MaterialGroup getGroup() {
+        if (!MaterialGroup.isGroup(target)) {
+            return null;
+        }
+        if (!Objects.equals(cachedGroupSource, target)) {
+            cachedGroup = MaterialGroup.byId(target);
+            cachedGroupSource = target;
+        }
+        return cachedGroup;
     }
 
     public boolean isMatchByName() {
@@ -81,6 +117,22 @@ public class Requirement {
         return cachedLocation;
     }
 
+    /**
+     * The target in human-readable form: {@code Any Logs} for a group, a quoted
+     * custom item name when matching by name, {@code Any} for the wildcard, and
+     * otherwise the raw value (e.g. {@code OAK_LOG}).
+     */
+    public String targetLabel() {
+        if (isWildcard()) {
+            return "Any";
+        }
+        if (matchByName) {
+            return "\"" + target + "\"";
+        }
+        MaterialGroup group = getGroup();
+        return group != null ? "Any " + group.label() : target;
+    }
+
     /** A short, plain-text description used in the achievements menu. */
     public String describe() {
         return switch (trigger) {
@@ -95,9 +147,8 @@ public class Requirement {
                     + (target != null && !target.equalsIgnoreCase("ANY") ? " in " + target : " in any skill");
             default -> {
                 String verb = trigger.display();
-                if (trigger.usesTarget() && target != null && !target.equalsIgnoreCase("ANY")) {
-                    String label = matchByName ? "\"" + target + "\"" : target;
-                    yield verb + ": " + label + " x" + amount;
+                if (trigger.usesTarget() && !isWildcard()) {
+                    yield verb + ": " + targetLabel() + " x" + amount;
                 }
                 yield verb + " x" + amount;
             }

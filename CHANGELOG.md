@@ -4,6 +4,23 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.9.0]
+### Added
+- **Material groups for block and item objectives.** An objective can now target
+  a whole family of materials instead of a single one, so *"mine 100 logs"* is a
+  single objective covering every wood type rather than "100 oak logs". The
+  target picker lists the groups first — **Any Logs**, **Any Ores**, **Any
+  Planks**, **Any Leaves**, **Any Saplings**, **Any Flowers**, **Any Crops**, any
+  **Stone Types**, **Dirt & Grass**, **Sand & Gravel**, **Wool**, **Terracotta**,
+  **Concrete**, **Glass**, **Coral**, **Ice**, **Mushrooms**, **Slabs**,
+  **Stairs**, **Fences** and **Doors** — each showing how many materials it
+  covers. In `achievements.yml` they're written with a leading `#` (e.g.
+  `target: '#LOGS'`), mirroring Minecraft's own `#minecraft:logs` tag syntax.
+  Groups work with `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`, `ITEM_CONSUME` and
+  `ITEM_OBTAIN`, and membership is derived from material names on the running
+  server, so wood and ore types added by later Minecraft versions are included
+  automatically. Objectives naming a single material are unchanged.
+
 ## [1.8.3]
 ### Changed
 - **Secret achievement hints now show the full description.** Previously a hidden

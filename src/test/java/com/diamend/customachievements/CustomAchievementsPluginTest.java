@@ -336,4 +336,38 @@ class CustomAchievementsPluginTest {
         assertTrue(player.performCommand("achievements reopen"), "/ca reopen should dispatch");
         assertTrue(player.performCommand("achievements claim"), "/ca claim should dispatch");
     }
+
+    @Test
+    void groupTargetCountsEveryMaterialInTheFamily() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("lumberjack");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("#LOGS"); // any log, not one specific wood type
+        achievement.setAmount(3);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "OAK_LOG", 1);
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STRIPPED_SPRUCE_LOG", 1);
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("lumberjack", 0)),
+                "different wood types all count, stone does not");
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "CRIMSON_STEM", 1);
+        assertTrue(data.isCompleted("lumberjack"), "any three logs should finish it");
+    }
+
+    @Test
+    void groupTargetSurvivesSaveAndLoad() {
+        Achievement achievement = new Achievement("miner");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("#ORES");
+        achievement.setAmount(50);
+        plugin.getAchievementManager().put(achievement); // writes achievements.yml
+
+        // '#' opens a comment in YAML, so the target has to come back quoted.
+        plugin.getAchievementManager().load();
+        assertEquals("#ORES", plugin.getAchievementManager().get("miner").getTarget(),
+                "a group target should survive the achievements.yml round-trip");
+    }
 }
