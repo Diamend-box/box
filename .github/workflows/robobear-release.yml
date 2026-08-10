@@ -1,20 +1,25 @@
 name: Release RoboBear
 
-# Publishing is driven by a tag so the release always points at an exact
-# commit. Tag format: robobear-v1.0.0 — scoped, because this repository holds
-# several plugins and a bare vX.Y.Z already means CustomAchievements.
+# Two ways in, both landing on the same publish step.
 #
-#   git tag -a robobear-v1.0.0 -m "RoboBear 1.0.0"
-#   git push origin robobear-v1.0.0
+#   1. Push a tag — the normal path once this is on the default branch:
+#        git tag -a robobear-v1.0.0 -m "RoboBear 1.0.0"
+#        git push origin robobear-v1.0.0
+#
+#   2. Push the branch with a version the repository hasn't released yet. The
+#      job creates the tag itself, at the commit it built. This is what makes a
+#      release possible from an environment that can push branches but not tags.
+#
+# Either way the version of record is robobear/pom.xml, the tag is
+# robobear-v<that>, and a version that is already released is skipped rather
+# than rebuilt. The tag is scoped because a bare vX.Y.Z in this repository
+# already means CustomAchievements.
 
 on:
   push:
     tags: [ "robobear-v*" ]
+    branches: [ "claude/bee-swarm-simulator-plugins-avdg16" ]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing tag to build and publish (e.g. robobear-v1.0.0)"
-        required: true
 
 permissions:
   contents: write
@@ -23,19 +28,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve the tag
-        id: tag
-        run: |
-          set -euo pipefail
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#robobear-v}"
-          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Releasing RoboBear $VERSION from tag $TAG"
-
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -45,27 +39,58 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # A tag that claims 1.0.0 while the pom says something else would ship a
-      # jar whose /version output contradicts its own release page.
-      - name: Check the tag matches the pom
+      # The pom is the version of record. A tag that disagrees with it would
+      # ship a jar whose own version contradicts its release page, so that is a
+      # hard failure rather than a guess about which one was meant.
+      - name: Resolve the version
+        id: v
         working-directory: robobear
         run: |
           set -euo pipefail
           POM=$(mvn -B -ntp -q help:evaluate -Dexpression=project.version -DforceStdout)
-          echo "pom version: $POM / tag version: ${{ steps.tag.outputs.version }}"
-          if [ "$POM" != "${{ steps.tag.outputs.version }}" ]; then
-            echo "::error::tag says ${{ steps.tag.outputs.version }} but robobear/pom.xml says $POM"
-            exit 1
+          echo "robobear/pom.xml says: $POM"
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#robobear-v}"
+            if [ "$VERSION" != "$POM" ]; then
+              echo "::error::tag $TAG claims $VERSION but the pom says $POM"
+              exit 1
+            fi
+          else
+            VERSION="$POM"
+            TAG="robobear-v$VERSION"
+          fi
+
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Target release: $TAG"
+
+      # Idempotence: pushing the branch again must not rebuild or overwrite a
+      # release that already exists. Bump the pom to cut a new one.
+      - name: Has this version already been released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ steps.v.outputs.tag }} is already released — nothing to do."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Tests run here on purpose: nothing gets a download link without passing
       # them first.
       - name: Build and test
+        if: steps.check.outputs.skip == 'false'
         working-directory: robobear
         run: mvn -B -ntp clean package
 
       - name: Name the jar
         id: jar
+        if: steps.check.outputs.skip == 'false'
         run: |
           set -euo pipefail
           JAR=$(ls robobear/target/RoboBear-*.jar | grep -v -- '-sources\|-javadoc' | head -n1)
@@ -74,6 +99,7 @@ jobs:
           ls -la "$JAR"
 
       - name: Write the release notes
+        if: steps.check.outputs.skip == 'false'
         run: |
           cat > notes.md <<'NOTES'
           A Bee Swarm Simulator style **Robo Bear Challenge** built on the mines your
@@ -118,32 +144,26 @@ jobs:
           boots clean on a headless Paper 1.21.4 in CI.
 
           **Not verified:** the MineResetLite integration has never been exercised
-          against the real plugin (it's reflective, and it logs the class it found if
-          it can't read your build), and the balance numbers are unplaytested. Start
+          against the real plugin (it is reflective, and it logs the class it found if
+          it cannot read your build), and the balance numbers are unplaytested. Start
           with `objectives.*.growth` — it decides how long a run lasts.
           NOTES
           # Point the docs link at the tagged commit, so it resolves whether or
           # not this branch has reached the default branch yet.
-          sed -i "s|__TAG__|${{ steps.tag.outputs.tag }}|g" notes.md
+          sed -i "s|__TAG__|${{ steps.v.outputs.tag }}|g" notes.md
           echo "--- notes.md ---"; cat notes.md
 
+      # --target is what lets this create the tag: on a branch build the tag
+      # does not exist yet, and gh cuts it at the commit that was just built.
       - name: Publish the release
+        if: steps.check.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.tag.outputs.tag }}"
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $TAG already exists — updating it."
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --title "RoboBear ${{ steps.tag.outputs.version }}" \
-              --notes-file notes.md
-            gh release upload "$TAG" "${{ steps.jar.outputs.path }}" \
-              --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$TAG" "${{ steps.jar.outputs.path }}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "RoboBear ${{ steps.tag.outputs.version }}" \
-              --notes-file notes.md
-          fi
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY"
+          gh release create "${{ steps.v.outputs.tag }}" "${{ steps.jar.outputs.path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "RoboBear ${{ steps.v.outputs.version }}" \
+            --notes-file notes.md
+          gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY"
