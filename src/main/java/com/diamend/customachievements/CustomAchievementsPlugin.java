@@ -269,6 +269,15 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         return getConfig().getBoolean("secret-show-hints", true);
     }
 
+    /**
+     * How many description lines a secret achievement's hint reveals: {@code -1}
+     * for the whole description, {@code 0} for none (name only), or a positive
+     * number to cap it at the first N lines.
+     */
+    public int getSecretHintLines() {
+        return getConfig().getInt("secret-hint-lines", -1);
+    }
+
     // ------------------------------------------------------------------
     // Last-opened menu tracking (for /reopen).
     // ------------------------------------------------------------------

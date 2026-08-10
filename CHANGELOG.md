@@ -12,6 +12,11 @@ All notable changes to **CustomAchievements** are documented here.
   part that actually tells players what to do. The hint now shows every
   description line (the mechanical objectives and progress stay concealed until
   it's unlocked), so how to earn a secret achievement is clear at a glance.
+### Added
+- **`secret-hint-lines` option** to control how much of a secret achievement's
+  description the hint reveals: `-1` (default) shows the whole description, `0`
+  shows none (name only), and a positive number caps it at the first N lines —
+  e.g. set `1` to tease with just the flavour line.
 
 ## [1.8.2]
 ### Changed

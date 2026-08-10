@@ -148,15 +148,22 @@ public class AchievementMenu implements Menu {
                         List.of(Text.item("<dark_gray>A secret achievement."),
                                 Text.item("<dark_gray>Unlock it to reveal it.")));
             }
-            // Hint mode: reveal the name and the full author-written description
-            // (e.g. flavour text plus a "how to earn it" line) so players have a
-            // clear clue, but keep the mechanical objectives and progress concealed.
+            // Hint mode: reveal the name and up to `secret-hint-lines` lines of the
+            // author-written description (e.g. flavour text plus a "how to earn it"
+            // line) so players have a clue, but keep the mechanical objectives and
+            // progress concealed. -1 shows the whole description; 0 shows none.
             List<Component> hintLore = new ArrayList<>();
+            int maxLines = plugin.getSecretHintLines();
             boolean anyText = false;
-            for (String line : achievement.getDescription()) {
-                hintLore.add(Text.item(line));
-                if (line != null && !line.isBlank()) {
-                    anyText = true;
+            if (maxLines != 0) {
+                for (String line : achievement.getDescription()) {
+                    if (maxLines >= 0 && hintLore.size() >= maxLines) {
+                        break;
+                    }
+                    hintLore.add(Text.item(line));
+                    if (line != null && !line.isBlank()) {
+                        anyText = true;
+                    }
                 }
             }
             if (!anyText) {

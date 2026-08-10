@@ -37,9 +37,16 @@ playtime-tracking: true
 progress-feedback: true
 
 # Secret (hidden) achievements: when true, players see the achievement's name
-# and its first description line as a hint before unlocking it (the objectives
-# stay concealed). Set to false to fully hide them as an obfuscated "???".
+# and a hint (its description) before unlocking it, while the objectives stay
+# concealed. Set to false to fully hide them as an obfuscated "???".
 secret-show-hints: true
+
+# How many description lines to reveal as the hint (only used when
+# secret-show-hints is true). -1 shows the whole description, 0 shows none
+# (just the name), and any positive number shows only the first N lines. Handy
+# if you write flavour text on line one and how-to-earn-it on line two: keep
+# -1 to show both, or set 1 to tease with the flavour text alone.
+secret-hint-lines: -1
 
 # When a player's inventory is full as they unlock an achievement, keep the
 # reward items in a claimable storage (accessed with /ca claim or /reopen) so
