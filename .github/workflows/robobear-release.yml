@@ -1,0 +1,169 @@
+name: Release RoboBear
+
+# Two ways in, both landing on the same publish step.
+#
+#   1. Push a tag — the normal path once this is on the default branch:
+#        git tag -a robobear-v1.0.0 -m "RoboBear 1.0.0"
+#        git push origin robobear-v1.0.0
+#
+#   2. Push the branch with a version the repository hasn't released yet. The
+#      job creates the tag itself, at the commit it built. This is what makes a
+#      release possible from an environment that can push branches but not tags.
+#
+# Either way the version of record is robobear/pom.xml, the tag is
+# robobear-v<that>, and a version that is already released is skipped rather
+# than rebuilt. The tag is scoped because a bare vX.Y.Z in this repository
+# already means CustomAchievements.
+
+on:
+  push:
+    tags: [ "robobear-v*" ]
+    branches: [ "claude/bee-swarm-simulator-plugins-avdg16" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # The pom is the version of record. A tag that disagrees with it would
+      # ship a jar whose own version contradicts its release page, so that is a
+      # hard failure rather than a guess about which one was meant.
+      - name: Resolve the version
+        id: v
+        working-directory: robobear
+        run: |
+          set -euo pipefail
+          POM=$(mvn -B -ntp -q help:evaluate -Dexpression=project.version -DforceStdout)
+          echo "robobear/pom.xml says: $POM"
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#robobear-v}"
+            if [ "$VERSION" != "$POM" ]; then
+              echo "::error::tag $TAG claims $VERSION but the pom says $POM"
+              exit 1
+            fi
+          else
+            VERSION="$POM"
+            TAG="robobear-v$VERSION"
+          fi
+
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Target release: $TAG"
+
+      # Idempotence: pushing the branch again must not rebuild or overwrite a
+      # release that already exists. Bump the pom to cut a new one.
+      - name: Has this version already been released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ steps.v.outputs.tag }} is already released — nothing to do."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Tests run here on purpose: nothing gets a download link without passing
+      # them first.
+      - name: Build and test
+        if: steps.check.outputs.skip == 'false'
+        working-directory: robobear
+        run: mvn -B -ntp clean package
+
+      - name: Name the jar
+        id: jar
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          JAR=$(ls robobear/target/RoboBear-*.jar | grep -v -- '-sources\|-javadoc' | head -n1)
+          [ -n "$JAR" ] || { echo "::error::no jar was produced"; exit 1; }
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          ls -la "$JAR"
+
+      - name: Write the release notes
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          cat > notes.md <<'NOTES'
+          A Bee Swarm Simulator style **Robo Bear Challenge** built on the mines your
+          server already has: a ladder of timed rounds, a choice of job at the top of
+          each one, Cogs to spend on upgrades between them, and payouts you decide at
+          milestone rounds.
+
+          ### Install
+
+          Drop the jar in `plugins/` and restart. Then `/rb mines` to check it found
+          your mines, and `/rb milestones` to fill in what the ladder pays — **a run
+          pays nothing until you do**, because the starter tiers ship empty on purpose.
+
+          Full setup, tuning and troubleshooting: **[the operator's guide](https://github.com/Diamend-box/box/blob/__TAG__/robobear/GUIDE.md)**.
+
+          ### What's in it
+
+          - **Runs on your mines.** Reads them from MineResetLite automatically, with
+            an in-game manual fallback (`/rb pos1`, `/rb pos2`, `/rb mine set <id>`)
+            for servers without it. The mining hot path never calls another plugin.
+          - **A real decision every round.** Two offers, spread across difficulty —
+            the greedy one pays more Cogs and is likelier to end the run.
+          - **A workshop.** Six upgrades: drill speed, movement, damage, armour, extra
+            time and extra Cogs. Costs climb per level, so nobody maxes one thing.
+          - **Payouts you set in game.** `/rb milestones` opens a chest — put real
+            items in it and that's what a milestone pays. No reward number, no
+            multiplier, no economy hook.
+          - **Nothing carries out of a run.** Cogs are minted at entry, spent inside,
+            and destroyed at the end. Not a second currency.
+          - **PvP-aware defaults.** Payouts drop on the floor the way a kill does, the
+            bossbar is left alone, and dying or logging out ends the run.
+          - ~20 PlaceholderAPI placeholders, per-player stats, async saves.
+
+          ### Requirements
+
+          Paper 1.21.4+ and Java 21. MineResetLite and PlaceholderAPI are optional —
+          the plugin enables cleanly without either.
+
+          ### Verified
+
+          Compiles against paper-api 1.21.4, passes its unit and MockBukkit suites, and
+          boots clean on a headless Paper 1.21.4 in CI.
+
+          **Not verified:** the MineResetLite integration has never been exercised
+          against the real plugin (it is reflective, and it logs the class it found if
+          it cannot read your build), and the balance numbers are unplaytested. Start
+          with `objectives.*.growth` — it decides how long a run lasts.
+          NOTES
+          # Point the docs link at the tagged commit, so it resolves whether or
+          # not this branch has reached the default branch yet.
+          sed -i "s|__TAG__|${{ steps.v.outputs.tag }}|g" notes.md
+          echo "--- notes.md ---"; cat notes.md
+
+      # --target is what lets this create the tag: on a branch build the tag
+      # does not exist yet, and gh cuts it at the commit that was just built.
+      - name: Publish the release
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.v.outputs.tag }}" "${{ steps.jar.outputs.path }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "RoboBear ${{ steps.v.outputs.version }}" \
+            --notes-file notes.md
+          gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY"
