@@ -18,7 +18,7 @@ name: Release RoboBear
 on:
   push:
     tags: [ "robobear-v*" ]
-    branches: [ "claude/bee-swarm-simulator-plugins-avdg16" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:

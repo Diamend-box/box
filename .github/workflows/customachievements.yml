@@ -2,7 +2,7 @@ name: Verify CustomAchievements
 
 on:
   push:
-    branches: [ "main", "claude/minecraft-custom-achievements-uznj9d" ]
+    branches: [ "main" ]
     paths:
       - "customachievements/**"
       - ".github/workflows/customachievements.yml"

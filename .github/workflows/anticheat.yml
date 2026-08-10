@@ -2,7 +2,7 @@ name: Verify AntiCheat
 
 on:
   push:
-    branches: [ "main", "claude/minecraft-anticheat-plan-suttic" ]
+    branches: [ "main" ]
     paths:
       - "anticheat/**"
       - ".github/workflows/anticheat.yml"

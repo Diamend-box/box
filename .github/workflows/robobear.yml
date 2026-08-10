@@ -2,7 +2,12 @@ name: Verify RoboBear
 
 on:
   push:
-    branches: [ "claude/bee-swarm-simulator-plugins-avdg16" ]
+    branches: [ "main" ]
+    paths:
+      - "robobear/**"
+      - ".github/workflows/robobear.yml"
+  pull_request:
+    branches: [ "main" ]
     paths:
       - "robobear/**"
       - ".github/workflows/robobear.yml"
