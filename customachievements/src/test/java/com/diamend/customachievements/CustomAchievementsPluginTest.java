@@ -336,4 +336,82 @@ class CustomAchievementsPluginTest {
         assertTrue(player.performCommand("achievements reopen"), "/ca reopen should dispatch");
         assertTrue(player.performCommand("achievements claim"), "/ca claim should dispatch");
     }
+
+    @Test
+    void groupTargetCountsEveryMaterialInTheFamily() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("lumberjack");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("#LOGS"); // any log, not one specific wood type
+        achievement.setAmount(3);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "OAK_LOG", 1);
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STRIPPED_SPRUCE_LOG", 1);
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("lumberjack", 0)),
+                "different wood types all count, stone does not");
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "CRIMSON_STEM", 1);
+        assertTrue(data.isCompleted("lumberjack"), "any three logs should finish it");
+    }
+
+    @Test
+    void unlockShowsEveryDescriptionLineNotJustTheFirst() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("chop_sleep_repeat");
+        achievement.setTrigger(TriggerType.MANUAL);
+        achievement.setDisplayName("Chop, Sleep, Repeat.");
+        achievement.setDescription(java.util.List.of(
+                "<gray>A lumberjack's life for me.",   // flavour text
+                "<yellow>Break 100 logs to earn it."));  // how you get it
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().grant(player, achievement);
+
+        StringBuilder seen = new StringBuilder();
+        String message;
+        while ((message = player.nextMessage()) != null) {
+            seen.append(message).append('\n');
+        }
+        assertTrue(seen.toString().contains("A lumberjack's life for me."),
+                "the flavour line should be shown on unlock");
+        assertTrue(seen.toString().contains("Break 100 logs to earn it."),
+                "the how-to-earn-it line should be shown on unlock too, not just the first line");
+    }
+
+    @Test
+    void mobGroupTargetCountsEveryHostileMob() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("monster_hunter");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("#HOSTILE"); // any hostile mob, not one specific type
+        achievement.setAmount(3);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "ZOMBIE", 1);
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "CREEPER", 1);
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "COW", 1);
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("monster_hunter", 0)),
+                "different hostile mobs all count, a cow does not");
+
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "ENDERMAN", 1);
+        assertTrue(data.isCompleted("monster_hunter"), "any three hostile mobs should finish it");
+    }
+
+    @Test
+    void groupTargetSurvivesSaveAndLoad() {
+        Achievement achievement = new Achievement("miner");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("#ORES");
+        achievement.setAmount(50);
+        plugin.getAchievementManager().put(achievement); // writes achievements.yml
+
+        // '#' opens a comment in YAML, so the target has to come back quoted.
+        plugin.getAchievementManager().load();
+        assertEquals("#ORES", plugin.getAchievementManager().get("miner").getTarget(),
+                "a group target should survive the achievements.yml round-trip");
+    }
 }

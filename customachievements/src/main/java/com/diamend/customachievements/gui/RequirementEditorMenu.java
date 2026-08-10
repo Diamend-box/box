@@ -3,6 +3,7 @@ package com.diamend.customachievements.gui;
 import com.diamend.customachievements.CustomAchievementsPlugin;
 import com.diamend.customachievements.achievement.Achievement;
 import com.diamend.customachievements.achievement.LocationTarget;
+import com.diamend.customachievements.achievement.TargetGroups;
 import com.diamend.customachievements.achievement.Requirement;
 import com.diamend.customachievements.achievement.TriggerType;
 import com.diamend.customachievements.util.Items;
@@ -123,8 +124,11 @@ public class RequirementEditorMenu implements Menu {
                             "",
                             "<gray>MythicMobs internal name, or ANY.",
                             "<yellow>Click to type"));
-            default -> Items.of(Material.TARGET, Text.item("<aqua>Target: <white>" + requirement.getTarget()),
-                    lore("<gray>What to match.", "", "<yellow>Click to pick from a list"));
+            default -> Items.of(Material.TARGET, Text.item("<aqua>Target: <white>" + requirement.targetLabel()),
+                    lore("<gray>What to match.",
+                            "<gray>Pick a whole family (Any Logs, Any Ores,",
+                            "<gray>Any Hostile Mobs) or one specific value.",
+                            "", "<yellow>Click to pick from a list"));
         };
     }
 
@@ -216,6 +220,9 @@ public class RequirementEditorMenu implements Menu {
     private String validateTarget(TriggerType trigger, String value) {
         if (value == null || value.equalsIgnoreCase("ANY")) {
             return "ANY";
+        }
+        if (TargetGroups.isGroup(value)) {
+            return value; // a whole family, stored verbatim as "#LOGS" / "#HOSTILE"
         }
         if (trigger == TriggerType.ENTITY_KILL) {
             try {

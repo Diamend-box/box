@@ -90,13 +90,37 @@ public class PlayerDataManager {
         List<?> pending = config.getList("pending-rewards");
         if (pending != null) {
             for (Object object : pending) {
-                if (object instanceof org.bukkit.inventory.ItemStack item) {
+                org.bukkit.inventory.ItemStack item = toItemStack(object);
+                if (item != null) {
                     data.getPendingRewards().add(item);
                 }
             }
         }
         data.markClean();
         return data;
+    }
+
+    /**
+     * Reconstructs a pending-reward item from its stored form. Items are now
+     * persisted as Bukkit's portable serialized map ({@link ItemStack#serialize()}),
+     * which avoids coupling the on-disk file to a concrete {@code ItemStack}
+     * implementation class. Legacy files that stored the {@code ItemStack} object
+     * directly are still read.
+     */
+    private static org.bukkit.inventory.ItemStack toItemStack(Object object) {
+        if (object instanceof org.bukkit.inventory.ItemStack item) {
+            return item; // Legacy format.
+        }
+        if (object instanceof Map<?, ?> raw) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) raw;
+                return org.bukkit.inventory.ItemStack.deserialize(map);
+            } catch (RuntimeException ex) {
+                return null; // Skip an unreadable reward rather than losing the file.
+            }
+        }
+        return null;
     }
 
     private YamlConfiguration snapshot(PlayerData data) {
@@ -106,7 +130,14 @@ public class PlayerDataManager {
             config.set("progress." + entry.getKey(), entry.getValue());
         }
         if (!data.getPendingRewards().isEmpty()) {
-            config.set("pending-rewards", new ArrayList<>(data.getPendingRewards()));
+            // Store each item as its portable serialized map rather than the raw
+            // ItemStack object, so the file doesn't embed a server-specific
+            // ItemStack implementation class (which some builds can't read back).
+            List<Map<String, Object>> serialized = new ArrayList<>();
+            for (org.bukkit.inventory.ItemStack item : data.getPendingRewards()) {
+                serialized.add(item.serialize());
+            }
+            config.set("pending-rewards", serialized);
         }
         return config;
     }

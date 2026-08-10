@@ -6,7 +6,7 @@
 
     <groupId>com.diamend</groupId>
     <artifactId>CustomAchievements</artifactId>
-    <version>1.8.2</version>
+    <version>1.9.0</version>
     <packaging>jar</packaging>
 
     <name>CustomAchievements</name>

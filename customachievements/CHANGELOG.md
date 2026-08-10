@@ -4,6 +4,57 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.9.0]
+### Fixed
+- **Unlocking an achievement now shows its whole description, not just its
+  name.** The unlock title has room for the name only, and the description
+  wasn't shown anywhere at that moment — so the common "flavour text on line
+  one, how-to-earn-it on line two" pattern never reached the player when it
+  mattered most. The description's lines are now printed in chat under the
+  unlock message (toggle with `show-description-on-unlock`, default `true`).
+### Added
+- **Target groups — aim an objective at a whole family instead of one value.**
+  *"Mine 100 logs"* or *"kill 100 hostile mobs"* is now a single objective
+  rather than one per wood type or mob. The target picker lists the groups
+  first, each showing how many types it covers, and in `achievements.yml`
+  they're written with a leading `#` (e.g. `target: '#LOGS'`), mirroring
+  Minecraft's own `#minecraft:logs` tag syntax.
+  - **Material groups** (for `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`,
+    `ITEM_CONSUME`, `ITEM_OBTAIN`): **Logs**, **Ores**, **Planks**, **Leaves**,
+    **Saplings**, **Flowers**, **Crops**, **Stone Types**, **Dirt & Grass**,
+    **Sand & Gravel**, **Wool**, **Terracotta**, **Concrete**, **Glass**,
+    **Coral**, **Ice**, **Mushrooms**, **Slabs**, **Stairs**, **Fences**,
+    **Doors**.
+  - **Mob groups** (for `ENTITY_KILL`): **Hostile Mobs**, **Animals**,
+    **Undead**, **Arthropods**, **Illagers & Raiders**, **Bosses**, **Aquatic
+    Mobs**, **Nether Mobs**, **End Mobs**.
+
+  Membership is resolved on the running server — from the material's name, and
+  from the mob's own Bukkit category (`Enemy`, `Animals`, `Raider`, `Boss`, …)
+  where vanilla models one — so blocks and mobs added by later Minecraft
+  versions are included automatically. Groups are scoped to the triggers they
+  suit, so a mob family on a block objective matches nothing rather than
+  everything. Objectives naming a single value are unchanged.
+- **`messages.subtitle` option** for the line under the big "Achievement
+  Unlocked" title. It defaults to `<name>` (what it always showed) and now also
+  accepts `<description>`, so the on-screen popup can read
+  `<name> <dark_gray>— <description>` if you want the hint there too.
+  `<description>` works in `messages.unlocked` and `messages.broadcast` as well.
+
+## [1.8.3]
+### Changed
+- **Secret achievement hints now show the full description.** Previously a hidden
+  achievement revealed only the *first* line of its description as a hint, so the
+  common pattern of "flavour text on line one, how-to-earn-it on line two" hid the
+  part that actually tells players what to do. The hint now shows every
+  description line (the mechanical objectives and progress stay concealed until
+  it's unlocked), so how to earn a secret achievement is clear at a glance.
+### Added
+- **`secret-hint-lines` option** to control how much of a secret achievement's
+  description the hint reveals: `-1` (default) shows the whole description, `0`
+  shows none (name only), and a positive number caps it at the first N lines —
+  e.g. set `1` to tease with just the flavour line.
+
 ## [1.8.2]
 ### Changed
 - **Player data and `achievements.yml` are now saved atomically.** Saves write to
@@ -22,9 +73,13 @@ All notable changes to **CustomAchievements** are documented here.
   entries are now cleared when they disconnect instead of lingering for the
   server's lifetime.
 ### Internal
-- The MockBukkit test suite no longer silently skips: the join path now tolerates
-  a missing play-time statistic (as on the mock server), so the player-based
-  behaviour tests actually execute in CI instead of aborting.
+- The MockBukkit test suite no longer silently skips: the join path now treats a
+  world's namespaced key (and the play-time statistic) as optional, as they are
+  on the mock server, so the player-based behaviour tests actually execute in CI
+  instead of aborting.
+- Unclaimed item rewards are now persisted in Bukkit's portable serialized-map
+  form instead of as a raw `ItemStack` object, so the player-data file no longer
+  embeds a server-specific implementation class. Existing saves are still read.
 
 ## [1.8.1]
 ### Changed

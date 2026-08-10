@@ -15,6 +15,11 @@ play-sound: true
 # Show a title/subtitle on screen when a player unlocks an achievement.
 show-title: true
 
+# Print the achievement's description in chat when it's unlocked, so players see
+# what it was for — e.g. your flavour text on line one and how it's earned on
+# line two — instead of just its name. Set to false to show the name alone.
+show-description-on-unlock: true
+
 # EXPERIMENTAL: show a native Minecraft "advancement toast" pop-up on unlock.
 # Uses runtime advancement registration, which some server builds don't allow;
 # if unsupported it disables itself automatically (unlocks are unaffected).
@@ -37,9 +42,16 @@ playtime-tracking: true
 progress-feedback: true
 
 # Secret (hidden) achievements: when true, players see the achievement's name
-# and its first description line as a hint before unlocking it (the objectives
-# stay concealed). Set to false to fully hide them as an obfuscated "???".
+# and a hint (its description) before unlocking it, while the objectives stay
+# concealed. Set to false to fully hide them as an obfuscated "???".
 secret-show-hints: true
+
+# How many description lines to reveal as the hint (only used when
+# secret-show-hints is true). -1 shows the whole description, 0 shows none
+# (just the name), and any positive number shows only the first N lines. Handy
+# if you write flavour text on line one and how-to-earn-it on line two: keep
+# -1 to show both, or set 1 to tease with the flavour text alone.
+secret-hint-lines: -1
 
 # When a player's inventory is full as they unlock an achievement, keep the
 # reward items in a claimable storage (accessed with /ca claim or /reopen) so
@@ -55,8 +67,14 @@ count-player-placed-blocks: true
 # against crashes). Set to 0 to disable periodic saving.
 autosave-minutes: 5
 
+# In the messages below, <name> is the achievement's display name and
+# <description> is its description with all lines joined onto one (handy for the
+# subtitle, which is a single line). <player> works in "broadcast" only.
 messages:
   prefix: "<gradient:#f9d423:#ff4e50><bold>Achievements</bold></gradient> <dark_gray>»</dark_gray> "
   unlocked: "<green>You unlocked <white><name></white>!"
   broadcast: "<yellow><player></yellow> <gray>unlocked the achievement</gray> <white><name></white><gray>!</gray>"
   title: "<gradient:#f9d423:#ff4e50><bold>Achievement Unlocked</bold></gradient>"
+  # The line under the big title. Use "<description>" to show your lore there
+  # instead, or "<name> <dark_gray>— <description>" to show both.
+  subtitle: "<name>"

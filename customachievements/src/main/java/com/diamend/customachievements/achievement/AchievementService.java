@@ -282,11 +282,21 @@ public class AchievementService {
             return;
         }
         String name = world.getName();
-        String key = world.getKey().toString();
         String environment = world.getEnvironment().name();
+        // The namespaced key is optional metadata: some server implementations
+        // (and the MockBukkit test server) don't expose it. Fall back to
+        // name/environment matching when it's unavailable rather than letting
+        // the whole join handler abort.
+        String key;
+        try {
+            key = world.getKey().toString();
+        } catch (RuntimeException ex) {
+            key = null;
+        }
+        final String keyForMatch = key;
         handle(player, TriggerType.REACH_DIMENSION, requirement ->
                 requirement.matchesTarget(name)
-                        || requirement.matchesTarget(key)
+                        || (keyForMatch != null && requirement.matchesTarget(keyForMatch))
                         || requirement.matchesTarget(environment), false, 1);
     }
 
@@ -305,10 +315,24 @@ public class AchievementService {
 
         FileConfiguration config = plugin.getConfig();
         Component name = Text.parse(achievement.getDisplayName());
+        Component description = descriptionInline(achievement);
 
         // Personal message.
         String unlocked = config.getString("messages.unlocked", "<green>You unlocked <name>!");
-        player.sendMessage(prefix().append(withName(unlocked, name)));
+        player.sendMessage(prefix().append(render(unlocked, name, description)));
+
+        // The description, one line per line. The unlock title only has room for
+        // the name, so this is where a player actually sees what the achievement
+        // was for — e.g. flavour text on line one and how it was earned on line
+        // two — rather than just its name.
+        if (config.getBoolean("show-description-on-unlock", true)) {
+            for (String line : achievement.getDescription()) {
+                if (line == null || line.isBlank()) {
+                    continue;
+                }
+                player.sendMessage(Text.parse("<gray>  " + line));
+            }
+        }
 
         // Rewards.
         if (achievement.getRewardXp() > 0) {
@@ -362,10 +386,12 @@ public class AchievementService {
             ToastNotifier.show(plugin, player, achievement);
         }
 
-        // Title.
+        // Title. The subtitle is a template so it can show the description
+        // (or both) instead of just the name — a title has only these two lines.
         if (config.getBoolean("show-title", true)) {
             Component titleText = Text.parse(config.getString("messages.title", "<gold>Achievement Unlocked"));
-            player.showTitle(Title.title(titleText, name,
+            Component subtitle = render(config.getString("messages.subtitle", "<name>"), name, description);
+            player.showTitle(Title.title(titleText, subtitle,
                     Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofMillis(600))));
         }
 
@@ -376,7 +402,8 @@ public class AchievementService {
             Component message = prefix().append(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
                     .deserialize(broadcast,
                             Placeholder.component("player", Component.text(player.getName())),
-                            Placeholder.component("name", name)));
+                            Placeholder.component("name", name),
+                            Placeholder.component("description", description)));
             for (Player online : Bukkit.getOnlinePlayers()) {
                 online.sendMessage(message);
             }
@@ -386,9 +413,33 @@ public class AchievementService {
         playerData.save(player.getUniqueId());
     }
 
-    private Component withName(String template, Component name) {
+    /** Fills a message template's {@code <name>} and {@code <description>} placeholders. */
+    private Component render(String template, Component name, Component description) {
         return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                .deserialize(template, Placeholder.component("name", name));
+                .deserialize(template,
+                        Placeholder.component("name", name),
+                        Placeholder.component("description", description));
+    }
+
+    /**
+     * The achievement's description as a single line, for places that only have
+     * room for one (the title's subtitle). Lines are joined with a separator so
+     * "flavour text" and "how to earn it" can both be on screen at once.
+     */
+    private static Component descriptionInline(Achievement achievement) {
+        Component joined = Component.empty();
+        boolean first = true;
+        for (String line : achievement.getDescription()) {
+            if (line == null || line.isBlank()) {
+                continue;
+            }
+            if (!first) {
+                joined = joined.append(Text.parse("<dark_gray> • "));
+            }
+            joined = joined.append(Text.parse(line));
+            first = false;
+        }
+        return joined;
     }
 
     private Component prefix() {

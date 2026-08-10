@@ -10,8 +10,8 @@ still **locked** (with live progress bars).
 > shared here in the interest of transparency — review the code and test it on
 > your own server before relying on it in production.
 
-> This is a separate project from *BoxCore* and *AntiCheat* in the same
-> repository: different module (`customachievements/`), different package
+> This is a separate project from *BoxCore*, *AntiCheat* and *RoboBear* in the
+> same repository: different module (`customachievements/`), different package
 > (`com.diamend.customachievements`), different purpose.
 
 ---
@@ -30,6 +30,10 @@ still **locked** (with live progress bars).
   once; it unlocks only when every objective is complete.
 - 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
   menus (no typing IDs from memory).
+- 🪵 **Target groups** – aim a whole family instead of one value: "mine 100
+  **logs**", "mine 50 **ores**" or "kill 100 **hostile mobs**" in a single
+  objective, covering every wood/ore/mob type (including ones added by future
+  Minecraft versions).
 - ⌨️ **Off-chat text entry** – editor prompts use an anvil GUI so typed values
   never hit chat (keeps them away from chat-bridge plugins like DiscordSRV);
   toggle off in the config to type in chat instead.
@@ -79,7 +83,7 @@ mvn clean package
 ```
 
 The finished plugin is written to
-`customachievements/target/CustomAchievements-1.8.2.jar`. Drop that jar into
+`customachievements/target/CustomAchievements-1.9.0.jar`. Drop that jar into
 your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io` and the
@@ -138,6 +142,9 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
    - **Trigger** – click to open the **trigger picker** (a menu of all triggers).
    - **Target** – click to open the **target picker**, a paginated, searchable
      grid of the relevant options (materials / entities / skills / dimensions).
+     For blocks, items and mobs the list starts with **groups** — "Any Logs",
+     "Any Ores", "Any Hostile Mobs", … — so an objective can cover a whole family
+     at once (see [Target groups](#target-groups-mine-100-logs-kill-100-hostile-mobs)).
      Special cases: *Reach a Location* captures your current position on
      left-click (or type `world x y z [radius]`); *Kill Mythic Mobs* is typed.
    - **Required Amount** – click to type a number.
@@ -230,6 +237,71 @@ without it.
 `target: ANY` (or a blank target) matches everything for that trigger
 (except `REACH_LOCATION`, which always needs a concrete location).
 
+### Target groups (mine 100 *logs*, kill 100 *hostile mobs*)
+
+Objectives can target a **whole family** instead of one specific value, so
+"mine 100 logs", "mine 50 ores" or "kill 100 hostile mobs" is a single
+objective. In the target picker the groups are listed **first**, named
+**"Any Logs"**, **"Any Ores"**, **"Any Hostile Mobs"**, and so on — pick one and
+you're done. Each shows how many types it currently covers.
+
+In `achievements.yml` a group is written with a leading `#`, mirroring
+Minecraft's own `#minecraft:logs` tag syntax:
+
+```yaml
+target: '#LOGS'   # any log, of any wood type
+amount: 100
+```
+
+**Material groups** — for `BLOCK_BREAK`, `BLOCK_PLACE`, `ITEM_CRAFT`,
+`ITEM_CONSUME` and `ITEM_OBTAIN`:
+
+| Group | Covers |
+| --- | --- |
+| `#LOGS` | Every log, stem, hyphae and wood block — all tree types, stripped or not (plus bamboo blocks) |
+| `#ORES` | Every ore, including deepslate and nether variants, plus ancient debris |
+| `#PLANKS` | Any wooden planks |
+| `#LEAVES` | Any tree leaves |
+| `#SAPLINGS` | Any sapling or propagule |
+| `#FLOWERS` | Any flower, small or tall |
+| `#CROPS` | Wheat, carrots, potatoes, beetroot, nether wart, melon, pumpkin, sugar cane, bamboo, cactus, berries, kelp |
+| `#STONES` | Naturally generated stone — stone, deepslate, tuff, basalt, netherrack, obsidian … |
+| `#DIRT` | Dirt, grass, podzol, mycelium, farmland, mud, soul sand … |
+| `#SAND` | Sand, red sand and gravel (incl. suspicious variants) |
+| `#WOOL` | Any colour of wool |
+| `#TERRACOTTA` | Any terracotta, glazed or plain |
+| `#CONCRETE` | Any colour of concrete (powder not included) |
+| `#GLASS` | Any glass block or pane, stained or not |
+| `#CORAL` | Any coral, coral block or coral fan |
+| `#ICE` | Ice, packed ice, blue ice, frosted ice |
+| `#MUSHROOMS` | Mushrooms and mushroom blocks |
+| `#SLABS` / `#STAIRS` / `#FENCES` / `#DOORS` | Any slab / stairs / fence or gate / door or trapdoor |
+
+**Mob groups** — for `ENTITY_KILL`:
+
+| Group | Covers |
+| --- | --- |
+| `#HOSTILE` | Anything that attacks you — zombies, creepers, slimes, ghasts, bosses … |
+| `#ANIMALS` | Farm and wild animals — cows, pigs, sheep, wolves, horses, bees … |
+| `#UNDEAD` | Everything that takes extra damage from Smite — zombies, skeletons, drowned, phantoms, wither … |
+| `#ARTHROPODS` | Spiders, cave spiders, silverfish, endermites, bees |
+| `#ILLAGERS` | The raid roster — pillagers, vindicators, evokers, ravagers, witches, vexes |
+| `#BOSSES` | Ender dragon, wither, warden, elder guardians |
+| `#AQUATIC` | Fish, squid, dolphins, axolotls, turtles, guardians, drowned |
+| `#NETHER` | Blazes, ghasts, magma cubes, piglins, hoglins, striders, wither skeletons |
+| `#END` | Endermen, endermites, shulkers, the ender dragon |
+
+Membership is worked out on the running server — from the material's **name**
+for material groups, and from the mob's own **Bukkit category** (`Enemy`,
+`Animals`, `Raider`, `Boss`, …) for the mob groups where vanilla models one — so
+**blocks and mobs added by future Minecraft versions are picked up
+automatically** without a plugin update.
+
+Groups are scoped to the triggers they make sense for: `#HOSTILE` on a
+`BLOCK_BREAK` objective (or `#LOGS` on a kill objective) matches nothing rather
+than silently matching everything. Objectives that name a single value are
+unaffected — `target: OAK_LOG` still means only oak logs.
+
 ### Location & dimension targets
 
 - **`REACH_LOCATION`** stores its target as `world;x;y;z;radius` (the editor
@@ -285,6 +357,7 @@ their own progress. (Ids may contain underscores — that's fine.)
 announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
+show-description-on-unlock: true  # print the achievement's description in chat on unlock
 advancement-toast: false    # EXPERIMENTAL native advancement-toast pop-up on unlock
 use-anvil-input: true        # editor prompts use the off-chat anvil GUI (false = type in chat)
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
@@ -299,10 +372,23 @@ messages:
   unlocked: "<green>You unlocked <name>!"
   broadcast: "<yellow><player></yellow> unlocked <white><name></white>!"
   title: "<gold>Achievement Unlocked"
+  subtitle: "<name>"     # the line under the title; try "<name> <dark_gray>— <description>"
 ```
 
 All message strings use [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
-formatting. Placeholders: `<name>` (achievement), `<player>` (player name).
+formatting. Placeholders: `<name>` (achievement), `<description>` (its
+description, all lines joined onto one) and `<player>` (player name, broadcast
+only).
+
+### What a player sees on unlock
+
+The on-screen title has room for exactly two lines — the big **"Achievement
+Unlocked"** banner and the subtitle under it — so the achievement's description
+is printed in **chat** instead, one line per line, under the unlock message.
+That way a description written as "flavour text, then how you earn it" is fully
+visible at the moment it's unlocked. Turn it off with
+`show-description-on-unlock: false`, or move it on-screen by setting
+`messages.subtitle` to include `<description>`.
 
 Reward commands support `%player%` and `%uuid%`.
 
