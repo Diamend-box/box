@@ -4,6 +4,15 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.8.3]
+### Changed
+- **Secret achievement hints now show the full description.** Previously a hidden
+  achievement revealed only the *first* line of its description as a hint, so the
+  common pattern of "flavour text on line one, how-to-earn-it on line two" hid the
+  part that actually tells players what to do. The hint now shows every
+  description line (the mechanical objectives and progress stay concealed until
+  it's unlocked), so how to earn a secret achievement is clear at a glance.
+
 ## [1.8.2]
 ### Changed
 - **Player data and `achievements.yml` are now saved atomically.** Saves write to
