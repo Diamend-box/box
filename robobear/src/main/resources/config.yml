@@ -1,0 +1,240 @@
+# =====================================================================
+#  RoboBear configuration
+# =====================================================================
+# RoboBear is a challenge ladder built on the mines your server already
+# has, modelled on Bee Swarm Simulator's Robo Bear Challenge.
+#
+# A run goes: spend a pass -> get some Cogs -> pick one of two jobs ->
+# beat its clock -> get paid in Cogs -> spend them on upgrades -> go
+# again, harder. Clearing a milestone round pays out for keeps. Miss a
+# clock, die, or log out and the run is over — but everything already
+# paid out is yours.
+#
+# Cogs never leave a run. They are earned and spent inside one and gone
+# when it ends, so they are not a second currency and nothing about them
+# touches the server economy.
+#
+# Milestone payouts live in  milestones.yml  (edited with /rb milestones)
+# Manual mine regions live in  mines.yml      (only used without MineResetLite)
+#
+# All text supports MiniMessage (<green>, <gradient:#a:#b>…) and classic
+# '&' colour codes, mixed freely.
+
+# ---------------------------------------------------------------------
+# Where the mines come from
+# ---------------------------------------------------------------------
+mines:
+  # auto          - use MineResetLite if it's installed, else the manual list
+  # mineresetlite - require MineResetLite; log an error if it's missing
+  # manual        - always use mines.yml, even if MineResetLite is installed
+  source: auto
+
+  # How often to re-read the mine list, in seconds. Mines rarely move, so
+  # this is deliberately slow — the list is snapshotted into plain boxes
+  # and the hot path never touches the source plugin. 0 disables the
+  # refresh (the list is still read on enable and on /rb reload).
+  refresh-seconds: 300
+
+  # Log the mines found on startup, with their bounds. Useful the first
+  # time you set this up; noisy afterwards.
+  log-on-startup: true
+
+# ---------------------------------------------------------------------
+# The run
+# ---------------------------------------------------------------------
+run:
+  # What entry costs. Bee Swarm charges a Robo Pass; this is the same
+  # idea with the item left to you. Set 'item' to "" to make entry free.
+  entry-item:
+    item: NAME_TAG
+    amount: 1
+    # Optional: only items with exactly this display name count, so a
+    # plain name tag can't be used as a pass. Blank accepts any of the
+    # type. Supports colour codes.
+    name: "&6Robo Pass"
+    # Whether the pass is consumed. False makes it a key rather than a
+    # ticket. It is only ever taken once the run is certain to start.
+    consume: true
+
+  # Seconds on each round's clock. Bee Swarm gives five minutes.
+  round-seconds: 300
+
+  # Cogs handed over at the start of a run.
+  starting-cogs: 10
+
+  # Free objective rerolls per run.
+  free-rerolls: 1
+
+  # How many jobs are offered each round. Two is the game's number. The
+  # first offer is always the gentler one; later offers are harder and
+  # pay more, so the choice is a real one.
+  objectives-offered: 2
+
+  # Base Cogs a round pays, before the difficulty of the job chosen.
+  cogs-per-round: 6
+  # Added to that base per round, so round ten pays better than round one.
+  cogs-round-bonus: 0.5
+
+  # Used only to lay out the starting milestone tiers on a fresh install.
+  milestone-every: 5
+
+  # Hard stop on the ladder. 0 means it never ends and only a missed
+  # clock does.
+  max-rounds: 0
+
+  # Seconds a player must wait between runs. 0 leaves the pass as the
+  # only gate, which is what the game does.
+  cooldown-seconds: 0
+
+  # End a run when the player dies. On a PvP server this is the point:
+  # a run is a commitment you can be knocked out of.
+  fail-on-death: true
+
+  # End a run when the player logs out. Without this, logging out is a
+  # free way to stop a losing clock.
+  fail-on-quit: true
+
+  # Blocks a player places during their own run never count toward it.
+  # Run-scoped: the positions are held in memory for the length of the
+  # run and dropped when it ends. This is NOT a persistent placed-block
+  # tracker — BoxCore's PlacedBlocks is the one of those.
+  ignore-self-placed: true
+
+  # Safety valve for the above: stop recording past this many. A
+  # legitimate run never approaches it.
+  max-tracked-placements: 20000
+
+# ---------------------------------------------------------------------
+# What a round can ask for
+# ---------------------------------------------------------------------
+# Amounts grow with the round number: base × growth^(round-1), then
+# multiplied by the difficulty of the particular offer.
+objectives:
+  # "Break N blocks in <mine>" — any block in the mine counts.
+  mine-blocks:
+    enabled: true
+    base-amount: 120
+    growth: 1.28
+
+  # "Break N × <material> in <mine>" — one specific material.
+  # Leave 'materials' empty to switch this type off.
+  mine-material:
+    enabled: true
+    base-amount: 40
+    growth: 1.25
+    materials:
+      - COAL_ORE
+      - DEEPSLATE_COAL_ORE
+      - IRON_ORE
+      - DEEPSLATE_IRON_ORE
+      - GOLD_ORE
+      - DEEPSLATE_GOLD_ORE
+      - REDSTONE_ORE
+      - DEEPSLATE_REDSTONE_ORE
+      - LAPIS_ORE
+      - DEEPSLATE_LAPIS_ORE
+      - DIAMOND_ORE
+      - DEEPSLATE_DIAMOND_ORE
+      - EMERALD_ORE
+      - DEEPSLATE_EMERALD_ORE
+
+  # "Kill N hostile mobs" — Bee Swarm's Mechsquitos, more or less.
+  # Turn this off on a server where the box has no mobs in it.
+  kill-mobs:
+    enabled: true
+    base-amount: 10
+    growth: 1.22
+
+# ---------------------------------------------------------------------
+# The workshop
+# ---------------------------------------------------------------------
+# Costs are per level and rise as you buy: cost × growth^(level-1), so
+# nobody maxes one thing on the first visit.
+upgrades:
+  cost-growth: 1.6
+
+  # Haste while the run lasts.
+  haste:
+    cost: 8
+  # Speed while the run lasts.
+  swiftness:
+    cost: 8
+  # Strength while the run lasts.
+  strength:
+    cost: 12
+  # Resistance while the run lasts.
+  resistance:
+    cost: 12
+  # Adds time to this round and every one after it.
+  overclock:
+    cost: 10
+    seconds-per-level: 60
+  # Every round from here on pays more Cogs.
+  salvage:
+    cost: 10
+    cogs-per-level: 3
+
+# ---------------------------------------------------------------------
+# What the player sees while a round is live
+# ---------------------------------------------------------------------
+display:
+  # actionbar, bossbar or none.
+  #
+  # Default is actionbar on purpose. The BoxPvP risk spec (§5) reserves
+  # the bossbar for the deposit fee rate and nothing else — if you are
+  # running that system, leave this alone. Servers without it can use
+  # bossbar for a much more readable clock.
+  mode: actionbar
+
+  # Seconds left at which the clock turns red and a countdown ping plays.
+  warn-seconds: 10
+
+# ---------------------------------------------------------------------
+# Payouts
+# ---------------------------------------------------------------------
+rewards:
+  # ground    - drop the items at the player's feet with dropItemNaturally
+  # inventory - put them straight into the inventory, dropping any overflow
+  #
+  # Default is ground, to match how the risk spec (§11) pays a PvP kill:
+  # the haul lands unbanked, in the open, where a third party can take
+  # it. Finishing a milestone should hand you a payday and a problem.
+  delivery: ground
+
+  # Tell the server when somebody clears a milestone round.
+  broadcast: false
+
+# ---------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------
+storage:
+  # Minutes between background saves of online players' data. 0 disables
+  # the timer (data is still saved on quit and on shutdown).
+  autosave-minutes: 5
+
+# ---------------------------------------------------------------------
+# Messages
+# ---------------------------------------------------------------------
+messages:
+  prefix: "<gold>[<yellow>RoboBear<gold>] <reset>"
+  run-started: "<green>Run started. <gray>You have <gold><cogs> cogs<gray>."
+  round-begin: "<yellow>Round <round>: <white><objective></white> — <gold><time></gold>, worth <gold><cogs> cogs</gold>."
+  round-done: "<green>Round <round> cleared. <gray>+<gold><cogs> cogs</gold> <dark_gray>(<total> total)"
+  milestone: "<gold><bold>Payout!</bold> <reset><yellow><name></yellow> <gray>for clearing round <round>."
+  ladder-cleared: "<gold><bold>Ladder cleared</bold> <reset><gray>at round <round>."
+  retired: "<yellow>You walked away at round <round>."
+  run-summary: "<gray>Run over — <white><rounds></white> round(s), <white><milestones></white> payout(s), <white><time></white>."
+  failed-time: "<red>Out of time on round <round>. Run over."
+  failed-death: "<red>You died. Run over."
+  failed-cancel: "<gray>Run abandoned."
+  broadcast: "<yellow><player></yellow> took <white><name></white> at round <round>!"
+  bought: "<green>Bought <white><upgrade></white> <gray>(level <level>) — <gold><cogs> cogs</gold> left."
+  not-enough-cogs: "<red>That costs <white><cost></white> cogs and you have <white><cogs></white>."
+  no-rerolls: "<red>You've used your rerolls for this run."
+  no-pass: "<red>You need <white><pass></white> to start a run."
+  cooldown: "<red>You can go again in <white><time></white>."
+  no-permission: "<red>You don't have permission to do that."
+  already-running: "<red>You're already in a run. <gray>/rb cancel <red>to drop it."
+  not-running: "<red>You aren't in a run."
+  nothing-to-do: "<red>Nothing is set up for a run yet. Tell an admin."
+  mine-missing: "<red>That job points at a mine that doesn't exist any more."
