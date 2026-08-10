@@ -5,6 +5,13 @@ All notable changes to **CustomAchievements** are documented here.
 > This plugin was written with AI assistance (Anthropic's Claude).
 
 ## [1.9.0]
+### Fixed
+- **Unlocking an achievement now shows its whole description, not just its
+  name.** The unlock title has room for the name only, and the description
+  wasn't shown anywhere at that moment — so the common "flavour text on line
+  one, how-to-earn-it on line two" pattern never reached the player when it
+  mattered most. The description's lines are now printed in chat under the
+  unlock message (toggle with `show-description-on-unlock`, default `true`).
 ### Added
 - **Target groups — aim an objective at a whole family instead of one value.**
   *"Mine 100 logs"* or *"kill 100 hostile mobs"* is now a single objective
@@ -28,6 +35,11 @@ All notable changes to **CustomAchievements** are documented here.
   versions are included automatically. Groups are scoped to the triggers they
   suit, so a mob family on a block objective matches nothing rather than
   everything. Objectives naming a single value are unchanged.
+- **`messages.subtitle` option** for the line under the big "Achievement
+  Unlocked" title. It defaults to `<name>` (what it always showed) and now also
+  accepts `<description>`, so the on-screen popup can read
+  `<name> <dark_gray>— <description>` if you want the hint there too.
+  `<description>` works in `messages.unlocked` and `messages.broadcast` as well.
 
 ## [1.8.3]
 ### Changed

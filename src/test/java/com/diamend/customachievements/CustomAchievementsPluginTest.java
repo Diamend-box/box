@@ -358,6 +358,30 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void unlockShowsEveryDescriptionLineNotJustTheFirst() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("chop_sleep_repeat");
+        achievement.setTrigger(TriggerType.MANUAL);
+        achievement.setDisplayName("Chop, Sleep, Repeat.");
+        achievement.setDescription(java.util.List.of(
+                "<gray>A lumberjack's life for me.",   // flavour text
+                "<yellow>Break 100 logs to earn it."));  // how you get it
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().grant(player, achievement);
+
+        StringBuilder seen = new StringBuilder();
+        String message;
+        while ((message = player.nextMessage()) != null) {
+            seen.append(message).append('\n');
+        }
+        assertTrue(seen.toString().contains("A lumberjack's life for me."),
+                "the flavour line should be shown on unlock");
+        assertTrue(seen.toString().contains("Break 100 logs to earn it."),
+                "the how-to-earn-it line should be shown on unlock too, not just the first line");
+    }
+
+    @Test
     void mobGroupTargetCountsEveryHostileMob() {
         PlayerMock player = server.addPlayer();
         Achievement achievement = new Achievement("monster_hunter");

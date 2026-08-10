@@ -351,6 +351,7 @@ their own progress. (Ids may contain underscores — that's fine.)
 announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
 play-sound: true            # play the challenge-complete sound
 show-title: true            # show an on-screen title
+show-description-on-unlock: true  # print the achievement's description in chat on unlock
 advancement-toast: false    # EXPERIMENTAL native advancement-toast pop-up on unlock
 use-anvil-input: true        # editor prompts use the off-chat anvil GUI (false = type in chat)
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
@@ -365,10 +366,23 @@ messages:
   unlocked: "<green>You unlocked <name>!"
   broadcast: "<yellow><player></yellow> unlocked <white><name></white>!"
   title: "<gold>Achievement Unlocked"
+  subtitle: "<name>"     # the line under the title; try "<name> <dark_gray>— <description>"
 ```
 
 All message strings use [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
-formatting. Placeholders: `<name>` (achievement), `<player>` (player name).
+formatting. Placeholders: `<name>` (achievement), `<description>` (its
+description, all lines joined onto one) and `<player>` (player name, broadcast
+only).
+
+### What a player sees on unlock
+
+The on-screen title has room for exactly two lines — the big **"Achievement
+Unlocked"** banner and the subtitle under it — so the achievement's description
+is printed in **chat** instead, one line per line, under the unlock message.
+That way a description written as "flavour text, then how you earn it" is fully
+visible at the moment it's unlocked. Turn it off with
+`show-description-on-unlock: false`, or move it on-screen by setting
+`messages.subtitle` to include `<description>`.
 
 Reward commands support `%player%` and `%uuid%`.
 
