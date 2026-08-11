@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -30,12 +31,12 @@ import java.util.logging.Logger;
  *
  * <p><b>How it stays honest.</b> The plugin is located by name and then by a
  * loose match, so a fork that registers itself as {@code MineResetLitePlus} is
- * still found. Every lookup is tried against a list of plausible shapes — a
- * getter, then a field, then a corner pair, then a nested region object — and
- * whatever worked is cached per class. When nothing works it says so with the
- * real class and member names, both in the log and on demand through
- * {@code /rb mines debug}, so an admin gets something reportable instead of a
- * silent empty menu.
+ * still found. Bounds are then read by whichever of several shapes the build
+ * turns out to have — named getters, named fields, a corner pair, a nested
+ * region object, or the map the mine serialises itself to — and whatever worked
+ * is cached per class. When nothing works it says so with the real class and
+ * member names, both in the log and on demand through {@code /rb mines debug},
+ * so an admin gets something reportable instead of a silent empty menu.
  *
  * <p>Nothing here is on a hot path. {@link MineIndex} snapshots the result and
  * block breaks are matched against plain ints.
@@ -83,11 +84,26 @@ public class MineResetLiteProvider implements MineProvider {
             "getRegion", "region", "getBounds", "bounds", "getCuboid", "cuboid",
             "getArea", "area", "getSelection", "selection" };
 
+    /** Methods that hand back the mine as a plain map, for the serialised path. */
+    private static final String[] SERIALIZE_METHODS = { "serialize", "serialise", "toMap" };
+
+    // Keys as they appear in a serialised mine, already normalised for lookup.
+    private static final String[][] MAP_MIN_KEYS = {
+            { "minx", "x1", "lowerx", "startx" },
+            { "miny", "y1", "lowery", "starty" },
+            { "minz", "z1", "lowerz", "startz" } };
+    private static final String[][] MAP_MAX_KEYS = {
+            { "maxx", "x2", "upperx", "endx" },
+            { "maxy", "y2", "uppery", "endy" },
+            { "maxz", "z2", "upperz", "endz" } };
+    private static final String[] MAP_NAME_KEYS = { "name", "id", "minename" };
+    private static final String[] MAP_WORLD_KEYS = { "world", "worldname" };
+
     private final Logger logger;
 
-    /** Resolved accessors for whatever class the mines turned out to be. */
-    private Accessors accessors;
-    private Class<?> accessorsFor;
+    /** The reader that worked for whatever class the mines turned out to be. */
+    private MineReader reader;
+    private Class<?> readerFor;
     private boolean reportedFailure;
     private boolean reportedLooseMatch;
 
@@ -170,6 +186,12 @@ public class MineResetLiteProvider implements MineProvider {
 
     private static String normalise(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
+    }
+
+    /** Key normalisation keeps digits, because {@code x1} and {@code x2} are keys. */
+    private static String normaliseKey(Object key) {
+        return key == null ? "" : String.valueOf(key).toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 
     // ------------------------------------------------------------------
@@ -278,9 +300,10 @@ public class MineResetLiteProvider implements MineProvider {
         if (Member.find(type, NAME_MEMBERS) == null) {
             return false;
         }
-        // Either it exposes bounds we understand, or it is at least called a mine.
-        return Accessors.resolve(type) != null
-                || type.getSimpleName().toLowerCase(Locale.ROOT).contains("mine");
+        // Cheapest test first: it is at least called a mine. Otherwise pay for a
+        // full resolve, which is what catches a class renamed past recognition.
+        return type.getSimpleName().toLowerCase(Locale.ROOT).contains("mine")
+                || resolveReader(candidate) != null;
     }
 
     // ------------------------------------------------------------------
@@ -288,31 +311,53 @@ public class MineResetLiteProvider implements MineProvider {
     // ------------------------------------------------------------------
 
     private MineRegion read(Object mine) {
-        Accessors resolved = accessorsFor(mine.getClass());
+        MineReader resolved = readerFor(mine);
         if (resolved == null) {
             return null;
         }
         try {
-            return resolved.toRegion(mine);
+            return resolved.read(mine);
         } catch (Throwable error) {
             reportOnce("could not read a mine's bounds", mine.getClass(), error);
             return null;
         }
     }
 
-    private Accessors accessorsFor(Class<?> type) {
-        if (accessors != null && accessorsFor == type) {
-            return accessors;
+    private MineReader readerFor(Object mine) {
+        Class<?> type = mine.getClass();
+        if (reader != null && readerFor == type) {
+            return reader;
         }
-        Accessors resolved = Accessors.resolve(type);
+        MineReader resolved = resolveReader(mine);
         if (resolved == null) {
             reportOnce("could not work out how to read mine bounds", type, null);
             return null;
         }
-        accessors = resolved;
-        accessorsFor = type;
+        reader = resolved;
+        readerFor = type;
         logger.info("[" + PLUGIN_NAME + "] reading mines via " + resolved.describe());
         return resolved;
+    }
+
+    /**
+     * Picks the way this mine object can be read: named members first, then the
+     * map it serialises itself to.
+     *
+     * <p>Package-private so the tests can exercise it against mine objects
+     * shaped like real builds without needing a server.
+     *
+     * @return the reader, or null if nothing here understands the object
+     */
+    static MineReader resolveReader(Object sample) {
+        if (sample == null) {
+            return null;
+        }
+        Class<?> type = sample.getClass();
+        Accessors direct = Accessors.resolve(type);
+        if (direct != null) {
+            return direct;
+        }
+        return SerialisedReader.resolve(type, sample);
     }
 
     // ------------------------------------------------------------------
@@ -375,11 +420,14 @@ public class MineResetLiteProvider implements MineProvider {
         }
         out.add("Mine class: " + mineType.getName());
 
-        Accessors resolved = Accessors.resolve(mineType);
+        MineReader resolved = resolveReader(first);
         if (resolved == null) {
             out.add("Could not work out how to read its bounds.");
+            // On an obfuscated build the member names are noise but the
+            // serialised keys still mean something, so lead with those.
+            out.addAll(describeSerialisation(first));
             out.addAll(describeMembers("mine", mineType));
-            out.add("Paste the two lists above into an issue and support can be added.");
+            out.add("Paste the lists above into an issue and support can be added.");
             return out;
         }
 
@@ -390,7 +438,7 @@ public class MineResetLiteProvider implements MineProvider {
                 continue;
             }
             try {
-                MineRegion region = resolved.toRegion(mine);
+                MineRegion region = resolved.read(mine);
                 out.add(region == null
                         ? " • (an entry produced no usable region)"
                         : " • " + region.id() + " " + region.boundsDescription());
@@ -426,6 +474,46 @@ public class MineResetLiteProvider implements MineProvider {
     }
 
     /**
+     * What the mine says about itself when asked to serialise, keys and value
+     * types. This is the half of the report that survives obfuscation: a build
+     * has to keep writing the same keys or it could not read its own saved
+     * mines back, however thoroughly its fields were renamed.
+     */
+    private static List<String> describeSerialisation(Object mine) {
+        Method serializer = findSerializer(mine.getClass());
+        if (serializer == null) {
+            return List.of("mine serialize(): none found, so the keys can't be read either.");
+        }
+        Object value;
+        try {
+            value = serializer.invoke(mine);
+        } catch (Throwable error) {
+            return List.of("mine " + serializer.getName() + "() threw: " + error);
+        }
+        if (!(value instanceof Map<?, ?> map)) {
+            return List.of("mine " + serializer.getName() + "() returned no map.");
+        }
+        List<String> keys = new ArrayList<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object entryValue = entry.getValue();
+            keys.add(entry.getKey() + ":"
+                    + (entryValue == null ? "null" : entryValue.getClass().getSimpleName()));
+        }
+        return List.of("mine " + serializer.getName() + "() keys: "
+                + (keys.isEmpty() ? "(empty map)" : String.join(", ", keys)));
+    }
+
+    private static Method findSerializer(Class<?> type) {
+        for (String candidate : SERIALIZE_METHODS) {
+            Method method = findMethod(type, candidate);
+            if (method != null && Map.class.isAssignableFrom(method.getReturnType())) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Logs an integration failure once, with enough detail to be reported.
      * Repeating it every refresh would bury the server log.
      */
@@ -452,18 +540,28 @@ public class MineResetLiteProvider implements MineProvider {
     }
 
     // ------------------------------------------------------------------
-    // Resolved accessor set
+    // Readers
     // ------------------------------------------------------------------
 
+    /** One resolved way of turning a source plugin's mine object into a region. */
+    interface MineReader {
+
+        /** @return the region, or null when this particular mine can't be read */
+        MineRegion read(Object mine) throws Exception;
+
+        /** How the bounds are being read, for the log and {@code /rb mines debug}. */
+        String describe();
+    }
+
     /**
-     * The accessors that worked for a particular mine class, resolved once.
+     * Reads a mine through its own members.
      *
      * <p>Three bound shapes are supported: six separate coordinate accessors
      * ({@code getMinX()}…), a pair of corner objects ({@code getMin()} /
      * {@code getMax()}), or either of those living on a nested region object
      * that the mine holds.
      */
-    private static final class Accessors {
+    private static final class Accessors implements MineReader {
 
         private final Member name;
         private final Member world;
@@ -522,7 +620,8 @@ public class MineResetLiteProvider implements MineProvider {
             return null;
         }
 
-        MineRegion toRegion(Object mine) throws Exception {
+        @Override
+        public MineRegion read(Object mine) throws Exception {
             Object rawName = name.get(mine);
             if (rawName == null) {
                 return null;
@@ -549,23 +648,183 @@ public class MineResetLiteProvider implements MineProvider {
                     box[0][0], box[0][1], box[0][2], box[1][0], box[1][1], box[1][2]);
         }
 
-        String describe() {
+        @Override
+        public String describe() {
             String shape = bounds.describe();
             return region == null ? shape : shape + " on a nested region object";
         }
+    }
 
-        private static String worldName(Object value) {
-            if (value instanceof World world) {
-                return world.getName();
+    /**
+     * Reads a mine out of the map it serialises itself to.
+     *
+     * <p><b>This is the path that survives obfuscation.</b> A build whose fields
+     * and methods have been renamed to single letters — {@code c:int, t:int,
+     * v:int} where {@code minX, minY, minZ} used to be — still has to write its
+     * mines to YAML and load them back afterwards, and that means
+     * {@code serialize()} still uses the original string keys. Obfuscators
+     * rename symbols, not string literals; renaming these would break every
+     * saved mine file on the server. So when nothing on the class is called
+     * anything any more, the map it produces is still labelled.
+     *
+     * <p>The keys are resolved once from a real mine and checked to actually
+     * hold numbers, so a map that happens to have a {@code serialize()} but no
+     * usable bounds is rejected here rather than silently producing nothing.
+     */
+    private static final class SerialisedReader implements MineReader {
+
+        private final Method serializer;
+
+        /** Preferred over the map when the class still exposes them. */
+        private final Member name;
+        private final Member world;
+
+        // The keys exactly as the mine wrote them, so lookups need no rework.
+        private final Object[] minKeys;
+        private final Object[] maxKeys;
+        private final Object nameKey;
+        private final Object worldKey;
+
+        private SerialisedReader(Method serializer, Member name, Member world,
+                                 Object[] minKeys, Object[] maxKeys,
+                                 Object nameKey, Object worldKey) {
+            this.serializer = serializer;
+            this.name = name;
+            this.world = world;
+            this.minKeys = minKeys;
+            this.maxKeys = maxKeys;
+            this.nameKey = nameKey;
+            this.worldKey = worldKey;
+        }
+
+        static SerialisedReader resolve(Class<?> type, Object sample) {
+            if (sample == null) {
+                return null;
             }
-            if (value instanceof String text) {
-                return text;
+            Method serializer = findSerializer(type);
+            if (serializer == null) {
+                return null;
             }
+            Keyed keyed = Keyed.of(invokeQuietly(serializer, sample));
+            if (keyed == null) {
+                return null;
+            }
+
+            Object[] minKeys = new Object[3];
+            Object[] maxKeys = new Object[3];
+            for (int axis = 0; axis < 3; axis++) {
+                minKeys[axis] = keyed.numberKey(MAP_MIN_KEYS[axis]);
+                maxKeys[axis] = keyed.numberKey(MAP_MAX_KEYS[axis]);
+                if (minKeys[axis] == null || maxKeys[axis] == null) {
+                    return null;
+                }
+            }
+
+            Member name = Member.find(type, NAME_MEMBERS);
+            Object nameKey = name != null ? null : keyed.textKey(MAP_NAME_KEYS);
+            if (name == null && nameKey == null) {
+                return null;
+            }
+
+            Member world = Member.find(type, WORLD_MEMBERS);
+            Object worldKey = world != null ? null : keyed.textKey(MAP_WORLD_KEYS);
+            if (world == null && worldKey == null) {
+                return null;
+            }
+
+            return new SerialisedReader(serializer, name, world, minKeys, maxKeys, nameKey, worldKey);
+        }
+
+        @Override
+        public MineRegion read(Object mine) throws Exception {
+            Keyed keyed = Keyed.of(serializer.invoke(mine));
+            if (keyed == null) {
+                return null;
+            }
+            String id = name != null ? text(name.get(mine)) : text(keyed.value(nameKey));
+            if (id == null || id.isBlank()) {
+                return null;
+            }
+            String worldName = world != null
+                    ? worldName(world.get(mine))
+                    : text(keyed.value(worldKey));
+            if (worldName == null || worldName.isBlank()) {
+                return null;
+            }
+
+            int[] low = new int[3];
+            int[] high = new int[3];
+            for (int axis = 0; axis < 3; axis++) {
+                if (!(keyed.value(minKeys[axis]) instanceof Number min)
+                        || !(keyed.value(maxKeys[axis]) instanceof Number max)) {
+                    return null;
+                }
+                low[axis] = (int) Math.floor(min.doubleValue());
+                high[axis] = (int) Math.floor(max.doubleValue());
+            }
+            return MineRegion.between(id, id, worldName,
+                    low[0], low[1], low[2], high[0], high[1], high[2]);
+        }
+
+        @Override
+        public String describe() {
+            return "the serialised map (" + minKeys[0] + "/" + minKeys[1] + "/" + minKeys[2]
+                    + " → " + maxKeys[0] + "/" + maxKeys[1] + "/" + maxKeys[2] + ")";
+        }
+
+        private static String text(Object value) {
             return value == null ? null : String.valueOf(value);
         }
     }
 
-    /** How one object exposes a bounding box. */
+    /**
+     * A serialised map indexed by normalised key, so a build writing
+     * {@code min-x} or {@code MinX} is found just the same. The original key is
+     * what's kept, so reads go straight back to the map with no rework.
+     */
+    private record Keyed(Map<?, ?> raw, Map<String, Object> keys) {
+
+        static Keyed of(Object value) {
+            if (!(value instanceof Map<?, ?> map)) {
+                return null;
+            }
+            Map<String, Object> keys = new LinkedHashMap<>();
+            for (Object key : map.keySet()) {
+                if (key != null) {
+                    keys.putIfAbsent(normaliseKey(key), key);
+                }
+            }
+            return new Keyed(map, keys);
+        }
+
+        Object value(Object key) {
+            return key == null ? null : raw.get(key);
+        }
+
+        /** The first of these keys whose value is a number. */
+        Object numberKey(String[] candidates) {
+            for (String candidate : candidates) {
+                Object key = keys.get(candidate);
+                if (key != null && raw.get(key) instanceof Number) {
+                    return key;
+                }
+            }
+            return null;
+        }
+
+        /** The first of these keys whose value is text worth having. */
+        Object textKey(String[] candidates) {
+            for (String candidate : candidates) {
+                Object key = keys.get(candidate);
+                if (key != null && raw.get(key) instanceof String text && !text.isBlank()) {
+                    return key;
+                }
+            }
+            return null;
+        }
+    }
+
+    /** How one object exposes a bounding box through its own members. */
     private static final class Bounds {
 
         private final Member[] mins;   // x, y, z — null when the corner pair is used
@@ -651,6 +910,16 @@ public class MineResetLiteProvider implements MineProvider {
             }
             return Integer.parseInt(String.valueOf(value).trim());
         }
+    }
+
+    private static String worldName(Object value) {
+        if (value instanceof World world) {
+            return world.getName();
+        }
+        if (value instanceof String text) {
+            return text;
+        }
+        return value == null ? null : String.valueOf(value);
     }
 
     /** A resolved getter or field, whichever the class turned out to have. */

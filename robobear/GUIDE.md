@@ -108,21 +108,42 @@ Mines from mineresetlite:
 
 It reports exactly what the reader can see: which plugin object it bound to,
 its main class, whether a mine collection was found and how big it is, the mine
-class name, and — when it can't read the bounds — that class's actual methods
-and fields. The same report goes to the server log. That output is precisely
-what's needed to add support for your build, so paste it into an issue.
+class name, how the bounds are being read, and a sample of the parsed regions.
+The same report goes to the server log.
 
 Common answers it gives:
 
 | Report says | Meaning |
 |---|---|
+| "Bounds read via: …" | Working. The lines under it are your real mines. |
 | "No loaded plugin matches MineResetLite" | Your fork registers under another name — it lists what *is* loaded |
 | "Mine collection found: 0 entries" | MineResetLite has no mines defined yet; check `/mrl list`, then `/rb reload` |
-| "Could not work out how to read its bounds" | A fork with a shape we don't know yet — the member dump is the fix |
+| "Could not work out how to read its bounds" | A shape we don't know yet — the key and member dump under it is the fix |
 
-This integration is reflective on purpose (several forks share the name and
-none publish an API), which makes it adaptable but not guaranteed against your
-particular build. `mines.source: manual` keeps you running meanwhile.
+**Which builds are readable.** The plugin is found by exact name and then by a
+loose match, so a fork calling itself `MineResetLitePlus` is still picked up.
+Bounds are then tried in this order:
+
+1. **Named getters** — `getMinX()`…`getMaxZ()`, or the fields behind them.
+2. **A corner pair** — `getMin()`/`getMax()` returning Locations or Vectors.
+3. **A nested region object** — either of the above on a `getRegion()`.
+4. **The serialised map** — `serialize()`, read by its string keys.
+
+Number 4 is the one that matters on a **premium or obfuscated build** such as
+MineResetLite 4.21.2, where every field has been renamed to a single letter and
+there is no `minX` left to find. Such a build still has to write its mines to
+YAML and load them back, so `serialize()` keeps the original `minX`/`maxZ`/
+`world` keys — obfuscators rename symbols, not string literals, because
+renaming these would break every saved mine file on the server. RoboBear
+resolves those keys once from a real mine, checks they actually hold numbers,
+and reads every mine through them.
+
+The integration is reflective on purpose (several forks share the name and none
+publish an API), which makes it adaptable but not guaranteed against your
+particular build. If yours still isn't read, the debug output ends with the
+mine's `serialize()` keys and its full member list — paste that into an issue
+and support can be added directly. `mines.source: manual` keeps you running
+meanwhile.
 
 ### Without it, or as a fallback
 
@@ -400,6 +421,7 @@ the server is stopped; payouts and mines survive.
 |---|---|---|
 | "Nothing is set up for a run yet" | No mines *and* mob objectives off | Set up a mine, or enable `objectives.kill-mobs` |
 | `/rb mines` empty, MineResetLite installed | Fork under another name, no mines defined, or a shape we can't read | **`/rb mines debug`** — it names which of the three it is |
+| `/rb mines` empty on a premium/obfuscated MineResetLite | Its fields are renamed, so there is no `minX` to find | Needs 1.0.2 or later, which reads the bounds out of `serialize()` instead |
 | Mining doesn't count | Wrong mine, or blocks the player placed | `/rb mines` for bounds; self-placed blocks never count |
 | A run pays nothing | Tiers are empty placeholders | `/rb milestones`, fill the boxes |
 | Payout vanished | `delivery: ground` and they didn't pick it up, or someone else did | Working as designed; use `inventory` to soften it |
