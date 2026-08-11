@@ -140,13 +140,17 @@ jobs:
 
           ### Verified
 
-          Compiles against paper-api 1.21.4, passes its unit and MockBukkit suites, and
-          boots clean on a headless Paper 1.21.4 in CI.
+          Every release compiles against paper-api 1.21.4, passes its unit and
+          MockBukkit suites, and boots clean on a headless Paper 1.21.4 in CI. The mine
+          reader is exercised separately against mine objects shaped like real builds,
+          including an obfuscated one.
 
-          **Not verified:** the MineResetLite integration has never been exercised
-          against the real plugin (it is reflective, and it logs the class it found if
-          it cannot read your build), and the balance numbers are unplaytested. Start
-          with `objectives.*.growth` — it decides how long a run lasts.
+          **Worth knowing anyway:** that reader is reflective by necessity —
+          MineResetLite publishes no API and several forks share the name — so it is
+          not guaranteed against a build nobody has run it on yet. `/rb mines debug`
+          reports exactly what it can and cannot see, and `mines.source: manual` runs
+          without it. The balance numbers are unplaytested; start with
+          `objectives.*.growth`, which decides how long a run lasts.
           NOTES
           # Point the docs link at the tagged commit, so it resolves whether or
           # not this branch has reached the default branch yet.
