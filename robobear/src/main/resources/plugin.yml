@@ -21,6 +21,7 @@ commands:
       /rb mines debug           - Explain what the MineResetLite reader sees (admin)
       /rb pass give [p] [n]     - Issue entry passes (admin)
       /rb milestones            - Edit the milestone payouts (admin)
+      /rb upgrades              - Choose which workshop upgrades sell (admin)
       /rb pos1 | /rb pos2       - Select a corner for a manual mine (admin)
       /rb mine set <id>         - Save the selection as a mine (admin)
       /rb mine delete <id>      - Delete a manual mine (admin)

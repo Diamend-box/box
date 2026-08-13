@@ -43,6 +43,10 @@ public class RoboBearPlugin extends JavaPlugin {
     private BukkitTask tickTask;
     private BukkitTask refreshTask;
     private BukkitTask autosaveTask;
+    private BukkitTask actionBarTask;
+
+    // Non-null only when Paper's end-of-tick hook is available.
+    private org.bukkit.event.Listener actionBarListener;
 
     // Non-null only when PlaceholderAPI is installed and the expansion registered.
     private com.diamend.robobear.integration.RoboBearPlaceholders placeholders;
@@ -124,10 +128,49 @@ public class RoboBearPlugin extends JavaPlugin {
             autosaveTask = Bukkit.getScheduler().runTaskTimer(this,
                     () -> data.saveAllAsync(), autosave * 60L * 20L, autosave * 60L * 20L);
         }
+
+        startActionBarRefresh();
+    }
+
+    /**
+     * Keeps the run clock on top of whatever else writes the action bar.
+     *
+     * <p>Two routes to the same thing. Paper's end-of-tick hook is the good one:
+     * it runs after other plugins' tick work, so RoboBear writes last and the
+     * clock is what the player actually sees. A server without that event gets a
+     * plain repeating task at the same rate, which wins most of the time rather
+     * than all of it. Neither runs at all in bossbar mode, where the line isn't
+     * contended.
+     */
+    private void startActionBarRefresh() {
+        String mode = getConfig().getString("display.mode", "actionbar");
+        if (mode == null || !mode.trim().equalsIgnoreCase("actionbar")) {
+            return;
+        }
+        int every = getConfig().getInt("display.actionbar-refresh-ticks", 4);
+        if (every <= 0) {
+            return; // once a second off the main clock is enough here
+        }
+
+        try {
+            com.diamend.robobear.listener.ActionBarPriority listener =
+                    new com.diamend.robobear.listener.ActionBarPriority(this, every);
+            getServer().getPluginManager().registerEvents(listener, this);
+            actionBarListener = listener;
+            return;
+        } catch (Throwable unsupported) {
+            actionBarListener = null;
+            getLogger().info("This server has no end-of-tick hook, so the action bar is "
+                    + "refreshed on a timer instead. The run clock may briefly lose the line "
+                    + "to another plugin.");
+        }
+        actionBarTask = Bukkit.getScheduler().runTaskTimer(this,
+                () -> service.refreshActionBars(), every, every);
     }
 
     private void cancelTasks() {
-        for (BukkitTask task : new BukkitTask[] { tickTask, refreshTask, autosaveTask }) {
+        for (BukkitTask task : new BukkitTask[] {
+                tickTask, refreshTask, autosaveTask, actionBarTask }) {
             if (task != null) {
                 task.cancel();
             }
@@ -135,6 +178,14 @@ public class RoboBearPlugin extends JavaPlugin {
         tickTask = null;
         refreshTask = null;
         autosaveTask = null;
+        actionBarTask = null;
+
+        // Reload re-runs startTasks, and a second registration would double
+        // every end-of-tick write rather than replace the first.
+        if (actionBarListener != null) {
+            org.bukkit.event.HandlerList.unregisterAll(actionBarListener);
+            actionBarListener = null;
+        }
     }
 
     private void registerPlaceholders() {
@@ -179,6 +230,7 @@ public class RoboBearPlugin extends JavaPlugin {
         mines.manualProvider().load();
         mines.toggles().load();
         mines.refresh();
+        service.upgrades().load();
         milestones.load();
         service.abandonAll();
         cancelTasks();

@@ -202,6 +202,22 @@ display:
   # Seconds left at which the clock turns red and a countdown ping plays.
   warn-seconds: 10
 
+  # How often the action bar is rewritten, in ticks. 20 is once a second.
+  #
+  # The action bar is one line the whole server shares and no plugin owns:
+  # whoever writes it last in a tick is what the player sees. A combat tag
+  # or an autosell total will therefore cover the run clock unless RoboBear
+  # writes again. On Paper this write happens at the very end of the tick,
+  # after other plugins have had their turn, so it usually wins outright.
+  #
+  #   4  - five times a second. Sensible default.
+  #   1  - every tick. Wins against anything, at one packet per tick per
+  #        player in a run.
+  #   0  - off. Once a second from the main clock, as it was before.
+  #
+  # Ignored unless mode is actionbar; the bossbar isn't contended.
+  actionbar-refresh-ticks: 4
+
 # ---------------------------------------------------------------------
 # Payouts
 # ---------------------------------------------------------------------

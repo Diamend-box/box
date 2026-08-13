@@ -346,6 +346,7 @@ one that exists on the workshop screen.
 | `/rb mines debug` | Explain what the MineResetLite reader can and can't see |
 | `/rb pass give [player] [n]` | Issue entry passes (defaults to you, one entry's worth) |
 | `/rb milestones` | Open the payout editor |
+| `/rb upgrades` | Choose which workshop upgrades are on sale |
 | `/rb pos1` / `/rb pos2` | Select corners for a manual mine |
 | `/rb mine set <id>` | Save the selection |
 | `/rb mine delete <id>` | Delete a manual mine |
@@ -427,6 +428,27 @@ thing per round early on and has to make choices later.
 Effects are ambient and particle-free — a run buff shouldn't cost a player their
 view. They are cleared when the run ends.
 
+**`/rb upgrades`** picks which of the six are actually on sale. Click one to
+take it off sale; shift-click **Close the workshop** to take them all off.
+
+This is worth a look on a PvP server before anyone plays. *Impact Driver* hands
+out Strength in a world where other people can be hit, and *Overclocked Drill*
+changes how fast a mine empties — both are decisions about your server, not
+about RoboBear. Prices stay in `config.yml` under `upgrades`, since they belong
+next to the comments that explain them; only the on/off switch is in game.
+
+Two things it deliberately does *not* do, matching the mine picker:
+
+- **Levels already bought keep working** for the rest of that run. Taking an
+  upgrade off sale stops it being sold; it doesn't reach into live runs and strip
+  what players paid Cogs for.
+- **A shop screen left open can't still sell it.** The check is on the purchase,
+  not just on the icon.
+
+If you close the workshop entirely, Cogs have nothing to buy — drop
+`run.starting-cogs` and `run.cogs-per-round` to match, or the reward for
+clearing a round becomes a number that does nothing.
+
 ### 5. Objective types
 
 Turn off `objectives.kill-mobs` if your box has no mob spawns, or it will offer
@@ -438,6 +460,29 @@ unwinnable round.
 
 `display.mode` defaults to `actionbar`. `bossbar` is far more readable if
 nothing else on your server owns the bossbar (see §12).
+
+**If something else keeps covering the clock**, that's `display.actionbar-refresh-ticks`.
+
+The action bar is a single line the whole server shares, and no plugin owns it —
+there is no priority to claim, only a race. Whoever wrote it last in a given tick
+is what the player sees, so a combat tag or an autosell total will blank the run
+clock until something writes again.
+
+RoboBear rewrites it **five times a second** by default, and on Paper does that
+write at the very *end* of the tick, after other plugins have taken their turn.
+That wins outright against anything scheduled normally.
+
+| Set it to | You get |
+|---|---|
+| `4` (default) | Five writes a second, at end of tick. A competitor covers the clock for ~0.2s at worst |
+| `1` | Every tick. Wins against anything, at one packet per tick per player in a run |
+| `0` | Off — once a second from the main clock, as it behaved before `1.0.4` |
+
+On a server whose API lacks the end-of-tick hook, RoboBear falls back to a plain
+timer at the same rate and says so once in the log. The clock can then briefly
+lose the line; raise the rate or switch to `bossbar` if that bothers you.
+
+The setting is ignored in `bossbar` mode, which isn't contended.
 
 ---
 
@@ -470,6 +515,7 @@ plugins/RoboBear/
 ├── milestones.yml     the payouts (written by the GUI — safe to edit, then /rb reload)
 ├── mines.yml          manual regions (only read when the source is manual)
 ├── mine-toggles.yml   which mines are excluded from objectives (/rb mines edit)
+├── upgrade-toggles.yml  which upgrades aren't sold (/rb upgrades)
 └── data/<uuid>.yml    one small file per player
 ```
 
@@ -498,6 +544,8 @@ the server is stopped; payouts and mines survive.
 | Runs end on death and players complain | `run.fail-on-death` | That's the point on PvP; set `false` if not |
 | Runs vanished after a config change | `/rb reload` ends live runs | Reload when quiet |
 | Timer invisible | `display.mode` conflicts with another plugin | Try `bossbar`, or check for actionbar competition |
+| Clock flickers or gets covered | Another plugin writes the same action bar line | `display.actionbar-refresh-ticks: 1`, or switch to `bossbar` |
+| An upgrade you don't want players buying | The workshop sells all six by default | `/rb upgrades` — click it off sale |
 
 **Logging out mid-run** ends it (`run.fail-on-quit: true`). Without that,
 logging out is a free undo on a losing clock.

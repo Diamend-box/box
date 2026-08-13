@@ -39,6 +39,7 @@ public class RoboService {
     private final RoboBearPlugin plugin;
     private final ObjectiveGenerator generator;
     private final EntryPass pass;
+    private final UpgradeToggles upgrades;
     private final Map<UUID, RoboRun> runs = new HashMap<>();
     private final Map<UUID, BossBar> bars = new HashMap<>();
 
@@ -46,11 +47,17 @@ public class RoboService {
         this.plugin = plugin;
         this.generator = new ObjectiveGenerator(plugin);
         this.pass = new EntryPass(plugin);
+        this.upgrades = new UpgradeToggles(plugin);
     }
 
     /** The entry pass, for the menu, {@code /rb pass} and the start check. */
     public EntryPass pass() {
         return pass;
+    }
+
+    /** Which upgrades are on sale, edited from {@code /rb upgrades}. */
+    public UpgradeToggles upgrades() {
+        return upgrades;
     }
 
     public RoboRun runOf(Player player) {
@@ -355,6 +362,12 @@ public class RoboService {
         if (run == null) {
             return false;
         }
+        // Checked here and not only in the menu: a shop screen left open while
+        // an admin takes something off sale would otherwise still sell it.
+        if (!upgrades.isEnabled(upgrade)) {
+            play(player, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f);
+            return false;
+        }
         if (run.levelOf(upgrade) >= upgrade.maxLevel()) {
             play(player, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f);
             return false;
@@ -597,6 +610,40 @@ public class RoboService {
     private String displayMode() {
         return plugin.getConfig().getString("display.mode", "actionbar")
                 .toLowerCase(Locale.ROOT).trim();
+    }
+
+    /**
+     * Re-sends the action bar for every live run, without doing any clock work.
+     *
+     * <p><b>Why this exists.</b> The action bar is one line that every plugin on
+     * the server shares, and there is no priority to claim: whoever wrote it last
+     * is what the player sees. A once-a-second clock therefore loses to anything
+     * that writes on its own schedule — a combat tag, an autosell total — and the
+     * run timer disappears for most of a second at a time.
+     *
+     * <p>So RoboBear rewrites it several times a second, and (when Paper offers
+     * the hook) at the very end of the tick, after other plugins have had their
+     * turn. It is a race that can't be won outright, only won often enough that
+     * nobody notices it was a race.
+     *
+     * <p>Cheap by construction: no-op when nothing is running, and it never
+     * touches the bossbar path, which has no such contention.
+     */
+    public void refreshActionBars() {
+        if (runs.isEmpty() || !displayMode().equals("actionbar")) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Map.Entry<UUID, RoboRun> entry : runs.entrySet()) {
+            RoboRun run = entry.getValue();
+            if (run.state() != RoboRun.State.RUNNING) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player != null && player.isOnline()) {
+                updateDisplay(player, run, now);
+            }
+        }
     }
 
     private void updateDisplay(Player player, RoboRun run, long now) {
