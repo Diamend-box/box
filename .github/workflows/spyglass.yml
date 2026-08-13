@@ -121,6 +121,12 @@ jobs:
             if ! kill -0 "$SRV" 2>/dev/null; then echo "Server process exited early."; break; fi
             sleep 2
           done
+          # Seed a save for a player who has never logged in. This is the only
+          # way to prove the offline half against a real server: the file is
+          # written by a separate script, from Mojang's format, so the test
+          # cannot pass just because the plugin agrees with itself.
+          GHOST=11111111-2222-3333-4444-555555555555
+          python3 ../spyglass/tools/make-playerdata.py world "$GHOST"
           # The console is the audience for this plugin, so the console asks.
           echo "spy" >&3
           sleep 2
@@ -140,6 +146,21 @@ jobs:
           sleep 2
           echo "spy NoSuchPlayer" >&3
           sleep 2
+          # Reading a player who is not here, out of the file on disk.
+          echo "spy $GHOST" >&3
+          sleep 3
+          echo "spy $GHOST inventory" >&3
+          sleep 3
+          echo "spy $GHOST vitals" >&3
+          sleep 3
+          echo "spy $GHOST enderchest" >&3
+          sleep 3
+          echo "spy $GHOST item 0" >&3
+          sleep 3
+          echo "spy $GHOST nbt abilities" >&3
+          sleep 3
+          echo "spy dump $GHOST" >&3
+          sleep 4
           echo "spy reload" >&3
           sleep 3
           echo "stop" >&3
@@ -165,6 +186,24 @@ jobs:
           need "Watching Absentee"            "a watch can be set on someone offline"
           need "No player called"             "an unknown name is reported, not thrown"
           need "Reloaded configuration"       "/spy reload worked"
+          # The offline half, against a save this server never wrote.
+          need "(offline)"                    "an offline player can be inspected at all"
+          need "Excalibur"                    "a component-style item name is read"
+          need "sharpness 5"                  "enchantments are read from the item components"
+          need "cooked_beef x32"              "stack counts are read"
+          need "netherite_helmet"             "armour slots are read"
+          need "elytra"                       "the ender chest is read"
+          need "17.5/20"                      "health comes out of the save file"
+          need "flySpeed: 0.05f"              "/spy <uuid> nbt <path> walks the raw tree"
+          need "Wrote"                        "/spy dump wrote a report"
+          if ! ls run/plugins/Spyglass/dumps/*.txt >/dev/null 2>&1; then
+            echo "::error::MISSING: the dump file itself"
+            fail=1
+          else
+            echo "ok: the dump file is on disk"
+            echo "--- dump head ---"
+            head -n 40 run/plugins/Spyglass/dumps/*.txt || true
+          fi
           if grep -nE "Error occurred while enabling Spyglass|Could not load .plugins.*Spyglass|NoClassDefFoundError|NoSuchMethodError|NoSuchFieldError|IncompatibleClassChangeError|Exception while enabling" "$LOG"; then
             echo "::error::linkage or enable error found in server log"
             fail=1
