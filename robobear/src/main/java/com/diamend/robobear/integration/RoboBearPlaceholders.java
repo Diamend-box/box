@@ -92,6 +92,8 @@ public class RoboBearPlaceholders extends PlaceholderExpansion {
         switch (key) {
             case "mines":
                 return String.valueOf(plugin.mines().size());
+            case "mines_enabled":
+                return String.valueOf(plugin.mines().enabledSize());
             case "tiers":
                 return String.valueOf(plugin.milestones().size());
             case "active":

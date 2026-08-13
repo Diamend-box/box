@@ -62,7 +62,7 @@ thing that leaves a run is what you put in the payout boxes.
 **Optional:** MineResetLite (mines), PlaceholderAPI (scoreboard/holo variables).
 Neither is required to start.
 
-1. Drop `RoboBear-1.0.0.jar` into `plugins/` and restart.
+1. Drop the `RoboBear` jar into `plugins/` and restart.
 2. Watch the console. You want to see either a list of mines or this:
 
    ```
@@ -71,9 +71,11 @@ Neither is required to start.
 
    That warning is expected on first boot and tells you step 3 is next.
 3. `/rb mines` — confirm the mines and the source.
-4. `/rb milestones` — fill in what the ladder pays. **Until you do this, a run
+4. `/rb mines edit` — pick which of them the challenge may use. Every mine is in
+   the pool by default, including the rank-gated ones.
+5. `/rb milestones` — fill in what the ladder pays. **Until you do this, a run
    pays nothing.** The starter tiers ship deliberately empty.
-5. Give yourself a pass and run `/rb` to try it.
+6. `/rb pass give` then `/rb` to try it.
 
 That's it. There is no database to set up and no schema to migrate.
 
@@ -165,6 +167,38 @@ that last step the command warns you the region is saved but unused.
 > enclose it. Blocks broken inside the box but outside the mine still count —
 > keep the box tight if that matters to you.
 
+### Choosing which mines the challenge uses
+
+**`/rb mines edit`** — do this before you let anyone play.
+
+RoboBear reads *every* mine your source knows about, and objectives are rolled
+across all of them. On a prison or boxpvp server that is usually wrong: most
+mines are rank-gated, and being sent to one you can't enter is a round lost to
+nothing you did. A server with seventy mines almost certainly wants five or six
+in the pool.
+
+The picker is a paged chest, one icon per mine:
+
+- **Green** — in the pool. Objectives may be set here.
+- **Grey** — excluded. Click either to flip it.
+- **Enable every mine** — back to reading everything.
+- **Disable every mine** — shift-click, then switch on the handful you want. This
+  is the fast route when the list is long.
+
+Two things it deliberately does *not* do:
+
+- **A mine you switch off does not break a run already in it.** Only the rolling
+  of new objectives is filtered; block detection is untouched.
+- **A mine nobody has an opinion about is playable.** The exclusions are what get
+  stored (`mine-toggles.yml`), so a mine you add in MineResetLite later joins the
+  pool instead of silently sitting out.
+
+`/rb mines` shows the same state in chat, with `[off]` against the excluded ones
+and a count at the bottom.
+
+> If you switch off **everything**, mining objectives stop being offered at all —
+> the picker says so in red, and if mob objectives are off too, runs won't start.
+
 ---
 
 ## 4. Step two: payouts
@@ -235,23 +269,51 @@ command that throws is logged and skipped — it never breaks the payout.
 
 ## 5. Step three: passes
 
-By default a run costs one name tag named **Robo Pass**.
+By default a run costs one name tag named **Robo Pass**. Issue them with:
 
 ```
-/give <player> minecraft:name_tag[custom_name='{"text":"Robo Pass","color":"gold","italic":false}']
+/rb pass give                 → one entry's worth, to yourself
+/rb pass give Steve           → to Steve
+/rb pass give Steve 10        → ten of them
 ```
 
-Matching is by **plain text, case-insensitively** — colour and formatting are
-cosmetic, so anything literally named "Robo Pass" works, whatever made it. Hand
-them out from crates, kits, votes, a shop, or by hand.
+Whatever won't fit in their inventory drops at their feet, and the command
+reports how many.
+
+### Passes are stamped, not just named
+
+A pass carries a hidden persistent-data tag applied at the moment it is issued.
+Entry checks **that tag**, not the name.
+
+This matters more than it sounds. If a pass were recognised by its display name
+— which is how this worked before `1.0.3` — then any player with an anvil, a
+name tag and two levels could mint an unlimited supply, and on a PvP server that
+is the entry gate gone entirely. There is no way to make a name unforgeable;
+there is no way for a player to forge the tag.
+
+- **Renaming an issued pass keeps it valid.** The tag survives anvils, enchanting
+  tables, shulker boxes and item frames.
+- **Renaming anything else never creates one.** Crafting and grindstones don't
+  carry persistent data across.
+- A player turned away while holding a lookalike is told *"that one wasn't issued
+  by RoboBear"*, so it reads as a rule rather than a bug.
+
+`/rb pass give` is therefore the mint, and it is `robobear.admin` only. Crates,
+kits, votes and shops can still hand passes out — point them at the command
+rather than at a `/give`.
+
+**Upgrading with passes already in circulation?** Set
+`run.entry-item.require-tag: false` to keep matching by name until they're spent,
+then set it back to `true`. Leaving it off leaves the exploit open.
 
 | You want | Set |
 |---|---|
 | A different pass item | `run.entry-item.item: DIAMOND` |
-| Any item of that type to work | `run.entry-item.name: ""` |
+| More than one item per entry | `run.entry-item.amount: 4` |
 | A reusable key, not a ticket | `run.entry-item.consume: false` |
 | Free entry | `run.entry-item.item: ""` |
 | A time gate instead of an item | `run.entry-item.item: ""` + `run.cooldown-seconds: 3600` |
+| Old name-matching behaviour | `run.entry-item.require-tag: false` |
 
 **The pass is taken last**, only once entry is certain. A refused start — no
 mines, on cooldown, already running — never eats it.
@@ -279,8 +341,10 @@ one that exists on the workshop screen.
 
 | Command | Does |
 |---|---|
-| `/rb mines` | List the mines and which source they came from |
+| `/rb mines` | List the mines, their source, and which are in the pool |
+| `/rb mines edit` | Choose which mines objectives may use |
 | `/rb mines debug` | Explain what the MineResetLite reader can and can't see |
+| `/rb pass give [player] [n]` | Issue entry passes (defaults to you, one entry's worth) |
 | `/rb milestones` | Open the payout editor |
 | `/rb pos1` / `/rb pos2` | Select corners for a manual mine |
 | `/rb mine set <id>` | Save the selection |
@@ -387,7 +451,8 @@ Requires PlaceholderAPI. All are `%robobear_<name>%`.
 **Career:** `runs`, `best_round`, `total_rounds`, `milestones`,
 `deepest_payout`, `cooldown`, `ready`
 
-**Server:** `mines`, `tiers`, `active`
+**Server:** `mines` (all of them), `mines_enabled` (in the objective pool),
+`tiers`, `active`
 
 A scoreboard line that only shows during a run:
 
@@ -401,10 +466,11 @@ A scoreboard line that only shows during a run:
 
 ```
 plugins/RoboBear/
-├── config.yml        everything above
-├── milestones.yml    the payouts (written by the GUI — safe to edit, then /rb reload)
-├── mines.yml         manual regions (only read when the source is manual)
-└── data/<uuid>.yml   one small file per player
+├── config.yml         everything above
+├── milestones.yml     the payouts (written by the GUI — safe to edit, then /rb reload)
+├── mines.yml          manual regions (only read when the source is manual)
+├── mine-toggles.yml   which mines are excluded from objectives (/rb mines edit)
+└── data/<uuid>.yml    one small file per player
 ```
 
 Player data saves on quit, on shutdown, and every `storage.autosave-minutes`.
@@ -419,7 +485,10 @@ the server is stopped; payouts and mines survive.
 
 | What you see | Why | Fix |
 |---|---|---|
-| "Nothing is set up for a run yet" | No mines *and* mob objectives off | Set up a mine, or enable `objectives.kill-mobs` |
+| "Nothing is set up for a run yet" | No mines *in the pool* **and** mob objectives off | `/rb mines edit` to switch some on, or enable `objectives.kill-mobs` |
+| Players sent to mines they can't enter | Every mine is in the pool by default | `/rb mines edit` — disable all, switch on the ones everyone can reach |
+| "You need 1× Robo Pass" while holding one | It was renamed rather than issued | `/rb pass give <player>`; only issued passes carry the tag |
+| Passes stopped working after upgrading to 1.0.3 | They predate the tag | `run.entry-item.require-tag: false` until they're spent, then back to `true` |
 | `/rb mines` empty, MineResetLite installed | Fork under another name, no mines defined, or a shape we can't read | **`/rb mines debug`** — it names which of the three it is |
 | `/rb mines` empty on a premium/obfuscated MineResetLite | Its fields are renamed, so there is no `minX` to find | Needs 1.0.2 or later, which reads the bounds out of `serialize()` instead |
 | Mining doesn't count | Wrong mine, or blocks the player placed | `/rb mines` for bounds; self-placed blocks never count |

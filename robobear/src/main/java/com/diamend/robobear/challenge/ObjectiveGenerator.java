@@ -67,7 +67,7 @@ public class ObjectiveGenerator {
 
     private List<ObjectiveType> allowedTypes() {
         List<ObjectiveType> allowed = new ArrayList<>();
-        boolean haveMines = plugin.mines().size() > 0;
+        boolean haveMines = plugin.mines().enabledSize() > 0;
 
         if (haveMines && plugin.getConfig().getBoolean("objectives.mine-blocks.enabled", true)) {
             allowed.add(ObjectiveType.MINE_BLOCKS);
@@ -133,8 +133,12 @@ public class ObjectiveGenerator {
         return (int) Math.max(1, Math.round((base + (perRound * (round - 1))) * difficulty));
     }
 
+    /**
+     * A mine to send someone to — only ever one that is switched on, so a
+     * rank-gated mine a player can't enter never becomes their objective.
+     */
     private MineRegion randomMine() {
-        List<MineRegion> mines = plugin.mines().all();
+        List<MineRegion> mines = plugin.mines().enabled();
         if (mines.isEmpty()) {
             return null;
         }

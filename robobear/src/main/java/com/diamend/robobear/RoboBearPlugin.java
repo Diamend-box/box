@@ -177,6 +177,7 @@ public class RoboBearPlugin extends JavaPlugin {
         reloadConfig();
         messages.reload();
         mines.manualProvider().load();
+        mines.toggles().load();
         mines.refresh();
         milestones.load();
         service.abandonAll();

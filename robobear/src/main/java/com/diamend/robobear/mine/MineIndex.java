@@ -25,6 +25,7 @@ public class MineIndex {
     private final RoboBearPlugin plugin;
     private final ManualMineProvider manual;
     private final MineResetLiteProvider mineResetLite;
+    private final MineToggles toggles;
 
     /** Mines by lower-cased id, in the order the source listed them. */
     private Map<String, MineRegion> byId = Collections.emptyMap();
@@ -38,10 +39,16 @@ public class MineIndex {
         this.plugin = plugin;
         this.manual = new ManualMineProvider(plugin);
         this.mineResetLite = new MineResetLiteProvider(plugin.getLogger());
+        this.toggles = new MineToggles(plugin);
     }
 
     public ManualMineProvider manualProvider() {
         return manual;
+    }
+
+    /** Which mines are in the objective pool, edited from {@code /rb mines edit}. */
+    public MineToggles toggles() {
+        return toggles;
     }
 
     /** The MineResetLite reader, for {@code /rb mines debug}. */
@@ -114,13 +121,41 @@ public class MineIndex {
     // Lookups
     // ------------------------------------------------------------------
 
-    /** Every known mine, in source order. */
+    /** Every known mine, in source order — including ones switched off. */
     public List<MineRegion> all() {
         return new ArrayList<>(byId.values());
     }
 
+    /**
+     * The mines objectives may be set in.
+     *
+     * <p>Deliberately not used by {@link #mineAt} or {@link #isInside}: switching
+     * a mine off stops new objectives being rolled there, it does not sabotage a
+     * run already under way in it.
+     */
+    public List<MineRegion> enabled() {
+        List<MineRegion> playable = new ArrayList<>(byId.size());
+        for (MineRegion region : byId.values()) {
+            if (toggles.isEnabled(region.id())) {
+                playable.add(region);
+            }
+        }
+        return playable;
+    }
+
     public int size() {
         return byId.size();
+    }
+
+    /** How many mines are actually in the objective pool. */
+    public int enabledSize() {
+        int count = 0;
+        for (MineRegion region : byId.values()) {
+            if (toggles.isEnabled(region.id())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /** A mine by id, case-insensitively, or null. */

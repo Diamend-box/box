@@ -48,10 +48,23 @@ run:
   entry-item:
     item: NAME_TAG
     amount: 1
-    # Optional: only items with exactly this display name count, so a
-    # plain name tag can't be used as a pass. Blank accepts any of the
-    # type. Supports colour codes.
+    # The pass's display name. Cosmetic when require-tag is on.
+    # Supports colour codes.
     name: "&6Robo Pass"
+    lore:
+      - "&7One entry to the Robo Bear Challenge."
+      - "&8/rb start"
+    # Only passes issued by RoboBear count.
+    #
+    # Leave this ON. With it off, a pass is recognised by its name — and
+    # anyone with an anvil and a name tag can make one, which on a PvP
+    # server is the entry gate gone. With it on, passes carry a hidden
+    # tag that only /rb pass give can apply. Renaming an issued pass
+    # keeps it valid; renaming anything else never makes one.
+    #
+    # Turn it off only to keep passes you handed out before upgrading
+    # working, and turn it back on once they're spent.
+    require-tag: true
     # Whether the pass is consumed. False makes it a key rather than a
     # ticket. It is only ever taken once the run is certain to start.
     consume: true
@@ -232,6 +245,7 @@ messages:
   not-enough-cogs: "<red>That costs <white><cost></white> cogs and you have <white><cogs></white>."
   no-rerolls: "<red>You've used your rerolls for this run."
   no-pass: "<red>You need <white><pass></white> to start a run."
+  pass-received: "<green>You were given <white><pass></white> — <gray>/rb start<green> when you're ready."
   cooldown: "<red>You can go again in <white><time></white>."
   no-permission: "<red>You don't have permission to do that."
   already-running: "<red>You're already in a run. <gray>/rb cancel <red>to drop it."
