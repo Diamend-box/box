@@ -318,7 +318,7 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Text.parse("<green>Gave <white>" + amount + "× "
                 + Items.describe(pass.prototype()) + "<green> to <white>"
                 + target.getName() + "<green>."
-                + (dropped > 0 ? " <gray>(" + dropped + " wouldn't fit and are on the floor.)" : "")));
+                + (dropped > 0 ? " <gray>(" + dropped + " on the floor — inventory was full.)" : "")));
         if (!target.equals(sender)) {
             plugin.messages().send(target, "pass-received", "pass", pass.label());
         }
