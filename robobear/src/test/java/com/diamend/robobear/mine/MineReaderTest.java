@@ -11,8 +11,10 @@ import org.mockbukkit.mockbukkit.ServerMock;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,6 +85,53 @@ class MineReaderTest {
     void somethingElseEntirelyIsRejected() {
         assertNull(MineResetLiteProvider.resolveReader(new NotAMine()),
                 "a serialize() with no coordinates must fail resolution, not read as an empty mine");
+    }
+
+    // ------------------------------------------------------------------
+    // What a mine is made of
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a composition getter is read straight off the mine")
+    void compositionComesOffTheGetter() {
+        Set<org.bukkit.Material> found = provider().compositionOf(new StockedMine(world));
+
+        assertTrue(found.contains(org.bukkit.Material.STONE));
+        assertTrue(found.contains(org.bukkit.Material.GOLD_ORE));
+        assertFalse(found.contains(org.bukkit.Material.DIAMOND_ORE),
+                "only what the mine actually contains");
+    }
+
+    @Test
+    @DisplayName("an obfuscated mine's composition still comes out of serialize()")
+    void compositionSurvivesObfuscation() {
+        Set<org.bukkit.Material> found = provider().compositionOf(new ObfuscatedMine(world));
+
+        assertEquals(Set.of(org.bukkit.Material.STONE), found,
+                "the serialised map is the one shape obfuscation can't rename");
+    }
+
+    @Test
+    @DisplayName("composition entries are read however the build spells them")
+    void compositionEntriesAreParsedLoosely() {
+        Set<org.bukkit.Material> found = provider().compositionOf(new AwkwardlySpeltMine());
+
+        assertTrue(found.contains(org.bukkit.Material.GOLD_ORE), "plain name");
+        assertTrue(found.contains(org.bukkit.Material.STONE), "namespaced id");
+        assertTrue(found.contains(org.bukkit.Material.DIAMOND_ORE), "wrapped in a block type");
+        assertFalse(found.contains(org.bukkit.Material.AIR), "air is not something to mine");
+        assertEquals(3, found.size(), "and nothing invented from the junk entry");
+    }
+
+    @Test
+    @DisplayName("a build that says nothing about its blocks reports nothing")
+    void silentBuildReportsNoComposition() {
+        assertTrue(provider().compositionOf(new PlainMine(world)).isEmpty(),
+                "an empty answer must stay empty rather than becoming a wrong one");
+    }
+
+    private MineResetLiteProvider provider() {
+        return new MineResetLiteProvider(java.util.logging.Logger.getLogger("robobear-test"));
     }
 
     private void assertBox(MineRegion region) {
@@ -210,6 +259,52 @@ class MineReaderTest {
             me.put("max-y", 80);
             me.put("max-z", 40);
             return me;
+        }
+    }
+
+    /** A build that exposes its composition the easy way. */
+    public static final class StockedMine {
+
+        private final World world;
+
+        StockedMine(World world) {
+            this.world = world;
+        }
+
+        public String getName() {
+            return "quarry";
+        }
+
+        public World getWorld() {
+            return world;
+        }
+
+        public Map<String, Double> getComposition() {
+            Map<String, Double> mix = new LinkedHashMap<>();
+            mix.put("STONE", 0.8);
+            mix.put("GOLD_ORE", 0.2);
+            return mix;
+        }
+    }
+
+    /** Every spelling of a composition entry seen in the wild, plus junk. */
+    public static final class AwkwardlySpeltMine {
+
+        public java.util.List<Object> getBlocks() {
+            return java.util.List.of(
+                    "GOLD_ORE",
+                    "minecraft:stone",
+                    new BlockType(org.bukkit.Material.DIAMOND_ORE),
+                    "AIR",
+                    "NOT_A_REAL_BLOCK");
+        }
+    }
+
+    /** MineResetLite wraps composition entries in its own type. */
+    public record BlockType(org.bukkit.Material material) {
+
+        public org.bukkit.Material getMaterial() {
+            return material;
         }
     }
 

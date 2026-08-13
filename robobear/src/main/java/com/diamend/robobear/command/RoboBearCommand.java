@@ -6,6 +6,7 @@ import com.diamend.robobear.challenge.RoboRun;
 import com.diamend.robobear.data.PlayerData;
 import com.diamend.robobear.gui.MilestoneEditorMenu;
 import com.diamend.robobear.gui.MineToggleMenu;
+import com.diamend.robobear.gui.QuestEditorMenu;
 import com.diamend.robobear.gui.StartMenu;
 import com.diamend.robobear.gui.UpgradeEditorMenu;
 import com.diamend.robobear.mine.MineRegion;
@@ -70,6 +71,7 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             case "mines" -> listMines(sender, args);
             case "pass" -> pass(sender, args);
             case "upgrades", "workshop" -> upgrades(sender);
+            case "quests", "objectives" -> quests(sender);
             case "milestones", "edit", "admin" -> milestones(sender);
             case "pos1" -> setCorner(sender, 0);
             case "pos2" -> setCorner(sender, 1);
@@ -195,6 +197,20 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         new UpgradeEditorMenu(plugin).open(player);
+        return true;
+    }
+
+    /** Opens the quest editor: which job types are offered, and for what. */
+    private boolean quests(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.parse("<red>Only a player can open the editor."));
+            return true;
+        }
+        if (!player.hasPermission("robobear.admin")) {
+            plugin.messages().send(player, "no-permission");
+            return true;
+        }
+        new QuestEditorMenu(plugin).open(player);
         return true;
     }
 
@@ -474,8 +490,8 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             options.add("cancel");
             options.add("stats");
             if (sender.hasPermission("robobear.admin")) {
-                options.addAll(List.of("mines", "milestones", "upgrades", "pass", "pos1", "pos2",
-                        "mine", "reset", "reload"));
+                options.addAll(List.of("mines", "milestones", "upgrades", "quests", "pass",
+                        "pos1", "pos2", "mine", "reset", "reload"));
             }
             return filter(options, args[0]);
         }

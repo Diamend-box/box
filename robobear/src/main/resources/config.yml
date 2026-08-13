@@ -130,7 +130,11 @@ objectives:
     growth: 1.28
 
   # "Break N × <material> in <mine>" — one specific material.
-  # Leave 'materials' empty to switch this type off.
+  #
+  # This list is what's worth being sent after, server-wide. It is then
+  # narrowed per mine to what that mine actually contains, so a quartz mine
+  # is never asked for gold. Leave it empty to switch this type off.
+  # Correct an individual mine from /rb quests.
   mine-material:
     enabled: true
     base-amount: 40

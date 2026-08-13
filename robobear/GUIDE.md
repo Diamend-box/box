@@ -350,6 +350,7 @@ one that exists on the workshop screen.
 | `/rb pass give [player] [n]` | Issue entry passes (defaults to you, one entry's worth) |
 | `/rb milestones` | Open the payout editor |
 | `/rb upgrades` | Choose which workshop upgrades are on sale |
+| `/rb quests` | Choose which job types are offered, and what each mine may be asked for |
 | `/rb pos1` / `/rb pos2` | Select corners for a manual mine |
 | `/rb mine set <id>` | Save the selection |
 | `/rb mine delete <id>` | Delete a manual mine |
@@ -454,10 +455,43 @@ clearing a round becomes a number that does nothing.
 
 ### 5. Objective types
 
-Turn off `objectives.kill-mobs` if your box has no mob spawns, or it will offer
-jobs nobody can do. Trim `objectives.mine-material.materials` to what your
-mines actually contain — asking for emerald ore in a coal mine is an
-unwinnable round.
+**`/rb quests`** — the three job types, and what each mine may be asked for.
+
+Click a type to stop it being offered. `config.yml` stays the master switch: a
+type turned off there can't be switched back on from the screen, and the screen
+says so rather than pretending. A type that's on but can't actually be rolled —
+no mines in the pool, nothing on the material list — says that too, in red.
+
+| Type | Reads as |
+|---|---|
+| **Break blocks** | "Break 150 blocks in *quarry*" — anything in the mine counts |
+| **Break a material** | "Break 40 × Gold Ore in *goldmine*" — one specific block |
+| **Kill mobs** | "Kill 12 hostile mobs" — anywhere |
+
+Turn **Kill mobs** off if your box has no mob spawns, or it will offer jobs
+nobody can do.
+
+**Break a material** used to be the one that could hand out an impossible round:
+it picked a mine and a material out of two unrelated hats, so a quartz mine could
+be asked for gold. Since `1.0.5` the mine is picked first and the material comes
+from *that mine's own composition*, read out of MineResetLite. A mine with
+nothing worth asking for is skipped rather than sent to.
+
+The lower half of the screen is one icon per mine in the pool, showing exactly
+what it may be asked for. Click one to set the list by hand — a drop-in box, same
+as the payout editor: put the blocks in, close it, done. Empty means automatic.
+Shift-click a corrected mine to put it straight back to automatic.
+
+Two things it deliberately does *not* do:
+
+- **Opening a mine and closing it changes nothing.** A hand-set list is only
+  stored when it actually differs from what would have been worked out, so
+  looking never pins a mine against later composition edits.
+- **A hand-set list ignores `objectives.mine-material.materials`.** Automatic
+  narrows the mine's contents to that list; by hand means by hand.
+
+`objectives.mine-material.materials` is still what's *worth* being sent after,
+server-wide — leave it empty to switch the type off entirely.
 
 ### 6. The clock display
 
@@ -519,6 +553,8 @@ plugins/RoboBear/
 ├── mines.yml          manual regions (only read when the source is manual)
 ├── mine-toggles.yml   which mines are excluded from objectives (/rb mines edit)
 ├── upgrade-toggles.yml  which upgrades aren't sold (/rb upgrades)
+├── objective-toggles.yml  which job types aren't offered (/rb quests)
+├── mine-materials.yml   hand-set material lists per mine (/rb quests)
 └── data/<uuid>.yml    one small file per player
 ```
 
@@ -549,6 +585,9 @@ the server is stopped; payouts and mines survive.
 | Timer invisible | `display.mode` conflicts with another plugin | Try `bossbar`, or check for actionbar competition |
 | Clock flickers or gets covered | Another plugin writes the same action bar line | `display.actionbar-refresh-ticks: 1`, or switch to `bossbar` |
 | An upgrade you don't want players buying | The workshop sells all six by default | `/rb upgrades` — click it off sale |
+| "Break 30 × Gold Ore in *quartz*" — a mine that has none | Before `1.0.5` the mine and the material were rolled independently | Update; the material now comes from that mine's composition |
+| A material job names filler nobody should mine | The mine's composition includes it and it's on the config list | `/rb quests` → click the mine → set its blocks by hand |
+| Material jobs never appear | No mine's contents overlap `objectives.mine-material.materials` | `/rb quests` — the type icon says which of the two it is |
 
 **Logging out mid-run** ends it (`run.fail-on-quit: true`). Without that,
 logging out is a free undo on a losing clock.

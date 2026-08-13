@@ -40,14 +40,21 @@ public class RoboService {
     private final ObjectiveGenerator generator;
     private final EntryPass pass;
     private final UpgradeToggles upgrades;
+    private final ObjectiveToggles objectives;
     private final Map<UUID, RoboRun> runs = new HashMap<>();
     private final Map<UUID, BossBar> bars = new HashMap<>();
 
     public RoboService(RoboBearPlugin plugin) {
         this.plugin = plugin;
+        this.objectives = new ObjectiveToggles(plugin);
         this.generator = new ObjectiveGenerator(plugin);
         this.pass = new EntryPass(plugin);
         this.upgrades = new UpgradeToggles(plugin);
+    }
+
+    /** Which objective types may be offered, edited from {@code /rb quests}. */
+    public ObjectiveToggles objectives() {
+        return objectives;
     }
 
     /** The entry pass, for the menu, {@code /rb pass} and the start check. */
@@ -86,8 +93,11 @@ public class RoboService {
             plugin.messages().send(player, "already-running");
             return false;
         }
-        if (plugin.mines().enabledSize() == 0
-                && !plugin.getConfig().getBoolean("objectives.kill-mobs.enabled", true)) {
+        // Not "are there mines" — are there any objectives at all? Types can be
+        // switched off from /rb quests, and a mine with nothing worth asking for
+        // is no better than no mine. Taking entry for a run that can't offer a
+        // job is the one failure mode that costs the player something real.
+        if (generator.allowedTypes().isEmpty()) {
             plugin.messages().send(player, "nothing-to-do");
             return false;
         }

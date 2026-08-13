@@ -2,7 +2,6 @@ package com.diamend.robobear.challenge;
 
 import com.diamend.robobear.RoboBearPlugin;
 import com.diamend.robobear.mine.MineRegion;
-import com.diamend.robobear.util.Items;
 import org.bukkit.Material;
 
 import java.util.ArrayList;
@@ -65,18 +64,27 @@ public class ObjectiveGenerator {
         };
     }
 
-    private List<ObjectiveType> allowedTypes() {
+    /**
+     * The types a round could actually roll right now.
+     *
+     * <p>Public because "is there any job at all?" is the honest precondition for
+     * letting someone spend an entry pass, and this is the only place that knows.
+     */
+    public List<ObjectiveType> allowedTypes() {
         List<ObjectiveType> allowed = new ArrayList<>();
+        ObjectiveToggles types = plugin.service().objectives();
         boolean haveMines = plugin.mines().enabledSize() > 0;
 
-        if (haveMines && plugin.getConfig().getBoolean("objectives.mine-blocks.enabled", true)) {
+        if (haveMines && types.isEnabled(ObjectiveType.MINE_BLOCKS)) {
             allowed.add(ObjectiveType.MINE_BLOCKS);
         }
-        if (haveMines && plugin.getConfig().getBoolean("objectives.mine-material.enabled", true)
-                && !materialPool().isEmpty()) {
+        // Not just "is the type on" — there has to be a mine where a material
+        // objective is actually completable, or the offer is a trap.
+        if (haveMines && types.isEnabled(ObjectiveType.MINE_MATERIAL)
+                && !plugin.mines().minesWithMaterials().isEmpty()) {
             allowed.add(ObjectiveType.MINE_MATERIAL);
         }
-        if (plugin.getConfig().getBoolean("objectives.kill-mobs.enabled", true)) {
+        if (types.isEnabled(ObjectiveType.KILL_MOBS)) {
             allowed.add(ObjectiveType.KILL_MOBS);
         }
         return allowed;
@@ -92,10 +100,23 @@ public class ObjectiveGenerator {
                 cogsFor(round, difficulty));
     }
 
+    /**
+     * "Break N × material in mine".
+     *
+     * <p>The mine is chosen first and the material second, <b>from that mine's
+     * own list</b>. Choosing them independently is how this used to ask for gold
+     * in a quartz mine: an objective nobody could complete, which quietly cost
+     * whoever took it their run.
+     */
     private Objective rollMaterial(int round, double difficulty) {
-        MineRegion mine = randomMine();
-        List<Material> pool = materialPool();
-        if (mine == null || pool.isEmpty()) {
+        List<MineRegion> candidates = plugin.mines().minesWithMaterials();
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        MineRegion mine = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+
+        List<Material> pool = plugin.mines().materialsFor(mine.id());
+        if (pool.isEmpty()) {
             return null;
         }
         Material material = pool.get(ThreadLocalRandom.current().nextInt(pool.size()));
@@ -145,15 +166,4 @@ public class ObjectiveGenerator {
         return mines.get(ThreadLocalRandom.current().nextInt(mines.size()));
     }
 
-    /** Materials a {@code MINE_MATERIAL} objective may ask for. */
-    private List<Material> materialPool() {
-        List<Material> pool = new ArrayList<>();
-        for (String name : plugin.getConfig().getStringList("objectives.mine-material.materials")) {
-            Material material = Items.material(name, null);
-            if (material != null) {
-                pool.add(material);
-            }
-        }
-        return pool;
-    }
 }

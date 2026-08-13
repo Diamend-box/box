@@ -26,6 +26,10 @@ public class MineIndex {
     private final ManualMineProvider manual;
     private final MineResetLiteProvider mineResetLite;
     private final MineToggles toggles;
+    private final MineMaterials materials;
+
+    /** What each mine is made of, as reported by the source. */
+    private Map<String, java.util.Set<org.bukkit.Material>> detected = Collections.emptyMap();
 
     /** Mines by lower-cased id, in the order the source listed them. */
     private Map<String, MineRegion> byId = Collections.emptyMap();
@@ -40,6 +44,7 @@ public class MineIndex {
         this.manual = new ManualMineProvider(plugin);
         this.mineResetLite = new MineResetLiteProvider(plugin.getLogger());
         this.toggles = new MineToggles(plugin);
+        this.materials = new MineMaterials(plugin);
     }
 
     public ManualMineProvider manualProvider() {
@@ -49,6 +54,11 @@ public class MineIndex {
     /** Which mines are in the objective pool, edited from {@code /rb mines edit}. */
     public MineToggles toggles() {
         return toggles;
+    }
+
+    /** Hand-set material lists, edited from {@code /rb quests}. */
+    public MineMaterials materials() {
+        return materials;
     }
 
     /** The MineResetLite reader, for {@code /rb mines debug}. */
@@ -97,6 +107,13 @@ public class MineIndex {
         this.byId = ids;
         this.byWorld = worlds;
         this.activeSource = provider.name();
+
+        try {
+            this.detected = provider.compositions();
+        } catch (Throwable error) {
+            // Knowing what a mine is made of is a bonus, never a requirement.
+            this.detected = Collections.emptyMap();
+        }
     }
 
     private MineProvider chooseProvider() {
@@ -190,6 +207,92 @@ public class MineIndex {
             }
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // What a mine is made of
+    // ------------------------------------------------------------------
+
+    /** What the source says this mine contains, or empty when it didn't say. */
+    public java.util.Set<org.bukkit.Material> detectedMaterials(String id) {
+        return detected.getOrDefault(id == null ? "" : id.toLowerCase(Locale.ROOT), java.util.Set.of());
+    }
+
+    /** Whether the source told us anything about any mine's contents. */
+    public boolean hasDetectedMaterials() {
+        return !detected.isEmpty();
+    }
+
+    /**
+     * The materials a {@code MINE_MATERIAL} objective may ask for in this mine.
+     *
+     * <p>Three sources, in order of how much someone meant them:
+     *
+     * <ol>
+     *   <li>A hand-set list for this mine, which wins outright.</li>
+     *   <li>What the mine is actually made of, narrowed to the config list of
+     *       materials worth asking for. This is the normal path, and it is what
+     *       stops the challenge asking for gold in a quartz mine.</li>
+     *   <li>The config list alone, when the source can't say what the mine
+     *       contains — the old behaviour, and still the best guess available.</li>
+     * </ol>
+     *
+     * <p>An empty result is a real answer: this mine has nothing worth asking
+     * for, so no material objective is offered in it.
+     */
+    public List<org.bukkit.Material> materialsFor(String id) {
+        List<org.bukkit.Material> chosen = materials.override(id);
+        return chosen.isEmpty() ? automaticMaterials(id) : chosen;
+    }
+
+    /**
+     * What this mine would be asked for if nobody had set it by hand — steps two
+     * and three above. The editor needs this to tell "someone chose exactly this"
+     * apart from "someone opened the screen and closed it".
+     */
+    public List<org.bukkit.Material> automaticMaterials(String id) {
+        List<org.bukkit.Material> allowed = configuredMaterials();
+        if (allowed.isEmpty()) {
+            // config.yml documents an empty list as the off switch for this type,
+            // and it stays that way — otherwise emptying it would silently start
+            // sending people after whatever filler a mine happens to contain.
+            return List.of();
+        }
+        java.util.Set<org.bukkit.Material> present = detectedMaterials(id);
+        if (present.isEmpty()) {
+            return allowed;
+        }
+
+        List<org.bukkit.Material> both = new ArrayList<>();
+        for (org.bukkit.Material material : present) {
+            if (allowed.contains(material)) {
+                both.add(material);
+            }
+        }
+        return both;
+    }
+
+    /** The server-wide list of materials worth setting an objective on. */
+    public List<org.bukkit.Material> configuredMaterials() {
+        List<org.bukkit.Material> pool = new ArrayList<>();
+        for (String name : plugin.getConfig().getStringList("objectives.mine-material.materials")) {
+            org.bukkit.Material material = com.diamend.robobear.util.Items.material(name, null);
+            if (material != null && !pool.contains(material)) {
+                pool.add(material);
+            }
+        }
+        return pool;
+    }
+
+    /** Every enabled mine that a material objective could actually be set in. */
+    public List<MineRegion> minesWithMaterials() {
+        List<MineRegion> usable = new ArrayList<>();
+        for (MineRegion region : enabled()) {
+            if (!materialsFor(region.id()).isEmpty()) {
+                usable.add(region);
+            }
+        }
+        return usable;
     }
 
     /** Whether a block sits inside one specific mine — the run's hot question. */

@@ -1,6 +1,10 @@
 package com.diamend.robobear.mine;
 
+import org.bukkit.Material;
+
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A source of {@link MineRegion}s.
@@ -23,4 +27,15 @@ public interface MineProvider {
      * challenges, not its startup.
      */
     List<MineRegion> mines();
+
+    /**
+     * What each mine is made of, keyed by lower-cased mine id.
+     *
+     * <p>Optional: a source that doesn't know returns nothing and the configured
+     * material list is used instead. A source that does know stops the challenge
+     * asking for a block the mine doesn't contain.
+     */
+    default Map<String, Set<Material>> compositions() {
+        return Map.of();
+    }
 }

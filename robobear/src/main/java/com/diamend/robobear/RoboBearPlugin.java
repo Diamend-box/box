@@ -229,8 +229,10 @@ public class RoboBearPlugin extends JavaPlugin {
         messages.reload();
         mines.manualProvider().load();
         mines.toggles().load();
+        mines.materials().load();
         mines.refresh();
         service.upgrades().load();
+        service.objectives().load();
         milestones.load();
         service.abandonAll();
         cancelTasks();

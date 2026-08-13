@@ -158,6 +158,11 @@ Base command: `/robobear` (aliases `/rb`, `/robo`)
 | `/rb cancel` | Abandon the run | `robobear.use` |
 | `/rb stats [player]` | Runs, deepest round and payouts | `robobear.use` |
 | `/rb mines` | List the mines RoboBear can see | `robobear.admin` |
+| `/rb mines edit` | Choose which mines objectives may use | `robobear.admin` |
+| `/rb mines debug` | Explain what the MineResetLite reader can see | `robobear.admin` |
+| `/rb quests` | Choose which job types are offered, and what each mine may be asked for | `robobear.admin` |
+| `/rb upgrades` | Choose which workshop upgrades are on sale | `robobear.admin` |
+| `/rb pass give [player] [n]` | Issue entry passes | `robobear.admin` |
 | `/rb milestones` | Edit the milestone payouts | `robobear.admin` |
 | `/rb pos1` / `/rb pos2` | Select a corner for a manual mine | `robobear.admin` |
 | `/rb mine set <id>` | Save the selection as a mine | `robobear.admin` |
@@ -382,7 +387,14 @@ its commands.
   payouts and upgrade costs are a starting point sized by eye. Expect to retune
   `objectives.*.growth` first — it decides how many rounds a good player gets.
 - **`kill-mobs` assumes there are mobs.** On a bedrock box with no spawns it will
-  offer objectives nobody can complete. Turn it off there.
+  offer objectives nobody can complete. Turn it off there — `/rb quests`, or
+  `objectives.kill-mobs.enabled` in `config.yml`.
+- **Material objectives are only as good as two lists.** A mine can be asked for
+  what it actually contains, narrowed to `objectives.mine-material.materials`.
+  That default list is ores, so a mine of pure filler is skipped rather than
+  made unwinnable — but widen the list and filler becomes fair game, and a mine
+  whose composition RoboBear can't read falls back to the list alone. `/rb quests`
+  shows what each mine resolved to and lets you correct the ones that are wrong.
 - **The bee draft isn't recreated**, as above. If you want a loadout step, the
   natural place is a third phase between the shop and the round.
 - **Objectives are absolute amounts**, which sits awkwardly with the risk spec's

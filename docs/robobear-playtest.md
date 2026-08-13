@@ -1,6 +1,6 @@
 # RoboBear — playtest script
 
-**For:** the first real run of RoboBear on boxpvp (Paper 1.21.4), version 1.0.4.
+**For:** the first real run of RoboBear on boxpvp (Paper 1.21.4), version 1.0.5.
 **Time:** ~15 minutes for the smoke pass, ~75 for the whole thing.
 **Point of it:** RoboBear has never been played. Everything below CI can prove —
 it compiles, it enables, the logic is right — is proved. What is not proved is
@@ -14,8 +14,8 @@ one broken thing shouldn't cost you the rest of the pass.
 
 ## 0. Before you start
 
-1. Grab **`RoboBear-1.0.4.jar`** from the
-   [releases page](https://github.com/Diamend-box/box/releases/tag/robobear-v1.0.4).
+1. Grab **`RoboBear-1.0.5.jar`** from the
+   [releases page](https://github.com/Diamend-box/box/releases/tag/robobear-v1.0.5).
    (Don't build it locally; the build lives in CI.)
 2. Drop it in `plugins/`, start the server, **op yourself**.
 3. Note your **MineResetLite version** and what `/plugins` shows its name as.
@@ -26,7 +26,7 @@ one broken thing shouldn't cost you the rest of the pass.
 - [ ] `ls plugins/RoboBear/` — note which files exist (`config.yml`,
       `milestones.yml`, `mines.yml`, `mine-toggles.yml`, `upgrade-toggles.yml`,
       `data/`). Some only appear once you touch the thing that writes them.
-- [ ] Note whether PlaceholderAPI is installed — §11 needs it and is skippable.
+- [ ] Note whether PlaceholderAPI is installed — §12 needs it and is skippable.
 
 > **Do §1 before anything else.** If mine detection is broken, most of this
 > script is untestable and I need to know that first, not on page four.
@@ -102,7 +102,58 @@ the screen that fixes that.
 
 ---
 
-## 4. Passes — *including the exploit check*
+## 4. The quest editor — *the "30 gold in the quartz mine" fix*
+
+This is the one you reported. The generator used to pick a mine and a material
+independently, so it could ask for gold ore in a mine that has none — a round
+that can't be finished, which on a ladder means the run is over through no fault
+of the player's. Since `1.0.5` the mine is picked first and the material comes
+from **that mine's own composition**, read out of MineResetLite.
+
+**The check that matters:**
+
+- [ ] `/rb quests` — the screen opens: three job types on top, your pooled mines
+      below.
+- [ ] Look at the compass at slot 16. Does it say compositions **were** read from
+      your mine plugin? If it says they weren't, tell me — that's the same
+      reflection layer as §1 and I want to know.
+- [ ] Look at the quartz mine's icon. Its lore lists what it can be asked for.
+      **Is gold ore in that list?** It must not be.
+- [ ] Start a run and reroll ten or fifteen times, taking note of every
+      *"break N × <block> in <mine>"* offer. **Does every one name a block that
+      mine actually contains?** This is the whole fix; a single counter-example
+      is worth reporting on its own.
+
+**The editor:**
+
+- [ ] Click a job type off, then start a run — it should never be offered. Click
+      it back on.
+- [ ] Set `objectives.kill-mobs.enabled: false` in `config.yml`, `/rb reload`,
+      then try to click **Kill mobs** on. It should refuse and tell you why,
+      rather than silently doing nothing.
+- [ ] Click a mine. A drop-in box opens, **prefilled** with what it can currently
+      be asked for. Close it without touching anything — the mine should still
+      say *"Read from the mine"*, **not** *"Set by hand"*. (Looking must not pin
+      it.)
+- [ ] Now put two or three blocks in, close. The mine says *"Set by hand"*, and
+      objectives there only ever name those blocks.
+- [ ] Drop a **sword** in the box. It should be ignored with a message, not
+      stored as something to mine.
+- [ ] Shift-click that mine on the quest screen — it goes back to automatic.
+- [ ] Check `plugins/RoboBear/mine-materials.yml`: only the mines you corrected
+      should be in it.
+
+**Data I want:**
+- Whether the automatic lists are *right* for your mines, mine by mine — this is
+  the thing I have no way to check from here.
+- Any mine where the automatic list contains filler players shouldn't be sent
+  after (stone, cobble, deepslate). If there are many, the config's material
+  list is probably the better lever and I'd rather fix that than have you click
+  through seventy mines.
+
+---
+
+## 5. Passes — *including the exploit check*
 
 - [ ] `/rb pass give` → one pass. `/rb pass give <alt> 5` → five, to them.
 - [ ] Fill your inventory, then `/rb pass give` — the extras drop at your feet
@@ -127,7 +178,7 @@ the screen that fixes that.
 
 ---
 
-## 5. A full run, properly
+## 6. A full run, properly
 
 Set `run.entry-item.item: ""` temporarily if constantly minting passes is
 annoying, and put it back afterwards.
@@ -154,11 +205,11 @@ annoying, and put it back afterwards.
       `/rb reload`. You should get told the job points at a mine that's gone,
       not a stack trace.
 
-**Data I want:** how many rounds you got through, and how it felt — see §9.
+**Data I want:** how many rounds you got through, and how it felt — see §10.
 
 ---
 
-## 6. The workshop
+## 7. The workshop
 
 - [ ] Clear a round, then in the workshop buy each of the six upgrades at least
       once. Does each effect actually happen? Haste and Speed you should feel;
@@ -185,7 +236,7 @@ Impact Driver is the questionable one; tell me if that's wrong.
 
 ---
 
-## 7. Payouts — *the part that decides whether this is worth playing*
+## 8. Payouts — *the part that decides whether this is worth playing*
 
 Milestone tiers ship **deliberately empty**, so a fresh install pays nothing.
 
@@ -211,7 +262,7 @@ the number I most want to see, because it's the one I can't guess.
 
 ---
 
-## 8. Ending a run, the awkward ways
+## 9. Ending a run, the awkward ways
 
 - [ ] **Die** mid-run (`run.fail-on-death: true` by default) → run ends, and
       check what happened to your inventory under your normal death rules.
@@ -228,7 +279,7 @@ the number I most want to see, because it's the one I can't guess.
 
 ---
 
-## 9. Balance — the numbers I most want back
+## 10. Balance — the numbers I most want back
 
 This is the part I flagged in the guide and it's still unplaytested.
 
@@ -256,7 +307,7 @@ Also worth a note: does 300s per round feel long, short, or right for your mines
 
 ---
 
-## 10. The action bar fight — *specific to your server*
+## 11. The action bar fight — *specific to your server*
 
 RoboBear rewrites the clock five times a second, at the end of the tick, to stay
 on top of other plugins. This is exactly the kind of thing that only shows up on
@@ -275,7 +326,7 @@ it. If something still beats it, I need to know what that plugin is.
 
 ---
 
-## 11. Placeholders (skip if no PlaceholderAPI)
+## 12. Placeholders (skip if no PlaceholderAPI)
 
 ```
 %robobear_running%    %robobear_round%      %robobear_progress%
@@ -292,7 +343,7 @@ it. If something still beats it, I need to know what that plugin is.
 
 ---
 
-## 12. Two players and persistence
+## 13. Two players and persistence
 
 - [ ] Two players in runs at once, objectives in the **same** mine. Each counts
       only their own blocks.
@@ -308,9 +359,10 @@ Zip or paste, in rough order of usefulness:
 
 1. **The `/rb mines debug` output** (§1). Nothing else matters as much.
 2. **`logs/latest.log`** for the session, plus every stack trace in full.
-3. **Your four end-round numbers** from §9.
+3. **Your four end-round numbers** from §10.
 4. **`plugins/RoboBear/`** — the configs, `milestones.yml`, `mine-toggles.yml`,
-   `upgrade-toggles.yml`. Skip `data/` unless something looks wrong.
+   `upgrade-toggles.yml`, `mine-materials.yml`. Skip `data/` unless something
+   looks wrong.
 5. **Screenshots** of anything that looked wrong, with the slot number if it's a
    layout thing.
 6. **Your notes**, one line each, in this shape:
@@ -335,10 +387,12 @@ Already on the list, so skip unless they're worse than described:
 - **The MineResetLite reader has never met your build.** §1 is that test.
 - The objective names a mine but doesn't say where it is or take you there.
 - The mine picker has no search or sorting — at 70 mines it's two pages of
-  clicking.
+  clicking, and so is the mine list in `/rb quests`.
+- Objective **amounts** aren't editable in game, only the types and materials
+  (`config.yml` under `objectives`, then `/rb reload`).
 - Upgrade **prices** aren't editable in game, only on/off (`config.yml`, then
   `/rb reload`).
-- Balance is unplaytested end to end — that's §9, not a bug.
+- Balance is unplaytested end to end — that's §10, not a bug.
 - Milestone tiers ship empty on purpose; a fresh install paying nothing is
   correct behaviour, not a fault.
 - No cross-server or database storage; one file per player.

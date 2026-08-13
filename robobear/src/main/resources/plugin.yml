@@ -22,6 +22,7 @@ commands:
       /rb pass give [p] [n]     - Issue entry passes (admin)
       /rb milestones            - Edit the milestone payouts (admin)
       /rb upgrades              - Choose which workshop upgrades sell (admin)
+      /rb quests                - Choose which jobs are offered, and for what (admin)
       /rb pos1 | /rb pos2       - Select a corner for a manual mine (admin)
       /rb mine set <id>         - Save the selection as a mine (admin)
       /rb mine delete <id>      - Delete a manual mine (admin)

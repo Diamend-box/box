@@ -2,6 +2,7 @@ package com.diamend.robobear.mine;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.plugin.Plugin;
 
@@ -87,6 +88,15 @@ public class MineResetLiteProvider implements MineProvider {
     /** Methods that hand back the mine as a plain map, for the serialised path. */
     private static final String[] SERIALIZE_METHODS = { "serialize", "serialise", "toMap" };
 
+    /** What the mine is made of — the block types it actually contains. */
+    private static final String[] COMPOSITION_MEMBERS = {
+            "getComposition", "composition", "getBlocks", "blocks",
+            "getMaterials", "materials", "getPalette", "palette" };
+
+    /** Ways a composition entry might name its block type. */
+    private static final String[] MATERIAL_MEMBERS = {
+            "getMaterial", "getType", "getBlockType", "material", "type" };
+
     // Keys as they appear in a serialised mine, already normalised for lookup.
     private static final String[][] MAP_MIN_KEYS = {
             { "minx", "x1", "lowerx", "startx" },
@@ -152,6 +162,134 @@ public class MineResetLiteProvider implements MineProvider {
             }
         }
         return result;
+    }
+
+    /**
+     * What each mine is made of, by mine id.
+     *
+     * <p>This is what stops the challenge asking for gold in a quartz mine.
+     * MineResetLite already knows a mine's composition — it has to, to refill it
+     * — so the honest source for "what can you actually get here" is the mine
+     * itself rather than a list someone typed once.
+     *
+     * <p>A build that doesn't expose it simply returns nothing for that mine, and
+     * the configured material list is used as before.
+     */
+    @Override
+    public Map<String, Set<Material>> compositions() {
+        Plugin plugin = locate();
+        if (plugin == null || !plugin.isEnabled()) {
+            return Map.of();
+        }
+        Collection<?> raw;
+        try {
+            raw = findMineCollection(plugin);
+        } catch (Throwable error) {
+            return Map.of();
+        }
+        if (raw == null) {
+            return Map.of();
+        }
+
+        Map<String, Set<Material>> out = new LinkedHashMap<>();
+        for (Object mine : raw) {
+            if (mine == null) {
+                continue;
+            }
+            MineRegion region = read(mine);
+            if (region == null) {
+                continue;
+            }
+            Set<Material> materials = compositionOf(mine);
+            if (!materials.isEmpty()) {
+                out.put(region.id().toLowerCase(Locale.ROOT), materials);
+            }
+        }
+        return out;
+    }
+
+    /** The block types one mine contains, by member first and serialised map second. */
+    Set<Material> compositionOf(Object mine) {
+        Set<Material> found = new LinkedHashSet<>();
+
+        Member member = Member.find(mine.getClass(), COMPOSITION_MEMBERS);
+        if (member != null) {
+            try {
+                collectMaterials(member.get(mine), found);
+            } catch (Throwable ignored) {
+                // fall through to the serialised map
+            }
+        }
+        if (!found.isEmpty()) {
+            return found;
+        }
+
+        Method serializer = findSerializer(mine.getClass());
+        if (serializer == null) {
+            return found;
+        }
+        Keyed keyed = Keyed.of(invokeQuietly(serializer, mine));
+        if (keyed == null) {
+            return found;
+        }
+        Object key = keyed.findKey("composition", "blocks", "materials", "palette");
+        if (key != null) {
+            collectMaterials(keyed.value(key), found);
+        }
+        return found;
+    }
+
+    private static void collectMaterials(Object value, Set<Material> into) {
+        if (value instanceof Map<?, ?> map) {
+            for (Object key : map.keySet()) {
+                addMaterial(key, into);
+            }
+        } else if (value instanceof Collection<?> collection) {
+            for (Object entry : collection) {
+                addMaterial(entry, into);
+            }
+        } else if (value instanceof Object[] array) {
+            for (Object entry : array) {
+                addMaterial(entry, into);
+            }
+        }
+    }
+
+    private static void addMaterial(Object token, Set<Material> into) {
+        Material material = materialFrom(token);
+        if (material != null && material.isBlock() && !material.isAir()) {
+            into.add(material);
+        }
+    }
+
+    /**
+     * Turns one composition entry into a Material.
+     *
+     * <p>Entries are rarely Materials. MineResetLite wraps them in its own block
+     * type, and once serialised they are strings in whatever shape that type's
+     * {@code toString} produces — {@code GOLD_ORE}, {@code minecraft:stone}, or
+     * a legacy {@code WOOL/3} with the data value still attached.
+     */
+    private static Material materialFrom(Object token) {
+        if (token == null) {
+            return null;
+        }
+        if (token instanceof Material material) {
+            return material;
+        }
+        for (String name : MATERIAL_MEMBERS) {
+            Method method = findMethod(token.getClass(), name);
+            if (method != null && Material.class.isAssignableFrom(method.getReturnType())
+                    && invokeQuietly(method, token) instanceof Material material) {
+                return material;
+            }
+        }
+        String text = String.valueOf(token).trim();
+        int cut = text.indexOf('/');
+        if (cut > 0) {
+            text = text.substring(0, cut);
+        }
+        return Material.matchMaterial(text);
     }
 
     // ------------------------------------------------------------------
@@ -799,6 +937,17 @@ public class MineResetLiteProvider implements MineProvider {
 
         Object value(Object key) {
             return key == null ? null : raw.get(key);
+        }
+
+        /** The first of these normalised names present, whatever its value type. */
+        Object findKey(String... candidates) {
+            for (String candidate : candidates) {
+                Object key = keys.get(candidate);
+                if (key != null) {
+                    return key;
+                }
+            }
+            return null;
         }
 
         /** The first of these keys whose value is a number. */
