@@ -31,7 +31,9 @@ import com.diamend.spyglass.watch.WatchManager;
  * {@code Player#saveData()} before reading raw NBT, so what you read is current
  * rather than as old as the last autosave.
  */
-public final class SpyglassPlugin extends JavaPlugin {
+// Not final: MockBukkit loads the plugin by subclassing it, so the tests cannot
+// run against a final class.
+public class SpyglassPlugin extends JavaPlugin {
 
     private volatile SpyglassConfig settings;
 
