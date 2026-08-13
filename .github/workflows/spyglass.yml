@@ -74,6 +74,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # Checked out first, and before the jar is downloaded: this job needs
+      # tools/make-playerdata.py, and checkout cleans the directory it lands in.
+      - uses: actions/checkout@v4
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
