@@ -4,7 +4,10 @@ Everything you need to install RoboBear, point it at your mines, decide what it
 pays, and tune it once players get their hands on it.
 
 The [README](README.md) explains *why* the plugin is shaped the way it is. This
-document is about *running* it.
+document is about *running* it. When you're ready to put it in front of players,
+the [playtest script](../docs/robobear-playtest.md) is the checklist for the
+first real session — including the numbers to bring back so the balance can be
+set from evidence rather than guesswork.
 
 ---
 
