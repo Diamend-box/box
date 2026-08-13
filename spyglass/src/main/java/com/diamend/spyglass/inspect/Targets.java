@@ -59,8 +59,10 @@ public final class Targets {
         if (uuid != null) {
             OfflinePlayer offline = Safe.call(() -> server.getOfflinePlayer(uuid), null);
             if (offline != null) {
-                Player online = offline.getPlayer();
-                String name = offline.getName() == null ? uuid.toString() : offline.getName();
+                Player online = Safe.call(offline::getPlayer, null);
+                // A UUID nobody has logged in as has no name to give, and asking
+                // for one can go looking further than we want it to.
+                String name = Safe.call(offline::getName, uuid.toString());
                 return new Target(online, offline, uuid, name);
             }
             return null;
