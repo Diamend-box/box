@@ -1,0 +1,30 @@
+name: AntiCheat
+version: '${project.version}'
+main: com.diamend.anticheat.AntiCheatPlugin
+api-version: '1.21'
+description: Packet-level anticheat for Paper 1.21.4 (combat, movement, world & passive protections).
+author: diamend
+# STARTUP load so onLoad() runs early enough to install packetevents' netty
+# handlers before any player connects.
+load: STARTUP
+
+commands:
+  anticheat:
+    description: AntiCheat staff command.
+    aliases: [ac]
+    permission: anticheat.command
+    usage: /ac
+
+permissions:
+  anticheat.command:
+    description: Use the /ac command (view info, toggle verbose).
+    default: op
+  anticheat.admin:
+    description: Change mode and reload the config.
+    default: op
+  anticheat.alerts:
+    description: Receive anticheat alerts.
+    default: op
+  anticheat.bypass:
+    description: Be exempt from all checks.
+    default: false
