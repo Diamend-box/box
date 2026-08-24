@@ -95,7 +95,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "warp" -> warp(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
-            case "modules" -> modules(sender);
+            case "modules" -> modules(sender, args);
             case "reload" -> reload(sender);
             default -> help(sender);
         }
@@ -377,9 +377,22 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendLiteral(sender, "<green>Wiped BoxCore data for <white>" + args[1] + "<green>.");
     }
 
-    private void modules(CommandSender sender) {
+    /**
+     * {@code /box modules [list]} — see what is running, and switch it.
+     *
+     * <p>A player gets the menu, because switching a module is the thing staff
+     * actually come here to do and doing it from a file meant a restart.
+     * {@code list} forces the text version, which is also what the console
+     * gets, since it has nowhere to put a menu.
+     */
+    private void modules(CommandSender sender, String[] args) {
         if (!sender.hasPermission(ADMIN)) {
             messages().send(sender, "no-permission");
+            return;
+        }
+        boolean asText = args.length > 1 && args[1].equalsIgnoreCase("list");
+        if (sender instanceof Player player && !asText) {
+            new com.diamend.boxcore.gui.ModuleMenu(plugin).open(player);
             return;
         }
         messages().sendLiteral(sender, "<gray>Modules:");

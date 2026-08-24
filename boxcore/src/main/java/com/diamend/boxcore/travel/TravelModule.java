@@ -91,8 +91,7 @@ public class TravelModule implements BoxModule {
     @Override
     public void enable() {
         loadConfig();
-        plugin.getServer().getPluginManager()
-                .registerEvents(new TravelListener(plugin, this), plugin);
+        plugin.modules().listen(this, new TravelListener(plugin, this));
     }
 
     @Override

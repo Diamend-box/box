@@ -97,30 +97,36 @@ public class BoxPlaceholders extends PlaceholderExpansion {
         PlayerProfile profile = plugin.profiles().loadDetached(player.getUniqueId());
         String query = params.toLowerCase(Locale.ROOT);
 
+        SkillsModule skills = plugin.modules().get(SkillsModule.class);
+        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
+
+        // A switched-off module answers with nothing at all. The numbers are
+        // still on the profile — they have to be, or turning a module back on
+        // would lose them — but a scoreboard showing "Skill points: 0" for a
+        // feature the server does not have is worse than a line that renders
+        // empty and can be hidden.
         switch (query) {
             case "points" -> {
-                return String.valueOf(profile.getAvailablePoints());
+                return skills == null ? "" : String.valueOf(profile.getAvailablePoints());
             }
             case "points_spent" -> {
-                return String.valueOf(profile.getPointsSpent());
+                return skills == null ? "" : String.valueOf(profile.getPointsSpent());
             }
             case "points_earned" -> {
-                return String.valueOf(profile.getPointsEarned());
+                return skills == null ? "" : String.valueOf(profile.getPointsEarned());
             }
             case "nodes" -> {
-                return String.valueOf(profile.getNodes().size());
+                return skills == null ? "" : String.valueOf(profile.getNodes().size());
             }
             case "collected" -> {
-                CollectionsModule module = plugin.modules().get(CollectionsModule.class);
-                return Text.number(module == null
-                        ? profile.getTotalCollected() : module.collections().itemsCollected(profile));
+                return collections == null
+                        ? "" : Text.number(collections.collections().itemsCollected(profile));
             }
             default -> {
                 // fall through to the prefixed lookups
             }
         }
 
-        SkillsModule skills = plugin.modules().get(SkillsModule.class);
         if (query.startsWith("node_") && skills != null) {
             SkillNode node = skills.trees().getNode(query.substring(5));
             return node == null ? "" : String.valueOf(profile.getNodeLevel(node.key()));
@@ -148,7 +154,6 @@ public class BoxPlaceholders extends PlaceholderExpansion {
             return travel(player, profile, query.substring(7));
         }
 
-        CollectionsModule collections = plugin.modules().get(CollectionsModule.class);
         if (collections == null) {
             return "";
         }

@@ -41,7 +41,7 @@ public class CollectionsModule implements BoxModule {
         this.service = new CollectionService(plugin, manager);
         this.placed = new PlacedBlocks(plugin);
         this.listener = new CollectionListener(plugin, service, placed);
-        plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+        plugin.modules().listen(this, listener);
     }
 
     @Override

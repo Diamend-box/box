@@ -78,7 +78,7 @@ public class CompressorModule implements BoxModule {
     @Override
     public void enable() {
         loadConfig();
-        plugin.getServer().getPluginManager().registerEvents(new CompressorListener(plugin, this), plugin);
+        plugin.modules().listen(this, new CompressorListener(plugin, this));
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::sweep, sweepTicks, sweepTicks);
     }
 

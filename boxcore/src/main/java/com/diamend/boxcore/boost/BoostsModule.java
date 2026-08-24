@@ -106,7 +106,7 @@ public class BoostsModule implements BoxModule {
     public void enable() {
         loadConfig();
         loadGlobal();
-        plugin.getServer().getPluginManager().registerEvents(new BoostListener(plugin, this), plugin);
+        plugin.modules().listen(this, new BoostListener(plugin, this));
         task = plugin.getServer().getScheduler()
                 .runTaskTimer(plugin, this::tick, checkTicks, checkTicks);
         notifier.start();

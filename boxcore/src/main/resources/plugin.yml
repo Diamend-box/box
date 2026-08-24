@@ -18,7 +18,7 @@ commands:
       /box respec                   - Refund every unlocked node
       /box compress [on|off]        - Toggle your auto-compressor
       /box expand [all]             - Unfold the compacted units you're holding
-      /box modules                  - List loaded modules (admin)
+      /box modules [list]           - Switch modules on and off (admin)
       /box points <give|take|set> <player> <n> - Adjust points (admin)
       /box unlock <player> <tree.node>         - Force-unlock a node (admin)
       /box collection set <player> <id> <n>    - Set a collection amount (admin)
