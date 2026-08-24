@@ -75,6 +75,7 @@ public class BoostsModule implements BoxModule {
     private double maxMultiplier = 8.0;
     private boolean oresOnly = false;
     private int dropWindowTicks = 5;
+    private boolean captureInventory = true;
     private boolean announce = true;
     private int checkTicks = 100;
     private ZoneId zone = ZoneId.systemDefault();
@@ -141,6 +142,7 @@ public class BoostsModule implements BoxModule {
         oresOnly = section != null && section.getBoolean("drops.ores-only", false);
         dropWindowTicks = Math.max(1, section == null
                 ? 5 : section.getInt("drops.window-ticks", 5));
+        captureInventory = section == null || section.getBoolean("drops.capture-inventory", true);
         announce = section == null || section.getBoolean("announce", true);
         checkTicks = Math.max(20, section == null ? 100 : section.getInt("check-ticks", 100));
 
@@ -545,6 +547,17 @@ public class BoostsModule implements BoxModule {
      */
     public int dropWindowTicks() {
         return dropWindowTicks;
+    }
+
+    /**
+     * Whether to boost what a player gained when nothing was dropped.
+     *
+     * <p>The last resort, for plugins that hand a block's yield straight to the
+     * inventory without ever spawning an item. It costs an inventory snapshot
+     * per block broken, and only while that player has a drops boost running.
+     */
+    public boolean captureInventory() {
+        return captureInventory;
     }
 
     public boolean oresOnly() {

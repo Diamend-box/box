@@ -52,8 +52,29 @@ public class BoostListener implements Listener {
      */
     private static final double CAPTURE_RADIUS = 2.0;
 
-    /** A block a boosted player just broke, and what its drops are worth. */
-    private record Recent(Location at, double multiplier, long expiresAt) {
+    /**
+     * A block a boosted player just broke, and what its drops are worth.
+     *
+     * <p>Mutable because {@link #captured} is written after the fact: whether
+     * anything was found on the ground decides whether the inventory is worth
+     * looking at, and that is only known once the tick has played out.
+     */
+    private static final class Recent {
+        private final UUID player;
+        private final Location at;
+        private final double multiplier;
+        private final long expiresAt;
+        /** Whether an item entity was boosted for this break. */
+        private boolean captured;
+        /** What the breaker was carrying, when the inventory is being watched. */
+        private List<ItemStack> before;
+
+        private Recent(UUID player, Location at, double multiplier, long expiresAt) {
+            this.player = player;
+            this.at = at;
+            this.multiplier = multiplier;
+            this.expiresAt = expiresAt;
+        }
     }
 
     /** Breaks still inside their capture window, oldest first. */
@@ -84,8 +105,107 @@ public class BoostListener implements Listener {
         }
         long now = System.currentTimeMillis();
         prune(now);
-        recent.add(new Recent(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
-                multiplier, now + module.dropWindowTicks() * 50L));
+        Recent note = new Recent(player.getUniqueId(),
+                event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                multiplier, now + module.dropWindowTicks() * 50L);
+        recent.add(note);
+
+        if (!module.captureInventory()) {
+            return;
+        }
+        note.before = snapshot(player);
+        // Look again once the tick has finished. Anything that reached the
+        // player without ever being an item on the ground shows up as the
+        // difference, and nothing else does — a block break and an unrelated
+        // inventory change inside the same tick is not a thing that happens.
+        plugin.getServer().getScheduler().runTask(plugin, () -> settle(note));
+    }
+
+    /**
+     * The last resort: boost what the player gained, when nothing was dropped.
+     *
+     * <p>Some plugins hand a block's yield straight to the inventory and never
+     * spawn an item at all. There is no event for that — no drop event, no
+     * spawn event, no pickup event — so the only evidence it happened is that
+     * the player is holding more than they were a tick ago. This runs only when
+     * the other two paths found nothing, so a drop that did hit the ground is
+     * never counted twice.
+     */
+    private void settle(Recent note) {
+        if (note.captured || note.before == null) {
+            return;
+        }
+        Player player = plugin.getServer().getPlayer(note.player);
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        for (ItemStack gained : gains(note.before, snapshot(player))) {
+            if (module.oresOnly() && !plugin.ores().isOre(gained.getType())) {
+                continue;
+            }
+            long extra = Boost.scale(gained.getAmount(), note.multiplier) - gained.getAmount();
+            int max = Math.max(1, gained.getType().getMaxStackSize());
+            while (extra > 0) {
+                ItemStack copy = gained.clone();
+                copy.setAmount((int) Math.min(extra, max));
+                extra -= copy.getAmount();
+                // Straight to the inventory, because that is where the drop
+                // this is doubling went. Only the overflow hits the floor.
+                for (ItemStack spill : player.getInventory().addItem(copy).values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), spill);
+                }
+            }
+        }
+    }
+
+    /** Everything the player is carrying, as independent copies. */
+    private List<ItemStack> snapshot(Player player) {
+        List<ItemStack> items = new ArrayList<>();
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (item != null && !item.getType().isAir()) {
+                items.add(item.clone());
+            }
+        }
+        return items;
+    }
+
+    /**
+     * What is in {@code after} that wasn't in {@code before}.
+     *
+     * <p>Matched by {@link ItemStack#isSimilar}, not by material, so a custom
+     * item another plugin minted is doubled as itself rather than as a plain
+     * stack of whatever it happens to be made of.
+     */
+    private List<ItemStack> gains(List<ItemStack> before, List<ItemStack> after) {
+        List<ItemStack> gained = new ArrayList<>();
+        for (ItemStack now : after) {
+            int had = 0;
+            for (ItemStack was : before) {
+                if (was.isSimilar(now)) {
+                    had += was.getAmount();
+                }
+            }
+            int has = 0;
+            for (ItemStack other : after) {
+                if (other.isSimilar(now)) {
+                    has += other.getAmount();
+                }
+            }
+            boolean counted = false;
+            for (ItemStack already : gained) {
+                if (already.isSimilar(now)) {
+                    counted = true;
+                    break;
+                }
+            }
+            if (counted || has <= had) {
+                continue;
+            }
+            ItemStack delta = now.clone();
+            delta.setAmount(has - had);
+            gained.add(delta);
+        }
+        return gained;
     }
 
     /**
@@ -102,6 +222,11 @@ public class BoostListener implements Listener {
         double multiplier = module.multiplier(event.getPlayer(), BoostType.DROPS);
         if (multiplier <= 1.0) {
             return;
+        }
+        Recent note = nearest(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                System.currentTimeMillis());
+        if (note != null) {
+            note.captured = true;
         }
         for (Item entity : event.getItems()) {
             grow(entity, multiplier);
@@ -139,7 +264,8 @@ public class BoostListener implements Listener {
         }
         Recent from = nearest(entity.getLocation(), now);
         if (from != null) {
-            grow(entity, from.multiplier());
+            from.captured = true;
+            grow(entity, from.multiplier);
         }
     }
 
@@ -198,8 +324,8 @@ public class BoostListener implements Listener {
             return null;
         }
         for (Recent candidate : recent) {
-            Location from = candidate.at();
-            if (candidate.expiresAt() < now || from.getWorld() == null
+            Location from = candidate.at;
+            if (candidate.expiresAt < now || from.getWorld() == null
                     || !from.getWorld().equals(at.getWorld())) {
                 continue;
             }
@@ -212,7 +338,7 @@ public class BoostListener implements Listener {
 
     /** Drops breaks and remembered entities once their window has passed. */
     private void prune(long now) {
-        if (recent.removeIf(entry -> entry.expiresAt() < now) && recent.isEmpty()) {
+        if (recent.removeIf(entry -> entry.expiresAt < now) && recent.isEmpty()) {
             // Nothing is being watched, so nothing needs remembering either.
             boosted.clear();
         }

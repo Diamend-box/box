@@ -288,6 +288,16 @@ boosts:
     # had nothing to do with the block. 5 ticks is a quarter of a second.
     window-ticks: 5
 
+    # Last resort, for plugins that put a block's yield straight into the
+    # inventory without ever dropping an item. Nothing reports that — no
+    # drop event, no spawn event, no pickup event — so the only evidence
+    # is that the player is carrying more than they were a tick ago.
+    #
+    # Only runs when nothing was found on the ground for that break, so a
+    # normal drop is never counted twice, and only for players who have a
+    # drops boost running. Turn it off if you see drops being doubled.
+    capture-inventory: true
+
   # How often (in ticks) to expire finished boosts and open scheduled
   # windows. 100 ticks is five seconds, which is plenty.
   check-ticks: 100
