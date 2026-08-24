@@ -3,6 +3,7 @@ package com.diamend.robobear.gui;
 import com.diamend.robobear.RoboBearPlugin;
 import com.diamend.robobear.challenge.ObjectiveType;
 import com.diamend.robobear.mine.MineRegion;
+import com.diamend.robobear.mine.MineSurvey;
 import com.diamend.robobear.util.Items;
 import com.diamend.robobear.util.Text;
 import org.bukkit.Material;
@@ -94,13 +95,14 @@ public class QuestEditorMenu extends AbstractMenu {
         lore.add("<gray>something the mine actually contains.");
         lore.add("");
         if (plugin.mines().hasDetectedMaterials()) {
-            lore.add("<green>Compositions were read from your");
-            lore.add("<green>mine plugin, so this is automatic.");
+            lore.add("<green>Your mines have been read, either from");
+            lore.add("<green>the mine plugin or from the blocks");
+            lore.add("<green>themselves, so this is automatic.");
         } else {
-            lore.add("<yellow>Your mine source didn't say what any");
-            lore.add("<yellow>mine contains, so the config list is");
-            lore.add("<yellow>used for all of them. Correct the");
-            lore.add("<yellow>ones that matter below.");
+            lore.add("<yellow>Nothing could be read about any mine,");
+            lore.add("<yellow>so the config list is used for all of");
+            lore.add("<yellow>them. Correct the ones that matter");
+            lore.add("<yellow>below, or check mines.sample-blocks.");
         }
         lore.add("");
         lore.add("<dark_gray>Narrowed by the list in config.yml");
@@ -184,6 +186,14 @@ public class QuestEditorMenu extends AbstractMenu {
                 : detected > 0
                         ? "<dark_gray>Read from the mine (" + detected + " block types)"
                         : "<dark_gray>Falling back to the config list");
+
+        // What the size clamp is working from. Without this, a job that came
+        // out smaller than the round should have looks like a bug.
+        MineSurvey survey = plugin.mines().surveyOf(mine.id());
+        if (survey.foundAnything()) {
+            lore.add("<dark_gray>Holds roughly <gray>"
+                    + Text.number(survey.estimateFilled(mine.volume())) + "<dark_gray> blocks");
+        }
         lore.add("");
         lore.add("<gray>Click to choose its materials");
         if (corrected) {

@@ -39,6 +39,20 @@ mines:
   # time you set this up; noisy afterwards.
   log-on-startup: true
 
+  # How many blocks to read when working out what a mine is made of.
+  #
+  # Asking the mine plugin is tried first, but not every one will say — and
+  # when nothing answers, the only alternative to reading the blocks is
+  # guessing, which is how a quartz mine came to be asked for iron ore.
+  # The survey also sizes each mine's stock, which is what stops an
+  # objective asking for more than the mine holds.
+  #
+  # The stride widens for bigger mines so the cost is about this many reads
+  # whatever the size, and chunks that aren't already loaded are skipped
+  # rather than pulled in. Runs on the same slow timer as refresh-seconds.
+  # Set to 0 to switch surveying off.
+  sample-blocks: 2048
+
 # ---------------------------------------------------------------------
 # The run
 # ---------------------------------------------------------------------
@@ -156,11 +170,37 @@ objectives:
       - DEEPSLATE_EMERALD_ORE
 
   # "Kill N hostile mobs" — Bee Swarm's Mechsquitos, more or less.
-  # Turn this off on a server where the box has no mobs in it.
+  # Any hostile mob counts, including the ones the challenge sends after you
+  # (see the 'mobs' section). Turn this off on a server where the box has no
+  # mobs in it and you don't want challenge mobs either.
   kill-mobs:
     enabled: true
     base-amount: 10
     growth: 1.22
+
+  # -------------------------------------------------------------------
+  # Keeping objectives winnable
+  # -------------------------------------------------------------------
+  # The curves above know the round number and nothing else, so left alone
+  # they will ask for 250 blocks from a mine that holds two stacks. On a
+  # ladder that isn't a hard round, it's a round that ends the run.
+  #
+  # RoboBear surveys each mine (see mines.sample-blocks) and trims what it
+  # asks for to what's actually in there. A mine too thin to support a job
+  # is passed over rather than set an impossible one.
+  limits:
+    # How many times a mine refills during one round. Roughly
+    # run.round-seconds divided by your mine's reset interval — with the
+    # default five-minute round and a five-minute reset, that's 1.
+    mine-resets-per-round: 1.0
+
+    # The share of a mine's stock one job may ask for. Nobody strips a mine
+    # bare while racing a clock, so asking for all of it is a coin flip.
+    mine-fraction: 0.6
+
+    # Never build a job smaller than this. A mine that can't manage even
+    # this much is skipped instead.
+    minimum-amount: 10
 
 # ---------------------------------------------------------------------
 # The workshop

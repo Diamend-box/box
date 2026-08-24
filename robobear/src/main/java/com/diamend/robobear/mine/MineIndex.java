@@ -28,8 +28,11 @@ public class MineIndex {
     private final MineToggles toggles;
     private final MineMaterials materials;
 
-    /** What each mine is made of, as reported by the source. */
+    /** What each mine is made of, from the source and from the world itself. */
     private Map<String, java.util.Set<org.bukkit.Material>> detected = Collections.emptyMap();
+
+    /** The last usable block survey of each mine, for composition and capacity. */
+    private Map<String, MineSurvey> surveys = Collections.emptyMap();
 
     /** Mines by lower-cased id, in the order the source listed them. */
     private Map<String, MineRegion> byId = Collections.emptyMap();
@@ -108,12 +111,104 @@ public class MineIndex {
         this.byWorld = worlds;
         this.activeSource = provider.name();
 
+        Map<String, java.util.Set<org.bukkit.Material>> reported;
         try {
-            this.detected = provider.compositions();
+            reported = provider.compositions();
         } catch (Throwable error) {
             // Knowing what a mine is made of is a bonus, never a requirement.
-            this.detected = Collections.emptyMap();
+            reported = Map.of();
         }
+        surveyAll(ids, reported);
+    }
+
+    /**
+     * Works out what each mine contains, from the source and from the blocks.
+     *
+     * <p>The two are unioned rather than ranked. A source that reports its
+     * composition is telling us what the mine holds when full, which a survey of
+     * a half-mined region would understate; a survey sees what is really there,
+     * which a source that hides its internals can't tell us at all. Between them
+     * the answer is right far more often than either alone.
+     */
+    private void surveyAll(Map<String, MineRegion> ids,
+                           Map<String, java.util.Set<org.bukkit.Material>> reported) {
+        int budget = plugin.getConfig().getInt("mines.sample-blocks", 2048);
+        Map<String, MineSurvey> found = new HashMap<>();
+        Map<String, java.util.Set<org.bukkit.Material>> combined = new HashMap<>();
+
+        for (Map.Entry<String, MineRegion> entry : ids.entrySet()) {
+            String key = entry.getKey();
+            java.util.Set<org.bukkit.Material> union = new java.util.LinkedHashSet<>(
+                    reported.getOrDefault(key, java.util.Set.of()));
+
+            MineSurvey survey = MineSurvey.NOTHING;
+            if (budget > 0) {
+                try {
+                    survey = survey(entry.getValue(), budget);
+                } catch (Throwable error) {
+                    survey = MineSurvey.NOTHING;
+                }
+            }
+            if (survey.isEmpty()) {
+                // Nothing readable this time — an unloaded world, or a mine
+                // nobody is near. Keeping the last answer is better than
+                // forgetting what we already knew about it.
+                survey = surveys.getOrDefault(key, MineSurvey.NOTHING);
+            }
+            if (!survey.isEmpty()) {
+                found.put(key, survey);
+                union.addAll(survey.materials());
+            }
+            if (!union.isEmpty()) {
+                combined.put(key, union);
+            }
+        }
+
+        this.surveys = found;
+        this.detected = combined;
+    }
+
+    /**
+     * Reads a stride of blocks across a mine.
+     *
+     * <p>Bounded by construction. The stride is chosen so a mine of any size
+     * costs about {@code budget} block reads, and chunks that aren't already
+     * loaded are skipped rather than pulled in — a survey is worth a fraction of
+     * a millisecond every few minutes, never a chunk load.
+     */
+    private MineSurvey survey(MineRegion region, int budget) {
+        org.bukkit.World world = org.bukkit.Bukkit.getWorld(region.world());
+        if (world == null) {
+            return MineSurvey.NOTHING;
+        }
+
+        long volume = region.volume();
+        int step = 1;
+        if (volume > budget) {
+            step = Math.max(1, (int) Math.ceil(Math.cbrt((double) volume / budget)));
+        }
+
+        Map<org.bukkit.Material, Integer> hits = new HashMap<>();
+        long sampled = 0;
+        long filled = 0;
+
+        for (int x = region.minX(); x <= region.maxX(); x += step) {
+            for (int z = region.minZ(); z <= region.maxZ(); z += step) {
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                    continue;
+                }
+                for (int y = region.minY(); y <= region.maxY(); y += step) {
+                    org.bukkit.Material type = world.getBlockAt(x, y, z).getType();
+                    sampled++;
+                    if (type.isAir()) {
+                        continue;
+                    }
+                    filled++;
+                    hits.merge(type, 1, Integer::sum);
+                }
+            }
+        }
+        return sampled == 0 ? MineSurvey.NOTHING : new MineSurvey(sampled, filled, hits);
     }
 
     private MineProvider chooseProvider() {
@@ -218,9 +313,20 @@ public class MineIndex {
         return detected.getOrDefault(id == null ? "" : id.toLowerCase(Locale.ROOT), java.util.Set.of());
     }
 
-    /** Whether the source told us anything about any mine's contents. */
+    /** Whether anything is known about any mine's contents. */
     public boolean hasDetectedMaterials() {
         return !detected.isEmpty();
+    }
+
+    /** Whether anything is known about <i>this</i> mine's contents. */
+    public boolean hasDetectionFor(String id) {
+        return detected.containsKey(id == null ? "" : id.toLowerCase(Locale.ROOT));
+    }
+
+    /** The last block survey of a mine, or {@link MineSurvey#NOTHING}. */
+    public MineSurvey surveyOf(String id) {
+        return surveys.getOrDefault(id == null ? "" : id.toLowerCase(Locale.ROOT),
+                MineSurvey.NOTHING);
     }
 
     /**
@@ -233,8 +339,9 @@ public class MineIndex {
      *   <li>What the mine is actually made of, narrowed to the config list of
      *       materials worth asking for. This is the normal path, and it is what
      *       stops the challenge asking for gold in a quartz mine.</li>
-     *   <li>The config list alone, when the source can't say what the mine
-     *       contains — the old behaviour, and still the best guess available.</li>
+     *   <li>The config list alone — but only on a server where nothing at all
+     *       can be read, neither source nor blocks. A mine whose contents are
+     *       unknown on a server where others are known is left out instead.</li>
      * </ol>
      *
      * <p>An empty result is a real answer: this mine has nothing worth asking
@@ -258,11 +365,17 @@ public class MineIndex {
             // sending people after whatever filler a mine happens to contain.
             return List.of();
         }
-        java.util.Set<org.bukkit.Material> present = detectedMaterials(id);
-        if (present.isEmpty()) {
-            return allowed;
+        if (!hasDetectionFor(id)) {
+            // Nothing is known about this mine. Handing back the whole config
+            // list here is exactly what asked for iron ore in the quartz mine,
+            // so it is only done when nothing is known about *any* mine — a
+            // server with no detection at all, where the list is the only
+            // information there is. Once one mine can be read, a mine that
+            // can't is left out rather than guessed at.
+            return hasDetectedMaterials() ? List.of() : allowed;
         }
 
+        java.util.Set<org.bukkit.Material> present = detectedMaterials(id);
         List<org.bukkit.Material> both = new ArrayList<>();
         for (org.bukkit.Material material : present) {
             if (allowed.contains(material)) {
