@@ -214,7 +214,7 @@ public class WarpEditorMenu extends AbstractMenu {
             new WarpEditorMenu(plugin, module, page).open(player);
             return;
         }
-        Warp warp = new Warp(id, name, icon, List.of(), player.getLocation().clone(), "",
+        Warp warp = new Warp(id, name, icon, List.of(), module.placementFor(player), "",
                 plugin.getConfig().getDouble("travel.default-radius", 8.0));
         module.warps().put(warp);
         plugin.messages().sendLiteral(player,

@@ -356,6 +356,22 @@ travel:
   # immediately.
   warmup-seconds: 3
 
+  # Where a destination lands when staff place one by standing there.
+  # Lining yourself up on the middle of a block, looking squarely down a
+  # cardinal direction, is fiddly to do by hand and obvious when it's
+  # wrong, so both are tidied up on the way in.
+  snap:
+    # Put the destination on the centre of the block you're standing on
+    # rather than the exact spot your feet stopped at.
+    centre: true
+
+    # Which way you're looking when you arrive:
+    #   nearest  - round to the closest quarter turn (default)
+    #   north / east / south / west - always that way
+    #   keep     - exactly however the placer was looking
+    # Any single destination can be turned afterwards from /box warp.
+    facing: nearest
+
   # Whether stepping off the block you started on cancels the trip.
   # Taking damage always cancels it, regardless of this.
   cancel-on-move: true

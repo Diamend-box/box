@@ -70,6 +70,8 @@ public class TravelModule implements BoxModule {
     private boolean announceDiscovery = true;
     private boolean sounds = true;
     private Order order = Order.FOUND;
+    private boolean snapCentre = true;
+    private Facing facing = Facing.NEAREST;
 
     public TravelModule(BoxCorePlugin plugin) {
         this.plugin = plugin;
@@ -111,8 +113,103 @@ public class TravelModule implements BoxModule {
         announceDiscovery = plugin.getConfig().getBoolean("travel.announce-discovery", true);
         sounds = plugin.getConfig().getBoolean("travel.sounds", true);
         order = Order.parse(plugin.getConfig().getString("travel.menu-order", "found"));
+        snapCentre = plugin.getConfig().getBoolean("travel.snap.centre", true);
+        facing = Facing.parse(plugin.getConfig().getString("travel.snap.facing", "nearest"));
         travel.setSounds(sounds);
         warps.load();
+    }
+
+    /**
+     * Which way a warp faces you when you arrive.
+     *
+     * <p>Staff place a destination by standing where it should be, and standing
+     * squarely on a block looking at a cardinal direction is fiddly to do by
+     * hand. Snapping means the arrival always looks deliberate without anyone
+     * having to line themselves up first.
+     */
+    public enum Facing {
+        /** However the placer happened to be looking. */
+        KEEP(Float.NaN),
+        /** The nearest quarter turn to however they were looking. */
+        NEAREST(Float.NaN),
+        SOUTH(0f),
+        WEST(90f),
+        NORTH(180f),
+        EAST(-90f);
+
+        private final float yaw;
+
+        Facing(float yaw) {
+            this.yaw = yaw;
+        }
+
+        public static Facing parse(String raw) {
+            if (raw == null) {
+                return NEAREST;
+            }
+            return switch (raw.trim().toLowerCase(Locale.ROOT)) {
+                case "keep", "off", "none", "exact" -> KEEP;
+                case "north" -> NORTH;
+                case "east" -> EAST;
+                case "south" -> SOUTH;
+                case "west" -> WEST;
+                default -> NEAREST;
+            };
+        }
+
+        /** The next one round, for a menu button that cycles. */
+        public Facing next() {
+            Facing[] all = values();
+            return all[(ordinal() + 1) % all.length];
+        }
+
+        public String display() {
+            return switch (this) {
+                case KEEP -> "As placed";
+                case NEAREST -> "Nearest quarter turn";
+                default -> name().charAt(0) + name().substring(1).toLowerCase(Locale.ROOT);
+            };
+        }
+    }
+
+    /**
+     * Where a warp placed from this player's feet should actually sit.
+     *
+     * <p>Every path that places or moves a destination goes through here, so a
+     * warp set by command lands in the same place as one set from the menu.
+     */
+    public Location placementFor(Player player) {
+        return snap(player.getLocation().clone());
+    }
+
+    /** Applies the configured centring and facing to a location. */
+    public Location snap(Location raw) {
+        if (raw == null) {
+            return null;
+        }
+        Location at = raw.clone();
+        if (snapCentre) {
+            // Feet on the middle of the block, not wherever in it they stopped.
+            at.setX(at.getBlockX() + 0.5);
+            at.setZ(at.getBlockZ() + 0.5);
+            at.setY(at.getBlockY());
+        }
+        if (facing == Facing.NEAREST) {
+            at.setYaw(Math.round(at.getYaw() / 90f) * 90f);
+            at.setPitch(0f);
+        } else if (facing != Facing.KEEP) {
+            at.setYaw(facing.yaw);
+            at.setPitch(0f);
+        }
+        return at;
+    }
+
+    public boolean snapCentre() {
+        return snapCentre;
+    }
+
+    public Facing facing() {
+        return facing;
     }
 
     public Order order() {

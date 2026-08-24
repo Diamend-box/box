@@ -734,7 +734,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             return;
         }
         requirePlayer(sender, player -> {
-            module.warps().put(warp.withLocation(player.getLocation().clone()));
+            module.warps().put(warp.withLocation(module.placementFor(player)));
             messages().sendLiteral(sender, "<green>Moved <white>" + warp.id()
                     + "<green> to where you're standing.");
         });
@@ -914,7 +914,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 existing == null ? display : existing.display(),
                 icon,
                 existing == null ? List.of() : existing.description(),
-                player.getLocation().clone(),
+                module.placementFor(player),
                 existing == null ? "" : existing.permission(),
                 existing == null
                         ? plugin.getConfig().getDouble("travel.default-radius", 8.0)

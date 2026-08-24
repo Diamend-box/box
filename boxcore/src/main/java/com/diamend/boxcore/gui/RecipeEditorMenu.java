@@ -117,6 +117,9 @@ public class RecipeEditorMenu extends AbstractMenu {
         if (held == null || held.getType().isAir()) {
             lore.add("<gray>Hold the item you want to compact,");
             lore.add("<gray>then click here.");
+            lore.add("");
+            lore.add("<yellow>Or click with an empty hand");
+            lore.add("<yellow>to type its name instead");
             return Items.text(Material.LIME_DYE, "<green>Add a recipe", lore, false);
         }
         CompactRecipe existing = module.recipes().forInput(held.getType());
@@ -183,20 +186,54 @@ public class RecipeEditorMenu extends AbstractMenu {
         openLater(player, new RecipeEditMenu(plugin, module, id));
     }
 
+    /** Adds a recipe for an item named rather than held. */
+    private void askForMaterial(Player player) {
+        click(player);
+        plugin.prompts().ask(player,
+                "<gold>Which item should compact? <gray>e.g. <white>cobblestone",
+                "",
+                answer -> {
+                    Material input = Material.matchMaterial(
+                            answer.trim().toUpperCase(Locale.ROOT).replace(' ', '_'));
+                    if (input == null || input.isAir()) {
+                        plugin.messages().sendLiteral(player,
+                                "<red>No item called <white>" + answer + "</white>.");
+                        redrawLater(player);
+                        return;
+                    }
+                    addFor(player, input);
+                },
+                () -> redrawLater(player));
+    }
+
+    private void redrawLater(Player player) {
+        openLater(player, new RecipeEditorMenu(plugin, module, page));
+    }
+
     private void add(Player player) {
         ItemStack held = player.getInventory().getItemInMainHand();
         if (held == null || held.getType().isAir()) {
-            plugin.messages().send(player, "recipe-needs-item");
+            // Holding the item is the quick way, but it is not always possible:
+            // the thing you want to compact may be somewhere you can't reach,
+            // or not obtainable at all on a modded drop table.
+            askForMaterial(player);
             return;
         }
-        if (module.recipes().forInput(held.getType()) != null) {
-            plugin.messages().send(player, "recipe-duplicate",
-                    "id", module.recipes().forInput(held.getType()).id());
+        addFor(player, held.getType());
+    }
+
+    /** Creates the recipe and drops the staff member straight into editing it. */
+    private void addFor(Player player, Material input) {
+        CompactRecipe clash = module.recipes().forInput(input);
+        if (clash != null) {
+            plugin.messages().send(player, "recipe-duplicate", "id", clash.id());
+            redrawLater(player);
             return;
         }
-        CompactRecipe recipe = new CompactRecipe(freeId(held.getType()), held.getType(), 64, null);
+        CompactRecipe recipe = new CompactRecipe(freeId(input), input, 64, null);
         if (!module.recipes().put(recipe)) {
             plugin.messages().send(player, "recipe-duplicate", "id", recipe.id());
+            redrawLater(player);
             return;
         }
         plugin.messages().send(player, "recipe-added", "id", recipe.id());
