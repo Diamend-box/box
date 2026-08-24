@@ -274,6 +274,7 @@ public class WarpEditMenu extends AbstractMenu {
         click(player);
         plugin.prompts().ask(player,
                 "<gold>What should <white>" + warp.id() + "</white> be called?",
+                warp.display(),
                 answer -> {
                     Warp current = warp();
                     if (current != null) {
@@ -327,6 +328,7 @@ public class WarpEditMenu extends AbstractMenu {
         click(player);
         plugin.prompts().ask(player,
                 "<gold>Which permission should it need?",
+                warp.permission(),
                 answer -> {
                     Warp current = warp();
                     if (current != null) {
