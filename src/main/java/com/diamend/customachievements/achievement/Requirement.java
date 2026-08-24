@@ -146,6 +146,10 @@ public class Requirement {
             }
             case REACH_DIMENSION -> "Enter " + target + (amount > 1 ? " (x" + amount + ")" : "");
             case PLAYTIME_HOURS -> "Play for " + amount + " hour(s)";
+            case PLAYER_DEATH -> isWildcard()
+                    ? "Die " + amount + " time(s)"
+                    : "Die to " + targetLabel() + " x" + amount;
+            case ITEM_HAVE -> "Have " + targetLabel() + " x" + amount + " at once";
             case AURASKILLS_LEVEL -> "Reach level " + amount
                     + (target != null && !target.equalsIgnoreCase("ANY") ? " in " + target : " in any skill");
             default -> {

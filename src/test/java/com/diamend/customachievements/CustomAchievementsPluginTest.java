@@ -402,6 +402,124 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void deathObjectiveCanRequireACause() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("hot_footed");
+        achievement.setTrigger(TriggerType.PLAYER_DEATH);
+        achievement.setTarget("LAVA");
+        achievement.setAmount(2);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handleDeath(player, "FALL", null);
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("hot_footed", 0)),
+                "a fall shouldn't count toward dying in lava");
+
+        plugin.getAchievementService().handleDeath(player, "LAVA", null);
+        plugin.getAchievementService().handleDeath(player, "LAVA", null);
+        assertTrue(data.isCompleted("hot_footed"), "two lava deaths should complete it");
+    }
+
+    @Test
+    void deathObjectiveCanRequireAKiller() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("creeper_problem");
+        achievement.setTrigger(TriggerType.PLAYER_DEATH);
+        achievement.setTarget("CREEPER");
+        achievement.setAmount(1);
+        plugin.getAchievementManager().put(achievement);
+
+        // The damage cause of a creeper kill is an explosion, so the mob that
+        // did it has to be matched separately from the cause.
+        plugin.getAchievementService().handleDeath(player, "ENTITY_EXPLOSION", "CREEPER");
+        assertTrue(plugin.getPlayerDataManager().get(player.getUniqueId()).isCompleted("creeper_problem"),
+                "being killed by a creeper should match a CREEPER target");
+    }
+
+    @Test
+    void deathObjectiveAcceptsAMobFamily() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("fragile");
+        achievement.setTrigger(TriggerType.PLAYER_DEATH);
+        achievement.setTarget("#HOSTILE");
+        achievement.setAmount(2);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handleDeath(player, "ENTITY_ATTACK", "ZOMBIE");
+        plugin.getAchievementService().handleDeath(player, "FALL", null);
+        assertEquals(1, data.getProgress(PlayerData.requirementKey("fragile", 0)),
+                "only the mob death counts toward a hostile-mob target");
+
+        plugin.getAchievementService().handleDeath(player, "ENTITY_EXPLOSION", "CREEPER");
+        assertTrue(data.isCompleted("fragile"), "any two hostile mobs should finish it");
+    }
+
+    @Test
+    void deathObjectiveWithoutATargetStillCountsEveryDeath() {
+        // Objectives written before deaths had a cause leave the target unset.
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("clumsy");
+        achievement.setTrigger(TriggerType.PLAYER_DEATH);
+        achievement.setTarget("ANY");
+        achievement.setAmount(2);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().handleDeath(player, "FALL", null);
+        plugin.getAchievementService().handleDeath(player, "DROWNING", null);
+        assertTrue(plugin.getPlayerDataManager().get(player.getUniqueId()).isCompleted("clumsy"),
+                "an untargeted death objective should count any death");
+    }
+
+    @Test
+    void haveItemsCountsWhatIsInTheInventoryByCustomName() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("coin_collector");
+        Requirement requirement = new Requirement(TriggerType.ITEM_HAVE, "Ancient Coin", 10);
+        requirement.setMatchByName(true);
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(requirement);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        ItemStack coins = new ItemStack(Material.GOLD_NUGGET, 4);
+        var meta = coins.getItemMeta();
+        meta.displayName(net.kyori.adventure.text.Component.text("Ancient Coin"));
+        coins.setItemMeta(meta);
+        player.getInventory().addItem(coins);
+
+        // Items can arrive with no event at all (/give), so the gauge reads the
+        // inventory rather than counting receipts.
+        plugin.getAchievementService().handleItemInventory(player);
+        assertEquals(4, data.getProgress(PlayerData.requirementKey("coin_collector", 0)),
+                "the gauge should reflect how many are held");
+        assertFalse(data.isCompleted("coin_collector"), "4 of 10 isn't done yet");
+
+        ItemStack more = coins.clone();
+        more.setAmount(6);
+        player.getInventory().addItem(more);
+        plugin.getAchievementService().handleItemInventory(player);
+        assertTrue(data.isCompleted("coin_collector"), "holding 10 should complete it");
+    }
+
+    @Test
+    void haveItemsIgnoresItemsWithADifferentName() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("named_only");
+        Requirement requirement = new Requirement(TriggerType.ITEM_HAVE, "Ancient Coin", 1);
+        requirement.setMatchByName(true);
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(requirement);
+        plugin.getAchievementManager().put(achievement);
+
+        // Same material, no custom name: must not count.
+        player.getInventory().addItem(new ItemStack(Material.GOLD_NUGGET, 64));
+        plugin.getAchievementService().handleItemInventory(player);
+        assertFalse(plugin.getPlayerDataManager().get(player.getUniqueId()).isCompleted("named_only"),
+                "a plain gold nugget is not an Ancient Coin");
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

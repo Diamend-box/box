@@ -39,6 +39,7 @@ public class CustomAchievementsPlugin extends JavaPlugin {
 
     private BukkitTask playtimeTask;
     private BukkitTask autosaveTask;
+    private BukkitTask itemScanTask;
 
     // The last CustomAchievements menu each player had open, so /reopen can
     // restore it (e.g. an editor closed by accident) without losing state.
@@ -82,6 +83,9 @@ public class CustomAchievementsPlugin extends JavaPlugin {
         }
         if (autosaveTask != null) {
             autosaveTask.cancel();
+        }
+        if (itemScanTask != null) {
+            itemScanTask.cancel();
         }
         if (playerDataManager != null) {
             playerDataManager.saveAllAndShutdown();
@@ -223,6 +227,19 @@ public class CustomAchievementsPlugin extends JavaPlugin {
                 }
             }, 1200L, 1200L);
         }
+
+        // "Have X items" gauges are refreshed on pickup and when a container is
+        // closed, but items can also appear with no event at all (/give, plugin
+        // grants, creative mode), so sweep periodically as well. Skipped
+        // entirely while no achievement uses the trigger.
+        itemScanTask = getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!achievementManager.usesTrigger(TriggerType.ITEM_HAVE)) {
+                return;
+            }
+            for (Player player : getServer().getOnlinePlayers()) {
+                achievementService.handleItemInventory(player);
+            }
+        }, 200L, 200L);
 
         int autosaveMinutes = getConfig().getInt("autosave-minutes", 5);
         if (autosaveMinutes > 0) {

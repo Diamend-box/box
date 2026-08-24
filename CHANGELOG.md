@@ -4,6 +4,29 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.10.0]
+### Added
+- **Deaths can now require a cause.** `PLAYER_DEATH` used to count *any* death;
+  its target now narrows how you died, matching against either the damage cause
+  (`LAVA`, `FALL`, `DROWNING`, `VOID`, `FREEZE`, …) **or** whatever killed you
+  (`CREEPER`, `ZOMBIE`, or a whole family like `#HOSTILE`). Both are checked
+  because the damage cause of a creeper kill is only `ENTITY_EXPLOSION` — the
+  mob has to be matched separately — and projectiles resolve to whoever fired
+  them, so a skeleton's arrow counts as a skeleton. Existing death objectives
+  keep counting every death: an unset target (or `ANY`) is still a wildcard.
+- **`ITEM_HAVE` trigger — "have X of an item right now".** A live count of the
+  player's inventory rather than a running total, so it sees items that arrive
+  with no event at all: `/give`, plugin grants, creative mode. Like the other
+  item triggers it can match a **custom item name** instead of a material, which
+  is the usual way to track a named quest item or currency. It refreshes on
+  pickup, on closing a container, and on a periodic sweep that is skipped
+  entirely while no achievement uses the trigger.
+### Changed
+- **`ITEM_OBTAIN` now counts items taken out of containers**, not just items
+  picked up off the ground — chests, barrels, furnace output, villager trades
+  and loot all count toward it now. Rearranging your own inventory or crafting
+  grid still doesn't, and neither does clicking through this plugin's own menus.
+
 ## [1.9.0]
 ### Fixed
 - **Unlocking an achievement now shows its whole description, not just its

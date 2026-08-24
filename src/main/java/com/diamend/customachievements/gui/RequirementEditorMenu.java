@@ -195,7 +195,7 @@ public class RequirementEditorMenu implements Menu {
             }
             case MYTHIC_MOB_KILL -> promptText("Enter the MythicMobs internal name (or ANY):",
                     input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
-            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN -> {
+            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ITEM_HAVE -> {
                 if (requirement.isMatchByName()) {
                     promptText("Enter the custom item name to match (or ANY):",
                             input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));

@@ -143,6 +143,21 @@ public class AchievementManager {
         return !categories().isEmpty();
     }
 
+    /**
+     * Whether any achievement uses a trigger. Lets the periodic tasks skip work
+     * entirely when nothing on the server needs it.
+     */
+    public boolean usesTrigger(TriggerType trigger) {
+        for (Achievement achievement : all()) {
+            for (Requirement requirement : achievement.getRequirements()) {
+                if (requirement.getTrigger() == trigger) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** Adds or replaces an achievement and persists to disk. */
     public void put(Achievement achievement) {
         achievements.put(achievement.getId().toLowerCase(Locale.ROOT), achievement);

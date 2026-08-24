@@ -107,6 +107,16 @@ public class AchievementService {
         if (value < 0) {
             return;
         }
+        handleGauge(player, type, requirement -> requirement.matchesTarget(targetKey) ? value : -1);
+    }
+
+    /**
+     * Gauge update where each requirement gets its own current value (used by
+     * "have X items", where the count depends on what that objective targets).
+     * A negative value means the requirement doesn't apply.
+     */
+    public void handleGauge(Player player, TriggerType type,
+                            java.util.function.ToIntFunction<Requirement> valueOf) {
         PlayerData data = playerData.get(player.getUniqueId());
         Achievement closest = null;
         double closestFraction = -1.0;
@@ -118,7 +128,11 @@ public class AchievementService {
             boolean changed = false;
             for (int i = 0; i < requirements.size(); i++) {
                 Requirement requirement = requirements.get(i);
-                if (requirement.getTrigger() != type || !requirement.matchesTarget(targetKey)) {
+                if (requirement.getTrigger() != type) {
+                    continue;
+                }
+                int value = valueOf.applyAsInt(requirement);
+                if (value < 0) {
                     continue;
                 }
                 int capped = Math.min(value, requirement.requiredAmount());
@@ -248,7 +262,45 @@ public class AchievementService {
         handle(player, type, requirement -> requirement.matchesItem(material, name), false, amount);
     }
 
-    private String itemName(org.bukkit.inventory.ItemStack item) {
+    /**
+     * Advances PLAYER_DEATH requirements. A death matches on either the damage
+     * cause ({@code FALL}, {@code LAVA}, ...) or what killed the player
+     * ({@code CREEPER}, a mob family like {@code #HOSTILE}, ...), so "die to
+     * lava" and "die to a creeper" are both expressible. Either may be null.
+     */
+    public void handleDeath(Player player, String cause, String killer) {
+        handle(player, TriggerType.PLAYER_DEATH,
+                requirement -> requirement.matchesTarget(cause)
+                        || (killer != null && requirement.matchesTarget(killer)),
+                false, 1);
+    }
+
+    /**
+     * Refreshes ITEM_HAVE requirements from what the player is currently
+     * carrying. Unlike ITEM_OBTAIN (which counts each item as it's received),
+     * this reads the inventory, so it also sees items that arrive without an
+     * event — {@code /give}, plugin grants, creative mode.
+     */
+    public void handleItemInventory(Player player) {
+        org.bukkit.inventory.ItemStack[] contents = player.getInventory().getContents();
+        handleGauge(player, TriggerType.ITEM_HAVE, requirement -> countMatching(contents, requirement));
+    }
+
+    /** How many items in the given contents match a requirement's target. */
+    private static int countMatching(org.bukkit.inventory.ItemStack[] contents, Requirement requirement) {
+        int total = 0;
+        for (org.bukkit.inventory.ItemStack item : contents) {
+            if (item == null || item.getType().isAir()) {
+                continue;
+            }
+            if (requirement.matchesItem(item.getType().name(), itemName(item))) {
+                total += item.getAmount();
+            }
+        }
+        return total;
+    }
+
+    private static String itemName(org.bukkit.inventory.ItemStack item) {
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName()) {
             return null;

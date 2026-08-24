@@ -77,7 +77,7 @@ still **locked** (with live progress bars).
 mvn clean package
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.9.0.jar`.
+The finished plugin is written to `target/CustomAchievements-1.10.0.jar`.
 Drop that jar into your server's `plugins/` folder and restart.
 
 > The build downloads the Paper API from `https://repo.papermc.io` and the
@@ -170,13 +170,55 @@ it back exactly where you left off — the in-progress draft is preserved.
 | `ENTITY_KILL` | EntityType | Mobs killed |
 | `MYTHIC_MOB_KILL` | MythicMobs internal name | MythicMobs mobs killed |
 | `AURASKILLS_LEVEL` | AuraSkills skill (or ANY) | Reach a skill level |
-| `ITEM_CRAFT` | Material | Items crafted |
-| `ITEM_CONSUME` | Material | Items eaten/drunk |
+| `ITEM_CRAFT` | Material or custom name | Items crafted |
+| `ITEM_CONSUME` | Material or custom name | Items eaten/drunk |
+| `ITEM_OBTAIN` | Material or custom name | Items received — running total |
+| `ITEM_HAVE` | Material or custom name | Items held **right now** (live count) |
 | `FISH_CAUGHT` | – | Fish reeled in |
-| `PLAYER_DEATH` | – | Deaths |
+| `PLAYER_DEATH` | Damage cause, mob, or ANY | Deaths (optionally to a specific cause) |
 | `PLAYTIME_HOURS` | – | Hours played (from server statistics) |
 | `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
 | `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
+
+### Counting items: `ITEM_OBTAIN` vs `ITEM_HAVE`
+
+Both match either a **material** or a **custom item name** — flip **"Match by:
+Custom Name"** in the objective editor and type the name (e.g. *"Ancient
+Coin"*), and the material stops mattering.
+
+They differ in what they count:
+
+- **`ITEM_OBTAIN`** is a **running total** of items received: picked up off the
+  ground, taken out of a chest, pulled from a furnace or trade result. It never
+  goes down when you spend them. It can't see items handed over by `/give` or a
+  plugin, because Minecraft fires no event for those.
+- **`ITEM_HAVE`** is a **live count of what's in the inventory**. It catches
+  every source — including `/give`, plugin grants and creative mode — but the
+  count drops again if you spend, drop or store the items. Once the objective is
+  actually completed the achievement is awarded for good.
+
+So "collect 500 diamonds over time" wants `ITEM_OBTAIN`; "hold 64 Ancient Coins
+at once" wants `ITEM_HAVE`. `ITEM_HAVE` refreshes on pickup, when you close a
+container, and on a short sweep (~10s) that catches the eventless sources; the
+sweep is skipped entirely if no achievement uses the trigger.
+
+### Deaths by cause
+
+`PLAYER_DEATH` counts deaths, and its target narrows *how* you died. It matches
+against **either** the damage cause **or** whatever killed you, so both styles
+work:
+
+| Target | Means |
+| --- | --- |
+| `ANY` (or unset) | Any death at all |
+| `LAVA`, `FALL`, `DROWNING`, `VOID`, `FIRE`, `FREEZE`, … | A specific damage cause |
+| `CREEPER`, `ZOMBIE`, `PLAYER`, … | Killed by that mob |
+| `#HOSTILE`, `#UNDEAD`, `#BOSSES`, … | Killed by any mob in that family |
+
+Matching the killer separately matters because the damage *cause* of a creeper
+kill is just `ENTITY_EXPLOSION` — the mob has to be checked on its own. Arrows
+and other projectiles resolve to **whoever fired them**, so a skeleton's arrow
+counts as a skeleton kill, not an arrow.
 
 ### Multiple objectives
 

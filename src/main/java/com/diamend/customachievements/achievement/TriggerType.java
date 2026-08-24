@@ -18,8 +18,9 @@ public enum TriggerType {
     ITEM_CRAFT("Craft Items", true, true, Material.CRAFTING_TABLE),
     ITEM_CONSUME("Consume Items", true, true, Material.COOKED_BEEF),
     ITEM_OBTAIN("Obtain Items", true, true, Material.HOPPER),
+    ITEM_HAVE("Have Items", true, true, Material.CHEST),
     FISH_CAUGHT("Catch Fish", false, true, Material.FISHING_ROD),
-    PLAYER_DEATH("Player Deaths", false, true, Material.SKELETON_SKULL),
+    PLAYER_DEATH("Player Deaths", true, true, Material.SKELETON_SKULL),
     PLAYTIME_HOURS("Playtime (hours)", false, true, Material.CLOCK),
     REACH_LOCATION("Reach a Location", true, false, Material.COMPASS),
     REACH_DIMENSION("Reach a Dimension", true, true, Material.END_PORTAL_FRAME);
@@ -56,12 +57,13 @@ public enum TriggerType {
 
     /** Triggers whose progress is a live gauge (set to a value) rather than a running count. */
     public boolean isGauge() {
-        return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL;
+        return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL || this == ITEM_HAVE;
     }
 
     /** Item-based triggers that can optionally match by custom item name. */
     public boolean isItemTrigger() {
-        return this == ITEM_CRAFT || this == ITEM_CONSUME || this == ITEM_OBTAIN;
+        return this == ITEM_CRAFT || this == ITEM_CONSUME || this == ITEM_OBTAIN
+                || this == ITEM_HAVE;
     }
 
     public static TriggerType fromString(String raw) {
