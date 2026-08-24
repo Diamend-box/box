@@ -220,6 +220,42 @@ kill is just `ENTITY_EXPLOSION` — the mob has to be checked on its own. Arrows
 and other projectiles resolve to **whoever fired them**, so a skeleton's arrow
 counts as a skeleton kill, not an arrow.
 
+### Credit for work done before the achievement existed
+
+Add a "kill 200 players" achievement to a server where someone already has 150
+kills and they start at **150/200**, not 0. On join (and the moment a new
+achievement is saved) each objective with no progress yet is seeded from
+Minecraft's own lifetime statistics.
+
+Seeded from statistics:
+
+| Objective | Statistic used |
+| --- | --- |
+| `ENTITY_KILL` a mob / a family / `ANY` | kills of that type, summed for a family, or total mob kills |
+| `ENTITY_KILL` targeting `PLAYER` | players killed |
+| `BLOCK_BREAK` | blocks mined |
+| `BLOCK_PLACE`, `ITEM_CONSUME` | items used |
+| `ITEM_CRAFT` | items crafted |
+| `ITEM_OBTAIN` | items picked up |
+| `FISH_CAUGHT` | fish caught |
+| `PLAYER_DEATH` with no cause | total deaths |
+
+Not seeded (Minecraft keeps no statistic for them), so these start at zero:
+objectives matching a **custom item name**, `PLAYER_DEATH` with a **specific
+cause**, `ITEM_HAVE`, `REACH_LOCATION` / `REACH_DIMENSION`, `MYTHIC_MOB_KILL`,
+`AURASKILLS_LEVEL` and `MANUAL`. `PLAYTIME_HOURS` is already read live from the
+server's playtime statistic, so it needs no backfill.
+
+An objective is only ever seeded **while it is still at zero** — once it's
+ticking, live events own it — so the backfill can run any number of times
+without double-counting.
+
+> ⚠️ Players may **immediately complete** achievements they had already earned
+> the statistics for, which pays out rewards and fires broadcasts. That's the
+> point, but on a long-running server the first join after adding achievements
+> can unlock several at once. Set `backfill-from-statistics: false` if you'd
+> rather everyone started fresh.
+
 ### Multiple objectives
 
 An achievement can have **several objectives** (triggers). It unlocks only once
@@ -397,6 +433,7 @@ show-description-on-unlock: true  # print the achievement's description in chat 
 advancement-toast: false    # EXPERIMENTAL native advancement-toast pop-up on unlock
 use-anvil-input: true        # editor prompts use the off-chat anvil GUI (false = type in chat)
 playtime-tracking: true     # enable PLAYTIME_HOURS achievements
+backfill-from-statistics: true  # credit work done before an achievement existed
 progress-feedback: true     # action-bar progress readout as players advance
 secret-show-hints: true     # secret achievements reveal name + 1-line hint (false = bare "???")
 store-overflow-rewards: true  # keep reward items for /ca claim when the inventory is full (false = drop)

@@ -263,6 +263,53 @@ public class AchievementService {
     }
 
     /**
+     * Credits an objective with what the player had already done before the
+     * achievement existed, read from Minecraft's lifetime statistics: 150 player
+     * kills already on the board leave 50 to go on a "kill 200 players"
+     * objective rather than 200.
+     *
+     * <p>Only requirements with no progress yet are seeded, so this can run as
+     * often as it likes without ever double-counting: once an objective is
+     * ticking, the live events own it.
+     */
+    public void backfill(Player player) {
+        if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
+            return;
+        }
+        PlayerData data = playerData.get(player.getUniqueId());
+        for (Achievement achievement : achievements.all()) {
+            if (data.isCompleted(achievement.getId())) {
+                continue;
+            }
+            List<Requirement> requirements = achievement.getRequirements();
+            boolean changed = false;
+            for (int i = 0; i < requirements.size(); i++) {
+                Requirement requirement = requirements.get(i);
+                String key = PlayerData.requirementKey(achievement.getId(), i);
+                if (data.getProgress(key) > 0) {
+                    continue; // already under way — leave it to the live events
+                }
+                int total = StatisticBackfill.total(player, requirement);
+                if (total <= 0) {
+                    continue;
+                }
+                data.setProgress(key, Math.min(total, requirement.requiredAmount()));
+                changed = true;
+            }
+            if (changed && isComplete(achievement, data)) {
+                award(player, achievement, data);
+            }
+        }
+    }
+
+    /** Backfills every online player — used after achievements are added or reloaded. */
+    public void backfillOnline() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            backfill(player);
+        }
+    }
+
+    /**
      * Advances PLAYER_DEATH requirements. A death matches on either the damage
      * cause ({@code FALL}, {@code LAVA}, ...) or what killed the player
      * ({@code CREEPER}, a mob family like {@code #HOSTILE}, ...), so "die to

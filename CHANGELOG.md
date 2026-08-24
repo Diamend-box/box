@@ -6,6 +6,18 @@ All notable changes to **CustomAchievements** are documented here.
 
 ## [1.10.0]
 ### Added
+- **Achievements now credit what you'd already done before they existed.** Add a
+  "kill 200 players" achievement to a server where someone already has 150 kills
+  and they start at 150/200 rather than 0. On join — and the moment a new
+  achievement is saved — every objective with no progress yet is seeded from
+  Minecraft's own lifetime statistics: blocks mined and placed, items crafted
+  and picked up, mobs and players killed (including whole mob families, summed),
+  fish caught and deaths. Objectives the server keeps no statistic for start at
+  zero as before: custom item names, a death with a specific cause, `ITEM_HAVE`,
+  locations, dimensions, MythicMobs and AuraSkills. An objective is only seeded
+  while still at zero, so this never double-counts. Toggle with
+  `backfill-from-statistics` (default `true`) — note that players may
+  immediately complete achievements they'd already earned, rewards included.
 - **Deaths can now require a cause.** `PLAYER_DEATH` used to count *any* death;
   its target now narrows how you died, matching against either the damage cause
   (`LAVA`, `FALL`, `DROWNING`, `VOID`, `FREEZE`, …) **or** whatever killed you

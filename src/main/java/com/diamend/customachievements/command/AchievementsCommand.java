@@ -364,6 +364,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         }
         plugin.reloadConfig();
         plugin.getAchievementManager().load();
+        // Achievements edited on disk may be new to players who are already on.
+        plugin.getAchievementService().backfillOnline();
         sender.sendMessage(Text.parse("<green>CustomAchievements reloaded. <gray>("
                 + plugin.getAchievementManager().count() + " achievements)"));
     }

@@ -520,6 +520,79 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void backfillCreditsStatisticsEarnedBeforeTheAchievementExisted() {
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 150);
+
+        Achievement achievement = new Achievement("warmonger");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(200);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        assertEquals(150, data.getProgress(PlayerData.requirementKey("warmonger", 0)),
+                "kills made before the achievement existed should already count");
+        assertFalse(data.isCompleted("warmonger"), "150 of 200 isn't done yet");
+
+        // The remaining 50 are earned live, on top of the seeded progress.
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "PLAYER", 50);
+        assertTrue(data.isCompleted("warmonger"), "only the remaining 50 should be needed");
+    }
+
+    @Test
+    void backfillCompletesWhatWasAlreadyEarned() {
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 500);
+
+        Achievement achievement = new Achievement("already_done");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(200);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        assertTrue(plugin.getPlayerDataManager().get(player.getUniqueId()).isCompleted("already_done"),
+                "a target already passed should unlock straight away");
+    }
+
+    @Test
+    void backfillNeverDoubleCountsProgressAlreadyUnderWay() {
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 150);
+
+        Achievement achievement = new Achievement("no_double");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(200);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().backfill(player);
+        plugin.getAchievementService().backfill(player); // e.g. a second join
+        plugin.getAchievementService().backfill(player);
+        assertEquals(150, data.getProgress(PlayerData.requirementKey("no_double", 0)),
+                "running the backfill repeatedly must not stack progress");
+    }
+
+    @Test
+    void backfillLeavesObjectivesStatisticsCannotAnswer() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("named_quest_item");
+        Requirement requirement = new Requirement(TriggerType.ITEM_OBTAIN, "Ancient Coin", 10);
+        requirement.setMatchByName(true);
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(requirement);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(0, plugin.getPlayerDataManager().get(player.getUniqueId())
+                        .getProgress(PlayerData.requirementKey("named_quest_item", 0)),
+                "a custom item name has no statistic behind it, so it starts at zero");
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

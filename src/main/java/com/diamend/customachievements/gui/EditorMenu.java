@@ -374,6 +374,9 @@ public class EditorMenu implements Menu {
             }
         }
         plugin.getAchievementManager().put(draft);
+        // A brand new achievement should immediately credit what players have
+        // already done, rather than waiting for each of them to reconnect.
+        plugin.getAchievementService().backfillOnline();
         viewer.sendMessage(Text.parse("<green>Saved achievement <white>" + draft.getId() + "<green>."));
         new AchievementMenu(plugin, viewer, true).open(viewer);
     }
