@@ -18,11 +18,17 @@ and is built to keep growing into whatever the server needs next.
 ## Why it's built as modules
 
 Everything BoxCore does is a **module** — a class implementing `BoxModule` that
-gets a config toggle, a slot in the `/box` hub and a line in `/box modules` for
+gets a config toggle, a slot in the `/box` hub and a row in `/box modules` for
 free. Adding the next utility (an economy hook, quests, staff tools) means
 writing one class and registering it in `BoxCorePlugin`, not reworking the
 plugin. A module that fails to start is logged and skipped; the rest keep
 running.
+
+`/box modules` opens a menu that switches them on and off, writing the choice
+to `config.yml` as it goes so it survives a restart. Switching one off takes it
+all the way off — listeners unregistered, commands refusing, placeholders
+blank, hub icon gone — and `/box reload` applies changes made in the file, so
+neither route needs a restart.
 
 Six ship today:
 
@@ -86,15 +92,21 @@ Six ship today:
   decision rather than an accident. Recipes aren't limited to ore: anything with
   a recipe compacts, and each one can be given its own material, name, lore,
   model data and glow. `/box give <item> [units]` mints a unit to check a skin
-  without gathering for it.
+  without gathering for it. Units glint by default, because a compacted unit is
+  the same material as the raw item and two identical-looking stacks in a hotbar
+  is how a right-click ends up on the wrong one. Right-click a unit to unfold
+  one, sneak-right-click for the whole stack, or use `/box expand [all]` — a
+  command can't be swallowed by a region or an anticheat the way an interact
+  can.
 - 🛠️ **Recipes are edited in game** — `/box compactor recipes` adds, retunes and
   deletes them without touching YAML or restarting. Most of it needs no typing:
   hold the item to add a recipe for it, step the amount with buttons, and set the
   compacted unit's skin, name, lore and model data by holding an item you've
-  already named in an anvil. The name and the lore can also be typed in chat,
-  which is the only way to use the `<ratio>` and `<ore>` tokens — an anvil writes
-  a fixed string, and "Worth 64 coal" stops being true the moment somebody
-  retunes the ratio. Every change writes `compactor.yml` immediately, and
+  already named in an anvil. The name and the lore can also be typed, which is
+  the only way to use the `<ratio>` and `<ore>` tokens — a fixed string like
+  "Worth 64 coal" stops being true the moment somebody retunes the ratio. A
+  recipe can also be added for an item you can't hold, by clicking Add with an
+  empty hand and naming it. Every change writes `compactor.yml` immediately, and
   that file is the plugin's to rewrite — your commented `config.yml` is never
   touched.
 - ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
@@ -104,7 +116,11 @@ Six ship today:
   wall clock, so one survives a relog and a global one survives a restart.
   `/box boost` opens a menu showing what's running for you and what the server
   is running, with live countdowns and a row of the boost items you're carrying
-  that you can click to start. An actionbar line keeps the multiplier and the
+  that you can click to start. An item with `global: true` starts a server-wide
+  boost instead of a personal one, announced and saved exactly as if staff had
+  run the command. Drop boosts apply after every other plugin has finished with
+  the drop list, so they multiply what a drop-replacing plugin produced rather
+  than landing beside it. An actionbar line keeps the multiplier and the
   time left on screen while it runs, and a boost never ends silently — there's a
   warning before, and a line when it does.
 - 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while
@@ -120,7 +136,10 @@ Six ship today:
   it's open, so a combat tag running out unlocks the list in front of you rather
   than when you next reopen it. Places you've found sort to the top by default,
   and `travel.menu-order` can make that alphabetical, nearest-first, or the
-  order staff added them. Staff build the list from inside the
+  order staff added them. A destination placed by standing there lands on the
+  centre of the block and rounds to the nearest quarter turn, so nobody has to
+  line themselves up first; `travel.snap` controls both, and any one
+  destination can be turned afterwards from its own screen. Staff build the list from inside the
   game: `/box warp` opens an editor where a destination is made where you stand,
   wears whatever you're holding, and has its description, permission and
   discovery radius set by clicking. Nothing needs a text editor or a restart.
@@ -164,6 +183,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
 | `/box compress [on\|off]` | Open your compactor, or pause compacting | `boxcore.use` |
+| `/box expand [all]` | Unfold the compacted units in your hand | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box travel` | Open the places you've found | `boxcore.use` |
 | `/fasttravel`, `/fastravel`, `/ft` | The same menu, on its own command | `boxcore.use` |
@@ -187,7 +207,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |
 | `/box boost clear [global\|<player>]` | End boosts early | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
-| `/box modules` | List modules and their state | `boxcore.admin` |
+| `/box modules [list]` | Switch modules on and off in a menu, or list them as text | `boxcore.admin` |
 | `/box reload` | Re-read every config | `boxcore.admin` |
 
 Admin commands work on offline players (anyone the server has seen before).

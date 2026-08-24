@@ -11,6 +11,80 @@ one broken thing shouldn't cost you the rest of the pass.
 
 ---
 
+## Round two — what changed after your first pass
+
+Everything below came out of your notes. Re-test these first; the rest of the
+script is still valid but you've already run it once.
+
+**§04 — expansion.** You saw nothing at all, which ruled out the space check
+(that one always says why it refused) and pointed at the click never arriving.
+Three things could swallow it and all three are closed: the handler no longer
+ignores interacts another plugin has cancelled, a failed expand now always says
+which reason it was, and **compacted units glint** so they can't be confused
+with the raw item they were made from.
+
+- [ ] Right-click a unit. If it still does nothing, try `/box expand` — a
+      command can't be intercepted, so this tells us whether the expansion logic
+      or the click is at fault. **That answer is the whole point of this step.**
+- [ ] Sneak-right-click a stack — expands the lot.
+- [ ] Check the units glint and the raw ore doesn't.
+
+**§04 — adding recipes.** This already existed: `/box compactor recipes` →
+hold the item → **Add a recipe**. It just wasn't findable empty-handed.
+
+- [ ] Click **Add a recipe** with an empty hand and type a material name.
+
+**§05 — boosts.** Drop boosts now apply *after* every other plugin has edited
+the drop list, so they multiply what CustomDrops and AuraSkills produced instead
+of landing beside it.
+
+- [ ] Start a 2x drop boost and mine with Lucky Miner active. Is it
+      multiplicative now?
+- [ ] Same with CustomDrops. **If it's still additive, I need CustomDrops'
+      config** — it may be spawning items itself rather than through the drop
+      event, and no priority change reaches that.
+- [ ] Worth checking: `boosts.drops.ores-only` is `true`, so anything
+      CustomDrops replaces a drop with that isn't whitelisted ore won't be
+      boosted at all. Turn it off if that's biting.
+- [ ] `/box boost item server-drops-2x` → a new global boost item. Using it
+      starts a server-wide boost, announced to everyone.
+
+**§06 — placing destinations.** Warps now land on the centre of the block and
+round to the nearest quarter turn.
+
+- [ ] Place one while standing sloppily off-centre and at an angle. Arrive at
+      it — you should land centred and square.
+- [ ] `/box warp` → a destination → **Facing** cycles it a quarter turn at a
+      time. Set one deliberately and arrive to check.
+- [ ] `travel.snap.centre` / `travel.snap.facing` in config if you want it off.
+
+**§07 — the Discord leak.** Confirmed and fixed the only way it can be: answers
+are typed into an **anvil rename box** now, never into chat, so there is no chat
+message for a bridge to relay.
+
+- [ ] Every editor prompt: the anvil screen opens, the question is its title,
+      the current value is already in the box. Type, click the result item.
+- [ ] **Watch Discord.** Nothing should appear.
+- [ ] Close the anvil without clicking the result → nothing changes, menu comes
+      back.
+- [ ] If you ever get asked in *chat* instead, tell me — that's the fallback,
+      and it means the anvil wouldn't open.
+- [ ] Note: the anvil caps answers at 50 characters. Say if that bites on
+      description lines.
+
+**Modules.** `/box modules` is now a menu.
+
+- [ ] Switch a module off. Its hub icon goes, its commands refuse, its
+      placeholders go blank, its items stop doing anything.
+- [ ] Restart — it's still off.
+- [ ] Switch it back on without a restart.
+- [ ] Edit `modules.<id>.enabled` in the file and `/box reload` — that works now
+      too.
+
+**§00.** `warps.yml` is written on first load, so all the files are there.
+
+---
+
 ## 0. Before you start
 
 1. Grab the jar from the last green **Verify BoxCore** run on GitHub Actions →
