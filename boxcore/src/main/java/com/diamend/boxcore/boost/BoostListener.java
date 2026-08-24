@@ -43,8 +43,21 @@ public class BoostListener implements Listener {
      * <p>The extra is dropped as its own stacks rather than by inflating the
      * ones the game made. An item entity holding more than a stack is not
      * something the rest of the game handles well, and splitting is free.
+     *
+     * <p>This runs at {@code HIGHEST} rather than {@code HIGH} so that every
+     * other plugin editing the drop list has already had its turn. That is what
+     * makes the boost <em>multiplicative</em>: a drop-replacing plugin like
+     * CustomDrops, or a bonus-drop skill like AuraSkills' Lucky Miner, has
+     * already put its items in the list, and the boost multiplies that result
+     * instead of landing beside it. Running earlier made the two additive,
+     * which is not what a 2x boost is understood to mean.
+     *
+     * <p>The limit worth knowing: this can only multiply what is actually in
+     * {@link BlockDropItemEvent}. A plugin that cancels the break and spawns
+     * its own item entities never passes through here at all, and no priority
+     * fixes that — it needs that plugin's own API.
      */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDrop(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         double multiplier = module.multiplier(player, BoostType.DROPS);
@@ -103,10 +116,15 @@ public class BoostListener implements Listener {
         module.activate(player, payload);
         held.setAmount(held.getAmount() - 1);
 
-        plugin.messages().send(player, "boost-activated",
-                "type", payload.typeNames(),
-                "multiplier", Text.decimal(payload.multiplier()),
-                "duration", Durations.format(payload.durationMillis()));
+        // A global boost has already announced itself to the whole server,
+        // this player included. Sending the personal line too would tell them
+        // twice and imply the boost was only theirs.
+        if (!payload.global()) {
+            plugin.messages().send(player, "boost-activated",
+                    "type", payload.typeNames(),
+                    "multiplier", Text.decimal(payload.multiplier()),
+                    "duration", Durations.format(payload.durationMillis()));
+        }
     }
 
     /** Tells a joining player what is already running, if anything. */

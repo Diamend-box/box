@@ -319,6 +319,20 @@ boosts:
         name: "&b&l2x Collections Boost &7(30m)"
         glow: true
 
+    # 'global: true' makes using it start a server-wide boost instead of a
+    # personal one, exactly as if staff had run /box boost global. It is
+    # announced to everyone and saved, so it survives a restart. Worth
+    # pricing accordingly: one player spends it, the whole server gets it.
+    server-drops-2x:
+      type: drops
+      multiplier: 2.0
+      duration: 1h
+      global: true
+      item:
+        material: DRAGON_BREATH
+        name: "&6&lServer 2x Drops &7(1h)"
+        glow: true
+
 # ---------------------------------------------------------------------
 # Storage
 # ---------------------------------------------------------------------
@@ -395,6 +409,7 @@ messages:
   compressor-off: "<yellow>Compacting <white>paused<yellow>."
   compressor-expanded: "<aqua>Expanded <white><amount></white> compacted <ore><plural><gray> — won't re-compact for <white><seconds></white>s."
   compressor-no-room: "<red>Not enough inventory space to expand that."
+  compressor-not-compacted: "<red>That isn't a compacted unit. <gray>Compacted units glint and say what they are worth."
   compactor-none: "<red>You aren't carrying a personal compactor."
   compactor-kept: "<yellow>Your compactor stays with you."
   compactor-moved: "<red>That compactor isn't where it was."

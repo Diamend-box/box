@@ -125,7 +125,7 @@ public class CompactRecipes {
                 item.getString("name"),
                 lore == null || lore.isEmpty() ? null : lore,
                 Math.max(0, item.getInt("model-data", 0)),
-                item.getBoolean("glow", false));
+                item.getBoolean("glow", true));
     }
 
     /**

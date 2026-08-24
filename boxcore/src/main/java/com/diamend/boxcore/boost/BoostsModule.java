@@ -184,7 +184,8 @@ public class BoostsModule implements BoxModule {
                 continue;
             }
             definitions.put(id.toLowerCase(Locale.ROOT), new ItemDefinition(
-                    new BoostItems.Payload(id, types, multiplier, duration),
+                    new BoostItems.Payload(id, types, multiplier, duration,
+                            entry.getBoolean("global", false)),
                     readAppearance(entry.getConfigurationSection("item"))));
         }
     }
@@ -224,9 +225,18 @@ public class BoostsModule implements BoxModule {
      */
     public List<Boost> activate(Player player, BoostItems.Payload payload) {
         List<Boost> started = new ArrayList<>();
+        // A global item starts the same boost everyone else's would, so it goes
+        // through addGlobal rather than a parallel path — the announcement, the
+        // cap and the saved-to-disk behaviour all come along with it. The source
+        // records who spent it, because "who started this" is the first thing
+        // staff ask when a server-wide boost appears.
+        String source = "item:" + payload.id()
+                + (payload.global() && player != null ? " by " + player.getName() : "");
         for (BoostType type : payload.types()) {
-            started.add(addPlayer(player, type, payload.multiplier(),
-                    payload.durationMillis(), "item:" + payload.id()));
+            started.add(payload.global()
+                    ? addGlobal(type, payload.multiplier(), payload.durationMillis(), source)
+                    : addPlayer(player, type, payload.multiplier(),
+                            payload.durationMillis(), source));
         }
         return started;
     }

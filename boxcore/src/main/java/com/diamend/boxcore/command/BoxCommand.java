@@ -87,6 +87,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "points", "point" -> points(sender, args);
             case "respec" -> respec(sender);
             case "compress", "compressor" -> compress(sender, args);
+            case "expand", "uncompact" -> expand(sender, args);
             case "compactor" -> compactor(sender, args);
             case "give", "givecompressed" -> giveCompressed(sender, args);
             case "boost", "boosts" -> boost(sender, args);
@@ -435,6 +436,31 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean enabled = choice.equals("on");
         compressor.setEnabled(player, enabled);
         messages().send(player, enabled ? "compressor-on" : "compressor-off");
+    }
+
+    /**
+     * {@code /box expand [all]} — unfold what you are holding.
+     *
+     * <p>Right-clicking a unit is the way this is meant to be done. This exists
+     * because right-clicking runs through {@code PlayerInteractEvent}, which
+     * any protection plugin, region or anticheat on the server can take away
+     * without telling anyone — and when it does, the item looks broken with no
+     * way to prove otherwise. A command cannot be intercepted like that, so
+     * there is always one path that works and one answer about whether the
+     * expansion logic itself is at fault.
+     */
+    private void expand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            messages().send(sender, "players-only");
+            return;
+        }
+        CompressorModule compressor = plugin.compressor();
+        if (compressor == null) {
+            messages().sendLiteral(sender, "<red>The compactor is disabled on this server.");
+            return;
+        }
+        boolean all = args.length > 1 && args[1].equalsIgnoreCase("all");
+        compressor.expandInHand(player, all);
     }
 
     /**
@@ -1260,7 +1286,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission(ADMIN);
 
         if (args.length == 1) {
-            options.addAll(List.of("skills", "collections", "points", "respec", "compress",
+            options.addAll(List.of("skills", "collections", "points", "respec", "compress", "expand",
                     "boost", "travel"));
             if (admin) {
                 options.addAll(List.of("give", "compactor", "warp", "unlock", "collection",
