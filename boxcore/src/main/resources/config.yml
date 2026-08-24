@@ -319,10 +319,13 @@ boosts:
   schedule: []
 
   # Boost items players can right-click to start their own boost. Give one
-  # with /box boost item <id> [player] [amount] [duration] — sell it, put
-  # it in a crate, hand it out as a reward. The optional duration overrides
-  # the entry's own, so a one-off 24h version of a 30m item is a real item
-  # rather than a config entry that has to exist forever to support it.
+  # with /box boost item <id> [player] [amount] [duration] [multiplier] —
+  # sell it, put it in a crate, hand it out as a reward. Either override
+  # replaces just that figure, so a one-off 5x-for-24h version of a
+  # configured 2x-for-30m item is a real item rather than a config entry
+  # that has to exist forever to support it. Both are written onto the
+  # item like everything else, so the item is still correct even when
+  # overridden.
   #
   # What an item does is written onto the item when it is created, so
   # re-tuning an entry here changes items made from now on and never
@@ -332,6 +335,12 @@ boosts:
   # material, name, lore, model-data and glow are all optional, and both
   # colour codes (&a, &l, &#ff8800) and MiniMessage tags work. <multiplier>,
   # <duration> and <type> are replaced in name and lore.
+  #
+  # Use the <multiplier> and <duration> tokens rather than typing the
+  # number, even here where it matches the entry below — a name that
+  # spells out "2x" or "(30m)" as literal text goes stale the moment
+  # duration or multiplier changes below it, or the moment somebody hands
+  # one out with an override at the command line.
   items:
     drops-2x:
       type: drops
@@ -339,7 +348,7 @@ boosts:
       duration: 30m
       item:
         material: EXPERIENCE_BOTTLE
-        name: "&d&l2x Drops Boost &7(30m)"
+        name: "&d&l<multiplier>x Drops Boost &7(<duration>)"
         glow: true
     collections-2x:
       type: collections
@@ -347,7 +356,7 @@ boosts:
       duration: 30m
       item:
         material: EXPERIENCE_BOTTLE
-        name: "&b&l2x Collections Boost &7(30m)"
+        name: "&b&l<multiplier>x Collections Boost &7(<duration>)"
         glow: true
 
     # 'global: true' makes using it start a server-wide boost instead of a
@@ -361,7 +370,7 @@ boosts:
       global: true
       item:
         material: DRAGON_BREATH
-        name: "&6&lServer 2x Drops &7(1h)"
+        name: "&6&lServer <multiplier>x Drops &7(<duration>)"
         glow: true
 
 # ---------------------------------------------------------------------

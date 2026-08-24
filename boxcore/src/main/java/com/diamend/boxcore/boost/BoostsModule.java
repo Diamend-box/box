@@ -213,19 +213,23 @@ public class BoostsModule implements BoxModule {
 
     /** Builds a configured boost item, or null when no such item is configured. */
     public ItemStack createItem(String id, int amount) {
-        return createItem(id, amount, 0L);
+        return createItem(id, amount, 0L, 0.0);
     }
 
     /**
-     * Builds a configured boost item, optionally overriding how long it lasts.
+     * Builds a configured boost item, optionally overriding how long it lasts
+     * and how strong it is.
      *
-     * <p>The override is written onto the item like every other figure, so a
-     * one-off 24-hour version of a 30-minute boost is a real item rather than a
-     * config entry that has to exist forever to support it.
+     * <p>Either override is written onto the item like every other figure, so a
+     * one-off 5x-for-a-day version of a configured 2x-for-30-minutes item is a
+     * real item rather than a config entry that has to exist forever to support
+     * it — and the name and lore on the item stay correct, because they are
+     * built from tokens, not from whatever the config entry happened to say.
      *
-     * @param millis how long it should last, or 0 to use the configured length
+     * @param millis     how long it should last, or 0 to use the configured length
+     * @param multiplier how strong it should be, or 0 to use the configured one
      */
-    public ItemStack createItem(String id, int amount, long millis) {
+    public ItemStack createItem(String id, int amount, long millis, double multiplier) {
         ItemDefinition definition = definitions.get(id == null
                 ? ""
                 : id.trim().toLowerCase(Locale.ROOT));
@@ -233,9 +237,11 @@ public class BoostsModule implements BoxModule {
             return null;
         }
         BoostItems.Payload payload = definition.payload();
-        if (millis > 0) {
+        if (millis > 0 || multiplier > 0) {
             payload = new BoostItems.Payload(payload.id(), payload.types(),
-                    payload.multiplier(), millis, payload.global());
+                    multiplier > 0 ? multiplier : payload.multiplier(),
+                    millis > 0 ? millis : payload.durationMillis(),
+                    payload.global());
         }
         return items.create(payload, definition.appearance(), amount);
     }

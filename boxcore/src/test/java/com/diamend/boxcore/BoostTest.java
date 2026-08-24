@@ -257,6 +257,46 @@ class BoostTest {
         assertNull(boosts().createItem("no-such-item", 1));
     }
 
+    @Test
+    void anItemCanOverrideDurationAndMultiplier() {
+        // A staff member handing out a one-off 5x-for-a-day version of the
+        // configured 2x-for-30-minutes item, without needing a second entry
+        // in config to support it.
+        ItemStack item = boosts().createItem("drops-2x", 1, 86_400_000L, 5.0);
+        BoostItems.Payload payload = boosts().items().read(item);
+
+        assertEquals(5.0, payload.multiplier(), "the override wins over config");
+        assertEquals(86_400_000L, payload.durationMillis());
+        assertEquals(BoostType.DROPS, payload.types().get(0), "everything else is unchanged");
+    }
+
+    @Test
+    void anOverrideOfZeroKeepsTheConfiguredFigure() {
+        ItemStack configured = boosts().createItem("drops-2x", 1);
+        ItemStack overridden = boosts().createItem("drops-2x", 1, 0L, 0.0);
+
+        BoostItems.Payload before = boosts().items().read(configured);
+        BoostItems.Payload after = boosts().items().read(overridden);
+        assertEquals(before.multiplier(), after.multiplier());
+        assertEquals(before.durationMillis(), after.durationMillis());
+    }
+
+    @Test
+    void theNameOnAnOverriddenItemMatchesWhatItActuallyDoes() {
+        // The bug this is guarding: config used to spell "(30m)" into the item
+        // name as literal text, which stayed on screen unchanged even when the
+        // duration underneath it was overridden — so the two disagreed.
+        ItemStack item = boosts().createItem("drops-2x", 1, 3_600_000L, 3.0);
+        String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(item.getItemMeta().displayName());
+
+        assertTrue(name.contains("3x"), "the name shows the actual multiplier: " + name);
+        assertTrue(name.contains(Durations.format(3_600_000L)),
+                "the name shows the actual duration: " + name);
+        assertFalse(name.contains("30m") || name.contains("2x"),
+                "no trace of the configured figures is left behind: " + name);
+    }
+
     // ------------------------------------------------------------------
     // Parsing
     // ------------------------------------------------------------------

@@ -120,8 +120,12 @@ Six ship today:
   is running, with live countdowns and a row of the boost items you're carrying
   that you can click to start. An item with `global: true` starts a server-wide
   boost instead of a personal one, announced and saved exactly as if staff had
-  run the command, and `/box boost item <id> [player] [amount] [duration]` can
-  override how long any of them lasts without a config entry existing for it.
+  run the command, and `/box boost item` can override how long any of them
+  lasts or how strong it is — `<id> [player] [amount] [duration] [multiplier]`
+  — without a config entry existing to support the one-off. Both overrides are
+  written onto the item along with everything else, so its name and lore (built
+  from the `<multiplier>` and `<duration>` tokens, not typed numbers) always
+  describe what it actually does.
   Drop boosts multiply the items that actually appear next to a broken block
   rather than only the ones the game itself produced — a plugin that replaces
   drops entirely cancels the break and spawns its own, which no event priority
@@ -209,7 +213,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box warp <tp\|delete\|list> [id]` | Go there, remove it, or list them | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
-| `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |
+| `/box boost item <id> [player] [amount] [duration] [mult]` | Give a boost item | `boxcore.admin` |
 | `/box boost clear [global\|<player>]` | End boosts early | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
 | `/box modules [list]` | Switch modules on and off in a menu, or list them as text | `boxcore.admin` |

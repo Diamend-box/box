@@ -1075,7 +1075,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     private void boostItem(CommandSender sender, BoostsModule boosts, String[] args) {
         if (args.length < 3) {
             messages().sendLiteral(sender,
-                    "<red>Usage: /box boost item <id> [player] [amount] [duration]"
+                    "<red>Usage: /box boost item <id> [player] [amount] [duration] [multiplier]"
                     + (boosts.itemIds().isEmpty() ? "" : " <dark_gray>— "
                             + String.join(", ", boosts.itemIds())));
             return;
@@ -1114,7 +1114,23 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 return;
             }
         }
-        ItemStack item = boosts.createItem(args[2], amount, millis);
+        // An optional strength, so a one-off 5x version of a configured 2x item
+        // doesn't need a config entry that then has to exist forever.
+        double multiplier = 0.0;
+        if (args.length >= 7) {
+            try {
+                multiplier = Double.parseDouble(args[6]);
+            } catch (NumberFormatException ex) {
+                messages().sendLiteral(sender, "<red><white>" + args[6] + "</white> isn't a number.");
+                return;
+            }
+            if (multiplier <= 1.0) {
+                messages().sendLiteral(sender, "<red>A <white>" + Text.decimal(multiplier)
+                        + "x<red> boost would do nothing — it has to be above 1x.");
+                return;
+            }
+        }
+        ItemStack item = boosts.createItem(args[2], amount, millis, multiplier);
         if (item == null) {
             messages().sendLiteral(sender, "<red>No boost item called <white>" + args[2]
                     + "<red>. Configured: <white>"
@@ -1127,6 +1143,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         }
         messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
                 + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>"
+                + (multiplier > 0 ? " <gray>(" + Text.decimal(multiplier) + "x)" : "")
                 + (millis > 0 ? " <gray>(" + Durations.format(millis) + ")" : "") + ".");
     }
 
