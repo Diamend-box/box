@@ -10,6 +10,7 @@ import com.diamend.robobear.gui.QuestEditorMenu;
 import com.diamend.robobear.gui.StartMenu;
 import com.diamend.robobear.gui.UpgradeEditorMenu;
 import com.diamend.robobear.mine.MineRegion;
+import com.diamend.robobear.mob.MobArchetype;
 import com.diamend.robobear.util.Items;
 import com.diamend.robobear.util.Text;
 import org.bukkit.Bukkit;
@@ -72,6 +73,7 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             case "pass" -> pass(sender, args);
             case "upgrades", "workshop" -> upgrades(sender);
             case "quests", "objectives" -> quests(sender);
+            case "mobs" -> mobs(sender, args);
             case "milestones", "edit", "admin" -> milestones(sender);
             case "pos1" -> setCorner(sender, 0);
             case "pos2" -> setCorner(sender, 1);
@@ -211,6 +213,46 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         new QuestEditorMenu(plugin).open(player);
+        return true;
+    }
+
+    /**
+     * What the challenge is currently sending, and a way to clear it.
+     *
+     * <p>The clear exists because these mobs are invisible to everyone but their
+     * owner, which makes a leftover the single hardest thing on the server to
+     * diagnose by looking at it.
+     */
+    private boolean mobs(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("robobear.admin")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
+            int cleared = plugin.mobs().despawnAll() + plugin.mobs().sweepEverything();
+            sender.sendMessage(Text.parse("<yellow>Cleared <white>" + cleared
+                    + "</white> challenge mob(s)."));
+            return true;
+        }
+
+        if (!plugin.mobs().enabled()) {
+            sender.sendMessage(Text.parse("<gray>Challenge mobs are switched off"
+                    + (plugin.mobs().roster().isEmpty() ? " — the roster is empty." : ".")));
+            return true;
+        }
+        sender.sendMessage(Text.parse("<gold>Challenge mobs <gray>— <white>"
+                + plugin.mobs().liveCount() + "</white> alive right now."));
+        for (MobArchetype archetype : plugin.mobs().roster()) {
+            String when = archetype.elite()
+                    ? "<light_purple>milestone rounds"
+                    : archetype.weight() <= 0
+                            ? "<dark_gray>never (weight 0)"
+                            : "<gray>round " + archetype.minRound() + "+, weight "
+                                    + archetype.weight();
+            sender.sendMessage(Text.parse("<dark_gray> • " + archetype.name()
+                    + " <dark_gray>(" + archetype.type() + ") " + when));
+        }
+        sender.sendMessage(Text.parse("<dark_gray>/rb mobs clear <gray>removes any left over."));
         return true;
     }
 
@@ -490,8 +532,8 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             options.add("cancel");
             options.add("stats");
             if (sender.hasPermission("robobear.admin")) {
-                options.addAll(List.of("mines", "milestones", "upgrades", "quests", "pass",
-                        "pos1", "pos2", "mine", "reset", "reload"));
+                options.addAll(List.of("mines", "milestones", "upgrades", "quests", "mobs",
+                        "pass", "pos1", "pos2", "mine", "reset", "reload"));
             }
             return filter(options, args[0]);
         }
@@ -505,6 +547,11 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
                 case "mines" -> {
                     if (sender.hasPermission("robobear.admin")) {
                         options.addAll(List.of("edit", "debug"));
+                    }
+                }
+                case "mobs" -> {
+                    if (sender.hasPermission("robobear.admin")) {
+                        options.add("clear");
                     }
                 }
                 case "pass" -> {

@@ -39,11 +39,13 @@ public class RoboBearPlugin extends JavaPlugin {
     private MilestoneRewards milestones;
     private RoboService service;
     private DataManager data;
+    private com.diamend.robobear.mob.ChallengeMobs mobs;
 
     private BukkitTask tickTask;
     private BukkitTask refreshTask;
     private BukkitTask autosaveTask;
     private BukkitTask actionBarTask;
+    private BukkitTask mobTask;
 
     // Non-null only when Paper's end-of-tick hook is available.
     private org.bukkit.event.Listener actionBarListener;
@@ -61,6 +63,7 @@ public class RoboBearPlugin extends JavaPlugin {
         this.mines = new MineIndex(this);
         this.milestones = new MilestoneRewards(this);
         this.service = new RoboService(this);
+        this.mobs = new com.diamend.robobear.mob.ChallengeMobs(this);
 
         mines.refresh();
         logMines();
@@ -71,6 +74,8 @@ public class RoboBearPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MiningListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new com.diamend.robobear.mob.ChallengeMobListener(this), this);
 
         PluginCommand command = getCommand("robobear");
         if (command != null) {
@@ -88,6 +93,14 @@ public class RoboBearPlugin extends JavaPlugin {
         // Players are already online across a /reload.
         for (Player player : Bukkit.getOnlinePlayers()) {
             data.loadAsync(player);
+            mobs.hideAllFrom(player);
+        }
+
+        // A hard stop leaves the registry behind but not the mobs, so anything
+        // still wearing our tag is a leftover rather than part of a live round.
+        int strays = mobs.sweepEverything();
+        if (strays > 0) {
+            getLogger().info("Cleared " + strays + " challenge mob(s) left over from last time.");
         }
 
         getLogger().info("RoboBear enabled with " + milestones.size() + " milestone tier(s) over "
@@ -99,6 +112,9 @@ public class RoboBearPlugin extends JavaPlugin {
         cancelTasks();
         if (service != null) {
             service.abandonAll();
+        }
+        if (mobs != null) {
+            mobs.despawnAll();
         }
         if (data != null) {
             data.saveAllBlocking();
@@ -127,6 +143,14 @@ public class RoboBearPlugin extends JavaPlugin {
         if (autosave > 0) {
             autosaveTask = Bukkit.getScheduler().runTaskTimer(this,
                     () -> data.saveAllAsync(), autosave * 60L * 20L, autosave * 60L * 20L);
+        }
+
+        // The wave: follow, teleport stragglers, reinforce. Several times a
+        // second so a mob that falls behind is dragged back before it is missed,
+        // and a no-op the moment nobody has a wave.
+        if (mobs.enabled()) {
+            long every = Math.max(1L, getConfig().getLong("mobs.follow.check-ticks", 20L));
+            mobTask = Bukkit.getScheduler().runTaskTimer(this, () -> mobs.tick(), every, every);
         }
 
         startActionBarRefresh();
@@ -170,7 +194,7 @@ public class RoboBearPlugin extends JavaPlugin {
 
     private void cancelTasks() {
         for (BukkitTask task : new BukkitTask[] {
-                tickTask, refreshTask, autosaveTask, actionBarTask }) {
+                tickTask, refreshTask, autosaveTask, actionBarTask, mobTask }) {
             if (task != null) {
                 task.cancel();
             }
@@ -179,6 +203,7 @@ public class RoboBearPlugin extends JavaPlugin {
         refreshTask = null;
         autosaveTask = null;
         actionBarTask = null;
+        mobTask = null;
 
         // Reload re-runs startTasks, and a second registration would double
         // every end-of-tick write rather than replace the first.
@@ -235,6 +260,8 @@ public class RoboBearPlugin extends JavaPlugin {
         service.objectives().load();
         milestones.load();
         service.abandonAll();
+        mobs.despawnAll();
+        mobs.load();
         cancelTasks();
         startTasks();
     }
@@ -261,6 +288,11 @@ public class RoboBearPlugin extends JavaPlugin {
 
     public RoboService service() {
         return service;
+    }
+
+    /** The mobs the challenge sends after a player during a round. */
+    public com.diamend.robobear.mob.ChallengeMobs mobs() {
+        return mobs;
     }
 
     public DataManager data() {

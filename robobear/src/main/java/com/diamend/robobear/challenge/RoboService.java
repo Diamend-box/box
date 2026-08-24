@@ -173,6 +173,7 @@ public class RoboService {
         run.begin(chosen, seconds, now);
 
         applyUpgradeEffects(player, run);
+        plugin.mobs().beginRound(player, run);
         plugin.messages().send(player, "round-begin",
                 "round", run.round(),
                 "objective", chosen.describe(plugin.mines()),
@@ -298,6 +299,8 @@ public class RoboService {
         int completed = run.round();
         run.finishRound();
         clearDisplay(player);
+        // The clock stops between rounds, and so does everything chasing you.
+        plugin.mobs().endRound(player.getUniqueId());
 
         plugin.messages().send(player, "round-done",
                 "round", completed,
@@ -460,6 +463,7 @@ public class RoboService {
         runs.remove(run.player());
         clearDisplay(player);
         clearUpgradeEffects(player, run);
+        plugin.mobs().endRound(run.player());
 
         long now = System.currentTimeMillis();
         PlayerData data = plugin.data().get(player);
@@ -481,6 +485,7 @@ public class RoboService {
     public void abandon(UUID uuid) {
         RoboRun run = runs.remove(uuid);
         BossBar bar = bars.remove(uuid);
+        plugin.mobs().endRound(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
             if (bar != null) {

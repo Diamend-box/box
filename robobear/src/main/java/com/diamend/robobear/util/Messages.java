@@ -51,7 +51,9 @@ public class Messages {
      */
     private static final Map<String, String> BUILT_IN = Map.of(
             "pass-received",
-            "<green>You were given <white><pass></white> — <gray>/rb start<green> when you're ready.");
+            "<green>You were given <white><pass></white> — <gray>/rb start<green> when you're ready.",
+            "mobs-incoming",
+            "<dark_red>Something's coming.");
 
     /** The raw configured string for a key, its built-in text, or the key itself. */
     public String raw(String key) {

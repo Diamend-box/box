@@ -53,6 +53,11 @@ Three things end a run: the clock runs out, the player dies, or they log out.
 **Payouts already taken are never clawed back** — that's the whole tension.
 Every round is a fresh bet on "one more".
 
+While a round's clock is running, the challenge sends mobs after the player.
+Only that player can see them and only that player can be hurt by them, and
+dying to one ends the run like any other death. They're cleared between rounds,
+so the workshop is a breather. See §8.6.
+
 Cogs are the in-run currency. They are minted at the start, spent in the
 workshop, and **destroyed when the run ends**. Nothing carries over. The only
 thing that leaves a run is what you put in the payout boxes.
@@ -351,6 +356,8 @@ one that exists on the workshop screen.
 | `/rb milestones` | Open the payout editor |
 | `/rb upgrades` | Choose which workshop upgrades are on sale |
 | `/rb quests` | Choose which job types are offered, and what each mine may be asked for |
+| `/rb mobs` | Show the challenge mob roster and how many are alive |
+| `/rb mobs clear` | Remove every challenge mob, including strays a crash left behind |
 | `/rb pos1` / `/rb pos2` | Select corners for a manual mine |
 | `/rb mine set <id>` | Save the selection |
 | `/rb mine delete <id>` | Delete a manual mine |
@@ -466,16 +473,31 @@ no mines in the pool, nothing on the material list — says that too, in red.
 |---|---|
 | **Break blocks** | "Break 150 blocks in *quarry*" — anything in the mine counts |
 | **Break a material** | "Break 40 × Gold Ore in *goldmine*" — one specific block |
-| **Kill mobs** | "Kill 12 hostile mobs" — anywhere |
-
-Turn **Kill mobs** off if your box has no mob spawns, or it will offer jobs
-nobody can do.
+| **Kill mobs** | "Kill 12 hostile mobs" — anywhere, and the challenge sends its own (§8.6) |
 
 **Break a material** used to be the one that could hand out an impossible round:
 it picked a mine and a material out of two unrelated hats, so a quartz mine could
 be asked for gold. Since `1.0.5` the mine is picked first and the material comes
-from *that mine's own composition*, read out of MineResetLite. A mine with
-nothing worth asking for is skipped rather than sent to.
+from *that mine's own composition*; since `1.0.6` that composition is read from
+the blocks themselves rather than depending on the mine plugin to expose it. A
+mine with nothing worth asking for is skipped rather than sent to.
+
+**No round asks for more than you could get.** The difficulty curve knows the
+round number and nothing else, so left alone it will happily ask for 250 blocks
+from a mine holding two stacks. RoboBear surveys each mine — a stride of block
+reads, widening with the mine so the cost is fixed whatever the size — and trims
+what it asks for to that stock × `mine-resets-per-round` × `mine-fraction`. Set
+`objectives.limits.mine-resets-per-round` to roughly `run.round-seconds` divided
+by your mine's reset interval; at the default five-minute round and a
+five-minute reset, that's `1`. A mine too thin to support even
+`minimum-amount` is passed over rather than set an impossible job.
+
+Each mine's icon shows roughly how many blocks it holds, so a job that came out
+smaller than its round doesn't read as a bug.
+
+**No round offers the same job twice.** The safe and the greedy offer are always
+different in *what* they ask for, not just how much. Where a server can genuinely
+only build one job, one offer is made rather than two of it.
 
 The lower half of the screen is one icon per mine in the pool, showing exactly
 what it may be asked for. Click one to set the list by hand — a drop-in box, same
@@ -493,7 +515,72 @@ Two things it deliberately does *not* do:
 `objectives.mine-material.materials` is still what's *worth* being sent after,
 server-wide — leave it empty to switch the type off entirely.
 
-### 6. The clock display
+### 6. The mobs the challenge sends
+
+While a round's clock is running, RoboBear sends things after the player. They
+are **only visible to that player**, only ever attack that player, and nobody
+else can see them, hit them, or be hit by them.
+
+They are real entities, not a client-side illusion — a mob that exists only as
+packets sent to one player cannot attack, because targeting, pathfinding and
+damage are all server-side. What makes them private is per-player visibility:
+everyone who isn't the owner never receives the entity at all.
+
+**What that can't hide.** Sound and particles are positional and aren't tied to
+the entity, so a bystander in the same mine will hear a fight and see somebody
+taking damage from nothing. That's a limit of the approach, not a bug.
+
+**When they exist.** Spawned a few seconds into a round, cleared the moment it
+ends. The shop between rounds is a breather. They're also cleared on death,
+retire, logout, `/rb reload` and shutdown, and anything a crash strands is swept
+up when its chunk loads or with `/rb mobs clear`.
+
+**Dying to one ends the run**, exactly like any other death — see
+`run.fail-on-death`. This is the single biggest thing the feature does to your
+server's difficulty. Turn `mobs.enabled` off if you don't want it.
+
+The roster escalates by sending *different* things, not the same husk with more
+hearts:
+
+| From round | Name | Base | What it does |
+|---|---|---|---|
+| 1 | Swarf Mite | Silverfish | Fast, cheap, arrives in numbers |
+| 1 | Sledge Unit | Husk | Slow bruiser; doesn't burn in daylight |
+| 3 | Bolt Slinger | Skeleton | Ranged — punishes standing still on one vein |
+| 4 | Coolant Leak | Cave spider | Poisons, and fits through a 1-block gap |
+| 6 | Scrap Drone | Vex | Flies through blocks; you can't wall it out |
+| 6 | Pressure Valve | Breeze | Knocks you off your spot rather than killing you |
+| milestones | The Foreman | Piglin brute | One only, named, +20 health. Makes a payout round a fight |
+
+Everything in it is editable under `mobs.roster` — `type` is any vanilla entity,
+`min-round` is when it unlocks, `weight` is how often it turns up, `elite` means
+milestone-only, and `weight: 0` benches an entry without deleting it.
+
+**Nameplates are always on** (`mobs.show-names`). **Glow means "you have to kill
+this to finish the round"** — challenge mobs glow on a kill round and are dark on
+a mining round, where they're pure hazard and seeing them through rock would take
+the teeth out of it. Vanilla mobs never glow, even though they count on a kill
+round: they aren't hidden from anyone, so glowing them would light them up for
+every player on the server.
+
+They **drop nothing** by default (`mobs.drops`) — a hazard that follows you
+around and drops loot is a mob farm with extra steps.
+
+Kill objectives count **any** hostile mob, natural or sent. The *amount* is sized
+against what the challenge can guarantee to send, though, since a mine world may
+have no natural spawns at all — anything that wanders in just finishes the round
+sooner. `objectives.limits.mob-fraction` is the share of that supply a job may
+ask for.
+
+Creepers and endermen are deliberately absent. If you add one anyway, RoboBear
+refuses its block damage so your mine survives, but it'll still be a nuisance.
+
+`mobs.population` and `mobs.reinforce` control how many and how fast; both get
+heavier on a kill round. `mobs.follow.teleport-distance` is how far a mob may
+fall behind before it's simply moved to you — mob AI won't path across a mine,
+let alone follow someone who ran for it.
+
+### 7. The clock display
 
 `display.mode` defaults to `actionbar`. `bossbar` is far more readable if
 nothing else on your server owns the bossbar (see §12).
@@ -588,6 +675,15 @@ the server is stopped; payouts and mines survive.
 | "Break 30 × Gold Ore in *quartz*" — a mine that has none | Before `1.0.5` the mine and the material were rolled independently | Update; the material now comes from that mine's composition |
 | A material job names filler nobody should mine | The mine's composition includes it and it's on the config list | `/rb quests` → click the mine → set its blocks by hand |
 | Material jobs never appear | No mine's contents overlap `objectives.mine-material.materials` | `/rb quests` — the type icon says which of the two it is |
+| Still "Deepslate Iron Ore in *quartz*" on 1.0.5 | Nothing could read that mine, so it fell back to the whole config list | Update to `1.0.6`, which reads the blocks directly; check `mines.sample-blocks` isn't `0` |
+| The safe and greedy offers were the same job | Before `1.0.6` each offer was rolled without looking at the other | Update; offers are now always different in what they ask for |
+| "Break 250 blocks" in a mine that holds 128 | Before `1.0.6` amounts scaled off the round number alone | Update, then set `objectives.limits.mine-resets-per-round` to match your reset interval |
+| Jobs are smaller than the round suggests | The clamp found the mine thinner than the curve wanted | Working as designed — `/rb quests` shows what each mine holds; raise `mine-fraction` if you want it tighter |
+| Something invisible is attacking a player | A challenge mob — only its owner can see it | Expected during a round. `/rb mobs` to check, `/rb mobs clear` if one is stranded |
+| Bystanders hear fighting from nothing | Sound is positional and can't be hidden with the entity | Not fixable; `mobs.enabled: false` if it bothers you |
+| Challenge mobs die instantly at noon | Should not happen — they're sunproof | Report it; check nothing else is setting them alight |
+| A mine grew holes after adding a mob | You added a creeper or enderman to the roster | RoboBear blocks their block damage; remove them from `mobs.roster` anyway |
+| Kill rounds ask for fewer than the curve says | Sized to what the challenge can actually send | Working as designed — raise `objectives.limits.mob-fraction` or `mobs.population` |
 
 **Logging out mid-run** ends it (`run.fail-on-quit: true`). Without that,
 logging out is a free undo on a losing clock.

@@ -202,6 +202,121 @@ objectives:
     # this much is skipped instead.
     minimum-amount: 10
 
+    # The share of the challenge's own mob supply a kill job may ask for.
+    # Kill objectives are sized against what the challenge can guarantee to
+    # send, since a mine world may have no natural spawns at all.
+    mob-fraction: 0.6
+
+# ---------------------------------------------------------------------
+# The mobs the challenge sends after you
+# ---------------------------------------------------------------------
+# Only the player whose round it is can see them, and they only ever go
+# for that player. Everyone else has them hidden outright — a bystander
+# in the same mine sees nothing and cannot be touched by them.
+#
+# What can't be hidden: sound and particles are positional and are not
+# tied to the entity, so a bystander will hear a fight and see somebody
+# taking damage from nothing. That's a limit of the approach.
+#
+# They exist only while a round's clock is running, and are cleared when
+# it stops — the shop between rounds is a breather. Dying to one ends the
+# run exactly like any other death (see run.fail-on-death).
+mobs:
+  enabled: true
+
+  # Nameplates float above them. Off makes a busy wave less noisy.
+  show-names: true
+
+  # Whether they drop loot and experience. Off by default: a hazard that
+  # follows you around and drops things is a mob farm with extra steps.
+  drops: false
+
+  # How many are alive at once: base + per-round × (round - 1), capped.
+  population:
+    base: 2
+    per-round: 0.5
+    max: 8
+    # Extra on top when the round's job is to kill them.
+    kill-round-bonus: 2
+
+  # How long between reinforcements, in seconds. Shrinks as rounds climb,
+  # and halves again on a kill round.
+  reinforce:
+    base-seconds: 10
+    per-round: 0.5
+    minimum-seconds: 3
+
+  # They spawn out of sight and walk in, rather than appearing in
+  # your face the moment the clock starts.
+  arrival:
+    delay-seconds: 3
+    min-distance: 8
+    max-distance: 16
+
+  follow:
+    # Beyond this many blocks — or in another world — a mob is moved back
+    # to its owner. Mob AI won't path across a mine, let alone follow
+    # someone who ran for it.
+    teleport-distance: 24
+    # How often the wave is checked, in ticks.
+    check-ticks: 20
+
+  # The roster. Difficulty comes from sending *different* things, not the
+  # same husk with more hearts, so each entry has the round it unlocks on
+  # and a weight for how often it turns up after that.
+  #
+  #   type        any vanilla entity name
+  #   min-round   first round it can appear on
+  #   weight      relative chance against everything else unlocked; 0 never
+  #   elite       one at a time, and only on a milestone round
+  #   bonus-health  extra health on top of the vanilla amount
+  #   held-item   put in its main hand; it will never drop
+  #
+  # Creepers and endermen are left out on purpose — one blows holes in
+  # your mine and the other walks off with it. If you add them anyway,
+  # RoboBear refuses their block damage, but they'll still be a nuisance.
+  roster:
+    swarf-mite:
+      type: SILVERFISH
+      name: "&7Swarf Mite"
+      min-round: 1
+      weight: 3
+    sledge-unit:
+      type: HUSK
+      name: "&6Sledge Unit"
+      min-round: 1
+      weight: 3
+      held-item: STONE_SHOVEL
+    bolt-slinger:
+      type: SKELETON
+      name: "&fBolt Slinger"
+      min-round: 3
+      weight: 2
+      held-item: BOW
+    coolant-leak:
+      type: CAVE_SPIDER
+      name: "&2Coolant Leak"
+      min-round: 4
+      weight: 2
+    scrap-drone:
+      type: VEX
+      name: "&bScrap Drone"
+      min-round: 6
+      weight: 1
+    pressure-valve:
+      type: BREEZE
+      name: "&dPressure Valve"
+      min-round: 6
+      weight: 1
+    foreman:
+      type: PIGLIN_BRUTE
+      name: "&c&lThe Foreman"
+      min-round: 1
+      weight: 0
+      elite: true
+      bonus-health: 20
+      held-item: GOLDEN_AXE
+
 # ---------------------------------------------------------------------
 # The workshop
 # ---------------------------------------------------------------------
@@ -312,3 +427,4 @@ messages:
   not-running: "<red>You aren't in a run."
   nothing-to-do: "<red>Nothing is set up for a run yet. Tell an admin."
   mine-missing: "<red>That job points at a mine that doesn't exist any more."
+  mobs-incoming: "<dark_red>Something's coming."

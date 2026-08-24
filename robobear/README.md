@@ -120,7 +120,9 @@ and restart.
    harder and pays more Cogs. One free reroll per run rolls a new pair. *The
    clock is stopped while you choose.*
 4. **Beat the clock.** Break the blocks or kill the mobs before the round timer
-   runs out. Progress and time show on the actionbar.
+   runs out. Progress and time show on the actionbar. The challenge sends mobs
+   after you while it runs — only you can see them, only you can be hurt by
+   them, and one of them killing you ends the run.
 5. **Get paid** in Cogs, and the **workshop** opens.
 6. **Spend, then decide.** Buy upgrades, then either take the next round —
    harder, worth more — or **retire** and keep everything you've been paid.
@@ -162,6 +164,7 @@ Base command: `/robobear` (aliases `/rb`, `/robo`)
 | `/rb mines debug` | Explain what the MineResetLite reader can see | `robobear.admin` |
 | `/rb quests` | Choose which job types are offered, and what each mine may be asked for | `robobear.admin` |
 | `/rb upgrades` | Choose which workshop upgrades are on sale | `robobear.admin` |
+| `/rb mobs [clear]` | Show the challenge mob roster, or clear strays | `robobear.admin` |
 | `/rb pass give [player] [n]` | Issue entry passes | `robobear.admin` |
 | `/rb milestones` | Edit the milestone payouts | `robobear.admin` |
 | `/rb pos1` / `/rb pos2` | Select a corner for a manual mine | `robobear.admin` |
@@ -386,15 +389,26 @@ its commands.
 - **The shipped numbers are unplaytested.** Base amounts, growth rates, Cog
   payouts and upgrade costs are a starting point sized by eye. Expect to retune
   `objectives.*.growth` first — it decides how many rounds a good player gets.
-- **`kill-mobs` assumes there are mobs.** On a bedrock box with no spawns it will
-  offer objectives nobody can complete. Turn it off there — `/rb quests`, or
-  `objectives.kill-mobs.enabled` in `config.yml`.
 - **Material objectives are only as good as two lists.** A mine can be asked for
   what it actually contains, narrowed to `objectives.mine-material.materials`.
   That default list is ores, so a mine of pure filler is skipped rather than
-  made unwinnable — but widen the list and filler becomes fair game, and a mine
-  whose composition RoboBear can't read falls back to the list alone. `/rb quests`
+  made unwinnable — but widen the list and filler becomes fair game. `/rb quests`
   shows what each mine resolved to and lets you correct the ones that are wrong.
+- **Mine composition is sampled, not counted.** A stride of block reads across
+  each region, scaled up to its volume — so a mine that is half mined-out when
+  the survey runs looks half-sized, and a rare ore the stride never lands on is
+  treated as *unknown* rather than absent. Good enough to stop the challenge
+  asking for what isn't there; not an inventory. Chunks that aren't loaded are
+  skipped, so a mine nobody visits keeps whatever was last read.
+- **Challenge mobs can't be hidden completely.** Only their owner is sent the
+  entity, so nobody else renders them or can touch them — but sound and
+  particles are positional packets and aren't entity-scoped. A bystander in the
+  same mine will hear a fight and see someone taking damage from nothing.
+- **They consume the mob cap.** They're real entities, because a packet-only mob
+  can't attack anything. A busy ladder will suppress some natural spawns in that
+  world while it runs.
+- **Dying to a challenge mob ends the run.** That is a deliberate, and large,
+  increase in difficulty over 1.0.x. `mobs.enabled: false` turns it off.
 - **The bee draft isn't recreated**, as above. If you want a loadout step, the
   natural place is a third phase between the shop and the round.
 - **Objectives are absolute amounts**, which sits awkwardly with the risk spec's

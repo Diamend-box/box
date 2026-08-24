@@ -1,8 +1,6 @@
-package com.diamend.robobear;
+package com.diamend.robobear.challenge;
 
-import com.diamend.robobear.challenge.Objective;
-import com.diamend.robobear.challenge.ObjectiveGenerator;
-import com.diamend.robobear.challenge.ObjectiveType;
+import com.diamend.robobear.RoboBearPlugin;
 import com.diamend.robobear.mine.MineRegion;
 import com.diamend.robobear.mine.MineSurvey;
 import org.bukkit.Material;

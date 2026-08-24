@@ -230,9 +230,29 @@ public class ObjectiveGenerator {
         return wanted <= ceiling ? wanted : roundDown(ceiling);
     }
 
+    /**
+     * "Kill N hostile mobs".
+     *
+     * <p>Any hostile counts, natural or sent by the challenge. The amount is
+     * sized against what the challenge alone can deliver, though, because a mine
+     * world may have no natural spawns whatsoever — building the round on the
+     * guaranteed supply keeps it winnable, and anything that wanders in is a
+     * bonus that finishes it sooner.
+     */
     private Objective rollKill(int round, double difficulty) {
-        int amount = scaled("objectives.kill-mobs", round, difficulty, 10, 1.22);
-        return new Objective(ObjectiveType.KILL_MOBS, null, null, amount,
+        int wanted = scaled("objectives.kill-mobs", round, difficulty, 10, 1.22);
+
+        long supply = plugin.mobs().supplyPerRound(round);
+        if (supply > 0) {
+            int amount = trim(supply, wanted, 1.0,
+                    plugin.getConfig().getDouble("objectives.limits.mob-fraction", 0.6),
+                    plugin.getConfig().getInt("objectives.limits.minimum-amount", 10));
+            if (amount <= 0) {
+                return null;
+            }
+            wanted = amount;
+        }
+        return new Objective(ObjectiveType.KILL_MOBS, null, null, wanted,
                 cogsFor(round, difficulty));
     }
 
