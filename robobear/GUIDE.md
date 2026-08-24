@@ -478,7 +478,7 @@ no mines in the pool, nothing on the material list — says that too, in red.
 **Break a material** used to be the one that could hand out an impossible round:
 it picked a mine and a material out of two unrelated hats, so a quartz mine could
 be asked for gold. Since `1.0.5` the mine is picked first and the material comes
-from *that mine's own composition*; since `1.0.6` that composition is read from
+from *that mine's own composition*; since `1.1.0` that composition is read from
 the blocks themselves rather than depending on the mine plugin to expose it. A
 mine with nothing worth asking for is skipped rather than sent to.
 
@@ -675,9 +675,9 @@ the server is stopped; payouts and mines survive.
 | "Break 30 × Gold Ore in *quartz*" — a mine that has none | Before `1.0.5` the mine and the material were rolled independently | Update; the material now comes from that mine's composition |
 | A material job names filler nobody should mine | The mine's composition includes it and it's on the config list | `/rb quests` → click the mine → set its blocks by hand |
 | Material jobs never appear | No mine's contents overlap `objectives.mine-material.materials` | `/rb quests` — the type icon says which of the two it is |
-| Still "Deepslate Iron Ore in *quartz*" on 1.0.5 | Nothing could read that mine, so it fell back to the whole config list | Update to `1.0.6`, which reads the blocks directly; check `mines.sample-blocks` isn't `0` |
-| The safe and greedy offers were the same job | Before `1.0.6` each offer was rolled without looking at the other | Update; offers are now always different in what they ask for |
-| "Break 250 blocks" in a mine that holds 128 | Before `1.0.6` amounts scaled off the round number alone | Update, then set `objectives.limits.mine-resets-per-round` to match your reset interval |
+| Still "Deepslate Iron Ore in *quartz*" on 1.0.5 | Nothing could read that mine, so it fell back to the whole config list | Update to `1.1.0`, which reads the blocks directly; check `mines.sample-blocks` isn't `0` |
+| The safe and greedy offers were the same job | Before `1.1.0` each offer was rolled without looking at the other | Update; offers are now always different in what they ask for |
+| "Break 250 blocks" in a mine that holds 128 | Before `1.1.0` amounts scaled off the round number alone | Update, then set `objectives.limits.mine-resets-per-round` to match your reset interval |
 | Jobs are smaller than the round suggests | The clamp found the mine thinner than the curve wanted | Working as designed — `/rb quests` shows what each mine holds; raise `mine-fraction` if you want it tighter |
 | Something invisible is attacking a player | A challenge mob — only its owner can see it | Expected during a round. `/rb mobs` to check, `/rb mobs clear` if one is stranded |
 | Bystanders hear fighting from nothing | Sound is positional and can't be hidden with the entity | Not fixable; `mobs.enabled: false` if it bothers you |

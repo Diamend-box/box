@@ -1,11 +1,17 @@
 # RoboBear — playtest script
 
-**For:** the first real run of RoboBear on boxpvp (Paper 1.21.4), version 1.0.5.
-**Time:** ~15 minutes for the smoke pass, ~75 for the whole thing.
+**For:** RoboBear on boxpvp (Paper 1.21.4), version **1.1.0**.
+**Time:** ~15 minutes for the smoke pass, ~90 for the whole thing.
 **Point of it:** RoboBear has never been played. Everything below CI can prove —
 it compiles, it enables, the logic is right — is proved. What is not proved is
 whether the thing is any good, whether the numbers land, and whether the
 MineResetLite reader works against *your* build.
+
+**New since you last looked:** the three round-quality fixes in §4, and the
+challenge mobs in §5. If you're short on time, do §1, §4 and §5 — that's the
+new work.
+
+**You'll want a second account** for §5. Nothing else needs one until §14.
 
 Work top to bottom. Anything that behaves oddly, note it and **keep going** —
 one broken thing shouldn't cost you the rest of the pass.
@@ -14,19 +20,26 @@ one broken thing shouldn't cost you the rest of the pass.
 
 ## 0. Before you start
 
-1. Grab **`RoboBear-1.0.5.jar`** from the
-   [releases page](https://github.com/Diamend-box/box/releases/tag/robobear-v1.0.5).
+1. Grab **`RoboBear-1.1.0.jar`** from the
+   [releases page](https://github.com/Diamend-box/box/releases/tag/robobear-v1.1.0).
    (Don't build it locally; the build lives in CI.)
 2. Drop it in `plugins/`, start the server, **op yourself**.
 3. Note your **MineResetLite version** and what `/plugins` shows its name as.
+
+> **Upgrading from 1.0.x?** `config.yml` is never rewritten once it exists, so
+> you won't have the new `mobs:` or `objectives.limits:` blocks. Sensible
+> defaults are built in and everything works without them — but if you want to
+> tune the mobs or the size clamp, rename `config.yml`, restart to get a fresh
+> one, and copy your settings across.
 
 **Capture the boot before you touch anything:**
 
 - [ ] Save `logs/latest.log` from the first boot as `boot.log`.
 - [ ] `ls plugins/RoboBear/` — note which files exist (`config.yml`,
       `milestones.yml`, `mines.yml`, `mine-toggles.yml`, `upgrade-toggles.yml`,
-      `data/`). Some only appear once you touch the thing that writes them.
-- [ ] Note whether PlaceholderAPI is installed — §12 needs it and is skippable.
+      `objective-toggles.yml`, `mine-materials.yml`, `data/`). Some only appear
+      once you touch the thing that writes them.
+- [ ] Note whether PlaceholderAPI is installed — §13 needs it and is skippable.
 
 > **Do §1 before anything else.** If mine detection is broken, most of this
 > script is untestable and I need to know that first, not on page four.
@@ -102,27 +115,45 @@ the screen that fixes that.
 
 ---
 
-## 4. The quest editor — *the "30 gold in the quartz mine" fix*
+## 4. The quest editor — *the three round-quality fixes*
 
-This is the one you reported. The generator used to pick a mine and a material
-independently, so it could ask for gold ore in a mine that has none — a round
-that can't be finished, which on a ladder means the run is over through no fault
-of the player's. Since `1.0.5` the mine is picked first and the material comes
-from **that mine's own composition**, read out of MineResetLite.
+Three things you reported, all of them ways a round arrives already lost.
 
-**The check that matters:**
+**"Break 55 × Deepslate Iron Ore in quartz."** `1.0.5` picked the mine first and
+the material from that mine's composition — but only when something could *tell*
+it the composition, and on your server nothing could, so it fell back to the
+whole config list for every mine. `1.1.0` reads the blocks directly instead: a
+stride of reads across each mine, counted. It no longer depends on MineResetLite
+exposing anything.
+
+**The safe and the greedy offer being the same job.** Each was rolled without
+looking at the other. They're now always different in *what* they ask for.
+
+**"Break 250 blocks" in a mine holding two stacks.** The curve knew the round
+number and nothing else. The same survey now sizes each mine's stock and trims
+what gets asked for to fit.
+
+**The checks that matter:**
 
 - [ ] `/rb quests` — the screen opens: three job types on top, your pooled mines
       below.
-- [ ] Look at the compass at slot 16. Does it say compositions **were** read from
-      your mine plugin? If it says they weren't, tell me — that's the same
-      reflection layer as §1 and I want to know.
+- [ ] Look at the compass at slot 16. Does it say your mines **were** read? If it
+      says nothing could be read about any mine, tell me — and check that
+      `mines.sample-blocks` in `config.yml` isn't `0`.
 - [ ] Look at the quartz mine's icon. Its lore lists what it can be asked for.
-      **Is gold ore in that list?** It must not be.
-- [ ] Start a run and reroll ten or fifteen times, taking note of every
-      *"break N × <block> in <mine>"* offer. **Does every one name a block that
-      mine actually contains?** This is the whole fix; a single counter-example
-      is worth reporting on its own.
+      **Is deepslate iron ore in that list?** It must not be.
+- [ ] The same icon says *"Holds roughly N blocks"*. **Is N about right** for
+      that mine when full? It's an estimate from a sample, so within a factor of
+      two is fine — a wildly wrong number is worth reporting.
+- [ ] Start a run and reroll ten or fifteen times, noting every offer.
+      - **Does every material offer name a block that mine actually contains?**
+      - **Are the two offers ever the same job?** They shouldn't be. (If your
+        server can only build one kind of job you'll correctly get one offer.)
+      - **Is any amount larger than the mine could give you in one round?**
+- [ ] Set `objectives.limits.mine-resets-per-round` to `run.round-seconds`
+      ÷ your mine's reset interval. At a 5-minute round and a 5-minute reset
+      that's `1`, which is the default. If your mines reset faster, raise it or
+      jobs will come out smaller than they should.
 
 **The editor:**
 
@@ -153,7 +184,78 @@ from **that mine's own composition**, read out of MineResetLite.
 
 ---
 
-## 5. Passes — *including the exploit check*
+## 5. The mobs that come after you — *the big new one*
+
+New in `1.1.0`. While a round's clock is running, the challenge sends mobs at
+you. **Only you can see them and only you can be hurt by them.** Everyone else
+is never sent the entity at all.
+
+They're real mobs — a packet-only mob can't attack anything, because targeting
+and damage live on the server — so the private part is done with per-player
+visibility. **Dying to one ends the run**, which is the largest single change
+this makes to how hard the ladder is.
+
+**You need a second player for the important half of this.** Have an alt stand
+in the same mine, not in a run.
+
+**The core check — what the bystander sees:**
+
+- [ ] Start a run, take any job. About three seconds in you should get
+      *"Something's coming"* and a sound, then mobs arrive from a little way off
+      rather than on top of you.
+- [ ] **The alt should see nothing.** No mobs, no nameplates, nothing to hit.
+- [ ] The alt **will** hear the fight and see you taking damage from nothing.
+      That's expected and can't be fixed — sound isn't tied to the entity.
+- [ ] Have the alt swing where a mob is. They should hit air, and the mob should
+      not react.
+- [ ] Have the alt shoot an arrow through the fight. It must not hurt the mob.
+- [ ] The mobs must never turn on the alt, even when they're closer than you.
+
+**The lifecycle:**
+
+- [ ] Finish a round. **Every mob should vanish** the moment the shop opens.
+- [ ] Take the next round — a fresh wave arrives.
+- [ ] Run 50+ blocks away mid-round. They should follow, teleporting to you
+      rather than getting stuck.
+- [ ] `/rb cancel` mid-round — they all disappear.
+- [ ] Log out mid-round, log back in — nothing left standing in the mine.
+- [ ] `/rb mobs` — shows the roster and how many are alive. Should read `0` when
+      nobody is mid-round.
+
+**The rails:**
+
+- [ ] Stand in a mine and wait for it to reset **with mobs in it**. They must not
+      suffocate — an entombed mob that dies on its own is a hazard you beat by
+      waiting.
+- [ ] If your mines are open to the sky, wait for daytime. **They must not burn.**
+- [ ] Kill one. **No drops, no XP**, and the mine is undamaged.
+- [ ] Check the mine has no new holes after a few rounds.
+
+**The feel — what I actually want to know:**
+
+- [ ] Take a **kill round**. The mobs should **glow**. On a mining round they
+      should **not** — that's the tell for "you need to kill these".
+- [ ] Does the kill objective's number feel achievable? It's sized to what the
+      challenge can send, not to the old curve, so it should be lower than you'd
+      expect and still take the whole clock.
+- [ ] Get to **round 6+** and confirm you start seeing the vex (flies through
+      rock) and the breeze (knocks you around). Round 3 should add a skeleton,
+      round 4 a cave spider.
+- [ ] Clear a **milestone round** and confirm **The Foreman** shows up — one
+      named piglin brute, tougher than the rest.
+
+**Data I want:**
+- **Is it too hard?** Two mobs at round one, up to eight later. If a competent
+  player can't mine at all while defending, `mobs.population.base` comes down.
+- **Does dying to one feel fair, or cheap?** This is the question. If it reads as
+  cheap I'd rather know now than after players have opinions about it.
+- Whether the arrival warning gives you enough time to react.
+- Anything the alt could see, hear or interact with beyond sound and your
+  damage — that's a bug and an important one.
+
+---
+
+## 6. Passes — *including the exploit check*
 
 - [ ] `/rb pass give` → one pass. `/rb pass give <alt> 5` → five, to them.
 - [ ] Fill your inventory, then `/rb pass give` — the extras drop at your feet
@@ -178,7 +280,7 @@ from **that mine's own composition**, read out of MineResetLite.
 
 ---
 
-## 6. A full run, properly
+## 7. A full run, properly
 
 Set `run.entry-item.item: ""` temporarily if constantly minting passes is
 annoying, and put it back afterwards.
@@ -205,11 +307,11 @@ annoying, and put it back afterwards.
       `/rb reload`. You should get told the job points at a mine that's gone,
       not a stack trace.
 
-**Data I want:** how many rounds you got through, and how it felt — see §10.
+**Data I want:** how many rounds you got through, and how it felt — see §11.
 
 ---
 
-## 7. The workshop
+## 8. The workshop
 
 - [ ] Clear a round, then in the workshop buy each of the six upgrades at least
       once. Does each effect actually happen? Haste and Speed you should feel;
@@ -236,7 +338,7 @@ Impact Driver is the questionable one; tell me if that's wrong.
 
 ---
 
-## 8. Payouts — *the part that decides whether this is worth playing*
+## 9. Payouts — *the part that decides whether this is worth playing*
 
 Milestone tiers ship **deliberately empty**, so a fresh install pays nothing.
 
@@ -262,7 +364,7 @@ the number I most want to see, because it's the one I can't guess.
 
 ---
 
-## 9. Ending a run, the awkward ways
+## 10. Ending a run, the awkward ways
 
 - [ ] **Die** mid-run (`run.fail-on-death: true` by default) → run ends, and
       check what happened to your inventory under your normal death rules.
@@ -279,7 +381,7 @@ the number I most want to see, because it's the one I can't guess.
 
 ---
 
-## 10. Balance — the numbers I most want back
+## 11. Balance — the numbers I most want back
 
 This is the part I flagged in the guide and it's still unplaytested.
 
@@ -307,7 +409,7 @@ Also worth a note: does 300s per round feel long, short, or right for your mines
 
 ---
 
-## 11. The action bar fight — *specific to your server*
+## 12. The action bar fight — *specific to your server*
 
 RoboBear rewrites the clock five times a second, at the end of the tick, to stay
 on top of other plugins. This is exactly the kind of thing that only shows up on
@@ -326,7 +428,7 @@ it. If something still beats it, I need to know what that plugin is.
 
 ---
 
-## 12. Placeholders (skip if no PlaceholderAPI)
+## 13. Placeholders (skip if no PlaceholderAPI)
 
 ```
 %robobear_running%    %robobear_round%      %robobear_progress%
@@ -343,7 +445,7 @@ it. If something still beats it, I need to know what that plugin is.
 
 ---
 
-## 13. Two players and persistence
+## 14. Two players and persistence
 
 - [ ] Two players in runs at once, objectives in the **same** mine. Each counts
       only their own blocks.
@@ -358,14 +460,18 @@ it. If something still beats it, I need to know what that plugin is.
 Zip or paste, in rough order of usefulness:
 
 1. **The `/rb mines debug` output** (§1). Nothing else matters as much.
-2. **`logs/latest.log`** for the session, plus every stack trace in full.
-3. **Your four end-round numbers** from §10.
-4. **`plugins/RoboBear/`** — the configs, `milestones.yml`, `mine-toggles.yml`,
-   `upgrade-toggles.yml`, `mine-materials.yml`. Skip `data/` unless something
-   looks wrong.
-5. **Screenshots** of anything that looked wrong, with the slot number if it's a
+2. **Whether the alt could see, hit or be attacked by anything** (§5). If any of
+   those is a yes, that's the most important line in your report.
+3. **`logs/latest.log`** for the session, plus every stack trace in full.
+4. **Your four end-round numbers** from §11, and whether the mobs changed them.
+5. **What each mine says it holds** in `/rb quests` (§4), next to what you know
+   is actually in it.
+6. **`plugins/RoboBear/`** — the configs, `milestones.yml`, `mine-toggles.yml`,
+   `upgrade-toggles.yml`, `objective-toggles.yml`, `mine-materials.yml`. Skip
+   `data/` unless something looks wrong.
+7. **Screenshots** of anything that looked wrong, with the slot number if it's a
    layout thing.
-6. **Your notes**, one line each, in this shape:
+8. **Your notes**, one line each, in this shape:
 
 ```
 [where]   workshop, after clearing round 3
@@ -392,10 +498,21 @@ Already on the list, so skip unless they're worse than described:
   (`config.yml` under `objectives`, then `/rb reload`).
 - Upgrade **prices** aren't editable in game, only on/off (`config.yml`, then
   `/rb reload`).
-- Balance is unplaytested end to end — that's §10, not a bug.
+- Balance is unplaytested end to end — that's §11, not a bug.
 - Milestone tiers ship empty on purpose; a fresh install paying nothing is
   correct behaviour, not a fault.
 - No cross-server or database storage; one file per player.
+- **Bystanders hear challenge mobs and see you take damage from nothing.** Sound
+  and particles are positional and aren't tied to the entity, so there is no way
+  to hide them along with the mob. Expected, not a bug.
+- **Challenge mobs count against the world's mob cap** while a round is running.
+  They're real entities because a packet-only mob can't attack anything.
+- **Mine stock is an estimate.** It's a sample scaled up, so a mine that's half
+  mined-out when the survey runs reads as half-sized, and a rare ore the stride
+  never lands on is treated as unknown rather than absent. Wrong by a factor of
+  two is fine; wrong by ten is worth reporting.
+- The mob roster isn't editable in game — `config.yml` under `mobs.roster`, then
+  `/rb reload`. `/rb mobs` shows it but doesn't change it.
 
 ---
 
