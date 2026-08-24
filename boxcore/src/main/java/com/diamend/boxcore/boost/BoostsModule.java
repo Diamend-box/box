@@ -37,7 +37,9 @@ import java.util.logging.Level;
 /**
  * Temporary multipliers, running server-wide or for one player.
  *
- * <p>Boosts multiply together: a 2× global and a 2× personal boost make 4×.
+ * <p>One global boost and one personal boost run per type, so the most anyone
+ * can have is those two multiplied: a 2× global and a 2× personal make 4×.
+ * Starting another replaces the one it matches rather than stacking on top.
  * That is the intuitive reading, and it is also the explosive one, so
  * {@code boosts.max-multiplier} exists as a hard ceiling no combination can
  * exceed. Raise it deliberately, not by accident.
@@ -71,7 +73,8 @@ public class BoostsModule implements BoxModule {
     private final Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
 
     private double maxMultiplier = 8.0;
-    private boolean oresOnly = true;
+    private boolean oresOnly = false;
+    private int dropWindowTicks = 5;
     private boolean announce = true;
     private int checkTicks = 100;
     private ZoneId zone = ZoneId.systemDefault();
@@ -135,7 +138,9 @@ public class BoostsModule implements BoxModule {
     private void loadConfig() {
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("boosts");
         maxMultiplier = Math.max(1.0, section == null ? 8.0 : section.getDouble("max-multiplier", 8.0));
-        oresOnly = section == null || section.getBoolean("drops.ores-only", true);
+        oresOnly = section != null && section.getBoolean("drops.ores-only", false);
+        dropWindowTicks = Math.max(1, section == null
+                ? 5 : section.getInt("drops.window-ticks", 5));
         announce = section == null || section.getBoolean("announce", true);
         checkTicks = Math.max(20, section == null ? 100 : section.getInt("check-ticks", 100));
 
@@ -206,12 +211,31 @@ public class BoostsModule implements BoxModule {
 
     /** Builds a configured boost item, or null when no such item is configured. */
     public ItemStack createItem(String id, int amount) {
+        return createItem(id, amount, 0L);
+    }
+
+    /**
+     * Builds a configured boost item, optionally overriding how long it lasts.
+     *
+     * <p>The override is written onto the item like every other figure, so a
+     * one-off 24-hour version of a 30-minute boost is a real item rather than a
+     * config entry that has to exist forever to support it.
+     *
+     * @param millis how long it should last, or 0 to use the configured length
+     */
+    public ItemStack createItem(String id, int amount, long millis) {
         ItemDefinition definition = definitions.get(id == null
                 ? ""
                 : id.trim().toLowerCase(Locale.ROOT));
-        return definition == null
-                ? null
-                : items.create(definition.payload(), definition.appearance(), amount);
+        if (definition == null) {
+            return null;
+        }
+        BoostItems.Payload payload = definition.payload();
+        if (millis > 0) {
+            payload = new BoostItems.Payload(payload.id(), payload.types(),
+                    payload.multiplier(), millis, payload.global());
+        }
+        return items.create(payload, definition.appearance(), amount);
     }
 
     public Set<String> itemIds() {
@@ -344,8 +368,8 @@ public class BoostsModule implements BoxModule {
     /**
      * What this player's boosts come to for a type, with 1.0 meaning no change.
      *
-     * <p>Every running boost of the type multiplies in — global first, then the
-     * player's own — and the result is clamped to the configured ceiling.
+     * <p>At most one global boost and one of the player's own run for a type,
+     * so this is those two multiplied, clamped to the configured ceiling.
      */
     public double multiplier(Player player, BoostType type) {
         return multiplierFor(profileOf(player), type);
@@ -431,9 +455,17 @@ public class BoostsModule implements BoxModule {
     // Granting
     // ------------------------------------------------------------------
 
-    /** Starts a server-wide boost and announces it. */
+    /**
+     * Starts a server-wide boost and announces it.
+     *
+     * <p>Only one global boost of a type runs at a time: starting another
+     * replaces it rather than stacking on top. Two 2x drop boosts running
+     * together came to 4x, which is not something anyone chose — it happened
+     * because two people spent an item within an hour of each other.
+     */
     public Boost addGlobal(BoostType type, double multiplier, long millis, String source) {
         Boost boost = Boost.lasting(type, multiplier, millis, source);
+        global.removeIf(running -> running.type() == type);
         global.add(boost);
         saveGlobal();
         if (announce) {
@@ -452,9 +484,19 @@ public class BoostsModule implements BoxModule {
     }
 
     /** Starts a boost for one player. */
+    /**
+     * Starts a boost for one player, replacing whatever of that type they had.
+     *
+     * <p>One personal boost of a type at a time, the same rule as the global
+     * ones. The multiplier a player ends up with is therefore always one global
+     * times one of their own, which is a number they can work out in their head
+     * and a number the shop can be priced against.
+     */
     public Boost addPlayer(Player player, BoostType type, double multiplier, long millis, String source) {
         Boost boost = Boost.lasting(type, multiplier, millis, source);
-        plugin.profiles().get(player.getUniqueId()).addBoost(boost);
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        profile.removeBoosts(type);
+        profile.addBoost(boost);
         return boost;
     }
 
@@ -491,6 +533,18 @@ public class BoostsModule implements BoxModule {
             }
         }
         return Collections.unmodifiableList(active);
+    }
+
+    /**
+     * How long after a block breaks its drops still count as that block's.
+     *
+     * <p>Drops that another plugin spawns for itself arrive a tick or two after
+     * the break, so the boost watches a short window rather than a single
+     * event. Longer catches slower plugins; too long starts catching items that
+     * had nothing to do with the block.
+     */
+    public int dropWindowTicks() {
+        return dropWindowTicks;
     }
 
     public boolean oresOnly() {

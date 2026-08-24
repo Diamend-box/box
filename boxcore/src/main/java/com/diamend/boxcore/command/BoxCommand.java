@@ -1074,7 +1074,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
 
     private void boostItem(CommandSender sender, BoostsModule boosts, String[] args) {
         if (args.length < 3) {
-            messages().sendLiteral(sender, "<red>Usage: /box boost item <id> [player] [amount]"
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box boost item <id> [player] [amount] [duration]"
                     + (boosts.itemIds().isEmpty() ? "" : " <dark_gray>— "
                             + String.join(", ", boosts.itemIds())));
             return;
@@ -1101,7 +1102,19 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 return;
             }
         }
-        ItemStack item = boosts.createItem(args[2], amount);
+        // An optional length, so a one-off longer version of a configured item
+        // doesn't need a config entry that then has to exist forever.
+        long millis = 0L;
+        if (args.length >= 6) {
+            millis = Durations.parse(args[5]);
+            if (millis <= 0) {
+                messages().sendLiteral(sender, "<red><white>" + args[5]
+                        + "</white> isn't a duration. Try <white>30m<red>, <white>2h<red> or "
+                        + "<white>1d<red>.");
+                return;
+            }
+        }
+        ItemStack item = boosts.createItem(args[2], amount, millis);
         if (item == null) {
             messages().sendLiteral(sender, "<red>No boost item called <white>" + args[2]
                     + "<red>. Configured: <white>"
@@ -1113,7 +1126,8 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             target.getWorld().dropItemNaturally(target.getLocation(), leftover);
         }
         messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
-                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>.");
+                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>"
+                + (millis > 0 ? " <gray>(" + Durations.format(millis) + ")" : "") + ".");
     }
 
     private void boostClear(CommandSender sender, BoostsModule boosts, String[] args) {

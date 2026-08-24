@@ -59,7 +59,7 @@ public final class BoostItems {
             this(id, types, multiplier, durationMillis, false);
         }
 
-        /** {@code "Ore drops & Collections"}, or the single type's name. */
+        /** {@code "Drops & Collections"}, or the single type's name. */
         public String typeNames() {
             List<String> names = new ArrayList<>();
             for (BoostType type : types) {

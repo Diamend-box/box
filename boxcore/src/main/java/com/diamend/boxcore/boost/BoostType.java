@@ -7,16 +7,16 @@ import java.util.Locale;
  *
  * <p>The two are deliberately separate rather than one "everything" boost,
  * because they act on different things and neither implies the other.
- * {@link #DROPS} changes how much ore actually falls out of a block;
- * {@link #COLLECTIONS} changes how much that ore counts for. Collections are
+ * {@link #DROPS} changes how much actually falls out of a block;
+ * {@link #COLLECTIONS} changes how much that counts for. Collections are
  * credited from the block's natural drops rather than from the items that
  * spawn, so a drops boost does not quietly inflate collection progress and the
  * two never compound behind the owner's back.
  */
 public enum BoostType {
 
-    /** Multiplies how much ore a broken block actually drops. */
-    DROPS("drops", "Ore drops"),
+    /** Multiplies how much a broken block actually drops. */
+    DROPS("drops", "Drops"),
 
     /** Multiplies how much everything gathered counts toward collections. */
     COLLECTIONS("collections", "Collections");

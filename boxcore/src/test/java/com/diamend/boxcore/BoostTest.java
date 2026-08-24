@@ -96,13 +96,50 @@ class BoostTest {
 
     @Test
     void theCapIsAHardCeiling() {
-        // Multiplying together is explosive, which is the point of the cap.
+        // One of each still multiplies, so the cap still has work to do.
+        PlayerMock player = server.addPlayer();
+        boosts().addGlobal(BoostType.DROPS, 5.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 5.0, 60_000, "test");
+
+        assertEquals(boosts().maxMultiplier(), boosts().multiplier(player, BoostType.DROPS),
+                "25x worth of boosts still lands on the cap");
+    }
+
+    @Test
+    void aSecondGlobalReplacesTheFirstRatherThanStacking() {
+        // Two people spending an item within the hour used to make 4x without
+        // anyone deciding that should happen.
         PlayerMock player = server.addPlayer();
         for (int i = 0; i < 5; i++) {
             boosts().addGlobal(BoostType.DROPS, 3.0, 60_000, "test");
         }
-        assertEquals(boosts().maxMultiplier(), boosts().multiplier(player, BoostType.DROPS),
-                "243x worth of boosts still lands on the cap");
+        assertEquals(3.0, boosts().multiplier(player, BoostType.DROPS),
+                "five 3x boosts are still one 3x boost");
+        assertEquals(1, boosts().globalBoosts().size(), "and only one is running");
+    }
+
+    @Test
+    void aSecondPersonalBoostReplacesTheFirst() {
+        PlayerMock player = server.addPlayer();
+        boosts().addPlayer(player, BoostType.DROPS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 3.0, 60_000, "test");
+
+        assertEquals(3.0, boosts().multiplier(player, BoostType.DROPS),
+                "the newer one wins outright");
+    }
+
+    @Test
+    void replacingOneTypeLeavesTheOtherAlone() {
+        // Collections and drops are separate boosts, so starting a drops boost
+        // must not quietly end a collections one someone is part way through.
+        PlayerMock player = server.addPlayer();
+        boosts().addPlayer(player, BoostType.COLLECTIONS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 4.0, 60_000, "test");
+
+        assertEquals(4.0, boosts().multiplier(player, BoostType.DROPS));
+        assertEquals(2.0, boosts().multiplier(player, BoostType.COLLECTIONS),
+                "the collections boost was never in the argument");
     }
 
     // ------------------------------------------------------------------

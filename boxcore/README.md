@@ -38,7 +38,7 @@ Six ship today:
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 | `compressor` | Personal compactor: a carried item that folds up whichever recipes the player slots into it. |
-| `boosts` | Temporary multipliers on ore drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
+| `boosts` | Temporary multipliers on block drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
 | `travel` | Fast travel to staff-set destinations, found by walking into them, with a warmup that can't be used to leave a fight. |
 
 ---
@@ -109,18 +109,23 @@ Six ship today:
   empty hand and naming it. Every change writes `compactor.yml` immediately, and
   that file is the plugin's to rewrite — your commented `config.yml` is never
   touched.
-- ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
+- ✨ **Boosts** — temporary multipliers on block drops and on collection progress,
   running server-wide or for one player. Start them by command, on a recurring
-  schedule, or from a consumable item players right-click. They multiply
-  together and are clamped by a configured ceiling; every boost expires on the
-  wall clock, so one survives a relog and a global one survives a restart.
+  schedule, or from a consumable item players right-click. One server-wide and
+  one personal boost run per type at a time — starting another replaces the one
+  it matches rather than stacking, so the most anyone can have is those two
+  multiplied, clamped by a configured ceiling. Every boost expires on the wall
+  clock, so one survives a relog and a global one survives a restart.
   `/box boost` opens a menu showing what's running for you and what the server
   is running, with live countdowns and a row of the boost items you're carrying
   that you can click to start. An item with `global: true` starts a server-wide
   boost instead of a personal one, announced and saved exactly as if staff had
-  run the command. Drop boosts apply after every other plugin has finished with
-  the drop list, so they multiply what a drop-replacing plugin produced rather
-  than landing beside it. An actionbar line keeps the multiplier and the
+  run the command, and `/box boost item <id> [player] [amount] [duration]` can
+  override how long any of them lasts without a config entry existing for it.
+  Drop boosts multiply the items that actually appear next to a broken block
+  rather than only the ones the game itself produced — a plugin that replaces
+  drops entirely cancels the break and spawns its own, which no event priority
+  reaches. An actionbar line keeps the multiplier and the
   time left on screen while it runs, and a boost never ends silently — there's a
   warning before, and a line when it does.
 - 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while

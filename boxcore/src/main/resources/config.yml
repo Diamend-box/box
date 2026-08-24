@@ -237,7 +237,12 @@ compressor:
 # so a drops boost gives more ore without inflating collection progress,
 # and neither quietly compounds into the other.
 boosts:
-  # Boosts multiply together: a 2x global and a 2x personal boost make 4x.
+  # One global boost and one personal boost run per type at a time, and
+  # starting another replaces the one it matches rather than stacking on
+  # top. So the most anyone can have is global x personal: a 2x global and
+  # a 2x personal make 4x, and a second 2x item replaces the first rather
+  # than making 8x.
+  #
   # This is the hard ceiling no combination can pass. Raise it on purpose.
   max-multiplier: 8.0
 
@@ -264,10 +269,24 @@ boosts:
     # 20 is once a second, which is what a countdown needs. Minimum 10.
     interval-ticks: 20
 
-  # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
-  # Turn this off to boost every block's drops, cobblestone included.
   drops:
-    ores-only: true
+    # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
+    # Off by default: a drops boost is understood to mean everything a
+    # block gives, and a plugin that replaces drops with something that
+    # isn't whitelisted ore would otherwise get no boost at all and look
+    # broken. Turn it on to go back to ore only.
+    ores-only: false
+
+    # How long after a block breaks its drops still count as that block's,
+    # in ticks. Boosting reads the items that appear rather than only the
+    # ones the game itself produced, because a plugin that replaces drops
+    # entirely cancels the break and spawns its own — there is no event to
+    # listen to for that, only items appearing next to a block someone
+    # just broke.
+    #
+    # Longer catches slower plugins. Too long starts catching items that
+    # had nothing to do with the block. 5 ticks is a quarter of a second.
+    window-ticks: 5
 
   # How often (in ticks) to expire finished boosts and open scheduled
   # windows. 100 ticks is five seconds, which is plenty.
@@ -290,8 +309,10 @@ boosts:
   schedule: []
 
   # Boost items players can right-click to start their own boost. Give one
-  # with /box boost item <id> [player] [amount] — sell it, put it in a
-  # crate, hand it out as a reward.
+  # with /box boost item <id> [player] [amount] [duration] — sell it, put
+  # it in a crate, hand it out as a reward. The optional duration overrides
+  # the entry's own, so a one-off 24h version of a 30m item is a real item
+  # rather than a config entry that has to exist forever to support it.
   #
   # What an item does is written onto the item when it is created, so
   # re-tuning an entry here changes items made from now on and never

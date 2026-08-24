@@ -143,7 +143,8 @@ public class BoostMenu extends AbstractMenu {
             }
         }
         lore.add("");
-        lore.add("<dark_gray>Boosts multiply together, up to "
+        lore.add("<dark_gray>One server boost and one of your own,");
+        lore.add("<dark_gray>multiplied, up to "
                 + Text.decimal(boosts.maxMultiplier()) + "x.");
         return Items.text(Material.BEACON, "<aqua><bold>Server-wide", lore, !running.isEmpty());
     }
