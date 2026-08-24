@@ -46,11 +46,13 @@ public class BoostListener implements Listener {
     /**
      * How far from a broken block an item can appear and still be its drop.
      *
-     * <p>Vanilla drops spawn inside the block. A plugin spawning its own tends
-     * to use the block's own location, so this only has to be generous enough
-     * to cover the scatter, not to reach the next block along.
+     * <p>Vanilla drops spawn inside the block. A plugin spawning its own picks
+     * its own spot near it — CustomDrops uses a block above or below, measured
+     * from the block's corner rather than its middle, which is already 1.7
+     * away. Three blocks leaves room for that kind of choice without reaching
+     * far enough to adopt something unrelated.
      */
-    private static final double CAPTURE_RADIUS = 2.0;
+    private static final double CAPTURE_RADIUS = 3.0;
 
     /**
      * A block a boosted player just broke, and what its drops are worth.
@@ -89,14 +91,19 @@ public class BoostListener implements Listener {
     /**
      * Notes that a boosted player broke a block here.
      *
-     * <p>This deliberately does <em>not</em> ignore cancelled breaks. A plugin
-     * that replaces a block's drops entirely — CustomDrops is the one on this
-     * server — cancels the break and spawns its own items, and refusing to
-     * record a cancelled break is exactly why boosting did nothing to them.
-     * Recording is only a note that a boosted player was here; it grants
-     * nothing on its own.
+     * <p>This runs at {@code LOWEST}, before anything else has had a turn, and
+     * that is the whole reason the note is useful. A drop-replacing plugin
+     * spawns its items from inside its own {@code BlockBreakEvent} handler —
+     * CustomDrops does it at {@code HIGHEST} — so the item has already appeared
+     * and gone by the time a later handler runs. Recording at {@code MONITOR}
+     * meant the note was always written a moment too late and every one of
+     * those drops was missed, which is exactly what the playtest saw.
+     *
+     * <p>It also does not ignore cancelled breaks, because replacing a block's
+     * drops usually means cancelling the vanilla ones. Recording grants
+     * nothing on its own; an unused note simply expires.
      */
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         double multiplier = module.multiplier(player, BoostType.DROPS);
