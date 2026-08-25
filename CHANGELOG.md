@@ -14,8 +14,11 @@ All notable changes to **CustomAchievements** are documented here.
   and picked up, mobs and players killed (including whole mob families, summed),
   fish caught and deaths. Objectives the server keeps no statistic for start at
   zero as before: custom item names, a death with a specific cause, `ITEM_HAVE`,
-  locations, dimensions, MythicMobs and AuraSkills. An objective is only seeded
-  while still at zero, so this never double-counts. Toggle with
+  locations, dimensions, MythicMobs and AuraSkills. Each objective is seeded
+  once per player and seeding never lowers progress, so this never
+  double-counts — and because that's recorded per player rather than inferred
+  from "has no progress yet", testing a new achievement by going and scoring a
+  kill doesn't cost you the ones you already had. Toggle with
   `backfill-from-statistics` (default `true`) — note that players may
   immediately complete achievements they'd already earned, rewards included.
 - **Deaths can now require a cause.** `PLAYER_DEATH` used to count *any* death;

@@ -38,13 +38,17 @@ public final class StatisticBackfill {
         return switch (requirement.getTrigger()) {
             case ENTITY_KILL -> {
                 if (wildcard) {
-                    yield untyped(player, Statistic.MOB_KILLS);
+                    // MOB_KILLS excludes players, but the live listener counts a
+                    // killed player like any other entity, so both are needed.
+                    yield sum(untyped(player, Statistic.MOB_KILLS),
+                            untyped(player, Statistic.PLAYER_KILLS));
                 }
                 if (group instanceof EntityGroup entities) {
                     yield sumEntities(player, entities);
                 }
-                // Players killed are counted separately from mobs.
-                yield target.equalsIgnoreCase("PLAYER")
+                // Players killed are counted separately from mobs: KILL_ENTITY
+                // has no PLAYER sub-statistic and throws if asked for one.
+                yield normalize(target).equals("PLAYER")
                         ? untyped(player, Statistic.PLAYER_KILLS)
                         : entityStat(player, Statistic.KILL_ENTITY, target);
             }
@@ -95,10 +99,25 @@ public final class StatisticBackfill {
         }
     }
 
+    /** Adds two statistic reads, where -1 means "this server doesn't track it". */
+    private static int sum(int first, int second) {
+        if (first < 0 && second < 0) {
+            return -1;
+        }
+        return Math.max(first, 0) + Math.max(second, 0);
+    }
+
+    /** Upper-cases a target and drops any {@code minecraft:} namespace. */
+    private static String normalize(String name) {
+        String value = name.trim().toUpperCase(Locale.ROOT);
+        int colon = value.indexOf(':');
+        return colon >= 0 ? value.substring(colon + 1) : value;
+    }
+
     private static int entityStat(Player player, Statistic statistic, String name) {
         EntityType type;
         try {
-            type = EntityType.valueOf(name.trim().toUpperCase(Locale.ROOT));
+            type = EntityType.valueOf(normalize(name));
         } catch (IllegalArgumentException ex) {
             return -1;
         }

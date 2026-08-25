@@ -577,6 +577,66 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void backfillStillCreditsAnObjectiveThatAlreadyScoredOneKill() {
+        // The obvious way to test a new "kill 1000 players" achievement is to go
+        // and kill someone. That must not cost the player their existing 150.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 150);
+
+        Achievement achievement = new Achievement("tested_it_first");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(1000);
+        plugin.getAchievementManager().put(achievement);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        plugin.getAchievementService().handle(player, TriggerType.ENTITY_KILL, "PLAYER", 1);
+        assertEquals(1, data.getProgress(PlayerData.requirementKey("tested_it_first", 0)));
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(150, data.getProgress(PlayerData.requirementKey("tested_it_first", 0)),
+                "a kill scored before the first backfill must not lock the objective out of it");
+    }
+
+    @Test
+    void backfillCountsPlayerKillsTowardAnAnyKillObjective() {
+        // The live listener counts a killed player like any other entity, so a
+        // wildcard objective has to seed from both statistics, not MOB_KILLS alone.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MOB_KILLS, 40);
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 10);
+
+        Achievement achievement = new Achievement("anything_that_moves");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("ANY");
+        achievement.setAmount(100);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(50, plugin.getPlayerDataManager().get(player.getUniqueId())
+                        .getProgress(PlayerData.requirementKey("anything_that_moves", 0)),
+                "both mob kills and player kills count toward killing anything");
+    }
+
+    @Test
+    void backfillNeverPullsProgressBackwards() {
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 10);
+
+        Achievement achievement = new Achievement("ahead_of_the_stat");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(200);
+        plugin.getAchievementManager().put(achievement);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        data.setProgress(PlayerData.requirementKey("ahead_of_the_stat", 0), 75);
+        plugin.getAchievementService().backfill(player);
+        assertEquals(75, data.getProgress(PlayerData.requirementKey("ahead_of_the_stat", 0)),
+                "seeding must never reduce progress the player already had");
+    }
+
+    @Test
     void backfillLeavesObjectivesStatisticsCannotAnswer() {
         PlayerMock player = server.addPlayer();
         Achievement achievement = new Achievement("named_quest_item");

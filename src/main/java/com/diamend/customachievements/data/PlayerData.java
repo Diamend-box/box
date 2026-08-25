@@ -19,6 +19,11 @@ public class PlayerData {
     private final UUID uuid;
     private final Set<String> completed = new HashSet<>();
     private final Map<String, Integer> progress = new HashMap<>();
+    // Requirements already seeded from this player's lifetime statistics. Tracked
+    // separately from progress because "has progress" can't stand in for "was
+    // seeded": a single kill before the backfill ran would otherwise lock the
+    // objective out of it forever.
+    private final Set<String> backfilled = new HashSet<>();
     // Reward items that couldn't fit in the player's inventory when unlocked,
     // held here until they claim them (so they're never dropped/lost).
     private final List<ItemStack> pendingRewards = new ArrayList<>();
@@ -71,6 +76,22 @@ public class PlayerData {
         return achievementId.toLowerCase(Locale.ROOT) + "#" + index;
     }
 
+    /** Whether this requirement has already been seeded from the player's statistics. */
+    public boolean isBackfilled(String marker) {
+        return backfilled.contains(key(marker));
+    }
+
+    /** Records that a requirement has been seeded, so it is never seeded twice. */
+    public void markBackfilled(String marker) {
+        if (backfilled.add(key(marker))) {
+            dirty = true;
+        }
+    }
+
+    public Set<String> getBackfilled() {
+        return backfilled;
+    }
+
     public void setCompleted(String id) {
         completed.add(key(id));
         progress.remove(key(id));
@@ -87,6 +108,8 @@ public class PlayerData {
         completed.clear();
         progress.clear();
         pendingRewards.clear();
+        // The backfill markers deliberately survive a reset: re-seeding the
+        // player straight back from their statistics would undo it on next join.
         dirty = true;
     }
 

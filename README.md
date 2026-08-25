@@ -224,15 +224,16 @@ counts as a skeleton kill, not an arrow.
 
 Add a "kill 200 players" achievement to a server where someone already has 150
 kills and they start at **150/200**, not 0. On join (and the moment a new
-achievement is saved) each objective with no progress yet is seeded from
-Minecraft's own lifetime statistics.
+achievement is saved) each objective is seeded from Minecraft's own lifetime
+statistics.
 
 Seeded from statistics:
 
 | Objective | Statistic used |
 | --- | --- |
-| `ENTITY_KILL` a mob / a family / `ANY` | kills of that type, summed for a family, or total mob kills |
+| `ENTITY_KILL` a mob / a family | kills of that type, summed across a family |
 | `ENTITY_KILL` targeting `PLAYER` | players killed |
+| `ENTITY_KILL` targeting `ANY` | mob kills **plus** player kills |
 | `BLOCK_BREAK` | blocks mined |
 | `BLOCK_PLACE`, `ITEM_CONSUME` | items used |
 | `ITEM_CRAFT` | items crafted |
@@ -246,9 +247,14 @@ cause**, `ITEM_HAVE`, `REACH_LOCATION` / `REACH_DIMENSION`, `MYTHIC_MOB_KILL`,
 `AURASKILLS_LEVEL` and `MANUAL`. `PLAYTIME_HOURS` is already read live from the
 server's playtime statistic, so it needs no backfill.
 
-An objective is only ever seeded **while it is still at zero** — once it's
-ticking, live events own it — so the backfill can run any number of times
-without double-counting.
+Each objective is seeded **once per player**, so the backfill can run on every
+join without ever double-counting. It's recorded per player rather than
+inferred from "has no progress yet", so going and killing someone to test a new
+achievement doesn't cost you the kills you already had. Seeding never lowers
+progress, and editing an objective's trigger or target lets it seed again.
+
+A `/ca reset` keeps those markers, so a reset stays a reset instead of the
+player being seeded straight back on their next join.
 
 > ⚠️ Players may **immediately complete** achievements they had already earned
 > the statistics for, which pays out rewards and fires broadcasts. That's the

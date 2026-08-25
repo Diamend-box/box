@@ -268,9 +268,11 @@ public class AchievementService {
      * kills already on the board leave 50 to go on a "kill 200 players"
      * objective rather than 200.
      *
-     * <p>Only requirements with no progress yet are seeded, so this can run as
-     * often as it likes without ever double-counting: once an objective is
-     * ticking, the live events own it.
+     * <p>Each objective is seeded at most once per player, recorded against the
+     * objective's own shape, so this can run as often as it likes without ever
+     * double-counting. It is deliberately <em>not</em> keyed on "has no progress
+     * yet": a player who scored a single kill between creating the achievement
+     * and the first backfill would otherwise be locked out of it permanently.
      */
     public void backfill(Player player) {
         if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
@@ -286,14 +288,22 @@ public class AchievementService {
             for (int i = 0; i < requirements.size(); i++) {
                 Requirement requirement = requirements.get(i);
                 String key = PlayerData.requirementKey(achievement.getId(), i);
-                if (data.getProgress(key) > 0) {
-                    continue; // already under way — leave it to the live events
+                String marker = key + "@" + requirement.backfillSignature();
+                if (data.isBackfilled(marker)) {
+                    continue; // seeded once already — the live events own it now
                 }
+                // Marked even when the statistics can't answer it, so an
+                // objective is considered once and not re-examined every join.
+                data.markBackfilled(marker);
                 int total = StatisticBackfill.total(player, requirement);
                 if (total <= 0) {
                     continue;
                 }
-                data.setProgress(key, Math.min(total, requirement.requiredAmount()));
+                int seeded = Math.min(total, requirement.requiredAmount());
+                if (seeded <= data.getProgress(key)) {
+                    continue; // live progress already got further on its own
+                }
+                data.setProgress(key, seeded);
                 changed = true;
             }
             if (changed && isComplete(achievement, data)) {

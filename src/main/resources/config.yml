@@ -44,8 +44,8 @@ playtime-tracking: true
 # 150/200 instead of 0. Only objectives the server actually keeps a statistic
 # for are seeded (blocks mined/placed, items crafted/picked up, mobs and players
 # killed, fish caught, deaths); custom item names and specific death causes have
-# no statistic behind them and start from zero. An objective is only ever seeded
-# while it is still at zero, so this never double-counts.
+# no statistic behind them and start from zero. Each objective is seeded once per
+# player and seeding never lowers progress, so this can never double-count.
 #
 # NOTE: players may immediately complete achievements they had already earned
 # the statistics for, which pays out the rewards and broadcasts. Set this to

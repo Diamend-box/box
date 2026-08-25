@@ -106,6 +106,15 @@ public class Requirement {
         this.matchByName = matchByName;
     }
 
+    /**
+     * Identifies what this requirement asks for, so the statistics backfill can
+     * seed it exactly once per player — and seed it afresh if the objective is
+     * later edited to ask for something different.
+     */
+    public String backfillSignature() {
+        return trigger.name() + ":" + (target == null ? "" : target) + (matchByName ? ":name" : "");
+    }
+
     /** Units of progress needed to finish this requirement. */
     public int requiredAmount() {
         return trigger.isProgress() ? Math.max(1, amount) : 1;
