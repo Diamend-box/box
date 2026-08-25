@@ -147,6 +147,9 @@ public class BoostListener implements Listener {
             return;
         }
         for (ItemStack gained : gains(note.before, snapshot(player))) {
+            if (!module.guard().allows(gained)) {
+                continue;
+            }
             if (module.oresOnly() && !plugin.ores().isOre(gained.getType())) {
                 continue;
             }
@@ -288,6 +291,12 @@ public class BoostListener implements Listener {
      */
     private void grow(Item entity, double multiplier) {
         ItemStack stack = entity.getItemStack();
+        // Never multiply something whose worth is inside it rather than in its
+        // count — a shulker box full of loot doubles as its contents, not as a
+        // block. DropGuard has the whole argument.
+        if (!module.guard().allows(stack)) {
+            return;
+        }
         if (module.oresOnly() && !plugin.ores().isOre(stack.getType())) {
             return;
         }

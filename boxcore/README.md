@@ -129,7 +129,12 @@ Six ship today:
   Drop boosts multiply the items that actually appear next to a broken block
   rather than only the ones the game itself produced — a plugin that replaces
   drops entirely cancels the break and spawns its own, which no event priority
-  reaches. An actionbar line keeps the multiplier and the
+  reaches. What they never multiply is an item carrying an inventory — a shulker
+  box drops as one item holding all of its contents, so doubling it would
+  duplicate everything inside, and that refusal isn't configurable. Unstackable
+  items are left alone too by default (`boosts.drops.multiply-unstackable`),
+  along with anything listed in `boosts.drops.never-multiply`.
+  An actionbar line keeps the multiplier and the
   time left on screen while it runs, and a boost never ends silently — there's a
   warning before, and a line when it does.
 - 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while

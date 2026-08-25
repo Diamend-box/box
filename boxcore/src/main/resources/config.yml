@@ -298,6 +298,28 @@ boosts:
     # drops boost running. Turn it off if you see drops being doubled.
     capture-inventory: true
 
+    # Materials a boost must never multiply, on top of the built-in rules.
+    #
+    # Anything holding an inventory is always refused and cannot be turned
+    # back on. A shulker box drops as a single item carrying all of its
+    # contents, so doubling that item doubles every stack inside it — that
+    # is duplication, not a bigger yield. Filled bundles and pre-filled
+    # container items are refused for the same reason.
+    #
+    # This list is for the things specific to your server that are safe by
+    # those rules but still should not double — a crate key, a currency
+    # item, anything you sell.
+    never-multiply: []
+
+    # Whether items that cannot stack may be multiplied.
+    #
+    # Off by default: an unstackable item has no quantity to multiply, so
+    # copying one mints a second unique thing instead of doubling an
+    # amount, and a tool arriving in fours is rarely what a drops boost was
+    # meant to do. Turn it on if your custom drops are unstackable by
+    # design and you do want them boosted.
+    multiply-unstackable: false
+
   # How often (in ticks) to expire finished boosts and open scheduled
   # windows. 100 ticks is five seconds, which is plenty.
   check-ticks: 100

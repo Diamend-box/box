@@ -179,9 +179,14 @@ and say which slot (count from 0, top-left, left to right).
 - [ ] Let one expire (or `/box boost clear global`) — you get told, not left to
       notice.
 - [ ] Two boosts at once: do they multiply, and does the cap message appear?
+- [ ] **Dupe check.** Fill a shulker box, place it, and break it with a drops
+      boost running. You should get **one** box back, contents intact. Try it
+      with the box empty too, and with the boost at 4x.
+- [ ] Break something unstackable while boosted (a bed) — you should get one.
 
 **Data I want:** any point where the actionbar fights with something else for
-the same line (the travel countdown is the one to watch — see §6).
+the same line (the travel countdown is the one to watch — see §6). And anything
+else you can get to come out of a broken block in multiples that shouldn't.
 
 ---
 

@@ -76,6 +76,7 @@ public class BoostsModule implements BoxModule {
     private boolean oresOnly = false;
     private int dropWindowTicks = 5;
     private boolean captureInventory = true;
+    private DropGuard guard = DropGuard.defaults();
     private boolean announce = true;
     private int checkTicks = 100;
     private ZoneId zone = ZoneId.systemDefault();
@@ -143,6 +144,7 @@ public class BoostsModule implements BoxModule {
         dropWindowTicks = Math.max(1, section == null
                 ? 5 : section.getInt("drops.window-ticks", 5));
         captureInventory = section == null || section.getBoolean("drops.capture-inventory", true);
+        guard = loadGuard(section);
         announce = section == null || section.getBoolean("announce", true);
         checkTicks = Math.max(20, section == null ? 100 : section.getInt("check-ticks", 100));
 
@@ -158,6 +160,31 @@ public class BoostsModule implements BoxModule {
         }
         loadWindows(section);
         loadItems(section);
+    }
+
+    /**
+     * Builds the rule about what a drops boost is allowed to multiply.
+     *
+     * <p>The built-in half of it is not configurable — see {@link DropGuard} —
+     * so this only reads the two things an operator can say: extra materials to
+     * leave alone, and whether unstackable items are fair game after all.
+     */
+    private DropGuard loadGuard(ConfigurationSection section) {
+        List<Material> denied = new ArrayList<>();
+        List<String> names = section == null
+                ? List.of()
+                : section.getStringList("drops.never-multiply");
+        for (String name : names) {
+            Material material = Items.material(name, null);
+            if (material == null) {
+                plugin.getLogger().warning("boosts.drops.never-multiply: '" + name
+                        + "' is not a material, ignoring it.");
+            } else {
+                denied.add(material);
+            }
+        }
+        return new DropGuard(denied, section != null
+                && section.getBoolean("drops.multiply-unstackable", false));
     }
 
     private void loadItems(ConfigurationSection section) {
@@ -568,6 +595,17 @@ public class BoostsModule implements BoxModule {
 
     public boolean oresOnly() {
         return oresOnly;
+    }
+
+    /**
+     * What a drops boost is allowed to multiply.
+     *
+     * <p>Consulted for every drop, however it reached the player, because the
+     * duplication it exists to stop does not care which of the three capture
+     * paths found the item.
+     */
+    public DropGuard guard() {
+        return guard;
     }
 
     public double maxMultiplier() {

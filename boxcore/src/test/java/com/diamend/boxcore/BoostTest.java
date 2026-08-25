@@ -4,6 +4,7 @@ import com.diamend.boxcore.boost.Boost;
 import com.diamend.boxcore.boost.BoostItems;
 import com.diamend.boxcore.boost.BoostType;
 import com.diamend.boxcore.boost.BoostsModule;
+import com.diamend.boxcore.boost.DropGuard;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.util.Durations;
 import org.bukkit.Material;
@@ -295,6 +296,54 @@ class BoostTest {
                 "the name shows the actual duration: " + name);
         assertFalse(name.contains("30m") || name.contains("2x"),
                 "no trace of the configured figures is left behind: " + name);
+    }
+
+    // ------------------------------------------------------------------
+    // What a boost is allowed to multiply
+    // ------------------------------------------------------------------
+
+    @Test
+    void aShulkerBoxIsNeverMultiplied() {
+        // The exploit: a shulker box drops as one item carrying everything
+        // inside it, so doubling the item duplicates twenty-seven stacks.
+        // Refused even by a guard that has been told to allow unstackables,
+        // because this rule is not the unstackable rule.
+        DropGuard permissive = new DropGuard(List.of(), true);
+        assertFalse(permissive.allows(new ItemStack(Material.SHULKER_BOX)));
+        assertFalse(permissive.allows(new ItemStack(Material.RED_SHULKER_BOX)));
+        assertTrue(DropGuard.carriesContents(new ItemStack(Material.CYAN_SHULKER_BOX)));
+    }
+
+    @Test
+    void plainDropsAreStillMultiplied() {
+        DropGuard guard = DropGuard.defaults();
+        assertTrue(guard.allows(new ItemStack(Material.DIAMOND)));
+        assertTrue(guard.allows(new ItemStack(Material.COBBLESTONE, 12)));
+        assertFalse(guard.allows(new ItemStack(Material.AIR)));
+        assertFalse(guard.allows(null));
+    }
+
+    @Test
+    void unstackableItemsAreLeftAloneUnlessAskedFor() {
+        assertFalse(DropGuard.defaults().allows(new ItemStack(Material.DIAMOND_PICKAXE)),
+                "an item with no quantity to multiply is not doubled by default");
+        assertTrue(new DropGuard(List.of(), true).allows(new ItemStack(Material.DIAMOND_PICKAXE)),
+                "unless the server says its custom drops need it");
+    }
+
+    @Test
+    void theNeverMultiplyListIsHonoured() {
+        DropGuard guard = new DropGuard(List.of(Material.DIAMOND), false);
+        assertFalse(guard.allows(new ItemStack(Material.DIAMOND)));
+        assertTrue(guard.allows(new ItemStack(Material.EMERALD)));
+    }
+
+    @Test
+    void theModuleShipsWithTheSafeDefaults() {
+        DropGuard guard = boosts().guard();
+        assertFalse(guard.allows(new ItemStack(Material.SHULKER_BOX)),
+                "shipped config must not leave the dupe open");
+        assertTrue(guard.allows(new ItemStack(Material.DIAMOND)));
     }
 
     // ------------------------------------------------------------------
