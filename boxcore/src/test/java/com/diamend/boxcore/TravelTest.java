@@ -3,6 +3,7 @@ package com.diamend.boxcore;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.TravelMenu;
 import com.diamend.boxcore.travel.CombatTagger;
+import com.diamend.boxcore.travel.TravelItems;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.travel.TravelService;
 import com.diamend.boxcore.travel.Warp;
@@ -12,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -377,6 +379,141 @@ class TravelTest {
         assertTrue(player.performCommand("box warp set spawn"));
 
         assertNull(module().warps().get("spawn"), "no admin permission, no warp");
+    }
+
+    // ------------------------------------------------------------------
+    // Tickets and maps
+    // ------------------------------------------------------------------
+
+    /** A ticket to the given warp, in the player's hand. */
+    private ItemStack ticket(PlayerMock player, String warpId) {
+        ItemStack item = module().items().create(
+                new TravelItems.Payload("test-ticket", warpId, TravelItems.Mode.TRAVEL),
+                TravelItems.Appearance.defaults(), 1, module().warps().get(warpId));
+        assertNotNull(item);
+        player.getInventory().addItem(item);
+        return item;
+    }
+
+    private int carried(PlayerMock player) {
+        int total = 0;
+        for (ItemStack held : player.getInventory().getContents()) {
+            if (module().items().read(held) != null) {
+                total += held.getAmount();
+            }
+        }
+        return total;
+    }
+
+    @Test
+    void anItemSaysWhatItIsWhenReadBack() {
+        ItemStack item = module().items().create(
+                new TravelItems.Payload("map", TravelItems.ANY, TravelItems.Mode.UNLOCK),
+                TravelItems.Appearance.defaults(), 1, null);
+
+        TravelItems.Payload read = module().items().read(item);
+        assertNotNull(read);
+        assertEquals(TravelItems.Mode.UNLOCK, read.mode());
+        assertTrue(read.isAny());
+        assertNull(module().items().read(new ItemStack(Material.PAPER)),
+                "an ordinary item is not a ticket");
+    }
+
+    @Test
+    void aTicketTakesYouThereAndIsSpentOnArrival() {
+        Warp mines = warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+        ticket(player, "mines");
+
+        assertFalse(module().useItem(player, module().items().read(
+                player.getInventory().getItemInMainHand())),
+                "a ticket pays for itself on arrival, not on use");
+
+        assertEquals(mines.location().getBlockX(), player.getLocation().getBlockX());
+        assertEquals(0, carried(player), "and then it's gone");
+    }
+
+    @Test
+    void aTicketIsTheWarpsPermission() {
+        // Buying one is what the permission would have been for. The check it
+        // does not skip is the combat tag — that's the next test.
+        warp("vault", at(300, 64, 300), "boxcore.warp.vault");
+        PlayerMock player = server.addPlayer();
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+        ticket(player, "vault");
+
+        module().useItem(player, module().items().read(
+                player.getInventory().getItemInMainHand()));
+
+        assertEquals(300, player.getLocation().getBlockX(), "it let them in anyway");
+    }
+
+    @Test
+    void aTicketWontGetYouOutOfAFight() {
+        warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+        ticket(player, "mines");
+        module().combat().tag(player);
+
+        module().useItem(player, module().items().read(
+                player.getInventory().getItemInMainHand()));
+
+        assertEquals(0, player.getLocation().getBlockX(), "still where they were");
+        assertEquals(1, carried(player), "and the ticket is still theirs");
+    }
+
+    @Test
+    void aTicketToNowhereIsNotEaten() {
+        PlayerMock player = server.addPlayer();
+        player.teleport(at(0, 64, 0));
+        ticket(player, "deleted-place");
+
+        assertFalse(module().useItem(player, module().items().read(
+                player.getInventory().getItemInMainHand())));
+        assertEquals(1, carried(player), "nothing happened, so nothing was spent");
+    }
+
+    @Test
+    void aMapPutsThePlaceOnYourList() {
+        Warp mines = warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+
+        TravelItems.Payload map =
+                new TravelItems.Payload("map", "mines", TravelItems.Mode.UNLOCK);
+        assertTrue(module().useItem(player, map), "it did something, so it's spent");
+        assertTrue(profile(player).hasDiscovered(mines.id()));
+
+        assertFalse(module().useItem(player, map),
+                "using a second one on a place you already know keeps it");
+    }
+
+    @Test
+    void anAnyMapUnlocksEverythingYouMaySee() {
+        warp("mines", at(300, 64, 300), "");
+        warp("shop", at(-300, 64, 0), "");
+        warp("staff", at(0, 200, 0), "boxcore.warp.staff");
+        PlayerMock player = server.addPlayer();
+
+        assertTrue(module().useItem(player,
+                new TravelItems.Payload("map", TravelItems.ANY, TravelItems.Mode.UNLOCK)));
+
+        assertTrue(profile(player).hasDiscovered("mines"));
+        assertTrue(profile(player).hasDiscovered("shop"));
+        assertFalse(profile(player).hasDiscovered("staff"),
+                "a map can't show you somewhere you aren't allowed to go");
+    }
+
+    @Test
+    void theShippedItemsLoad() {
+        assertTrue(module().itemIds().contains("spawn-ticket"));
+        assertTrue(module().itemIds().contains("world-map"));
+        assertNotNull(module().createItem("spawn-ticket", 1));
+        assertNull(module().createItem("no-such-item", 1));
     }
 
     @Test

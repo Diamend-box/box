@@ -463,6 +463,52 @@ travel:
   #   file      however warps.yml happens to list them
   menu-order: found
 
+  # Items that get you to a destination. Hand one out with
+  # /box warp item <id> [player] [amount], or sell it from a shop.
+  #
+  # Two modes:
+  #   travel  a ticket: one trip there, spent when you arrive. Being cut
+  #           short by a sword costs you the trip, not the ticket.
+  #   unlock  a map: puts the place on your travel list for good, exactly
+  #           as if you'd walked to it.
+  #
+  # A ticket stands in for the destination's permission — that is what
+  # buying one is for — but never for the combat tag. An item that
+  # teleports you out of a fight would be worth more as an escape than
+  # as travel, so it refuses while you're tagged and stays in your
+  # inventory.
+  #
+  # 'warp' is a warps.yml id, or 'any' with mode: unlock for every
+  # destination the holder is allowed to see. Names and lore take
+  # <warp>, <mode> and <id>; don't type the destination in by hand or it
+  # goes stale the moment the place is renamed.
+  items:
+    spawn-ticket:
+      warp: spawn
+      mode: travel
+      item:
+        material: PAPER
+        name: "&b&lTravel Ticket &7(<warp>)"
+        lore:
+          - "&7One trip to &f<warp>&7."
+          - "&7Spent when you arrive."
+          - ""
+          - "&8Right-click to use."
+        glow: true
+
+    world-map:
+      warp: any
+      mode: unlock
+      item:
+        material: FILLED_MAP
+        name: "&e&lExplorer's Map"
+        lore:
+          - "&7Adds every destination to your"
+          - "&7travel list, for good."
+          - ""
+          - "&8Right-click to use."
+        glow: true
+
 # ---------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------
@@ -505,6 +551,8 @@ messages:
   travel-in-combat: "<red>Not while you're in combat — <white><time></white> left."
   travel-discovered: "<green>You found <white><warp></white>! It's on your travel list now."
   travel-unavailable: "<red><white><warp></white> isn't reachable right now."
+  travel-item-known: "<gray>You already know everywhere that would have shown you — keeping it."
+  travel-item-busy: "<yellow>You're already travelling."
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."

@@ -120,7 +120,11 @@ Six ship today:
   is running, with live countdowns and a row of the boost items you're carrying
   that you can click to start. An item with `global: true` starts a server-wide
   boost instead of a personal one, announced and saved exactly as if staff had
-  run the command, and `/box boost item` can override how long any of them
+  run the command. Boost items come at any strength: everything after the id is
+  read by its shape rather than its position, so `5x` is a strength and `5` is a
+  count — `/box boost item drops-2x 3 5x 1h` is three 5x-for-an-hour items. A
+  bare boost type works as the id (`/box boost item drops 6x 1d`) and mints one
+  no config entry has to exist for, and `/box boost item` can override how long any of them
   lasts or how strong it is — `<id> [player] [amount] [duration] [multiplier]`
   — without a config entry existing to support the one-off. Both overrides are
   written onto the item along with everything else, so its name and lore (built
@@ -157,6 +161,14 @@ Six ship today:
   game: `/box warp` opens an editor where a destination is made where you stand,
   wears whatever you're holding, and has its description, permission and
   discovery radius set by clicking. Nothing needs a text editor or a restart.
+  Destinations can also be sold or given as items (`travel.items`, handed out
+  with `/box warp item <id>`): a **ticket** is one trip, spent when you arrive
+  rather than when you use it, so a trip cut short by a sword doesn't cost you
+  the ticket too; a **map** adds the place to your list for good, and `warp: any`
+  makes one that adds every place you're allowed to see. A ticket stands in for
+  the destination's permission — that's what buying one is for — but never for
+  the combat tag, because an item that teleports you out of a fight would be
+  worth more as an escape than as travel.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -216,9 +228,10 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box warp perm <id> [permission\|none]` | Who can use it | `boxcore.admin` |
 | `/box warp radius <id> <blocks>` | How close counts as finding it | `boxcore.admin` |
 | `/box warp <tp\|delete\|list> [id]` | Go there, remove it, or list them | `boxcore.admin` |
+| `/box warp item <id> [player] [amount]` | Give a travel ticket or map | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
-| `/box boost item <id> [player] [amount] [duration] [mult]` | Give a boost item | `boxcore.admin` |
+| `/box boost item <id\|type> [player] [amount] [30m] [5x] [global]` | Give a boost item, any strength | `boxcore.admin` |
 | `/box boost clear [global\|<player>]` | End boosts early | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
 | `/box modules [list]` | Switch modules on and off in a menu, or list them as text | `boxcore.admin` |

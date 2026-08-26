@@ -36,8 +36,16 @@ public class TravelService {
         CANCELLED
     }
 
-    /** One trip in progress. */
-    private record Trip(Warp warp, Location from, int secondsLeft, BukkitTask task) {
+    /**
+     * One trip in progress.
+     *
+     * @param onArrive run once the player is actually there, or null. This is
+     *                 how a travel ticket gets spent: on arrival rather than on
+     *                 use, so a trip cut short by a sword doesn't cost the
+     *                 ticket as well as the fight.
+     */
+    private record Trip(Warp warp, Location from, int secondsLeft, BukkitTask task,
+                        Runnable onArrive) {
     }
 
     private final BoxCorePlugin plugin;
@@ -100,10 +108,26 @@ public class TravelService {
      * delay shouldn't pay for a scheduled task to deliver it.
      */
     public Outcome begin(Player player, Warp warp) {
+        return begin(player, warp, null, false);
+    }
+
+    /**
+     * Begins a trip somebody paid for.
+     *
+     * @param onArrive         run when they get there, so the thing that bought
+     *                         the trip is spent on arrival rather than on use
+     * @param ignorePermission whether to skip the warp's permission check —
+     *                         true for a ticket, because holding the ticket
+     *                         <em>is</em> the permission. The combat check is
+     *                         never skipped: a ticket that teleports you out of
+     *                         a fight would be worth more as an escape than as
+     *                         travel, and this is a PvP server.
+     */
+    public Outcome begin(Player player, Warp warp, Runnable onArrive, boolean ignorePermission) {
         if (player == null || warp == null) {
             return Outcome.UNKNOWN_DESTINATION;
         }
-        if (!warp.allows(player)) {
+        if (!ignorePermission && !warp.allows(player)) {
             return Outcome.NO_PERMISSION;
         }
         if (combat.isTagged(player)) {
@@ -116,14 +140,15 @@ public class TravelService {
             return Outcome.ALREADY_TRAVELLING;
         }
         if (warmupSeconds <= 0) {
-            arrive(player, warp);
+            arrive(player, warp, onArrive);
             return Outcome.ARRIVED;
         }
 
         UUID uuid = player.getUniqueId();
         BukkitTask task = plugin.getServer().getScheduler()
                 .runTaskTimer(plugin, () -> tick(uuid), 20L, 20L);
-        trips.put(uuid, new Trip(warp, player.getLocation().clone(), warmupSeconds, task));
+        trips.put(uuid, new Trip(warp, player.getLocation().clone(), warmupSeconds, task,
+                onArrive));
         showCountdown(player, warp, warmupSeconds);
         plugin.messages().send(player, "travel-starting",
                 "warp", Text.plain(warp.display()),
@@ -144,10 +169,10 @@ public class TravelService {
         int left = trip.secondsLeft() - 1;
         if (left <= 0) {
             stop(uuid);
-            arrive(player, trip.warp());
+            arrive(player, trip.warp(), trip.onArrive());
             return;
         }
-        trips.put(uuid, new Trip(trip.warp(), trip.from(), left, trip.task()));
+        trips.put(uuid, new Trip(trip.warp(), trip.from(), left, trip.task(), trip.onArrive()));
         showCountdown(player, trip.warp(), left);
     }
 
@@ -208,14 +233,19 @@ public class TravelService {
         combat.clear();
     }
 
-    private void arrive(Player player, Warp warp) {
+    private void arrive(Player player, Warp warp, Runnable onArrive) {
         Location to = warp.location();
         if (to == null || to.getWorld() == null) {
+            // Nothing happened, so nothing is spent — whatever bought this trip
+            // is still in their inventory to try again with.
             plugin.messages().send(player, "travel-unavailable",
                     "warp", Text.plain(warp.display()));
             return;
         }
         player.teleport(to);
+        if (onArrive != null) {
+            onArrive.run();
+        }
         plugin.messages().send(player, "travel-arrived", "warp", Text.plain(warp.display()));
         player.sendActionBar(Text.parse("<green>Arrived at <white>"
                 + Text.plain(warp.display())));

@@ -5,17 +5,24 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.TravelMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
+import com.diamend.boxcore.util.Items;
 import com.diamend.boxcore.util.Sounds;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Fast travel: a list of destinations a player finds by walking into them.
@@ -62,10 +69,16 @@ public class TravelModule implements BoxModule {
         }
     }
 
+    /** A travel item as configured: what it grants, and how it looks. */
+    public record ItemDefinition(TravelItems.Payload payload, TravelItems.Appearance appearance) {
+    }
+
     private final BoxCorePlugin plugin;
     private final WarpManager warps;
     private final CombatTagger combat;
     private final TravelService travel;
+    private final TravelItems items;
+    private final Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
 
     private boolean announceDiscovery = true;
     private boolean sounds = true;
@@ -78,6 +91,7 @@ public class TravelModule implements BoxModule {
         this.warps = new WarpManager(plugin);
         this.combat = new CombatTagger();
         this.travel = new TravelService(plugin, combat);
+        this.items = new TravelItems(plugin);
     }
 
     @Override
@@ -117,6 +131,185 @@ public class TravelModule implements BoxModule {
         facing = Facing.parse(plugin.getConfig().getString("travel.snap.facing", "nearest"));
         travel.setSounds(sounds);
         warps.load();
+        loadItems();
+    }
+
+    // ------------------------------------------------------------------
+    // Travel items
+    // ------------------------------------------------------------------
+
+    private void loadItems() {
+        definitions.clear();
+        ConfigurationSection root = plugin.getConfig().getConfigurationSection("travel.items");
+        if (root == null) {
+            return;
+        }
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection entry = root.getConfigurationSection(id);
+            if (entry == null) {
+                continue;
+            }
+            String where = "travel.items." + id;
+            String warpId = entry.getString("warp", "");
+            if (warpId == null || warpId.isBlank()) {
+                plugin.getLogger().warning(where + ".warp names no destination, skipping.");
+                continue;
+            }
+            warpId = warpId.trim().toLowerCase(Locale.ROOT);
+            TravelItems.Mode mode = TravelItems.Mode.parse(entry.getString("mode", "travel"));
+            if (mode == TravelItems.Mode.TRAVEL && TravelItems.ANY.equals(warpId)) {
+                // A ticket has to know where it is taking you before it is
+                // spent. "Anywhere" only makes sense for the kind that unlocks.
+                plugin.getLogger().warning(where + ": warp 'any' only works with mode 'unlock',"
+                        + " skipping.");
+                continue;
+            }
+            definitions.put(id.toLowerCase(Locale.ROOT), new ItemDefinition(
+                    new TravelItems.Payload(id, warpId, mode),
+                    readAppearance(entry.getConfigurationSection("item"), mode)));
+        }
+    }
+
+    private TravelItems.Appearance readAppearance(ConfigurationSection item, TravelItems.Mode mode) {
+        Material fallback = mode == TravelItems.Mode.UNLOCK ? Material.FILLED_MAP : Material.PAPER;
+        if (item == null) {
+            return new TravelItems.Appearance(fallback, null, null, 0, true);
+        }
+        List<String> lore = item.isList("lore") ? item.getStringList("lore") : null;
+        return new TravelItems.Appearance(
+                Items.material(item.getString("material"), fallback),
+                item.getString("name"),
+                lore == null || lore.isEmpty() ? null : lore,
+                Math.max(0, item.getInt("model-data", 0)),
+                item.getBoolean("glow", true));
+    }
+
+    public TravelItems items() {
+        return items;
+    }
+
+    public Set<String> itemIds() {
+        return Collections.unmodifiableSet(definitions.keySet());
+    }
+
+    /** Builds a configured travel item, or null when no such item is configured. */
+    public ItemStack createItem(String id, int amount) {
+        ItemDefinition definition = definitions.get(id == null
+                ? ""
+                : id.trim().toLowerCase(Locale.ROOT));
+        if (definition == null) {
+            return null;
+        }
+        return items.create(definition.payload(), definition.appearance(), amount,
+                warps.get(definition.payload().warpId()));
+    }
+
+    /**
+     * Spends a travel item, or explains why it can't be spent.
+     *
+     * <p>Nothing is taken from the player unless the item actually did
+     * something. A ticket to a destination that has since been deleted, or one
+     * used in combat, stays in the inventory to be used later or refunded — the
+     * alternative is a player who paid for a trip, didn't get one, and has
+     * nothing left to show a staff member.
+     *
+     * @return whether to take the item now. A ticket answers no even when it
+     *         started a trip, because it pays for itself on arrival instead.
+     */
+    public boolean useItem(Player player, TravelItems.Payload payload) {
+        if (player == null || payload == null) {
+            return false;
+        }
+        return payload.mode() == TravelItems.Mode.UNLOCK
+                ? unlock(player, payload)
+                : ticket(player, payload);
+    }
+
+    /** Puts one destination — or all of them — on the player's list for good. */
+    private boolean unlock(Player player, TravelItems.Payload payload) {
+        List<Warp> targets = new ArrayList<>();
+        if (payload.isAny()) {
+            targets.addAll(visibleTo(player));
+        } else {
+            Warp warp = warps.get(payload.warpId());
+            if (warp == null) {
+                plugin.messages().send(player, "travel-unavailable", "warp", payload.warpId());
+                return false;
+            }
+            targets.add(warp);
+        }
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        int found = 0;
+        for (Warp warp : targets) {
+            if (profile.discoverWarp(warp.id())) {
+                found++;
+                plugin.messages().send(player, "travel-discovered",
+                        "warp", Text.plain(warp.display()));
+            }
+        }
+        if (found == 0) {
+            // Already knew everywhere it would have shown them. Saying so and
+            // keeping the item is better than eating it for nothing.
+            plugin.messages().send(player, "travel-item-known");
+            return false;
+        }
+        if (sounds) {
+            Sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.0f);
+        }
+        return true;
+    }
+
+    /**
+     * Starts a one-trip ticket, spending it only once the player arrives.
+     *
+     * <p>The ticket stands in for the warp's permission — that is what buying
+     * one is for — but not for the combat tag, which is the module's whole
+     * safety model and not something a shop should be able to sell around.
+     */
+    private boolean ticket(Player player, TravelItems.Payload payload) {
+        Warp warp = warps.get(payload.warpId());
+        if (warp == null) {
+            plugin.messages().send(player, "travel-unavailable", "warp", payload.warpId());
+            return false;
+        }
+        TravelService.Outcome outcome = travel.begin(player, warp,
+                () -> consumeOne(player, payload), true);
+        if (outcome == TravelService.Outcome.ALREADY_TRAVELLING) {
+            plugin.messages().send(player, "travel-item-busy");
+        }
+        // Whether it started or not, nothing is taken here. A trip that started
+        // pays for itself on arrival; one that didn't costs nothing.
+        return false;
+    }
+
+    /**
+     * Takes one matching travel item out of the player's inventory.
+     *
+     * <p>Searched for rather than held onto, because a warmup is long enough to
+     * move the item to another slot, and a stack that has been moved is not the
+     * same object any more.
+     */
+    private void consumeOne(Player player, TravelItems.Payload payload) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            ItemStack held = contents[slot];
+            TravelItems.Payload carried = items.read(held);
+            if (carried == null
+                    || !carried.warpId().equalsIgnoreCase(payload.warpId())
+                    || carried.mode() != payload.mode()) {
+                continue;
+            }
+            int left = held.getAmount() - 1;
+            // Written back by slot rather than by mutating what getContents
+            // handed over, so this doesn't depend on that array being live.
+            if (left <= 0) {
+                player.getInventory().setItem(slot, null);
+            } else {
+                held.setAmount(left);
+                player.getInventory().setItem(slot, held);
+            }
+            return;
+        }
     }
 
     /**

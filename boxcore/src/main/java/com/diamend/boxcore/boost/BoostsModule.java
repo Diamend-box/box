@@ -257,18 +257,45 @@ public class BoostsModule implements BoxModule {
      * @param multiplier how strong it should be, or 0 to use the configured one
      */
     public ItemStack createItem(String id, int amount, long millis, double multiplier) {
-        ItemDefinition definition = definitions.get(id == null
-                ? ""
-                : id.trim().toLowerCase(Locale.ROOT));
+        return createItem(id, amount, millis, multiplier, false);
+    }
+
+    /**
+     * The same, and able to build an item no config entry describes.
+     *
+     * <p>When {@code id} names a boost <em>type</em> rather than a configured
+     * item, one is minted on the spot from the default appearance. A one-off
+     * prize — a 6x drops boost for the tournament winner — shouldn't need a
+     * config entry that then has to be kept forever so the item stays valid, and
+     * it doesn't: the item carries what it does.
+     *
+     * @param global whether to force a server-wide item. A configured entry's
+     *               own {@code global} flag stands when this is false.
+     */
+    public ItemStack createItem(String id, int amount, long millis, double multiplier,
+                                boolean global) {
+        String key = id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
+        ItemDefinition definition = definitions.get(key);
         if (definition == null) {
-            return null;
+            List<BoostType> types = typesFor(key);
+            if (types.isEmpty()) {
+                return null;
+            }
+            // Nothing configured to fall back on, so both figures have to be
+            // given rather than defaulted — an ad-hoc item with a made-up
+            // strength would be a surprise to whoever ends up holding it.
+            if (multiplier <= 1.0 || millis <= 0) {
+                return null;
+            }
+            return items.create(new BoostItems.Payload(key, types, multiplier, millis, global),
+                    BoostItems.Appearance.defaults(), amount);
         }
         BoostItems.Payload payload = definition.payload();
-        if (millis > 0 || multiplier > 0) {
+        if (millis > 0 || multiplier > 0 || global) {
             payload = new BoostItems.Payload(payload.id(), payload.types(),
                     multiplier > 0 ? multiplier : payload.multiplier(),
                     millis > 0 ? millis : payload.durationMillis(),
-                    payload.global());
+                    global || payload.global());
         }
         return items.create(payload, definition.appearance(), amount);
     }

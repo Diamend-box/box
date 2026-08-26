@@ -299,6 +299,60 @@ class BoostTest {
     }
 
     // ------------------------------------------------------------------
+    // Items of any strength
+    // ------------------------------------------------------------------
+
+    @Test
+    void anItemCanBeMintedFromATypeWithNoConfigEntry() {
+        // A one-off prize shouldn't need a config entry kept forever so that
+        // the item stays valid.
+        ItemStack item = boosts().createItem("drops", 1, 3_600_000L, 6.0);
+        assertNotNull(item, "a bare type mints an item");
+
+        BoostItems.Payload payload = boosts().items().read(item);
+        assertNotNull(payload);
+        assertEquals(6.0, payload.multiplier());
+        assertEquals(3_600_000L, payload.durationMillis());
+        assertEquals(List.of(BoostType.DROPS), payload.types());
+    }
+
+    @Test
+    void anAdHocItemNeedsBothFiguresSpelledOut() {
+        assertNull(boosts().createItem("drops", 1, 0L, 6.0), "no length to fall back on");
+        assertNull(boosts().createItem("drops", 1, 3_600_000L, 0.0), "no strength either");
+        assertNull(boosts().createItem("nonsense", 1, 3_600_000L, 6.0));
+    }
+
+    @Test
+    void strengthIsReadFromTheArgumentThatLooksLikeOne() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        // 5x is a strength, 3 is a count — that is the whole rule, and it is
+        // what makes strength sayable without typing four other arguments.
+        assertTrue(player.performCommand("box boost item drops-2x 3 5x 1h"));
+
+        ItemStack given = player.getInventory().getItem(0);
+        assertNotNull(given, "they should be holding something");
+        assertEquals(3, given.getAmount(), "3 was the count");
+        BoostItems.Payload payload = boosts().items().read(given);
+        assertNotNull(payload);
+        assertEquals(5.0, payload.multiplier(), "5x was the strength");
+        assertEquals(3_600_000L, payload.durationMillis());
+    }
+
+    @Test
+    void aStrengthOverTheCapIsRefusedRatherThanPrintedOnTheItem() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box boost item drops-2x 99x 1h"));
+
+        assertNull(player.getInventory().getItem(0),
+                "an item claiming more than the cap can deliver is not made");
+    }
+
+    // ------------------------------------------------------------------
     // What a boost is allowed to multiply
     // ------------------------------------------------------------------
 
