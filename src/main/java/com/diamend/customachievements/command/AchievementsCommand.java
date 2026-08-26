@@ -55,6 +55,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "list" -> list(sender);
             case "admin", "manage" -> openMenu(sender, true);
             case "create", "new" -> create(sender);
+            case "trigger", "fire" -> trigger(sender, args);
             case "grant", "give" -> grant(sender, args);
             case "revoke", "take" -> revoke(sender, args);
             case "reset" -> reset(sender, args);
@@ -129,6 +130,60 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse(" <dark_gray>- " + status + " <white>" + achievement.getDisplayName()
                     + " <dark_gray>(" + achievement.getId() + ")"));
         }
+    }
+
+    /**
+     * {@code /ca trigger <player> <key> [amount|set <value>]} — fires a custom
+     * trigger key. Anything that can run a console command can drive an
+     * achievement through this: Skript, other plugins' reward commands, command
+     * blocks, datapacks.
+     */
+    private void trigger(CommandSender sender, String[] args) {
+        if (!hasAdmin(sender)) {
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(Text.parse("<red>Usage: /ca trigger <player> <key> [amount|set <value>]"));
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            // Progress needs the player's loaded data (and an unlock needs
+            // someone to hand the rewards to), so this one is online-only.
+            sender.sendMessage(Text.parse("<red><white>" + args[1] + "<red> is not online."));
+            return;
+        }
+        String key = args[2];
+        boolean set = args.length > 3 && args[3].equalsIgnoreCase("set");
+        String number = set ? (args.length > 4 ? args[4] : null) : (args.length > 3 ? args[3] : "1");
+        if (number == null) {
+            sender.sendMessage(Text.parse("<red>Usage: /ca trigger <player> <key> set <value>"));
+            return;
+        }
+        int value;
+        try {
+            value = Integer.parseInt(number.trim());
+        } catch (NumberFormatException ex) {
+            sender.sendMessage(Text.parse("<red><white>" + number + "<red> is not a whole number."));
+            return;
+        }
+        if (set) {
+            if (value < 0) {
+                sender.sendMessage(Text.parse("<red>A value to set can't be negative."));
+                return;
+            }
+            plugin.getAchievementService().setCustom(target, key, value);
+            sender.sendMessage(Text.parse("<green>Set <white>" + key + "<green> to <white>" + value
+                    + "<green> for <white>" + target.getName() + "<green>."));
+            return;
+        }
+        if (value <= 0) {
+            sender.sendMessage(Text.parse("<red>An amount to add must be 1 or more."));
+            return;
+        }
+        plugin.getAchievementService().handleCustom(target, key, value);
+        sender.sendMessage(Text.parse("<green>Fired <white>" + key + "<green> x<white>" + value
+                + "<green> for <white>" + target.getName() + "<green>."));
     }
 
     private void grant(CommandSender sender, String[] args) {
@@ -406,7 +461,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("list", "info", "top", "claim", "reopen"));
             if (sender.hasPermission(PERM_ADMIN)) {
-                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "reload"));
+                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "trigger", "reload"));
             }
             String prefix = args[0].toLowerCase(Locale.ROOT);
             for (String sub : subs) {
@@ -429,10 +484,18 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             return out;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset"))) {
+        if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset")
+                || sub.equals("trigger"))) {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (online.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
                     out.add(online.getName());
+                }
+            }
+        } else if (args.length == 3 && sub.equals("trigger")) {
+            // Suggest the keys the server's own achievements actually listen for.
+            for (String key : plugin.getAchievementManager().customTriggerKeys()) {
+                if (key.toLowerCase(Locale.ROOT).startsWith(args[2].toLowerCase(Locale.ROOT))) {
+                    out.add(key);
                 }
             }
         } else if (args.length == 3 && (sub.equals("grant") || sub.equals("revoke"))) {

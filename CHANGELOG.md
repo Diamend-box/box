@@ -4,6 +4,23 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.11.0]
+### Added
+- **`CUSTOM` trigger — drive achievements from Skript, other plugins, command
+  blocks and datapacks.** An objective can now listen for a **key you invent**
+  (`boss_kill`, `quest:step3`, …) instead of a Minecraft value, fired with
+  `/ca trigger <player> <key> [amount]`. Because it's an ordinary console
+  command, anything that can run one can advance an achievement with no API and
+  nothing to compile against — including plugins that run reward commands
+  (MythicMobs skills, quest and crate plugins, ExecutableItems, Citizens).
+  `/ca trigger <player> <key> set <value>` sets an absolute value instead of
+  adding, for scripts that already keep their own total. Keys are matched
+  case-insensitively, and a target of `ANY` matches every custom key.
+- **A small Java API** (`CustomAchievementsAPI`) for plugins that would rather
+  call directly than run a command: `trigger`, `set`, `hasCompleted`, `grant`
+  and `isAvailable`. Every call is a no-op when the plugin isn't installed, so
+  soft-dependants don't have to guard each one.
+
 ## [1.10.0]
 ### Added
 - **Achievements now credit what you'd already done before they existed.** Add a

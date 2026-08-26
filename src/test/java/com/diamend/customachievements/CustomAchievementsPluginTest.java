@@ -577,6 +577,61 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void customTriggerCountsUpAndUnlocks() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("boss_slayer");
+        achievement.setTrigger(TriggerType.CUSTOM);
+        achievement.setTarget("boss_kill");
+        achievement.setAmount(3);
+        plugin.getAchievementManager().put(achievement);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        plugin.getAchievementService().handleCustom(player, "boss_kill", 1);
+        // Keys are matched case-insensitively, so a script needn't match the case.
+        plugin.getAchievementService().handleCustom(player, "BOSS_KILL", 1);
+        assertEquals(2, data.getProgress(PlayerData.requirementKey("boss_slayer", 0)));
+        assertFalse(data.isCompleted("boss_slayer"), "2 of 3 isn't done yet");
+
+        plugin.getAchievementService().handleCustom(player, "boss_kill", 1);
+        assertTrue(data.isCompleted("boss_slayer"), "the third firing should unlock it");
+    }
+
+    @Test
+    void customTriggerIgnoresAKeyItDoesNotListenFor() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("specific_key");
+        achievement.setTrigger(TriggerType.CUSTOM);
+        achievement.setTarget("boss_kill");
+        achievement.setAmount(5);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().handleCustom(player, "quest_step", 4);
+        assertEquals(0, plugin.getPlayerDataManager().get(player.getUniqueId())
+                        .getProgress(PlayerData.requirementKey("specific_key", 0)),
+                "an unrelated key must not advance this objective");
+    }
+
+    @Test
+    void customTriggerCanSetAnAbsoluteValue() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("script_total");
+        achievement.setTrigger(TriggerType.CUSTOM);
+        achievement.setTarget("points");
+        achievement.setAmount(10);
+        plugin.getAchievementManager().put(achievement);
+
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        // A script pushing its own running total must not accumulate here.
+        plugin.getAchievementService().setCustom(player, "points", 4);
+        plugin.getAchievementService().setCustom(player, "points", 6);
+        assertEquals(6, data.getProgress(PlayerData.requirementKey("script_total", 0)));
+        assertFalse(data.isCompleted("script_total"));
+
+        plugin.getAchievementService().setCustom(player, "points", 10);
+        assertTrue(data.isCompleted("script_total"), "reaching the target should unlock it");
+    }
+
+    @Test
     void backfillStillCreditsAnObjectiveThatAlreadyScoredOneKill() {
         // The obvious way to test a new "kill 1000 players" achievement is to go
         // and kill someone. That must not cost the player their existing 150.

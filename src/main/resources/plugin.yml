@@ -19,6 +19,7 @@ commands:
       /achievements grant <p> <id> - Grant an achievement to a player
       /achievements revoke <p> <id>- Revoke an achievement from a player
       /achievements reset <player>  - Reset all of a player's achievements
+      /achievements trigger <p> <key> [n] - Fire a custom trigger (Skript/plugins)
       /achievements reload         - Reload configuration from disk
     aliases: [ca, ach, customachievements]
   careopen:

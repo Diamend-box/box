@@ -149,6 +149,9 @@ public class Requirement {
     public String describe() {
         return switch (trigger) {
             case MANUAL -> "Granted by staff";
+            case CUSTOM -> isWildcard()
+                    ? "Any custom trigger x" + amount
+                    : "Trigger \"" + target + "\" x" + amount;
             case REACH_LOCATION -> {
                 LocationTarget loc = getLocationTarget();
                 yield "Reach " + (loc != null ? loc.pretty() : target);

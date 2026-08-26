@@ -320,6 +320,24 @@ public class AchievementService {
     }
 
     /**
+     * Fires a custom trigger key for a player, advancing every {@code CUSTOM}
+     * objective whose key matches. This is the integration point for anything
+     * outside the plugin — Skript, other plugins, command blocks, datapacks —
+     * so the key is free text the server owner invents, not a Minecraft value.
+     */
+    public void handleCustom(Player player, String key, int amount) {
+        handle(player, TriggerType.CUSTOM, key, amount);
+    }
+
+    /**
+     * Sets matching {@code CUSTOM} objectives to an absolute value instead of
+     * adding to them, for scripts that already track their own running total.
+     */
+    public void setCustom(Player player, String key, int value) {
+        handleGauge(player, TriggerType.CUSTOM, key, value);
+    }
+
+    /**
      * Advances PLAYER_DEATH requirements. A death matches on either the damage
      * cause ({@code FALL}, {@code LAVA}, ...) or what killed the player
      * ({@code CREEPER}, a mob family like {@code #HOSTILE}, ...), so "die to

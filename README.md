@@ -105,6 +105,7 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
 | `/ca grant <player> <id>` | Grant an achievement (online or offline) | `customachievements.admin` |
 | `/ca revoke <player> <id>` | Revoke an achievement (online or offline) | `customachievements.admin` |
 | `/ca reset <player>` | Reset a player's achievements (online or offline) | `customachievements.admin` |
+| `/ca trigger <player> <key> [amount\|set <value>]` | Fire a **custom trigger** — the hook for Skript and other plugins | `customachievements.admin` |
 | `/ca reload` | Reload config + achievements from disk | `customachievements.admin` |
 
 ### Permissions
@@ -165,6 +166,7 @@ it back exactly where you left off — the in-progress draft is preserved.
 | Trigger | Uses target? | Counts... |
 | --- | --- | --- |
 | `MANUAL` | – | Only granted by command/API |
+| `CUSTOM` | Any key you invent | Fired by Skript, plugins, command blocks |
 | `BLOCK_BREAK` | Material | Blocks broken |
 | `BLOCK_PLACE` | Material | Blocks placed |
 | `ENTITY_KILL` | EntityType | Mobs killed |
@@ -179,6 +181,72 @@ it back exactly where you left off — the in-progress draft is preserved.
 | `PLAYTIME_HOURS` | – | Hours played (from server statistics) |
 | `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
 | `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
+
+### Custom triggers — driving achievements from anything else
+
+The `CUSTOM` trigger listens for a **key you invent**. Make an objective with
+trigger `CUSTOM`, target `boss_kill` and amount `10`, then fire it from
+anywhere:
+
+```
+/ca trigger <player> <key> [amount]        # add (default 1)
+/ca trigger <player> <key> set <value>     # set an absolute value
+```
+
+It's a normal console command, so anything that can run one can drive an
+achievement — no API, no compiling against this plugin:
+
+```applescript
+# Skript
+execute console command "ca trigger %player% boss_kill"
+
+# Skript — push a total you already track yourself
+execute console command "ca trigger %player% points set %{points::%uuid of player%}%"
+```
+
+```mcfunction
+# Command block / datapack (needs the block or function to run as console)
+ca trigger @p dungeon_cleared 1
+```
+
+Other plugins that run reward commands — MythicMobs skills, quest plugins,
+crate plugins, ExecutableItems, Citizens — all work the same way: give them
+`ca trigger %player% <key>` as the command to run.
+
+Notes:
+
+- Keys are matched **case-insensitively** and are free text: `boss_kill`,
+  `quest:step3`, `Weekly Event` all work.
+- Add vs set: `trigger` **adds** to the running count, so call it once per
+  event. Use `set` when your script already keeps its own total — repeated
+  `set 6` leaves progress at 6 rather than climbing.
+- Target `ANY` matches **every** custom key, handy for a "do anything scripted
+  100 times" objective.
+- The player must be **online** (progress needs their loaded data, and an
+  unlock needs someone to hand rewards to).
+- Requires `customachievements.admin`, which the console always has.
+- Statistics backfill can't seed `CUSTOM` objectives — the server keeps no
+  statistic for a key you invented, so they start at zero.
+
+**Reading progress back** is already possible from any script via
+PlaceholderAPI: `%customachievements_progress_<id>%`,
+`%customachievements_status_<id>%`, `%customachievements_percent_<id>%`.
+
+For Java plugins there's also a small API — soft-depend on
+`CustomAchievements` and call it directly:
+
+```java
+import com.diamend.customachievements.api.CustomAchievementsAPI;
+
+CustomAchievementsAPI.trigger(player, "boss_kill");        // +1
+CustomAchievementsAPI.trigger(player, "boss_kill", 5);     // +5
+CustomAchievementsAPI.set(player, "points", 42);           // absolute
+CustomAchievementsAPI.hasCompleted(player, "boss_slayer");
+CustomAchievementsAPI.grant(player, "boss_slayer");
+```
+
+Every call is a no-op when the plugin isn't installed, so you don't have to
+guard each one (`CustomAchievementsAPI.isAvailable()` is there if you want to).
 
 ### Counting items: `ITEM_OBTAIN` vs `ITEM_HAVE`
 
@@ -243,8 +311,8 @@ Seeded from statistics:
 
 Not seeded (Minecraft keeps no statistic for them), so these start at zero:
 objectives matching a **custom item name**, `PLAYER_DEATH` with a **specific
-cause**, `ITEM_HAVE`, `REACH_LOCATION` / `REACH_DIMENSION`, `MYTHIC_MOB_KILL`,
-`AURASKILLS_LEVEL` and `MANUAL`. `PLAYTIME_HOURS` is already read live from the
+cause**, `ITEM_HAVE`, `CUSTOM`, `REACH_LOCATION` / `REACH_DIMENSION`,
+`MYTHIC_MOB_KILL`, `AURASKILLS_LEVEL` and `MANUAL`. `PLAYTIME_HOURS` is already read live from the
 server's playtime statistic, so it needs no backfill.
 
 Each objective is seeded **once per player**, so the backfill can run on every

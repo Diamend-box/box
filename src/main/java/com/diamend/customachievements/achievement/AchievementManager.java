@@ -158,6 +158,26 @@ public class AchievementManager {
         return false;
     }
 
+    /**
+     * Every distinct key a {@code CUSTOM} objective listens for, so the command
+     * can suggest the keys this server actually uses rather than nothing at all.
+     */
+    public java.util.Set<String> customTriggerKeys() {
+        java.util.Set<String> keys = new java.util.TreeSet<>();
+        for (Achievement achievement : all()) {
+            for (Requirement requirement : achievement.getRequirements()) {
+                if (requirement.getTrigger() != TriggerType.CUSTOM) {
+                    continue;
+                }
+                String target = requirement.getTarget();
+                if (target != null && !target.isBlank() && !target.equalsIgnoreCase("ANY")) {
+                    keys.add(target);
+                }
+            }
+        }
+        return keys;
+    }
+
     /** Adds or replaces an achievement and persists to disk. */
     public void put(Achievement achievement) {
         achievements.put(achievement.getId().toLowerCase(Locale.ROOT), achievement);

@@ -10,6 +10,10 @@ import java.util.Locale;
 public enum TriggerType {
 
     MANUAL("Manual / Command", false, false, Material.COMMAND_BLOCK),
+    // Fired by anything that can run a command or call the API: Skript, other
+    // plugins, command blocks, datapacks. The target is a free-text key the
+    // server owner invents (e.g. "boss_kill"), not a Minecraft value.
+    CUSTOM("Custom / Script", true, true, Material.REDSTONE_TORCH),
     BLOCK_BREAK("Break Blocks", true, true, Material.DIAMOND_PICKAXE),
     BLOCK_PLACE("Place Blocks", true, true, Material.BRICKS),
     ENTITY_KILL("Kill Entities", true, true, Material.DIAMOND_SWORD),

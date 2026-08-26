@@ -195,6 +195,10 @@ public class RequirementEditorMenu implements Menu {
             }
             case MYTHIC_MOB_KILL -> promptText("Enter the MythicMobs internal name (or ANY):",
                     input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
+            // A custom key is invented by the server owner, so there is nothing
+            // to list in a picker — it's typed, then fired with /ca trigger.
+            case CUSTOM -> promptText("Enter a trigger key, e.g. boss_kill (or ANY):",
+                    input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
             case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ITEM_HAVE -> {
                 if (requirement.isMatchByName()) {
                     promptText("Enter the custom item name to match (or ANY):",
