@@ -4,6 +4,17 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.12.0]
+### Added
+- **"Break any 10,000 blocks" now credits the blocks you'd already broken.** An
+  objective targeting `ANY` had nothing to seed from, because Minecraft keeps no
+  overall "blocks mined" counter — it counts one row per block. Those rows are
+  now added together, so a player with 4,000 stone and 1,500 dirt starts at
+  5,500 rather than 0. The same goes for placing any block, crafting any item
+  and picking up any item. `ITEM_CONSUME` targeting `ANY` is deliberately left
+  alone: the "items used" statistic counts blocks placed and tools swung as
+  well, so its total isn't the number that objective asks for.
+
 ## [1.11.0]
 ### Added
 - **`CUSTOM` trigger — drive achievements from Skript, other plugins, command

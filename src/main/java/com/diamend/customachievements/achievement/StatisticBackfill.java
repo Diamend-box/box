@@ -5,7 +5,10 @@ import org.bukkit.Statistic;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.function.Predicate;
 
 /**
  * Reads what a player has <em>already</em> done from Minecraft's own lifetime
@@ -18,10 +21,35 @@ import java.util.Locale;
  * custom item name has no statistic behind it (Minecraft counts materials, not
  * names), and neither does "died to lava specifically" — the server only tracks
  * a total death count.
+ *
+ * <p>An "any" target is answered by adding the per-type rows together, because
+ * that is how the server stores them: there is no "blocks mined" counter, only
+ * one counter per block.
  */
 public final class StatisticBackfill {
 
+    /**
+     * Minecraft keeps no single "blocks mined" total — it counts one row per
+     * block, so the only way to answer "has this player broken 10,000 blocks"
+     * is to add every row together. Collected once, since the material list
+     * can't change while the server is running.
+     */
+    private static final List<Material> BLOCKS = materials(Material::isBlock);
+
+    /** The same, for the statistics counted per item rather than per block. */
+    private static final List<Material> ITEMS = materials(Material::isItem);
+
     private StatisticBackfill() {
+    }
+
+    private static List<Material> materials(Predicate<Material> keep) {
+        List<Material> out = new ArrayList<>();
+        for (Material material : Material.values()) {
+            if (!material.isLegacy() && keep.test(material)) {
+                out.add(material);
+            }
+        }
+        return List.copyOf(out);
     }
 
     /**
@@ -52,12 +80,16 @@ public final class StatisticBackfill {
                         ? untyped(player, Statistic.PLAYER_KILLS)
                         : entityStat(player, Statistic.KILL_ENTITY, target);
             }
-            case BLOCK_BREAK -> materialTotal(player, Statistic.MINE_BLOCK, target, wildcard, group);
+            case BLOCK_BREAK -> materialTotal(player, Statistic.MINE_BLOCK, target, wildcard, group, BLOCKS);
             // Vanilla has no "blocks placed"; placing a block is a USE_ITEM.
-            case BLOCK_PLACE -> materialTotal(player, Statistic.USE_ITEM, target, wildcard, group);
-            case ITEM_CRAFT -> materialTotal(player, Statistic.CRAFT_ITEM, target, wildcard, group);
-            case ITEM_OBTAIN -> materialTotal(player, Statistic.PICKUP, target, wildcard, group);
-            case ITEM_CONSUME -> materialTotal(player, Statistic.USE_ITEM, target, wildcard, group);
+            case BLOCK_PLACE -> materialTotal(player, Statistic.USE_ITEM, target, wildcard, group, BLOCKS);
+            case ITEM_CRAFT -> materialTotal(player, Statistic.CRAFT_ITEM, target, wildcard, group, ITEMS);
+            case ITEM_OBTAIN -> materialTotal(player, Statistic.PICKUP, target, wildcard, group, ITEMS);
+            // USE_ITEM counts every use of an item — blocks placed, tools swung —
+            // so adding it up across everything would answer a different question
+            // than "how much has this player eaten or drunk". Left unseeded rather
+            // than seeded with a number that isn't the one the objective asks for.
+            case ITEM_CONSUME -> materialTotal(player, Statistic.USE_ITEM, target, wildcard, group, null);
             case FISH_CAUGHT -> untyped(player, Statistic.FISH_CAUGHT);
             // Only the overall death count is tracked, so a cause can't be backfilled.
             case PLAYER_DEATH -> wildcard ? untyped(player, Statistic.DEATHS) : -1;
@@ -65,14 +97,18 @@ public final class StatisticBackfill {
         };
     }
 
+    /**
+     * @param whenAny materials to add up for an "any" target, or null when the
+     *                statistic can't be totalled into the answer this objective
+     *                is actually asking for
+     */
     private static int materialTotal(Player player, Statistic statistic, String target,
-                                     boolean wildcard, TargetGroup group) {
+                                     boolean wildcard, TargetGroup group, List<Material> whenAny) {
         if (wildcard) {
-            // "any block" would mean summing every material; not worth it.
-            return -1;
+            return whenAny == null ? -1 : sumMaterials(player, statistic, whenAny);
         }
         if (group instanceof MaterialGroup materials) {
-            return sumMaterials(player, statistic, materials);
+            return sumMaterials(player, statistic, materials.members());
         }
         return materialStat(player, statistic, target);
     }
@@ -128,10 +164,10 @@ public final class StatisticBackfill {
         }
     }
 
-    private static int sumMaterials(Player player, Statistic statistic, MaterialGroup group) {
+    private static int sumMaterials(Player player, Statistic statistic, Iterable<Material> materials) {
         int total = 0;
         boolean any = false;
-        for (Material material : group.members()) {
+        for (Material material : materials) {
             try {
                 total += player.getStatistic(statistic, material);
                 any = true;

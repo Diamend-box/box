@@ -751,6 +751,43 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void backfillAddsUpEveryBlockIntoATotalBrokenCount() {
+        // The server counts blocks mined one row per block and keeps no overall
+        // total, so "break 10,000 blocks" can only be answered by adding them up.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.STONE, 4000);
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.DIRT, 1500);
+
+        Achievement achievement = new Achievement("ten_thousand");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("ANY");
+        achievement.setAmount(10000);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(5500, plugin.getPlayerDataManager().get(player.getUniqueId())
+                        .getProgress(PlayerData.requirementKey("ten_thousand", 0)),
+                "every block's count should add into one total");
+    }
+
+    @Test
+    void backfillWontGuessAtHowMuchAnyItemWasConsumed() {
+        // USE_ITEM counts blocks placed and tools swung as well as food eaten,
+        // so its total across every item is not the number this objective wants.
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("glutton");
+        achievement.setTrigger(TriggerType.ITEM_CONSUME);
+        achievement.setTarget("ANY");
+        achievement.setAmount(100);
+        plugin.getAchievementManager().put(achievement);
+
+        List<String> report = plugin.getAchievementService().seedWithReport(player, false);
+        assertTrue(report.stream().anyMatch(line -> line.contains("glutton")
+                        && line.contains("no statistic")),
+                "consuming any item should stay unseeded rather than take a wrong total, got: " + report);
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

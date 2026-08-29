@@ -303,17 +303,27 @@ Seeded from statistics:
 | `ENTITY_KILL` a mob / a family | kills of that type, summed across a family |
 | `ENTITY_KILL` targeting `PLAYER` | players killed |
 | `ENTITY_KILL` targeting `ANY` | mob kills **plus** player kills |
-| `BLOCK_BREAK` | blocks mined |
-| `BLOCK_PLACE`, `ITEM_CONSUME` | items used |
-| `ITEM_CRAFT` | items crafted |
-| `ITEM_OBTAIN` | items picked up |
+| `BLOCK_BREAK` a block / a family | blocks mined, summed across a family |
+| `BLOCK_BREAK` targeting `ANY` | **every** block mined, added into one total |
+| `BLOCK_PLACE` a block / a family | items used |
+| `BLOCK_PLACE` targeting `ANY` | every block's uses, added up |
+| `ITEM_CRAFT` | items crafted — `ANY` adds up every item |
+| `ITEM_OBTAIN` | items picked up — `ANY` adds up every item |
+| `ITEM_CONSUME` a specific item | items used |
 | `FISH_CAUGHT` | fish caught |
 | `PLAYER_DEATH` with no cause | total deaths |
+
+Minecraft keeps no "blocks mined" counter — it counts one row per block — so an
+`ANY` objective is answered by adding every row together. A player with 4,000
+stone and 1,500 dirt starts a "break 10,000 blocks" achievement at **5,500**.
 
 Not seeded (Minecraft keeps no statistic for them), so these start at zero:
 objectives matching a **custom item name**, `PLAYER_DEATH` with a **specific
 cause**, `ITEM_HAVE`, `CUSTOM`, `REACH_LOCATION` / `REACH_DIMENSION`,
-`MYTHIC_MOB_KILL`, `AURASKILLS_LEVEL` and `MANUAL`. `PLAYTIME_HOURS` is already read live from the
+`MYTHIC_MOB_KILL`, `AURASKILLS_LEVEL` and `MANUAL`. `ITEM_CONSUME` targeting
+`ANY` is also left alone: the "items used" statistic counts blocks placed and
+tools swung too, so its total isn't the number that objective asks for.
+`PLAYTIME_HOURS` is already read live from the
 server's playtime statistic, so it needs no backfill.
 
 Each objective is seeded **once per player**, so the backfill can run on every
