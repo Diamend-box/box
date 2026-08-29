@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -278,6 +279,25 @@ public class AchievementService {
         if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
             return;
         }
+        seed(player, false, null);
+    }
+
+    /**
+     * Runs the seeding and reports what it did to every unfinished objective —
+     * the statistic it read, and why an objective was or wasn't credited. Used
+     * by {@code /ca backfill}, so an admin can see what the plugin actually
+     * reads rather than guessing why a total didn't appear.
+     *
+     * @param redo re-seeds objectives already seeded once, which is the only way
+     *             to retry after fixing whatever made the first attempt read zero
+     */
+    public List<String> seedWithReport(Player player, boolean redo) {
+        List<String> report = new ArrayList<>();
+        seed(player, redo, report);
+        return report;
+    }
+
+    private void seed(Player player, boolean redo, List<String> report) {
         PlayerData data = playerData.get(player.getUniqueId());
         for (Achievement achievement : achievements.all()) {
             if (data.isCompleted(achievement.getId())) {
@@ -289,26 +309,45 @@ public class AchievementService {
                 Requirement requirement = requirements.get(i);
                 String key = PlayerData.requirementKey(achievement.getId(), i);
                 String marker = key + "@" + requirement.backfillSignature();
-                if (data.isBackfilled(marker)) {
-                    continue; // seeded once already — the live events own it now
+                String label = achievement.getId() + " #" + i + " "
+                        + requirement.getTrigger().name() + " " + requirement.targetLabel();
+                if (data.isBackfilled(marker) && !redo) {
+                    note(report, label + " — already seeded once; add \"redo\" to force");
+                    continue;
                 }
                 // Marked even when the statistics can't answer it, so an
                 // objective is considered once and not re-examined every join.
                 data.markBackfilled(marker);
                 int total = StatisticBackfill.total(player, requirement);
-                if (total <= 0) {
+                if (total < 0) {
+                    note(report, label + " — no statistic exists for this objective");
+                    continue;
+                }
+                if (total == 0) {
+                    note(report, label + " — statistic reads 0, nothing to credit");
                     continue;
                 }
                 int seeded = Math.min(total, requirement.requiredAmount());
                 if (seeded <= data.getProgress(key)) {
-                    continue; // live progress already got further on its own
+                    note(report, label + " — statistic " + total + ", but progress is already "
+                            + data.getProgress(key));
+                    continue;
                 }
                 data.setProgress(key, seeded);
                 changed = true;
+                note(report, label + " — statistic " + total + ", set to " + seeded + "/"
+                        + requirement.requiredAmount());
             }
             if (changed && isComplete(achievement, data)) {
                 award(player, achievement, data);
+                note(report, achievement.getId() + " — completed and awarded");
             }
+        }
+    }
+
+    private static void note(List<String> report, String line) {
+        if (report != null) {
+            report.add(line);
         }
     }
 

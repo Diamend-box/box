@@ -20,6 +20,14 @@ All notable changes to **CustomAchievements** are documented here.
   call directly than run a command: `trigger`, `set`, `hasCompleted`, `grant`
   and `isAvailable`. Every call is a no-op when the plugin isn't installed, so
   soft-dependants don't have to guard each one.
+- **`/ca backfill [player] [redo]` — find out why a statistic didn't show up.**
+  Re-runs the seeding for a player and prints, per unfinished objective, the
+  statistic value it actually read and whether that was credited, already
+  seeded, unreadable or simply zero. Because an objective is marked seeded even
+  when the read comes back empty, a first run that found nothing is never
+  retried on later joins; `redo` forces a fresh re-seed of every unfinished
+  objective, which is how to recover from that. Seeding still never lowers
+  progress, so forcing it is safe.
 
 ## [1.10.0]
 ### Added

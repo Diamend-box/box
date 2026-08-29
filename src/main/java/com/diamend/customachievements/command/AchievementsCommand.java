@@ -56,6 +56,7 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "admin", "manage" -> openMenu(sender, true);
             case "create", "new" -> create(sender);
             case "trigger", "fire" -> trigger(sender, args);
+            case "backfill", "seed" -> backfill(sender, args);
             case "grant", "give" -> grant(sender, args);
             case "revoke", "take" -> revoke(sender, args);
             case "reset" -> reset(sender, args);
@@ -129,6 +130,48 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             }
             sender.sendMessage(Text.parse(" <dark_gray>- " + status + " <white>" + achievement.getDisplayName()
                     + " <dark_gray>(" + achievement.getId() + ")"));
+        }
+    }
+
+    /**
+     * {@code /ca backfill [player] [redo]} — re-runs the statistics seeding and
+     * reports what it read for every unfinished objective, so a total that
+     * didn't appear can be diagnosed instead of guessed at. {@code redo} seeds
+     * objectives already seeded once, which is the only way to retry after
+     * fixing whatever made the first attempt come up empty.
+     */
+    private void backfill(CommandSender sender, String[] args) {
+        if (!hasAdmin(sender)) {
+            return;
+        }
+        boolean redo = args.length > 1 && args[args.length - 1].equalsIgnoreCase("redo");
+        String name = args.length > 1 && !args[1].equalsIgnoreCase("redo") ? args[1] : null;
+        Player target;
+        if (name != null) {
+            target = Bukkit.getPlayerExact(name);
+            if (target == null) {
+                sender.sendMessage(Text.parse("<red><white>" + name + "<red> is not online."));
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            sender.sendMessage(Text.parse("<red>From the console, name a player: /ca backfill <player> [redo]"));
+            return;
+        }
+        if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
+            sender.sendMessage(Text.parse("<yellow>Note: <white>backfill-from-statistics<yellow> is off in "
+                    + "config.yml, so this won't run on join. Running now because you asked."));
+        }
+        List<String> report = plugin.getAchievementService().seedWithReport(target, redo);
+        sender.sendMessage(Text.parse("<gold>Backfill for <white>" + target.getName()
+                + "<gold>" + (redo ? " <gray>(redo)" : "") + ":"));
+        if (report.isEmpty()) {
+            sender.sendMessage(Text.parse("<gray>  Nothing to do — every achievement is already completed."));
+            return;
+        }
+        for (String line : report) {
+            sender.sendMessage(Text.parse("<gray>  " + line));
         }
     }
 
@@ -439,6 +482,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<yellow>/ca grant <player> <id> <gray>- Grant an achievement"));
             sender.sendMessage(Text.parse("<yellow>/ca revoke <player> <id> <gray>- Revoke an achievement"));
             sender.sendMessage(Text.parse("<yellow>/ca reset <player> <gray>- Reset a player's achievements"));
+            sender.sendMessage(Text.parse("<yellow>/ca trigger <player> <key> <gray>- Fire a custom trigger"));
+            sender.sendMessage(Text.parse("<yellow>/ca backfill <player> [redo] <gray>- Re-seed from statistics"));
             sender.sendMessage(Text.parse("<yellow>/ca reload <gray>- Reload configuration"));
         }
     }
@@ -461,7 +506,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("list", "info", "top", "claim", "reopen"));
             if (sender.hasPermission(PERM_ADMIN)) {
-                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "trigger", "reload"));
+                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "trigger",
+                        "backfill", "reload"));
             }
             String prefix = args[0].toLowerCase(Locale.ROOT);
             for (String sub : subs) {
@@ -484,8 +530,10 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             return out;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset")
-                || sub.equals("trigger"))) {
+        if (args.length == 3 && sub.equals("backfill")) {
+            out.add("redo");
+        } else if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset")
+                || sub.equals("trigger") || sub.equals("backfill"))) {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (online.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
                     out.add(online.getName());

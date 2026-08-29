@@ -14,6 +14,8 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -689,6 +691,47 @@ class CustomAchievementsPluginTest {
         plugin.getAchievementService().backfill(player);
         assertEquals(75, data.getProgress(PlayerData.requirementKey("ahead_of_the_stat", 0)),
                 "seeding must never reduce progress the player already had");
+    }
+
+    @Test
+    void backfillRedoReseedsAnObjectiveThatCameUpEmptyTheFirstTime() {
+        // The once-per-player marker is set even when the statistic reads zero,
+        // so without a way to force a retry a bad first run is permanent.
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("retry_me");
+        achievement.setTrigger(TriggerType.ENTITY_KILL);
+        achievement.setTarget("PLAYER");
+        achievement.setAmount(1000);
+        plugin.getAchievementManager().put(achievement);
+
+        plugin.getAchievementService().backfill(player);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("retry_me", 0)));
+
+        player.setStatistic(org.bukkit.Statistic.PLAYER_KILLS, 150);
+        plugin.getAchievementService().seedWithReport(player, false);
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("retry_me", 0)),
+                "without redo the objective stays seeded-once");
+
+        plugin.getAchievementService().seedWithReport(player, true);
+        assertEquals(150, data.getProgress(PlayerData.requirementKey("retry_me", 0)),
+                "redo must re-read the statistic and credit it");
+    }
+
+    @Test
+    void backfillReportSaysWhyAnObjectiveWasNotCredited() {
+        PlayerMock player = server.addPlayer();
+        Achievement achievement = new Achievement("unanswerable");
+        Requirement requirement = new Requirement(TriggerType.ITEM_OBTAIN, "Ancient Coin", 10);
+        requirement.setMatchByName(true);
+        achievement.getRequirements().clear();
+        achievement.getRequirements().add(requirement);
+        plugin.getAchievementManager().put(achievement);
+
+        List<String> report = plugin.getAchievementService().seedWithReport(player, false);
+        assertTrue(report.stream().anyMatch(line -> line.contains("unanswerable")
+                        && line.contains("no statistic")),
+                "the report should say why it couldn't be credited, got: " + report);
     }
 
     @Test

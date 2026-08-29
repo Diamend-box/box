@@ -106,6 +106,7 @@ Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
 | `/ca revoke <player> <id>` | Revoke an achievement (online or offline) | `customachievements.admin` |
 | `/ca reset <player>` | Reset a player's achievements (online or offline) | `customachievements.admin` |
 | `/ca trigger <player> <key> [amount\|set <value>]` | Fire a **custom trigger** — the hook for Skript and other plugins | `customachievements.admin` |
+| `/ca backfill [player] [redo]` | Re-seed from statistics and **report what it read** for each objective | `customachievements.admin` |
 | `/ca reload` | Reload config + achievements from disk | `customachievements.admin` |
 
 ### Permissions
@@ -329,6 +330,36 @@ player being seeded straight back on their next join.
 > point, but on a long-running server the first join after adding achievements
 > can unlock several at once. Set `backfill-from-statistics: false` if you'd
 > rather everyone started fresh.
+
+#### When a total didn't show up
+
+If an achievement stayed at 0 even though the player clearly has the statistic,
+run:
+
+```
+/ca backfill <player>
+```
+
+It re-runs the seeding for that player and prints one line per unfinished
+objective saying what it actually read — the statistic's value, and why the
+objective was or wasn't credited:
+
+```
+kill_1000 #0 ENTITY_KILL PLAYER — statistic 1432, set to 1000/1000
+old_hunter #0 ENTITY_KILL ZOMBIE — already seeded once; add "redo" to force
+named_sword #0 ITEM_HAVE Excalibur — no statistic exists for this objective
+```
+
+Because an objective is marked seeded even when the statistic comes back empty,
+a run that read nothing is not retried on later joins. Add `redo` to force it:
+
+```
+/ca backfill <player> redo
+```
+
+That re-reads every unfinished objective from scratch and re-seeds it, which is
+how you recover after fixing whatever made the first attempt come up short.
+Seeding still never lowers progress, so a forced re-run is safe.
 
 ### Multiple objectives
 
