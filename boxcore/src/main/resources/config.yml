@@ -466,6 +466,11 @@ travel:
   # Items that get you to a destination. Hand one out with
   # /box warp item <id> [player] [amount], or sell it from a shop.
   #
+  # Entries here are only for items you want to dress up. Any destination
+  # can have a plain one minted on the spot without being listed:
+  #   /box warp item <destination> map      unlocks it for good
+  #   /box warp item <destination> ticket   one trip there
+  #
   # Two modes:
   #   travel  a ticket: one trip there, spent when you arrive. Being cut
   #           short by a sword costs you the trip, not the ticket.

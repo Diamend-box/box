@@ -516,6 +516,111 @@ class TravelTest {
         assertNull(module().createItem("no-such-item", 1));
     }
 
+    // ------------------------------------------------------------------
+    // Minting an item for a destination that has no config entry
+    // ------------------------------------------------------------------
+
+    @Test
+    void anItemCanBeMintedForADestinationWithNoConfigEntry() {
+        warp("mines", at(300, 64, 300), "");
+
+        ItemStack map = module().createItem("mines", TravelItems.Mode.UNLOCK, 2);
+
+        assertNotNull(map, "a destination is enough to make one from");
+        assertEquals(2, map.getAmount());
+        assertEquals(Material.FILLED_MAP, map.getType(), "a map looks like a map");
+        TravelItems.Payload read = module().items().read(map);
+        assertNotNull(read);
+        assertEquals("mines", read.warpId());
+        assertEquals(TravelItems.Mode.UNLOCK, read.mode());
+    }
+
+    @Test
+    void aMintedMapStillUnlocksThePlace() {
+        Warp mines = warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+
+        ItemStack map = module().createItem("mines", TravelItems.Mode.UNLOCK, 1);
+        assertTrue(module().useItem(player, module().items().read(map)),
+                "it did something, so it is spent");
+
+        assertTrue(module().hasDiscovered(player, mines));
+    }
+
+    @Test
+    void thereIsNothingToMintForAPlaceThatDoesNotExist() {
+        assertNull(module().createItem("nowhere", TravelItems.Mode.UNLOCK, 1));
+        assertNull(module().createItem("", TravelItems.Mode.UNLOCK, 1));
+        assertNull(module().createItem(null, TravelItems.Mode.UNLOCK, 1));
+    }
+
+    @Test
+    void aTicketToAnywhereIsRefusedButAMapIsNot() {
+        assertNull(module().createItem(TravelItems.ANY, TravelItems.Mode.TRAVEL, 1),
+                "a ticket has to know where it is taking you");
+        assertNotNull(module().createItem(TravelItems.ANY, TravelItems.Mode.UNLOCK, 1));
+    }
+
+    @Test
+    void theCommandTakesADestinationAndTheKindOfItem() {
+        warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box warp item mines map"));
+
+        assertEquals(1, carried(player));
+        TravelItems.Payload read = module().items().read(player.getInventory().getItem(0));
+        assertNotNull(read);
+        assertEquals(TravelItems.Mode.UNLOCK, read.mode());
+        assertEquals("mines", read.warpId());
+    }
+
+    @Test
+    void theCommandWontGuessBetweenATripAndForever() {
+        warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box warp item mines"));
+
+        assertEquals(0, carried(player), "it asked which kind rather than picking one");
+    }
+
+    @Test
+    void theCommandReadsItsArgumentsByShapeNotOrder() {
+        warp("mines", at(300, 64, 300), "");
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box warp item mines 8 ticket " + player.getName()));
+
+        assertEquals(8, carried(player));
+        TravelItems.Payload read = module().items().read(player.getInventory().getItem(0));
+        assertNotNull(read);
+        assertEquals(TravelItems.Mode.TRAVEL, read.mode());
+    }
+
+    @Test
+    void aConfiguredItemNeedsNoModeWord() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box warp item world-map"));
+
+        assertEquals(1, carried(player), "a configured entry needs no mode word");
+    }
+
+    @Test
+    void anUnknownFirstWordIsRefused() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box warp item not-a-place map"));
+
+        assertEquals(0, carried(player));
+    }
+
     @Test
     void aBadWarpIdIsRefused() {
         PlayerMock player = server.addPlayer();

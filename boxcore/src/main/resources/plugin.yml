@@ -30,7 +30,7 @@ commands:
       /box warp                                - Edit destinations in a menu (admin)
       /box warp <set|move|icon|rename> <id>    - Place and dress a destination (admin)
       /box warp <desc|perm|radius|tp|delete> <id> - Everything else about one (admin)
-      /box warp item <id> [player] [amount] - Give a travel ticket or map (admin)
+      /box warp item <id|dest> [map|ticket] [player] - Give a travel ticket or map (admin)
       /box boost                    - Show the boosts running for you
       /box boost global <type> <multiplier> <duration>   - Boost everyone (admin)
       /box boost player <name> <type> <multiplier> <dur> - Boost one player (admin)

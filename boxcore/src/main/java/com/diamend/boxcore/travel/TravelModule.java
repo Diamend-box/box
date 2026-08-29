@@ -171,10 +171,10 @@ public class TravelModule implements BoxModule {
     }
 
     private TravelItems.Appearance readAppearance(ConfigurationSection item, TravelItems.Mode mode) {
-        Material fallback = mode == TravelItems.Mode.UNLOCK ? Material.FILLED_MAP : Material.PAPER;
         if (item == null) {
-            return new TravelItems.Appearance(fallback, null, null, 0, true);
+            return TravelItems.Appearance.defaults(mode);
         }
+        Material fallback = mode == TravelItems.Mode.UNLOCK ? Material.FILLED_MAP : Material.PAPER;
         List<String> lore = item.isList("lore") ? item.getStringList("lore") : null;
         return new TravelItems.Appearance(
                 Items.material(item.getString("material"), fallback),
@@ -202,6 +202,34 @@ public class TravelModule implements BoxModule {
         }
         return items.create(definition.payload(), definition.appearance(), amount,
                 warps.get(definition.payload().warpId()));
+    }
+
+    /**
+     * Builds a travel item for a destination that has no config entry.
+     *
+     * <p>Staff place a destination in-game; needing to stop, edit config and
+     * reload before they can hand out a ticket to it is a poor answer to
+     * "and one of those, please". The item still carries everything it does
+     * on itself, so one minted this way is no less durable than a configured
+     * one — it just wears the plain look.
+     *
+     * @return the stack, or null when there is no such destination
+     */
+    public ItemStack createItem(String warpId, TravelItems.Mode mode, int amount) {
+        String key = warpId == null ? "" : warpId.trim().toLowerCase(Locale.ROOT);
+        if (key.isEmpty()) {
+            return null;
+        }
+        if (TravelItems.ANY.equals(key)) {
+            // Same rule as config: a ticket has to know where it is taking you.
+            if (mode != TravelItems.Mode.UNLOCK) {
+                return null;
+            }
+        } else if (warps.get(key) == null) {
+            return null;
+        }
+        return items.create(new TravelItems.Payload(key, key, mode),
+                TravelItems.Appearance.defaults(mode), amount, warps.get(key));
     }
 
     /**

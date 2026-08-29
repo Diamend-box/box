@@ -161,8 +161,9 @@ Six ship today:
   game: `/box warp` opens an editor where a destination is made where you stand,
   wears whatever you're holding, and has its description, permission and
   discovery radius set by clicking. Nothing needs a text editor or a restart.
-  Destinations can also be sold or given as items (`travel.items`, handed out
-  with `/box warp item <id>`): a **ticket** is one trip, spent when you arrive
+  Destinations can also be sold or given as items — `/box warp item <destination>
+  map` mints one for a place you just made, and `travel.items` dresses up the
+  ones you sell: a **ticket** is one trip, spent when you arrive
   rather than when you use it, so a trip cut short by a sword doesn't cost you
   the ticket too; a **map** adds the place to your list for good, and `warp: any`
   makes one that adds every place you're allowed to see. A ticket stands in for
@@ -228,7 +229,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box warp perm <id> [permission\|none]` | Who can use it | `boxcore.admin` |
 | `/box warp radius <id> <blocks>` | How close counts as finding it | `boxcore.admin` |
 | `/box warp <tp\|delete\|list> [id]` | Go there, remove it, or list them | `boxcore.admin` |
-| `/box warp item <id> [player] [amount]` | Give a travel ticket or map | `boxcore.admin` |
+| `/box warp item <id\|destination> [map\|ticket] [player] [amount]` | Give a travel ticket or map | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
 | `/box boost item <id\|type> [player] [amount] [30m] [5x] [global]` | Give a boost item, any strength | `boxcore.admin` |

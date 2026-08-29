@@ -22,6 +22,7 @@ import com.diamend.boxcore.ore.CompactorTier;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.RespecCost;
+import com.diamend.boxcore.travel.TravelItems;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.skill.SkillNode;
@@ -871,55 +872,81 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * {@code /box warp item <id> [player] [amount]} — hands out a ticket or map.
+     * {@code /box warp item <id|destination> [map|ticket] [player] [amount]}
      *
-     * <p>The id here is a {@code travel.items} entry rather than a warp id,
-     * because the entry is what says whether the item takes you there once or
-     * puts the place on your list for good, and what it looks like on the way.
+     * <p>The first word is either a configured item, which knows its own mode
+     * and look, or a destination id, which mints a plain one on the spot. The
+     * rest are read by shape rather than position, so the order they're typed
+     * in doesn't matter: {@code map} is a mode, {@code 16} is an amount, and
+     * anything else is a player.
      */
     private void warpItem(CommandSender sender, TravelModule module, String[] args) {
         if (args.length < 3) {
-            messages().sendLiteral(sender, "<red>Usage: /box warp item <id> [player] [amount]"
-                    + (module.itemIds().isEmpty()
-                            ? " <dark_gray>— none configured (travel.items)"
-                            : " <dark_gray>— " + String.join(", ", module.itemIds())));
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box warp item <id|destination> [map|ticket] [player] [amount]"
+                            + (module.itemIds().isEmpty()
+                                    ? " <dark_gray>— no configured items, name a destination"
+                                    : " <dark_gray>— " + String.join(", ", module.itemIds())));
             return;
         }
-        Player target;
-        if (args.length >= 4) {
-            target = Bukkit.getPlayerExact(args[3]);
-            if (target == null) {
-                messages().send(sender, "unknown-player", "name", args[3]);
-                return;
+        Player target = sender instanceof Player self ? self : null;
+        TravelItems.Mode mode = null;
+        int amount = 1;
+        for (int index = 3; index < args.length; index++) {
+            String arg = args[index];
+            TravelItems.Mode word = TravelItems.Mode.match(arg);
+            if (word != null) {
+                mode = word;
+            } else if (arg.matches("\\d+")) {
+                amount = Math.max(1, Math.min(Integer.parseInt(arg), 36 * 64));
+            } else {
+                target = Bukkit.getPlayerExact(arg);
+                if (target == null) {
+                    messages().send(sender, "unknown-player", "name", arg);
+                    return;
+                }
             }
-        } else if (sender instanceof Player self) {
-            target = self;
-        } else {
+        }
+        if (target == null) {
             messages().sendLiteral(sender, "<red>Name a player: /box warp item <id> <player>");
             return;
         }
-        int amount = 1;
-        if (args.length >= 5) {
-            try {
-                amount = Math.max(1, Math.min(Integer.parseInt(args[4]), 36 * 64));
-            } catch (NumberFormatException ex) {
-                messages().sendLiteral(sender, "<red><white>" + args[4] + "</white> isn't a number.");
+
+        String id = args[2];
+        String key = id.toLowerCase(Locale.ROOT);
+        ItemStack item = module.itemIds().contains(key)
+                ? module.createItem(id, amount)
+                : null;
+        if (item == null) {
+            // Not a configured item, so read it as a destination instead.
+            boolean known = TravelItems.ANY.equals(key) || module.warps().get(key) != null;
+            if (!known) {
+                messages().sendLiteral(sender, "<red>No travel item or destination called "
+                        + "<white>" + id + "<red>. Items: <white>"
+                        + (module.itemIds().isEmpty() ? "none" : String.join(", ", module.itemIds()))
+                        + "<red>.");
                 return;
             }
-        }
-        ItemStack item = module.createItem(args[2], amount);
-        if (item == null) {
-            messages().sendLiteral(sender, "<red>No travel item called <white>" + args[2]
-                    + "<red>. Configured: <white>"
-                    + (module.itemIds().isEmpty() ? "none" : String.join(", ", module.itemIds()))
-                    + "<red>.");
-            return;
+            if (mode == null) {
+                // Handing out the wrong one is worse than asking, and the two
+                // are not interchangeable: one is a trip, the other is forever.
+                messages().sendLiteral(sender, "<red>Say which kind: <white>/box warp item "
+                        + key + " map<red> to unlock it for good, or <white>/box warp item "
+                        + key + " ticket<red> for one trip.");
+                return;
+            }
+            item = module.createItem(key, mode, amount);
+            if (item == null) {
+                messages().sendLiteral(sender, "<red>A ticket has to know where it's taking you — "
+                        + "<white>any<red> only works as a map.");
+                return;
+            }
         }
         for (ItemStack leftover : target.getInventory().addItem(item).values()) {
             target.getWorld().dropItemNaturally(target.getLocation(), leftover);
         }
         messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
-                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>.");
+                + "<green> " + Text.number(amount) + " <white>" + key + "<green>.");
     }
 
     /** Everything from {@code index} on, joined back into the sentence it was. */
@@ -1538,14 +1565,26 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             TravelModule travel = plugin.travel();
             String mode = args[1].toLowerCase(Locale.ROOT);
             if (args.length == 3 && !mode.equals("set")) {
-                // "item" takes a travel.items entry, not a warp id — the entry
-                // is what says whether it travels or unlocks.
-                return filter(mode.equals("item") || mode.equals("ticket")
-                        ? travelItemIds(travel) : warpIds(travel), args[2]);
+                if (mode.equals("item") || mode.equals("ticket")) {
+                    // Either a configured entry, which brings its own mode and
+                    // look, or any destination, minted plain on the spot.
+                    List<String> options2 = new ArrayList<>(travelItemIds(travel));
+                    options2.addAll(warpIds(travel));
+                    options2.add(TravelItems.ANY);
+                    return filter(options2, args[2]);
+                }
+                return filter(warpIds(travel), args[2]);
             }
             if (args.length == 4) {
                 return switch (mode) {
-                    case "item", "ticket" -> filter(onlineNames(), args[3]);
+                    case "item", "ticket" -> {
+                        List<String> options2 = new ArrayList<>();
+                        if (!travel.itemIds().contains(args[2].toLowerCase(Locale.ROOT))) {
+                            options2.addAll(List.of("map", "ticket"));
+                        }
+                        options2.addAll(onlineNames());
+                        yield filter(options2, args[3]);
+                    }
                     case "desc", "description" -> filter(List.of("add", "remove", "clear"), args[3]);
                     case "perm", "permission" -> {
                         List<String> suggestions = new ArrayList<>(List.of("none"));
@@ -1555,6 +1594,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                     case "radius" -> filter(List.of("8", "16", "32"), args[3]);
                     default -> List.of();
                 };
+            }
+            if (args.length == 5 && (mode.equals("item") || mode.equals("ticket"))) {
+                return filter(List.of("1", "8", "16"), args[4]);
             }
             return List.of();
         }

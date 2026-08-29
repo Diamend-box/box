@@ -44,12 +44,24 @@ public final class TravelItems {
         UNLOCK;
 
         public static Mode parse(String raw) {
+            Mode matched = match(raw);
+            return matched == null ? TRAVEL : matched;
+        }
+
+        /**
+         * Like {@link #parse(String)}, but says so when the word isn't a mode
+         * at all. Command parsing needs the difference: {@code /box warp item
+         * mines Notch} must read Notch as a player, not quietly hand out a
+         * ticket because an unrecognised word fell through to the default.
+         */
+        public static Mode match(String raw) {
             if (raw == null) {
-                return TRAVEL;
+                return null;
             }
             return switch (raw.trim().toLowerCase(Locale.ROOT)) {
                 case "unlock", "discover", "map", "find" -> UNLOCK;
-                default -> TRAVEL;
+                case "travel", "ticket", "trip", "warp" -> TRAVEL;
+                default -> null;
             };
         }
 
@@ -69,7 +81,13 @@ public final class TravelItems {
                              boolean glow) {
 
         public static Appearance defaults() {
-            return new Appearance(Material.PAPER, null, null, 0, true);
+            return defaults(Mode.TRAVEL);
+        }
+
+        /** The plain look for a mode: a map for unlocking, paper for a trip. */
+        public static Appearance defaults(Mode mode) {
+            return new Appearance(mode == Mode.UNLOCK ? Material.FILLED_MAP : Material.PAPER,
+                    null, null, 0, true);
         }
 
         public Material materialOr(Material fallback) {
