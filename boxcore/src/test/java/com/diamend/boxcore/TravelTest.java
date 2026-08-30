@@ -85,6 +85,11 @@ class TravelTest {
         module().reload();
     }
 
+    private String plain(net.kyori.adventure.text.Component component) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                .plainText().serialize(component);
+    }
+
     /** Puts a place on the player's list without walking or an item. */
     private void found(PlayerMock player, String warpId) {
         profile(player).discoverWarp(warpId);
@@ -309,6 +314,36 @@ class TravelTest {
 
         assertEquals(Material.GRAY_DYE, menu.getItem(FIRST_WARP).getType(),
                 "somewhere you haven't been shows as unknown, not as its icon");
+    }
+
+    @Test
+    void theLockedEntryIsWhateverConfigSays() {
+        PlayerMock player = server.addPlayer();
+        plugin.getConfig().set("travel.locked.material", "BARRIER");
+        plugin.getConfig().set("travel.locked.name", "<red>Locked: <warp>");
+        plugin.getConfig().set("travel.locked.lore", List.of("<gray>Buy the map."));
+        module().reload();
+        warp("mines", at(0, 64, 0), "");
+
+        new TravelMenu(plugin, module(), 0).open(player);
+        ItemStack shown = player.getOpenInventory().getTopInventory().getItem(FIRST_WARP);
+
+        assertEquals(Material.BARRIER, shown.getType());
+        assertEquals("Locked: mines", plain(shown.getItemMeta().displayName()),
+                "<warp> names the place without opening it");
+    }
+
+    @Test
+    void theLockedEntryGivesNothingAwayByDefault() {
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(0, 64, 0), "");
+
+        new TravelMenu(plugin, module(), 0).open(player);
+        ItemStack shown = player.getOpenInventory().getTopInventory().getItem(FIRST_WARP);
+
+        assertEquals(Material.GRAY_DYE, shown.getType());
+        assertEquals("???", plain(shown.getItemMeta().displayName()),
+                "the shipped entry doesn't name it");
     }
 
     @Test

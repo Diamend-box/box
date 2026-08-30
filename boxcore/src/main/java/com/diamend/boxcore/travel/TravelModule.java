@@ -82,6 +82,7 @@ public class TravelModule implements BoxModule {
 
     private boolean announceDiscovery = true;
     private boolean discoverByWalking = false;
+    private LockedLook locked = LockedLook.defaults();
     private boolean sounds = true;
     private Order order = Order.FOUND;
     private boolean snapCentre = true;
@@ -127,6 +128,7 @@ public class TravelModule implements BoxModule {
         combat.setSeconds(plugin.getConfig().getLong("travel.combat-tag-seconds", 15L));
         announceDiscovery = plugin.getConfig().getBoolean("travel.announce-discovery", true);
         discoverByWalking = plugin.getConfig().getBoolean("travel.discover-by-walking", false);
+        locked = loadLocked(plugin.getConfig().getConfigurationSection("travel.locked"));
         sounds = plugin.getConfig().getBoolean("travel.sounds", true);
         order = Order.parse(plugin.getConfig().getString("travel.menu-order", "found"));
         snapCentre = plugin.getConfig().getBoolean("travel.snap.centre", true);
@@ -170,6 +172,18 @@ public class TravelModule implements BoxModule {
                     new TravelItems.Payload(id, warpId, mode),
                     readAppearance(entry.getConfigurationSection("item"), mode)));
         }
+    }
+
+    private LockedLook loadLocked(ConfigurationSection section) {
+        LockedLook fallback = LockedLook.defaults();
+        if (section == null) {
+            return fallback;
+        }
+        List<String> lore = section.isList("lore") ? section.getStringList("lore") : null;
+        return new LockedLook(
+                Items.material(section.getString("material"), fallback.material()),
+                section.getString("name", fallback.name()),
+                lore == null ? fallback.lore() : List.copyOf(lore));
     }
 
     private TravelItems.Appearance readAppearance(ConfigurationSection item, TravelItems.Mode mode) {
@@ -485,6 +499,25 @@ public class TravelModule implements BoxModule {
                 }
             }
         }
+    }
+
+    /** How a destination nobody has found yet is drawn in the travel menu. */
+    public record LockedLook(Material material, String name, List<String> lore) {
+
+        public static LockedLook defaults() {
+            return new LockedLook(Material.GRAY_DYE, "<dark_gray>???",
+                    List.of("<gray>Somewhere you haven't been.",
+                            "<dark_gray>Find it and it opens up here."));
+        }
+    }
+
+    public LockedLook locked() {
+        return locked;
+    }
+
+    /** Whether walking within a destination's radius is enough to find it. */
+    public boolean discoverByWalking() {
+        return discoverByWalking;
     }
 
     public boolean hasDiscovered(Player player, Warp warp) {

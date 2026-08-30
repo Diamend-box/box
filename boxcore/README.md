@@ -147,7 +147,9 @@ Six ship today:
   list, and nothing will travel them to one that isn't — a ticket buys the trip,
   never the place. A **map** is what puts one on the list; set
   `travel.discover-by-walking: true` to also unlock places by walking into them,
-  which makes the list a reason to explore instead of something you buy.
+  which makes the list a reason to explore instead of something you buy. What a
+  locked entry looks like is `travel.locked` — material, name and lore, with a
+  `<warp>` token if you'd rather tease the name than hide it.
   Travelling takes a configurable warmup that cancels the moment you move or
   take damage, and is refused outright while you're combat-tagged —
   on a PvP server, fast travel that can be used to leave a losing fight is a

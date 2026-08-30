@@ -459,6 +459,19 @@ travel:
   # Whether to say so in chat the first time someone finds a place.
   announce-discovery: true
 
+  # How a destination the player hasn't unlocked looks in the travel menu.
+  # Shown rather than hidden, so the list is a reason to go looking.
+  #
+  # <warp> in the name or lore is replaced with the destination's real
+  # name — leave it out (as below) and the entry gives nothing away.
+  # Set lore to [] for none at all.
+  locked:
+    material: GRAY_DYE
+    name: "<dark_gray>???"
+    lore:
+      - "<gray>Somewhere you haven't been."
+      - "<dark_gray>Find it and it opens up here."
+
   # Sound for finding a place, for the warmup ticking down, for arriving
   # and for a trip being cut short. The cancel sound is the one that
   # earns its keep: it tells you the trip stopped without you having to
