@@ -87,7 +87,10 @@ public class BoxCorePlugin extends JavaPlugin {
             profiles.get(player.getUniqueId()).setName(player.getName());
         }
 
-        getLogger().info("BoxCore enabled with " + modules.activeModules().size()
+        // The version carries the commit it was built from, so the log answers
+        // "which jar is actually on the server?" without anyone having to look.
+        getLogger().info("BoxCore " + getDescription().getVersion() + " enabled with "
+                + modules.activeModules().size()
                 + " of " + modules.registered().size() + " module(s) active.");
     }
 

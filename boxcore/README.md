@@ -193,8 +193,24 @@ cd boxcore
 mvn clean package
 ```
 
-The jar lands in `boxcore/target/BoxCore-1.0.0.jar`. Drop it into `plugins/`
-and restart. The build fetches the Paper API from `https://repo.papermc.io`.
+The jar lands in `boxcore/target/BoxCore-<version>-dev.jar`. Drop it into
+`plugins/` and restart. The build fetches the Paper API from
+`https://repo.papermc.io`.
+
+### Versioning
+
+The version is `<base>-<build>`, e.g. `1.5.0-8d108b9`:
+
+- the **base** is `<version>` in `pom.xml`, bumped by hand when something
+  worth calling a release lands;
+- the **build** is the commit it was cut from — CI passes
+  `-Dboxcore.build=-$(git rev-parse --short HEAD)`, and a build made by hand
+  says `-dev` instead.
+
+It shows up in three places: the jar's filename, `/plugins` in game, and the
+server log on enable (`BoxCore 1.5.0-8d108b9 enabled with …`). Two jars from
+different commits are otherwise identical to look at, and "which build is on
+the server?" is the first thing any bug report needs to answer.
 
 ---
 

@@ -1,5 +1,5 @@
 name: BoxCore
-version: '${project.version}'
+version: '${project.version}${boxcore.build}'
 main: com.diamend.boxcore.BoxCorePlugin
 api-version: '1.21'
 softdepend: [PlaceholderAPI]
