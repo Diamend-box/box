@@ -308,9 +308,20 @@ public class AchievementService {
             for (int i = 0; i < requirements.size(); i++) {
                 Requirement requirement = requirements.get(i);
                 String key = PlayerData.requirementKey(achievement.getId(), i);
-                String marker = key + "@" + requirement.backfillSignature();
+                // The schema rides along so that a version which can answer more
+                // than the last one re-examines this objective once, instead of
+                // being shut out by a marker set when the answer wasn't there.
+                String marker = key + "@" + requirement.backfillSignature()
+                        + "@v" + StatisticBackfill.SCHEMA;
                 String label = achievement.getId() + " #" + i + " "
                         + requirement.getTrigger().name() + " " + requirement.targetLabel();
+                // Counted from the player's own unlocked achievements every time
+                // one is awarded, so there is nothing here to seed — and no
+                // marker to spend on it.
+                if (requirement.getTrigger() == TriggerType.ACHIEVEMENT_UNLOCK) {
+                    note(report, label + " — counted live from unlocked achievements");
+                    continue;
+                }
                 if (data.isBackfilled(marker) && !redo) {
                     note(report, label + " — already seeded once; add \"redo\" to force");
                     continue;
@@ -355,6 +366,7 @@ public class AchievementService {
     public void backfillOnline() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             backfill(player);
+            handleUnlockCount(player);
         }
     }
 
@@ -374,6 +386,59 @@ public class AchievementService {
      */
     public void setCustom(Player player, String key, int value) {
         handleGauge(player, TriggerType.CUSTOM, key, value);
+    }
+
+    // Players whose unlock count is being recomputed, so awarding a capstone
+    // from inside the recount doesn't start a second one underneath it.
+    private final java.util.Set<java.util.UUID> recounting =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * Refreshes {@code ACHIEVEMENT_UNLOCK} objectives — "unlock 20 achievements"
+     * — from the achievements this player has actually completed. Counted rather
+     * than accumulated, so it can run as often as it likes: it never
+     * double-counts, it follows a revoke back down, and a player who unlocked
+     * things before the capstone existed is credited the moment they log in.
+     *
+     * <p>Awarding a capstone can complete another one, so the count is redone
+     * until nothing new finishes. That terminates because every pass either
+     * completes an achievement — and there are finitely many — or changes
+     * nothing and ends the loop.
+     */
+    public void handleUnlockCount(Player player) {
+        java.util.UUID uuid = player.getUniqueId();
+        if (!recounting.add(uuid)) {
+            // Re-entered through award(); the pass already running will loop
+            // again and see whatever just completed.
+            return;
+        }
+        try {
+            PlayerData data = playerData.get(uuid);
+            int before;
+            do {
+                before = data.getCompleted().size();
+                handleGauge(player, TriggerType.ACHIEVEMENT_UNLOCK,
+                        requirement -> unlockedCount(data, requirement));
+            } while (data.getCompleted().size() != before);
+        } finally {
+            recounting.remove(uuid);
+        }
+    }
+
+    /**
+     * How many achievements this player has unlocked that the requirement asks
+     * about: all of them for a target of {@code ANY}, otherwise only those in
+     * the category it names.
+     */
+    private int unlockedCount(PlayerData data, Requirement requirement) {
+        int total = 0;
+        for (Achievement achievement : achievements.all()) {
+            if (data.isCompleted(achievement.getId())
+                    && requirement.matchesTarget(achievement.getCategory())) {
+                total++;
+            }
+        }
+        return total;
     }
 
     /**
@@ -577,6 +642,10 @@ public class AchievementService {
         }
 
         playerData.save(player.getUniqueId());
+
+        // This unlock is itself progress toward a "unlock N achievements"
+        // capstone, so recount before leaving.
+        handleUnlockCount(player);
     }
 
     /** Fills a message template's {@code <name>} and {@code <description>} placeholders. */

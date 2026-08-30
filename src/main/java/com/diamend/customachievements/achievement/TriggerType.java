@@ -14,6 +14,10 @@ public enum TriggerType {
     // plugins, command blocks, datapacks. The target is a free-text key the
     // server owner invents (e.g. "boss_kill"), not a Minecraft value.
     CUSTOM("Custom / Script", true, true, Material.REDSTONE_TORCH),
+    // Counts this plugin's own achievements, so one can be a capstone over the
+    // rest ("unlock 20 achievements"). The target is a category name, or ANY
+    // for the whole set.
+    ACHIEVEMENT_UNLOCK("Unlock Achievements", true, true, Material.NETHER_STAR),
     BLOCK_BREAK("Break Blocks", true, true, Material.DIAMOND_PICKAXE),
     BLOCK_PLACE("Place Blocks", true, true, Material.BRICKS),
     ENTITY_KILL("Kill Entities", true, true, Material.DIAMOND_SWORD),
@@ -61,7 +65,8 @@ public enum TriggerType {
 
     /** Triggers whose progress is a live gauge (set to a value) rather than a running count. */
     public boolean isGauge() {
-        return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL || this == ITEM_HAVE;
+        return this == PLAYTIME_HOURS || this == AURASKILLS_LEVEL || this == ITEM_HAVE
+                || this == ACHIEVEMENT_UNLOCK;
     }
 
     /** Item-based triggers that can optionally match by custom item name. */

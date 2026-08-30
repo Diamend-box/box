@@ -4,6 +4,25 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.13.0]
+### Added
+- **`ACHIEVEMENT_UNLOCK` — an achievement for earning achievements.** A capstone
+  can now require "unlock 20 achievements", or "unlock 20 in Mining" by naming a
+  category as its target. The count is read from what the player has actually
+  unlocked rather than accumulated as it happens, so it needs no backfill, it
+  credits everything earned before the capstone existed, and it follows a revoke
+  back down. Capstones stack: unlocking one is itself an unlock.
+
+### Fixed
+- **A version that learns to read a new statistic now reaches the players it was
+  for.** An objective is marked seeded even when the read comes back empty — so
+  when 1.12.0 taught the backfill to total "any block", every player who had
+  already joined was shut out of it by a marker set when there was no answer to
+  give, and their block totals stayed at zero unless an admin ran
+  `/ca backfill <player> redo`. The marker now records which version of the
+  reader set it, so gaining an answer re-examines every objective once on the
+  next join. Seeding only ever raises progress, so the retry costs nothing.
+
 ## [1.12.0]
 ### Added
 - **"Break any 10,000 blocks" now credits the blocks you'd already broken.** An

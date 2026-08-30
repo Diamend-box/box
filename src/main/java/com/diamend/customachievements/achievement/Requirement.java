@@ -162,6 +162,9 @@ public class Requirement {
                     ? "Die " + amount + " time(s)"
                     : "Die to " + targetLabel() + " x" + amount;
             case ITEM_HAVE -> "Have " + targetLabel() + " x" + amount + " at once";
+            case ACHIEVEMENT_UNLOCK -> isWildcard()
+                    ? "Unlock " + amount + " achievement(s)"
+                    : "Unlock " + amount + " achievement(s) in " + target;
             case AURASKILLS_LEVEL -> "Reach level " + amount
                     + (target != null && !target.equalsIgnoreCase("ANY") ? " in " + target : " in any skill");
             default -> {

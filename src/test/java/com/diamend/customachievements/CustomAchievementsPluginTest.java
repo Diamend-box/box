@@ -788,6 +788,121 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void unlockingAchievementsCountsTowardACapstone() {
+        PlayerMock player = server.addPlayer();
+        Achievement first = new Achievement("first");
+        first.setTrigger(TriggerType.MANUAL);
+        Achievement second = new Achievement("second");
+        second.setTrigger(TriggerType.MANUAL);
+        Achievement capstone = new Achievement("collector");
+        capstone.setTrigger(TriggerType.ACHIEVEMENT_UNLOCK);
+        capstone.setTarget("ANY");
+        capstone.setAmount(2);
+        plugin.getAchievementManager().put(first);
+        plugin.getAchievementManager().put(second);
+        plugin.getAchievementManager().put(capstone);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().grant(player, first);
+        assertFalse(data.isCompleted("collector"), "one unlock is not yet two");
+
+        plugin.getAchievementService().grant(player, second);
+        assertTrue(data.isCompleted("collector"),
+                "unlocking the second achievement should finish a capstone asking for two");
+    }
+
+    @Test
+    void aCapstoneCountsOnlyItsOwnCategory() {
+        PlayerMock player = server.addPlayer();
+        Achievement mining = new Achievement("mining_one");
+        mining.setTrigger(TriggerType.MANUAL);
+        mining.setCategory("Mining");
+        Achievement combat = new Achievement("combat_one");
+        combat.setTrigger(TriggerType.MANUAL);
+        combat.setCategory("Combat");
+        Achievement capstone = new Achievement("master_miner");
+        capstone.setTrigger(TriggerType.ACHIEVEMENT_UNLOCK);
+        capstone.setTarget("Mining");
+        capstone.setAmount(2);
+        plugin.getAchievementManager().put(mining);
+        plugin.getAchievementManager().put(combat);
+        plugin.getAchievementManager().put(capstone);
+
+        plugin.getAchievementService().grant(player, mining);
+        plugin.getAchievementService().grant(player, combat);
+        assertEquals(1, plugin.getPlayerDataManager().get(player.getUniqueId())
+                        .getProgress(PlayerData.requirementKey("master_miner", 0)),
+                "an achievement from another category should not count");
+    }
+
+    @Test
+    void aCapstoneCreditsAchievementsUnlockedBeforeItExisted() {
+        // The count is read from the player's own data rather than accumulated,
+        // so a capstone added today sees everything already unlocked.
+        PlayerMock player = server.addPlayer();
+        Achievement old = new Achievement("ancient");
+        old.setTrigger(TriggerType.MANUAL);
+        plugin.getAchievementManager().put(old);
+        plugin.getAchievementService().grant(player, old);
+
+        Achievement capstone = new Achievement("late_arrival");
+        capstone.setTrigger(TriggerType.ACHIEVEMENT_UNLOCK);
+        capstone.setTarget("ANY");
+        capstone.setAmount(1);
+        plugin.getAchievementManager().put(capstone);
+
+        plugin.getAchievementService().handleUnlockCount(player);
+        assertTrue(plugin.getPlayerDataManager().get(player.getUniqueId()).isCompleted("late_arrival"),
+                "a capstone should credit unlocks that happened before it was created");
+    }
+
+    @Test
+    void capstonesChainWithoutRunningAway() {
+        // Awarding one capstone is itself an unlock, so it can finish the next.
+        PlayerMock player = server.addPlayer();
+        Achievement seed = new Achievement("seed");
+        seed.setTrigger(TriggerType.MANUAL);
+        Achievement one = new Achievement("cap_one");
+        one.setTrigger(TriggerType.ACHIEVEMENT_UNLOCK);
+        one.setAmount(1);
+        Achievement two = new Achievement("cap_two");
+        two.setTrigger(TriggerType.ACHIEVEMENT_UNLOCK);
+        two.setAmount(2);
+        plugin.getAchievementManager().put(seed);
+        plugin.getAchievementManager().put(one);
+        plugin.getAchievementManager().put(two);
+
+        plugin.getAchievementService().grant(player, seed);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        assertTrue(data.isCompleted("cap_one"), "one unlock finishes the capstone asking for one");
+        assertTrue(data.isCompleted("cap_two"),
+                "that capstone is itself an unlock, finishing the one asking for two");
+    }
+
+    @Test
+    void anImprovedBackfillReexaminesWhatItCouldNotAnswerBefore() {
+        // An objective is marked seeded even when the read came back empty, so
+        // without the schema in the marker the players an improvement is for are
+        // exactly the ones shut out of it.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.STONE, 900);
+
+        Achievement achievement = new Achievement("digger");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("ANY");
+        achievement.setAmount(5000);
+        plugin.getAchievementManager().put(achievement);
+
+        // What an older version left behind: seeded, under its own schema.
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        data.markBackfilled(PlayerData.requirementKey("digger", 0) + "@BLOCK_BREAK:ANY@v1");
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(900, data.getProgress(PlayerData.requirementKey("digger", 0)),
+                "a marker from an older schema should not shut the objective out of the new answer");
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

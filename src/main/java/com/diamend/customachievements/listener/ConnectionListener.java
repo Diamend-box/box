@@ -30,6 +30,10 @@ public class ConnectionListener implements Listener {
         plugin.syncAuraSkills(player);
         // Credit anything they'd already done before an achievement existed.
         plugin.getAchievementService().backfill(player);
+        // Count what they've already unlocked toward any "unlock N achievements"
+        // objective. Not part of the statistics backfill: this is read from the
+        // player's own data, so it costs nothing and can never go stale.
+        plugin.getAchievementService().handleUnlockCount(player);
         notifyPendingRewards(player);
     }
 

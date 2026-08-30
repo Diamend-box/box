@@ -168,6 +168,7 @@ it back exactly where you left off — the in-progress draft is preserved.
 | --- | --- | --- |
 | `MANUAL` | – | Only granted by command/API |
 | `CUSTOM` | Any key you invent | Fired by Skript, plugins, command blocks |
+| `ACHIEVEMENT_UNLOCK` | Category, or ANY | This plugin's own achievements unlocked |
 | `BLOCK_BREAK` | Material | Blocks broken |
 | `BLOCK_PLACE` | Material | Blocks placed |
 | `ENTITY_KILL` | EntityType | Mobs killed |
@@ -182,6 +183,21 @@ it back exactly where you left off — the in-progress draft is preserved.
 | `PLAYTIME_HOURS` | – | Hours played (from server statistics) |
 | `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
 | `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
+
+### Capstones — an achievement for earning achievements
+
+`ACHIEVEMENT_UNLOCK` counts **this plugin's own achievements**, so one can sit on
+top of the rest: "unlock 20 achievements", or "unlock every achievement in
+Mining". Set the target to a **category name** to count only that category, or
+leave it `ANY` for the whole set.
+
+The count is read from what the player has actually unlocked rather than added
+up as it happens, which means it needs no backfill and can't drift: a capstone
+created today already credits everything earned before it existed, and revoking
+an achievement takes the count back down.
+
+Capstones can stack — unlocking one is itself an unlock, so a "unlock 10" can
+carry a player into a "unlock 11".
 
 ### Custom triggers — driving achievements from anything else
 
@@ -324,7 +340,9 @@ cause**, `ITEM_HAVE`, `CUSTOM`, `REACH_LOCATION` / `REACH_DIMENSION`,
 `ANY` is also left alone: the "items used" statistic counts blocks placed and
 tools swung too, so its total isn't the number that objective asks for.
 `PLAYTIME_HOURS` is already read live from the
-server's playtime statistic, so it needs no backfill.
+server's playtime statistic, so it needs no backfill, and neither does
+`ACHIEVEMENT_UNLOCK` — it counts the player's own unlocked achievements every
+time one is awarded.
 
 Each objective is seeded **once per player**, so the backfill can run on every
 join without ever double-counting. It's recorded per player rather than
@@ -366,6 +384,12 @@ a run that read nothing is not retried on later joins. Add `redo` to force it:
 ```
 /ca backfill <player> redo
 ```
+
+**Upgrades retry by themselves.** When a version learns to answer something it
+couldn't before, every objective is re-examined once on the next join, so the
+players an improvement is for aren't the ones shut out of it by a marker set
+back when the answer wasn't there. Seeding only ever raises progress, so the
+retry can't cost anyone anything. `redo` is still there for the rest.
 
 That re-reads every unfinished objective from scratch and re-seeds it, which is
 how you recover after fixing whatever made the first attempt come up short.

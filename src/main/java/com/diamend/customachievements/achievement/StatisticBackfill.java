@@ -29,6 +29,23 @@ import java.util.function.Predicate;
 public final class StatisticBackfill {
 
     /**
+     * Bumped whenever this class learns to answer an objective it previously
+     * couldn't. It rides along in the per-player "already seeded" marker, so
+     * gaining an answer re-examines every objective exactly once on the next
+     * join.
+     *
+     * <p>Without it an upgrade is invisible to players who already joined: an
+     * objective is marked seeded even when the read came back empty (otherwise
+     * every join re-examines every unfinished objective forever), so the very
+     * players an improvement is for are the ones locked out of it, with no way
+     * back short of an admin running {@code /ca backfill <player> redo}. Since
+     * seeding only ever raises progress, re-examining costs nothing.
+     *
+     * <p>2: "any block" objectives, which before had no total to read.
+     */
+    public static final int SCHEMA = 2;
+
+    /**
      * Minecraft keeps no single "blocks mined" total — it counts one row per
      * block, so the only way to answer "has this player broken 10,000 blocks"
      * is to add every row together. Collected once, since the material list
