@@ -1000,6 +1000,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                         ? plugin.getConfig().getDouble("travel.default-radius", 8.0)
                         : existing.radius());
         module.warps().put(warp);
+        module.discover(player, warp);
         messages().sendLiteral(sender, (existing == null
                 ? "<green>Created warp <white>" : "<green>Moved warp <white>") + id
                 + "<green> to where you're standing.");

@@ -7,6 +7,7 @@ import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -361,9 +362,16 @@ public class BoostListener implements Listener {
     }
 
     /** Right-click a boost item to start it. */
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        // Deliberately not ignoreCancelled: a right-click on *air* arrives with
+        // the block result already DENY, because there is no block to use, so
+        // ignoring cancelled events would drop exactly the case this handler
+        // exists for. What matters is whether something denied the item use.
+        if (event.useItemInHand() == Event.Result.DENY) {
             return;
         }
         Action action = event.getAction();

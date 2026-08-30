@@ -446,6 +446,16 @@ travel:
   # values in warps.yml override this.
   default-radius: 8
 
+  # Whether walking within a destination's radius puts it on your travel
+  # list. Off by default: a map you can sell is worth nothing if the same
+  # place arrives free the first time somebody wanders past it. With this
+  # off, a map (travel.items with mode: unlock, or /box warp item <id> map)
+  # is the only way onto a player's list — staff still get a destination
+  # the moment they place it, since they're standing on it.
+  #
+  # Nothing travels to a place that isn't on your list, ticket or not.
+  discover-by-walking: false
+
   # Whether to say so in chat the first time someone finds a place.
   announce-discovery: true
 
@@ -558,6 +568,7 @@ messages:
   travel-unavailable: "<red><white><warp></white> isn't reachable right now."
   travel-item-known: "<gray>You already know everywhere that would have shown you — keeping it."
   travel-item-busy: "<yellow>You're already travelling."
+  travel-not-found: "<red>You haven't found <white><warp></white> yet."
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."

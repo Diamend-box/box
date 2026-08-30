@@ -39,7 +39,7 @@ Six ship today:
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 | `compressor` | Personal compactor: a carried item that folds up whichever recipes the player slots into it. |
 | `boosts` | Temporary multipliers on block drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
-| `travel` | Fast travel to staff-set destinations, found by walking into them, with a warmup that can't be used to leave a fight. |
+| `travel` | Fast travel to staff-set destinations, unlocked with maps, with a warmup that can't be used to leave a fight. |
 
 ---
 
@@ -143,10 +143,13 @@ Six ship today:
   warning before, and a line when it does.
 - 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while
   standing where they want it, using the held item as the icon. Players don't
-  get them handed over: a place shows in the menu as somewhere they haven't been
-  until they walk into it, so the list is a reason to explore rather than a
-  locked door. Travelling takes a configurable warmup that cancels the moment
-  you move or take damage, and is refused outright while you're combat-tagged —
+  get them handed over: a place shows in the menu as `???` until it's on their
+  list, and nothing will travel them to one that isn't — a ticket buys the trip,
+  never the place. A **map** is what puts one on the list; set
+  `travel.discover-by-walking: true` to also unlock places by walking into them,
+  which makes the list a reason to explore instead of something you buy.
+  Travelling takes a configurable warmup that cancels the moment you move or
+  take damage, and is refused outright while you're combat-tagged —
   on a PvP server, fast travel that can be used to leave a losing fight is a
   different feature entirely. Only player-versus-player damage tags, so a mob
   farm doesn't lock you out of it. The menu is on `/box travel` and on
@@ -168,8 +171,9 @@ Six ship today:
   the ticket too; a **map** adds the place to your list for good, and `warp: any`
   makes one that adds every place you're allowed to see. A ticket stands in for
   the destination's permission — that's what buying one is for — but never for
-  the combat tag, because an item that teleports you out of a fight would be
-  worth more as an escape than as travel.
+  the combat tag or the found check: an item that teleports you out of a fight
+  would be worth more as an escape than as travel, and one that took you
+  somewhere you'd never found would sell the reward for finding it.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).

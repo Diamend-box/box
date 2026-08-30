@@ -11,6 +11,11 @@ import com.diamend.boxcore.travel.WarpManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.BlockFace;
+import org.bukkit.event.Event;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
@@ -74,6 +79,17 @@ class TravelTest {
         return plugin.profiles().get(player.getUniqueId());
     }
 
+    /** Turns walking discovery back on, which ships off. */
+    private void walkingFinds() {
+        plugin.getConfig().set("travel.discover-by-walking", true);
+        module().reload();
+    }
+
+    /** Puts a place on the player's list without walking or an item. */
+    private void found(PlayerMock player, String warpId) {
+        profile(player).discoverWarp(warpId);
+    }
+
     // ------------------------------------------------------------------
     // The warp list
     // ------------------------------------------------------------------
@@ -111,6 +127,7 @@ class TravelTest {
 
     @Test
     void walkingIntoAPlaceFindsIt() {
+        walkingFinds();
         PlayerMock player = server.addPlayer();
         warp("mines", at(0, 64, 0), "");
 
@@ -122,6 +139,7 @@ class TravelTest {
 
     @Test
     void walkingPastAtADistanceFindsNothing() {
+        walkingFinds();
         PlayerMock player = server.addPlayer();
         warp("mines", at(0, 64, 0), "");
 
@@ -132,6 +150,7 @@ class TravelTest {
 
     @Test
     void aPlaceIsOnlyAnnouncedTheFirstTime() {
+        walkingFinds();
         PlayerMock player = server.addPlayer();
         warp("mines", at(0, 64, 0), "");
 
@@ -149,6 +168,7 @@ class TravelTest {
     void aPlaceYouCannotUseIsNotFound() {
         // Otherwise a warp someone will never be allowed to use quietly appears
         // in their list the first time they walk past it.
+        walkingFinds();
         PlayerMock player = server.addPlayer();
         warp("staff", at(0, 64, 0), "boxcore.warp.staff");
 
@@ -176,6 +196,7 @@ class TravelTest {
     void travellingIsRefusedWhileInCombat() {
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(0, 64, 0), "");
+        found(player, "mines");
         module().combat().tag(player);
 
         TravelService.Outcome outcome = module().travel().begin(player, mines);
@@ -199,6 +220,7 @@ class TravelTest {
     void takingDamageCancelsATrip() {
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(0, 64, 0), "");
+        found(player, "mines");
         module().travel().configure(5, true);
 
         module().travel().begin(player, mines);
@@ -213,6 +235,7 @@ class TravelTest {
     void movingCancelsATrip() {
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(0, 64, 0), "");
+        found(player, "mines");
         player.teleport(at(50, 64, 50));
         module().travel().configure(5, true);
 
@@ -228,6 +251,7 @@ class TravelTest {
         // make the feature look broken.
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(0, 64, 0), "");
+        found(player, "mines");
         player.teleport(new Location(world, 50.5, 64, 50.5, 0f, 0f));
         module().travel().configure(5, true);
 
@@ -245,6 +269,7 @@ class TravelTest {
     void noWarmupMeansArrivingImmediately() {
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(120, 70, -8), "");
+        found(player, "mines");
         module().travel().configure(0, true);
 
         TravelService.Outcome outcome = module().travel().begin(player, mines);
@@ -258,6 +283,7 @@ class TravelTest {
     void theWarmupArrivesWhenItRunsOut() {
         PlayerMock player = server.addPlayer();
         Warp mines = warp("mines", at(120, 70, -8), "");
+        found(player, "mines");
         module().travel().configure(1, true);
 
         module().travel().begin(player, mines);
@@ -289,7 +315,7 @@ class TravelTest {
     void aFoundPlaceShowsItsOwnIcon() {
         PlayerMock player = server.addPlayer();
         warp("mines", at(0, 64, 0), "");
-        module().checkDiscovery(player, at(1, 64, 1));
+        found(player, "mines");
 
         new TravelMenu(plugin, module(), 0).open(player);
         Inventory menu = player.getOpenInventory().getTopInventory();
@@ -301,7 +327,7 @@ class TravelTest {
     void clickingAFoundPlaceStartsTheTrip() {
         PlayerMock player = server.addPlayer();
         warp("mines", at(120, 70, -8), "");
-        module().checkDiscovery(player, at(121, 70, -8));
+        found(player, "mines");
         player.teleport(at(0, 64, 0));
         module().travel().configure(5, true);
 
@@ -425,6 +451,7 @@ class TravelTest {
         PlayerMock player = server.addPlayer();
         player.teleport(at(0, 64, 0));
         module().travel().configure(0, true);
+        found(player, "mines");
         ticket(player, "mines");
 
         assertFalse(module().useItem(player, module().items().read(
@@ -443,6 +470,7 @@ class TravelTest {
         PlayerMock player = server.addPlayer();
         player.teleport(at(0, 64, 0));
         module().travel().configure(0, true);
+        found(player, "vault");
         ticket(player, "vault");
 
         module().useItem(player, module().items().read(
@@ -457,6 +485,7 @@ class TravelTest {
         PlayerMock player = server.addPlayer();
         player.teleport(at(0, 64, 0));
         module().travel().configure(0, true);
+        found(player, "mines");
         ticket(player, "mines");
         module().combat().tag(player);
 
@@ -514,6 +543,101 @@ class TravelTest {
         assertTrue(module().itemIds().contains("world-map"));
         assertNotNull(module().createItem("spawn-ticket", 1));
         assertNull(module().createItem("no-such-item", 1));
+    }
+
+    // ------------------------------------------------------------------
+    // Using one
+    // ------------------------------------------------------------------
+
+    @Test
+    void rightClickingThinAirStillUsesTheItem() {
+        // A right-click on air reaches plugins with the block result already
+        // DENY, because there is no block to use — which makes the event read
+        // as cancelled. A handler that ignores cancelled events therefore
+        // ignores every click that wasn't aimed at something, which is most of
+        // them. This is that regression.
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(300, 64, 300), "");
+        ItemStack map = module().createItem("mines", TravelItems.Mode.UNLOCK, 1);
+        player.getInventory().setItemInMainHand(map);
+
+        PlayerInteractEvent event = new PlayerInteractEvent(player, Action.RIGHT_CLICK_AIR,
+                map, null, BlockFace.SELF, EquipmentSlot.HAND);
+        event.setUseInteractedBlock(Event.Result.DENY);
+        server.getPluginManager().callEvent(event);
+
+        assertTrue(profile(player).hasDiscovered("mines"), "the map did its job");
+    }
+
+    // ------------------------------------------------------------------
+    // The gate: a map is what puts somewhere on your list
+    // ------------------------------------------------------------------
+
+    @Test
+    void walkingPastFindsNothingByDefault() {
+        // The shipped setting. A map you can sell is worth nothing if the same
+        // place turns up free the first time somebody wanders past it.
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(0, 64, 0), "");
+
+        module().checkDiscovery(player, at(1, 64, 1));
+
+        assertFalse(profile(player).hasDiscovered("mines"));
+    }
+
+    @Test
+    void thereIsNoTravellingSomewhereYouHaveNotFound() {
+        PlayerMock player = server.addPlayer();
+        Warp mines = warp("mines", at(300, 64, 300), "");
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+
+        TravelService.Outcome outcome = module().travel().begin(player, mines);
+
+        assertEquals(TravelService.Outcome.NOT_FOUND_YET, outcome);
+        assertEquals(0, player.getLocation().getBlockX(), "still where they were");
+    }
+
+    @Test
+    void aTicketIsNotAWayRoundTheGate() {
+        PlayerMock player = server.addPlayer();
+        warp("mines", at(300, 64, 300), "");
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+        ticket(player, "mines");
+
+        module().useItem(player, module().items().read(
+                player.getInventory().getItemInMainHand()));
+
+        assertEquals(0, player.getLocation().getBlockX(), "a ticket buys the trip, not the place");
+        assertEquals(1, carried(player), "and it wasn't eaten");
+    }
+
+    @Test
+    void aMapThenATicketWorks() {
+        PlayerMock player = server.addPlayer();
+        Warp mines = warp("mines", at(300, 64, 300), "");
+        player.teleport(at(0, 64, 0));
+        module().travel().configure(0, true);
+
+        assertTrue(module().useItem(player,
+                new TravelItems.Payload("map", "mines", TravelItems.Mode.UNLOCK)));
+        assertEquals(TravelService.Outcome.ARRIVED, module().travel().begin(player, mines));
+
+        assertEquals(300, player.getLocation().getBlockX());
+    }
+
+    @Test
+    void placingADestinationPutsItOnThePlacersList() {
+        // Otherwise staff make a place, stand on it, and find it showing as
+        // ??? on their own travel screen.
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+        player.teleport(at(64, 72, 12));
+
+        assertTrue(player.performCommand("box warp set outpost"));
+
+        assertTrue(profile(player).hasDiscovered("outpost"));
     }
 
     // ------------------------------------------------------------------

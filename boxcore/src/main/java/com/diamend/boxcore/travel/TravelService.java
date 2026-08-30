@@ -29,6 +29,7 @@ public class TravelService {
         ARRIVED,
         IN_COMBAT,
         NO_PERMISSION,
+        NOT_FOUND_YET,
         ALREADY_TRAVELLING,
         UNKNOWN_DESTINATION,
         MOVED,
@@ -118,10 +119,12 @@ public class TravelService {
      *                         the trip is spent on arrival rather than on use
      * @param ignorePermission whether to skip the warp's permission check —
      *                         true for a ticket, because holding the ticket
-     *                         <em>is</em> the permission. The combat check is
-     *                         never skipped: a ticket that teleports you out of
-     *                         a fight would be worth more as an escape than as
-     *                         travel, and this is a PvP server.
+     *                         <em>is</em> the permission. Neither the combat
+     *                         check nor the found check is ever skipped: a
+     *                         ticket that teleports you out of a fight would be
+     *                         worth more as an escape than as travel, and one
+     *                         that takes you somewhere you have never found
+     *                         would sell the reward for finding it.
      */
     public Outcome begin(Player player, Warp warp, Runnable onArrive, boolean ignorePermission) {
         if (player == null || warp == null) {
@@ -129,6 +132,15 @@ public class TravelService {
         }
         if (!ignorePermission && !warp.allows(player)) {
             return Outcome.NO_PERMISSION;
+        }
+        if (!plugin.profiles().get(player.getUniqueId()).hasDiscovered(warp.id())) {
+            // The gate for the whole feature: somewhere has to be on your list
+            // before anything can take you to it. Checked here rather than at
+            // each caller so no future route round the back can skip it.
+            plugin.messages().send(player, "travel-not-found",
+                    "warp", Text.plain(warp.display()));
+            sound(player, Sound.ENTITY_VILLAGER_NO, 0.6f, 1.0f);
+            return Outcome.NOT_FOUND_YET;
         }
         if (combat.isTagged(player)) {
             plugin.messages().send(player, "travel-in-combat",

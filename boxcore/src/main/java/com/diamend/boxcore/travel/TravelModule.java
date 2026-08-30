@@ -81,6 +81,7 @@ public class TravelModule implements BoxModule {
     private final Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
 
     private boolean announceDiscovery = true;
+    private boolean discoverByWalking = false;
     private boolean sounds = true;
     private Order order = Order.FOUND;
     private boolean snapCentre = true;
@@ -125,6 +126,7 @@ public class TravelModule implements BoxModule {
                 plugin.getConfig().getBoolean("travel.cancel-on-move", true));
         combat.setSeconds(plugin.getConfig().getLong("travel.combat-tag-seconds", 15L));
         announceDiscovery = plugin.getConfig().getBoolean("travel.announce-discovery", true);
+        discoverByWalking = plugin.getConfig().getBoolean("travel.discover-by-walking", false);
         sounds = plugin.getConfig().getBoolean("travel.sounds", true);
         order = Order.parse(plugin.getConfig().getString("travel.menu-order", "found"));
         snapCentre = plugin.getConfig().getBoolean("travel.snap.centre", true);
@@ -454,13 +456,16 @@ public class TravelModule implements BoxModule {
     // ------------------------------------------------------------------
 
     /**
-     * Records any warp this player is now standing near.
+     * Records any warp this player is now standing near, when
+     * {@code travel.discover-by-walking} says walking counts.
      *
-     * <p>Permission is checked before discovery, so a warp someone can't use
-     * doesn't quietly appear in their list the first time they walk past it.
+     * <p>Off by default: a map you can sell is worth nothing if the same place
+     * arrives free the first time somebody wanders past it. With it on,
+     * permission is still checked before discovery, so a warp someone can't use
+     * doesn't quietly appear in their list either way.
      */
     public void checkDiscovery(Player player, Location where) {
-        if (player == null || where == null || warps.size() == 0) {
+        if (!discoverByWalking || player == null || where == null || warps.size() == 0) {
             return;
         }
         PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
@@ -484,6 +489,28 @@ public class TravelModule implements BoxModule {
 
     public boolean hasDiscovered(Player player, Warp warp) {
         return plugin.profiles().get(player.getUniqueId()).hasDiscovered(warp.id());
+    }
+
+    /**
+     * Puts a place on someone's travel list by hand.
+     *
+     * <p>Used where being there is not in question: staff who just placed a
+     * destination are standing on it, and with walking discovery off they would
+     * otherwise have to mint themselves a map to reach somewhere they made.
+     *
+     * @return whether this added anything
+     */
+    public boolean discover(Player player, Warp warp) {
+        if (player == null || warp == null
+                || !plugin.profiles().get(player.getUniqueId()).discoverWarp(warp.id())) {
+            return false;
+        }
+        plugin.messages().send(player, "travel-discovered",
+                "warp", Text.plain(warp.display()));
+        if (sounds) {
+            Sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.0f);
+        }
+        return true;
     }
 
     /** Warps this player is allowed to see at all, found or not. */

@@ -218,6 +218,7 @@ public class WarpEditorMenu extends AbstractMenu {
         Warp warp = new Warp(id, name, icon, List.of(), module.placementFor(player), "",
                 plugin.getConfig().getDouble("travel.default-radius", 8.0));
         module.warps().put(warp);
+        module.discover(player, warp);
         plugin.messages().sendLiteral(player,
                 "<green>Created <white>" + id + "<green> where you're standing.");
         new WarpEditMenu(plugin, module, id).open(player);
