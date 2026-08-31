@@ -184,6 +184,30 @@ it back exactly where you left off — the in-progress draft is preserved.
 | `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
 | `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
 
+### Prerequisites — locking an achievement behind another
+
+An achievement can name others it waits on. In the editor that's **Requires**;
+in `achievements.yml` it's a list of ids:
+
+```yaml
+iron_age:
+  display-name: "<white>Iron Age"
+  requires: [stone_age]
+```
+
+While any prerequisite is missing the achievement is **locked**: it doesn't
+advance, it isn't seeded from statistics, and the menu shows 🔒 with the name of
+what it's waiting on rather than a progress bar the player can't move. That way
+a tree can't be finished out of order. `/ca grant` goes around the gate.
+
+The moment the prerequisite lands, the newly-opened achievement is seeded from
+statistics like any other — so gating "break 1,000,000 blocks" behind "break
+100,000" doesn't cost a veteran player the blocks they'd already broken.
+
+The editor won't let you create a loop: if two achievements would end up waiting
+on each other, neither could ever unlock and nothing in-game would say why, so
+it's refused when you add it.
+
 ### Capstones — an achievement for earning achievements
 
 `ACHIEVEMENT_UNLOCK` counts **this plugin's own achievements**, so one can sit on
@@ -351,7 +375,11 @@ achievement doesn't cost you the kills you already had. Seeding never lowers
 progress, and editing an objective's trigger or target lets it seed again.
 
 A `/ca reset` keeps those markers, so a reset stays a reset instead of the
-player being seeded straight back on their next join.
+player being seeded straight back on their next join. It also records what had
+already been seeded independently of the reader's version, so a later upgrade —
+which deliberately reconsiders every objective — can't walk through the reset
+and hand their history back. Achievements created *after* the reset still seed
+normally; only what they'd already been credited for is held back.
 
 > ⚠️ Players may **immediately complete** achievements they had already earned
 > the statistics for, which pays out rewards and fires broadcasts. That's the
@@ -367,6 +395,11 @@ run:
 ```
 /ca backfill <player>
 ```
+
+**The player doesn't have to be online** — statistics are kept on disk, and
+someone stuck at zero is often exactly the person who has logged off. Anything
+that completes while they're away is handed over on their next join, since the
+rewards, messages and broadcast all need them present.
 
 It re-runs the seeding for that player and prints one line per unfinished
 objective saying what it actually read — the statistic's value, and why the

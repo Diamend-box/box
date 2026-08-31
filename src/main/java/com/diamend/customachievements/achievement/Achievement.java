@@ -26,6 +26,9 @@ public class Achievement {
     private boolean announce;
     private boolean hidden;
     private String category;
+    // Ids that must already be unlocked before this one can be earned. Empty
+    // means it's available from the start.
+    private List<String> requires;
     private int rewardXp;
     private List<String> rewardCommands;
     private final List<ItemStack> rewardItems = new ArrayList<>();
@@ -39,6 +42,7 @@ public class Achievement {
         this.announce = true;
         this.hidden = false;
         this.category = "";
+        this.requires = new ArrayList<>();
         this.rewardXp = 0;
         this.rewardCommands = new ArrayList<>();
         this.requirements.add(new Requirement());
@@ -53,6 +57,7 @@ public class Achievement {
         other.announce = this.announce;
         other.hidden = this.hidden;
         other.category = this.category;
+        other.requires = new ArrayList<>(this.requires);
         other.rewardXp = this.rewardXp;
         other.rewardCommands = new ArrayList<>(this.rewardCommands);
         for (ItemStack item : this.rewardItems) {
@@ -139,6 +144,20 @@ public class Achievement {
 
     public void setCategory(String category) {
         this.category = category == null ? "" : category.trim();
+    }
+
+    /**
+     * Achievement ids that must be unlocked before this one becomes available.
+     * While any is missing the achievement is locked: its objectives don't
+     * advance and it isn't seeded from statistics, so it can't be finished out
+     * of order. An admin {@code /ca grant} bypasses the gate.
+     */
+    public List<String> getRequires() {
+        return requires;
+    }
+
+    public void setRequires(List<String> requires) {
+        this.requires = requires == null ? new ArrayList<>() : requires;
     }
 
     public List<ItemStack> getRewardItems() {

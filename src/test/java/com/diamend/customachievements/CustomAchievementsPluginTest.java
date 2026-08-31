@@ -903,6 +903,115 @@ class CustomAchievementsPluginTest {
     }
 
     @Test
+    void aLockedAchievementEarnsNothingUntilItsPrerequisiteIsUnlocked() {
+        PlayerMock player = server.addPlayer();
+        Achievement first = new Achievement("stone_age");
+        first.setTrigger(TriggerType.BLOCK_BREAK);
+        first.setTarget("STONE");
+        first.setAmount(1);
+        Achievement second = new Achievement("iron_age");
+        second.setTrigger(TriggerType.BLOCK_BREAK);
+        second.setTarget("IRON_ORE");
+        second.setAmount(1);
+        second.setRequires(new java.util.ArrayList<>(List.of("stone_age")));
+        plugin.getAchievementManager().put(first);
+        plugin.getAchievementManager().put(second);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "IRON_ORE", 1);
+        assertFalse(data.isCompleted("iron_age"), "a locked achievement should not be earnable");
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("iron_age", 0)),
+                "a locked achievement should not even accumulate progress");
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "STONE", 1);
+        assertTrue(data.isCompleted("stone_age"), "the prerequisite completes normally");
+
+        plugin.getAchievementService().handle(player, TriggerType.BLOCK_BREAK, "IRON_ORE", 1);
+        assertTrue(data.isCompleted("iron_age"), "once unlocked, the gated achievement works");
+    }
+
+    @Test
+    void grantGoesAroundThePrerequisiteGate() {
+        PlayerMock player = server.addPlayer();
+        Achievement gated = new Achievement("gated");
+        gated.setTrigger(TriggerType.MANUAL);
+        gated.setRequires(new java.util.ArrayList<>(List.of("never_unlocked")));
+        plugin.getAchievementManager().put(gated);
+
+        assertTrue(plugin.getAchievementService().grant(player, gated),
+                "an admin grant should still work on a locked achievement");
+    }
+
+    @Test
+    void aResetSurvivesAnImprovedBackfill() {
+        // The two fixes meet here: a reset has to stick even though a better
+        // reader deliberately reconsiders every objective it sees.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.STONE, 900);
+        Achievement achievement = new Achievement("digger_reset");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("ANY");
+        achievement.setAmount(5000);
+        plugin.getAchievementManager().put(achievement);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(900, data.getProgress(PlayerData.requirementKey("digger_reset", 0)), "seeded once");
+
+        data.reset();
+        plugin.getAchievementService().backfill(player);
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("digger_reset", 0)),
+                "a reset player should not be seeded straight back");
+
+        // Now stand in for a later version whose marker keys have all changed.
+        data.getBackfilled().clear();
+        plugin.getAchievementService().backfill(player);
+        assertEquals(0, data.getProgress(PlayerData.requirementKey("digger_reset", 0)),
+                "and a reader that reconsiders everything must not walk through the reset");
+    }
+
+    @Test
+    void aResetPlayerIsStillSeededForAnAchievementAddedAfterwards() {
+        // The reset suppresses what they'd already been credited for, not the
+        // rest of their life on the server.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.STONE, 700);
+        PlayerData data = plugin.getPlayerDataManager().get(player.getUniqueId());
+        data.reset();
+
+        Achievement fresh = new Achievement("brand_new");
+        fresh.setTrigger(TriggerType.BLOCK_BREAK);
+        fresh.setTarget("ANY");
+        fresh.setAmount(5000);
+        plugin.getAchievementManager().put(fresh);
+
+        plugin.getAchievementService().backfill(player);
+        assertEquals(700, data.getProgress(PlayerData.requirementKey("brand_new", 0)),
+                "an achievement created after the reset should still seed");
+    }
+
+    @Test
+    void backfillReadsAnOfflinePlayersStatistics() {
+        // Statistics live on disk, and the player stuck at zero is often exactly
+        // the one who has logged off.
+        PlayerMock player = server.addPlayer();
+        player.setStatistic(org.bukkit.Statistic.MINE_BLOCK, Material.STONE, 1200);
+        java.util.UUID uuid = player.getUniqueId();
+
+        Achievement achievement = new Achievement("offline_digger");
+        achievement.setTrigger(TriggerType.BLOCK_BREAK);
+        achievement.setTarget("ANY");
+        achievement.setAmount(5000);
+        plugin.getAchievementManager().put(achievement);
+
+        org.bukkit.OfflinePlayer offline = server.getOfflinePlayer(uuid);
+        plugin.getAchievementService().seedWithReport(offline, false);
+        assertEquals(1200, plugin.getPlayerDataManager().get(uuid)
+                        .getProgress(PlayerData.requirementKey("offline_digger", 0)),
+                "an offline player's statistics should still be readable");
+    }
+
+    @Test
     void groupTargetSurvivesSaveAndLoad() {
         Achievement achievement = new Achievement("miner");
         achievement.setTrigger(TriggerType.BLOCK_BREAK);

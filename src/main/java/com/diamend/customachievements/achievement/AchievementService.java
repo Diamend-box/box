@@ -63,7 +63,7 @@ public class AchievementService {
         Achievement closest = null;
         double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
-            if (data.isCompleted(achievement.getId())) {
+            if (data.isCompleted(achievement.getId()) || !isAvailable(achievement, data)) {
                 continue;
             }
             List<Requirement> requirements = achievement.getRequirements();
@@ -122,7 +122,7 @@ public class AchievementService {
         Achievement closest = null;
         double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
-            if (data.isCompleted(achievement.getId())) {
+            if (data.isCompleted(achievement.getId()) || !isAvailable(achievement, data)) {
                 continue;
             }
             List<Requirement> requirements = achievement.getRequirements();
@@ -274,12 +274,51 @@ public class AchievementService {
      * double-counting. It is deliberately <em>not</em> keyed on "has no progress
      * yet": a player who scored a single kill between creating the achievement
      * and the first backfill would otherwise be locked out of it permanently.
+     *
+     * <p>Repeats until nothing further changes, because unlocking one
+     * achievement can open a gate on another and make it seedable in turn.
      */
     public void backfill(Player player) {
-        if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
-            return;
+        PlayerData data = playerData.get(player.getUniqueId());
+        boolean fromStatistics = plugin.getConfig().getBoolean("backfill-from-statistics", true);
+        int before;
+        do {
+            before = data.getCompleted().size();
+            if (fromStatistics) {
+                seed(player, false, null);
+            }
+            handleUnlockCount(player);
+            awardCompleted(player, data);
+        } while (data.getCompleted().size() != before);
+    }
+
+    /**
+     * Hands over anything already finished but never awarded: an objective
+     * seeded while the player was offline, or one whose required amount was
+     * lowered below what they'd already done.
+     */
+    private void awardCompleted(Player player, PlayerData data) {
+        for (Achievement achievement : achievements.all()) {
+            if (!data.isCompleted(achievement.getId())
+                    && isAvailable(achievement, data)
+                    && isComplete(achievement, data)) {
+                award(player, achievement, data);
+            }
         }
-        seed(player, false, null);
+    }
+
+    /**
+     * Whether the player has unlocked everything this achievement waits on.
+     * A locked achievement doesn't advance and isn't seeded, so a tree can't be
+     * finished out of order; {@code /ca grant} goes around the gate.
+     */
+    public static boolean isAvailable(Achievement achievement, PlayerData data) {
+        for (String required : achievement.getRequires()) {
+            if (required != null && !required.isBlank() && !data.isCompleted(required)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -291,16 +330,32 @@ public class AchievementService {
      * @param redo re-seeds objectives already seeded once, which is the only way
      *             to retry after fixing whatever made the first attempt read zero
      */
-    public List<String> seedWithReport(Player player, boolean redo) {
+    public List<String> seedWithReport(org.bukkit.OfflinePlayer player, boolean redo) {
         List<String> report = new ArrayList<>();
-        seed(player, redo, report);
+        PlayerData data = playerData.get(player.getUniqueId());
+        boolean force = redo;
+        int before;
+        do {
+            before = data.getCompleted().size();
+            seed(player, force, report);
+            force = false; // forcing is meant to happen once, not on every pass
+            if (player instanceof Player online) {
+                handleUnlockCount(online);
+                awardCompleted(online, data);
+            }
+        } while (data.getCompleted().size() != before);
         return report;
     }
 
-    private void seed(Player player, boolean redo, List<String> report) {
+    private void seed(org.bukkit.OfflinePlayer player, boolean redo, List<String> report) {
         PlayerData data = playerData.get(player.getUniqueId());
         for (Achievement achievement : achievements.all()) {
             if (data.isCompleted(achievement.getId())) {
+                continue;
+            }
+            if (!isAvailable(achievement, data)) {
+                note(report, achievement.getId() + " — locked until "
+                        + String.join(", ", achievement.getRequires()) + " is unlocked");
                 continue;
             }
             List<Requirement> requirements = achievement.getRequirements();
@@ -311,8 +366,8 @@ public class AchievementService {
                 // The schema rides along so that a version which can answer more
                 // than the last one re-examines this objective once, instead of
                 // being shut out by a marker set when the answer wasn't there.
-                String marker = key + "@" + requirement.backfillSignature()
-                        + "@v" + StatisticBackfill.SCHEMA;
+                String signature = key + "@" + requirement.backfillSignature();
+                String marker = signature + "@v" + StatisticBackfill.SCHEMA;
                 String label = achievement.getId() + " #" + i + " "
                         + requirement.getTrigger().name() + " " + requirement.targetLabel();
                 // Counted from the player's own unlocked achievements every time
@@ -321,6 +376,16 @@ public class AchievementService {
                 if (requirement.getTrigger() == TriggerType.ACHIEVEMENT_UNLOCK) {
                     note(report, label + " — counted live from unlocked achievements");
                     continue;
+                }
+                // A reset is meant to stick. The marker alone can't say so —
+                // it's schema-scoped, and a better reader reconsiders it — so
+                // the wipe leaves its own schema-free record behind.
+                if (data.isResetSeeded(signature)) {
+                    if (!redo) {
+                        note(report, label + " — seeded before a reset; add \"redo\" to seed it again");
+                        continue;
+                    }
+                    data.clearResetSeeded(signature);
                 }
                 if (data.isBackfilled(marker) && !redo) {
                     note(report, label + " — already seeded once; add \"redo\" to force");
@@ -350,8 +415,14 @@ public class AchievementService {
                         + requirement.requiredAmount());
             }
             if (changed && isComplete(achievement, data)) {
-                award(player, achievement, data);
-                note(report, achievement.getId() + " — completed and awarded");
+                if (player instanceof Player online) {
+                    award(online, achievement, data);
+                    note(report, achievement.getId() + " — completed and awarded");
+                } else {
+                    // Rewards, messages and broadcasts all need them present, so
+                    // the unlock waits; awardCompleted() hands it over on join.
+                    note(report, achievement.getId() + " — complete, awarded when they next join");
+                }
             }
         }
     }
@@ -366,7 +437,6 @@ public class AchievementService {
     public void backfillOnline() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             backfill(player);
-            handleUnlockCount(player);
         }
     }
 

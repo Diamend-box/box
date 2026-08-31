@@ -4,6 +4,29 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.14.0]
+### Added
+- **Prerequisites — `requires: [id]`.** An achievement can now be locked behind
+  others. While any is missing it doesn't advance and isn't seeded, and the menu
+  shows 🔒 and what it's waiting on instead of a progress bar that can't move, so
+  a tree can't be finished out of order. `/ca grant` still goes around the gate.
+  The editor refuses a prerequisite that would close a loop, since two
+  achievements waiting on each other could never unlock and nothing in-game
+  would explain why.
+- **`/ca backfill` works on players who aren't online.** Statistics are kept on
+  disk, and the player stuck at zero is often exactly the one who has logged
+  off. Anything that completes while they're away is awarded on their next join,
+  since rewards and broadcasts need them present.
+
+### Fixed
+- **A reset now survives a later upgrade.** `/ca reset` relied on the backfill
+  markers to stop a player being seeded straight back on their next join, but
+  1.13.0 made those markers version-scoped so that an improved reader
+  reconsiders every objective — which would have walked through the reset and
+  handed the player their whole history back. The wipe now records what had
+  already been seeded independently of the reader's version. Achievements
+  created after the reset still seed normally.
+
 ## [1.13.0]
 ### Added
 - **`ACHIEVEMENT_UNLOCK` — an achievement for earning achievements.** A capstone

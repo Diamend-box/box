@@ -1,9 +1,9 @@
 package com.diamend.customachievements.achievement;
 
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +25,9 @@ import java.util.function.Predicate;
  * <p>An "any" target is answered by adding the per-type rows together, because
  * that is how the server stores them: there is no "blocks mined" counter, only
  * one counter per block.
+ *
+ * <p>Statistics are kept on disk per player rather than in memory, so these read
+ * an {@link OfflinePlayer} and work whether or not they're logged in.
  */
 public final class StatisticBackfill {
 
@@ -73,7 +76,7 @@ public final class StatisticBackfill {
      * The player's lifetime total for whatever this requirement asks for, or
      * {@code -1} when Minecraft doesn't track it.
      */
-    public static int total(Player player, Requirement requirement) {
+    public static int total(OfflinePlayer player, Requirement requirement) {
         if (requirement.isMatchByName()) {
             return -1; // statistics count materials, not custom item names
         }
@@ -119,7 +122,7 @@ public final class StatisticBackfill {
      *                statistic can't be totalled into the answer this objective
      *                is actually asking for
      */
-    private static int materialTotal(Player player, Statistic statistic, String target,
+    private static int materialTotal(OfflinePlayer player, Statistic statistic, String target,
                                      boolean wildcard, TargetGroup group, List<Material> whenAny) {
         if (wildcard) {
             return whenAny == null ? -1 : sumMaterials(player, statistic, whenAny);
@@ -130,7 +133,7 @@ public final class StatisticBackfill {
         return materialStat(player, statistic, target);
     }
 
-    private static int untyped(Player player, Statistic statistic) {
+    private static int untyped(OfflinePlayer player, Statistic statistic) {
         try {
             return player.getStatistic(statistic);
         } catch (RuntimeException ex) {
@@ -138,7 +141,7 @@ public final class StatisticBackfill {
         }
     }
 
-    private static int materialStat(Player player, Statistic statistic, String name) {
+    private static int materialStat(OfflinePlayer player, Statistic statistic, String name) {
         Material material = Material.matchMaterial(name);
         if (material == null) {
             return -1;
@@ -167,7 +170,7 @@ public final class StatisticBackfill {
         return colon >= 0 ? value.substring(colon + 1) : value;
     }
 
-    private static int entityStat(Player player, Statistic statistic, String name) {
+    private static int entityStat(OfflinePlayer player, Statistic statistic, String name) {
         EntityType type;
         try {
             type = EntityType.valueOf(normalize(name));
@@ -181,7 +184,7 @@ public final class StatisticBackfill {
         }
     }
 
-    private static int sumMaterials(Player player, Statistic statistic, Iterable<Material> materials) {
+    private static int sumMaterials(OfflinePlayer player, Statistic statistic, Iterable<Material> materials) {
         int total = 0;
         boolean any = false;
         for (Material material : materials) {
@@ -195,7 +198,7 @@ public final class StatisticBackfill {
         return any ? total : -1;
     }
 
-    private static int sumEntities(Player player, EntityGroup group) {
+    private static int sumEntities(OfflinePlayer player, EntityGroup group) {
         int total = 0;
         boolean any = false;
         for (EntityType type : group.members()) {

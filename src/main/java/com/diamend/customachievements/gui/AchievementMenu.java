@@ -186,6 +186,19 @@ public class AchievementMenu implements Menu {
         List<Requirement> requirements = achievement.getRequirements();
         if (completed) {
             lore.add(Text.item("<green>✔ Unlocked"));
+        } else if (!com.diamend.customachievements.achievement.AchievementService
+                .isAvailable(achievement, data)) {
+            // Locked achievements don't advance at all, so showing progress here
+            // would only invite the player to grind something that can't move.
+            lore.add(Text.item("<red>🔒 Locked"));
+            for (String required : achievement.getRequires()) {
+                if (required == null || required.isBlank() || data.isCompleted(required)) {
+                    continue;
+                }
+                Achievement gate = plugin.getAchievementManager().get(required);
+                lore.add(Text.item("<gray>Needs: <white>"
+                        + (gate != null ? gate.getDisplayName() : required)));
+            }
         } else if (requirements.size() == 1) {
             renderRequirementLine(lore, achievement, requirements.get(0), 0, data, false);
         } else {

@@ -216,6 +216,7 @@ public class AchievementManager {
         achievement.setAnnounce(section.getBoolean("announce", true));
         achievement.setHidden(section.getBoolean("hidden", false));
         achievement.setCategory(section.getString("category", ""));
+        achievement.setRequires(new ArrayList<>(section.getStringList("requires")));
         achievement.setRewardXp(section.getInt("reward-xp", 0));
         achievement.setRewardCommands(new ArrayList<>(section.getStringList("reward-commands")));
 
@@ -270,6 +271,9 @@ public class AchievementManager {
         config.set(base + ".announce", achievement.isAnnounce());
         config.set(base + ".hidden", achievement.isHidden());
         config.set(base + ".category", achievement.getCategory());
+        if (!achievement.getRequires().isEmpty()) {
+            config.set(base + ".requires", achievement.getRequires());
+        }
         config.set(base + ".reward-xp", achievement.getRewardXp());
         config.set(base + ".reward-commands", achievement.getRewardCommands());
         if (!achievement.getRewardItems().isEmpty()) {

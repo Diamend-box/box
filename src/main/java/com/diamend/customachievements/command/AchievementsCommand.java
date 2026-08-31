@@ -139,6 +139,11 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
      * didn't appear can be diagnosed instead of guessed at. {@code redo} seeds
      * objectives already seeded once, which is the only way to retry after
      * fixing whatever made the first attempt come up empty.
+     *
+     * <p>The player needn't be online: statistics are kept on disk, and someone
+     * stuck at zero is often exactly the person who has logged off. Anything
+     * that completes while they're away is handed over on their next join,
+     * since rewards and broadcasts need them present.
      */
     private void backfill(CommandSender sender, String[] args) {
         if (!hasAdmin(sender)) {
@@ -146,11 +151,12 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         }
         boolean redo = args.length > 1 && args[args.length - 1].equalsIgnoreCase("redo");
         String name = args.length > 1 && !args[1].equalsIgnoreCase("redo") ? args[1] : null;
-        Player target;
+        org.bukkit.OfflinePlayer target;
         if (name != null) {
-            target = Bukkit.getPlayerExact(name);
+            target = resolve(name);
             if (target == null) {
-                sender.sendMessage(Text.parse("<red><white>" + name + "<red> is not online."));
+                sender.sendMessage(Text.parse("<red>No player called <white>" + name
+                        + "<red> has played on this server."));
                 return;
             }
         } else if (sender instanceof Player self) {
@@ -163,9 +169,19 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<yellow>Note: <white>backfill-from-statistics<yellow> is off in "
                     + "config.yml, so this won't run on join. Running now because you asked."));
         }
-        List<String> report = plugin.getAchievementService().seedWithReport(target, redo);
+        // Seeding pulls their file into the cache; an offline player mustn't be
+        // left sitting there, so it's written back out and evicted afterwards.
+        boolean offline = !(target instanceof Player);
+        List<String> report;
+        try {
+            report = plugin.getAchievementService().seedWithReport(target, redo);
+        } finally {
+            if (offline) {
+                plugin.getPlayerDataManager().unload(target.getUniqueId());
+            }
+        }
         sender.sendMessage(Text.parse("<gold>Backfill for <white>" + target.getName()
-                + "<gold>" + (redo ? " <gray>(redo)" : "") + ":"));
+                + "<gold>" + (offline ? " <gray>(offline)" : "") + (redo ? " <gray>(redo)" : "") + ":"));
         if (report.isEmpty()) {
             sender.sendMessage(Text.parse("<gray>  Nothing to do — every achievement is already completed."));
             return;
@@ -173,6 +189,28 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         for (String line : report) {
             sender.sendMessage(Text.parse("<gray>  " + line));
         }
+    }
+
+    /**
+     * Finds a player by name, online or not. Statistics live on disk per player,
+     * so a backfill doesn't need them present — which matters most for the case
+     * it exists to fix, where the player is stuck at zero and not logged in.
+     *
+     * <p>Deliberately not {@code Bukkit.getOfflinePlayer(String)}: that invents a
+     * profile for any string you hand it, so a typo would silently "succeed"
+     * against an empty statistics file.
+     */
+    private static org.bukkit.OfflinePlayer resolve(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return online;
+        }
+        for (org.bukkit.OfflinePlayer candidate : Bukkit.getOfflinePlayers()) {
+            if (name.equalsIgnoreCase(candidate.getName())) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     /**
@@ -483,7 +521,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<yellow>/ca revoke <player> <id> <gray>- Revoke an achievement"));
             sender.sendMessage(Text.parse("<yellow>/ca reset <player> <gray>- Reset a player's achievements"));
             sender.sendMessage(Text.parse("<yellow>/ca trigger <player> <key> <gray>- Fire a custom trigger"));
-            sender.sendMessage(Text.parse("<yellow>/ca backfill <player> [redo] <gray>- Re-seed from statistics"));
+            sender.sendMessage(Text.parse("<yellow>/ca backfill <player> [redo] "
+                    + "<gray>- Re-seed from statistics (works offline)"));
             sender.sendMessage(Text.parse("<yellow>/ca reload <gray>- Reload configuration"));
         }
     }
