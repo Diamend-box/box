@@ -56,6 +56,7 @@ class LootTableTest {
                       - { type: item, material: IRON_INGOT, min: 2, max: 5, weight: 10 }
                       - { type: item, material: NOT_A_MATERIAL, min: 1, max: 1, weight: 5 }
                       - { type: armor, tier: 2, weight: 2 }
+                      - { type: custom, id: chronon, min: 4, max: 9, weight: 6 }
                 """);
         LootTable table = tables.base().get(2);
         assertNotNull(table);
