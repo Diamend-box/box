@@ -1,7 +1,6 @@
 package com.diamend.darksea.boat;
 
 import com.diamend.darksea.DarkSeaPlugin;
-import com.diamend.darksea.armor.SeaArmor;
 import com.diamend.darksea.config.DarkSeaSettings;
 import com.diamend.darksea.config.DarkSeaSettings.BoatLevel;
 import com.diamend.darksea.data.PlayerDataStore;
@@ -185,45 +184,69 @@ public final class BoatService implements Listener {
 
     /** Outcome of a boat-upgrade attempt — the pure decision, minus effects. */
     public enum UpgradeResult {
-        /** The held token was the next level; the boat is raised. */
+        /** The captain could pay for the next tier; the boat is raised. */
         UPGRADED,
         /** Already at the highest configured level. */
         AT_MAX,
-        /** The held token isn't the exact next level (tokens apply in sequence). */
-        WRONG_TOKEN
+        /** The next tier exists but the captain cannot cover its price. */
+        TOO_POOR
     }
 
     /**
-     * Whether a held token upgrades the boat, given the current level, the
-     * token's level (0 = not a token) and whether a next level exists. Tokens
-     * only apply in sequence: a level-3 token does nothing on a level-1 boat.
+     * Whether the next boat tier can be bought, given what the captain is
+     * carrying and what that tier costs.
+     *
+     * <p>Upgrades are bought a tier at a time, in sequence, because each price
+     * is attached to the tier it buys — there is no way to skip ahead by saving
+     * up, and no way to be holding the wrong thing. That is the whole reason
+     * this replaced per-level tokens: a level-3 token in a level-1 hold was a
+     * dead item, and finding one felt like being told no.
+     *
+     * <p>A tier priced at 0 is free, which is what an unpriced config gets. That
+     * degrades to "upgrades are free" rather than "upgrades are impossible" on
+     * purpose: a missing number should not lock a captain out of the only
+     * progression the sea has.
      */
-    public static UpgradeResult evaluateUpgrade(int currentLevel, int tokenLevel, boolean nextLevelExists) {
+    public static UpgradeResult evaluateUpgrade(int chronons, int cost, boolean nextLevelExists) {
         if (!nextLevelExists) {
             return UpgradeResult.AT_MAX;
         }
-        return tokenLevel == currentLevel + 1 ? UpgradeResult.UPGRADED : UpgradeResult.WRONG_TOKEN;
+        return chronons >= cost ? UpgradeResult.UPGRADED : UpgradeResult.TOO_POOR;
+    }
+
+    /** What the next boat tier costs in Chronons, or 0 if there is no next tier. */
+    public int upgradeCost(Player player) {
+        int next = levelOf(player) + 1;
+        DarkSeaSettings.BoatLevel level = plugin.settings().boat().levels().get(next);
+        return level == null ? 0 : level.cost();
     }
 
     /**
-     * Consume a matching upgrade token from anywhere in the inventory and raise
-     * the boat level by one. Tokens are per-level and only apply in sequence.
-     * Scanning the whole pack (not just the main hand) lets the boat wheel's
-     * Upgrade button and {@code /ds boat upgrade} share this one path.
+     * Buy the next boat tier with Chronons carried anywhere in the pack.
+     * Scanning the whole inventory (not just the main hand) lets the boat
+     * wheel's Upgrade button and {@code /ds boat upgrade} share this one path.
      */
     public void upgrade(Player player) {
         int current = levelOf(player);
         int next = current + 1;
         boolean nextExists = plugin.settings().boat().levels().containsKey(next);
-        int slot = findTokenSlot(player, next);
-        int tokenLevel = slot >= 0 ? next : 0;  // 0 = no matching token in the pack
-        switch (evaluateUpgrade(current, tokenLevel, nextExists)) {
+        int cost = upgradeCost(player);
+        int have = DarkSeaItems.countChronons(player.getInventory());
+        switch (evaluateUpgrade(have, cost, nextExists)) {
             case AT_MAX -> plugin.messages().send(player, "boat-max");
-            case WRONG_TOKEN ->
-                    plugin.messages().send(player, "boat-need-token", "level", String.valueOf(next));
+            case TOO_POOR -> plugin.messages().send(player, "boat-need-chronons",
+                    "cost", String.valueOf(cost), "have", String.valueOf(have),
+                    "name", stats(next).name(), "level", String.valueOf(next));
             case UPGRADED -> {
-                ItemStack token = player.getInventory().getItem(slot);
-                token.setAmount(token.getAmount() - 1);
+                // Bill before raising the level: removeChronons is the only step
+                // here that can fail, and a boat raised for free is worse than
+                // an upgrade that did not happen.
+                if (cost > 0 && !DarkSeaItems.removeChronons(player.getInventory(), cost)) {
+                    plugin.messages().send(player, "boat-need-chronons",
+                            "cost", String.valueOf(cost), "have", String.valueOf(have),
+                            "name", stats(next).name(), "level", String.valueOf(next));
+                    return;
+                }
                 setLevel(player, next);
                 plugin.messages().send(player, "boat-upgraded",
                         "name", stats(next).name(), "level", String.valueOf(next));
@@ -231,20 +254,9 @@ public final class BoatService implements Listener {
         }
     }
 
-    /** The first inventory slot holding a boat token of {@code level}, or -1. */
-    private int findTokenSlot(Player player, int level) {
-        ItemStack[] contents = player.getInventory().getContents();
-        for (int i = 0; i < contents.length; i++) {
-            if (SeaArmor.tokenLevelOf(contents[i]) == level) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /** Whether the player carries a boat token of the given level anywhere. */
-    public boolean hasUpgradeToken(Player player, int level) {
-        return findTokenSlot(player, level) >= 0;
+    /** Whether the captain can currently afford the next tier. */
+    public boolean canAffordUpgrade(Player player) {
+        return DarkSeaItems.countChronons(player.getInventory()) >= upgradeCost(player);
     }
 
     @EventHandler

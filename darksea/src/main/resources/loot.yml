@@ -10,12 +10,15 @@
 #            'lore' (MiniMessage) make it flavor salvage — junk with a story.
 #   armor  — a random sea-armor piece of the given tier (the progression
 #            engine: ring N chests drop tier N, with a small chance of N+1)
-#   token  — a boat upgrade token for the given level
 #   custom — a registry item by id (Chronons, relics, weapons, consumables).
 #            Identity is PDC-tagged, so relics can't be faked and a typo'd id
 #            fails CI instead of shipping. Ids live in DarkSeaItems.
 #
 # CHRONONS — the Naxome's currency — drop in every ring, growing with depth.
+# Boat tiers are BOUGHT with them at the boat expert (prices in config.yml under
+# boat.levels), which is why the treasure band carries fat coin caches where it
+# used to carry upgrade tokens: the sea still pays out boat progress, it just
+# pays in something you can also spend on anything else.
 # Some islands were rich once: each island carries a hidden wealth multiplier
 # (0.6x–1.8x, derived from its position) applied to its Chronon piles only.
 # The refugees at the calm center take Chronons to wake relics (/ds relic
@@ -34,7 +37,7 @@
 # and weapons. Single-chest islands never have a vault.
 #
 # Every tier is banded: JUNK (flavor salvage, common), GOODS (materials and
-# consumables, the bread and butter), TREASURE (relics, armor, tokens,
+# consumables, the bread and butter), TREASURE (relics, armor,
 # weapons — rare). Chest weapons are deliberately a notch under what the
 # cursed themselves drop; the good stuff walks and fights back.
 # Reloads with /ds reload.
@@ -62,7 +65,7 @@ tiers:
       - { type: custom, id: naxian_boarding_axe,  weight: 2 }
       - { type: armor, tier: 1, weight: 8 }
       - { type: armor, tier: 2, weight: 1 }
-      - { type: token, level: 1, weight: 3 }
+      - { type: custom, id: chronon,              min: 12, max: 20, weight: 3 }
       - { type: custom, id: chainshot_arrow,      min: 4, max: 8, weight: 4 }
     vault:
       rolls: 6
@@ -76,7 +79,7 @@ tiers:
         - { type: custom, id: naxian_boarding_axe, weight: 5 }
         - { type: armor, tier: 1, weight: 10 }
         - { type: armor, tier: 2, weight: 2 }
-        - { type: token, level: 1, weight: 6 }
+        - { type: custom, id: chronon,             min: 20, max: 34, weight: 6 }
   # ── The Raging Deep — the Naxome's drowned towns ──
   2:
     rolls: 4
@@ -101,8 +104,7 @@ tiers:
       - { type: custom, id: harborguard_pike,     weight: 2 }
       - { type: armor, tier: 2, weight: 8 }
       - { type: armor, tier: 3, weight: 1 }
-      - { type: token, level: 1, weight: 2 }
-      - { type: token, level: 2, weight: 3 }
+      - { type: custom, id: chronon,              min: 16, max: 26, weight: 5 }
       - { type: custom, id: chainshot_arrow,      min: 4, max: 8, weight: 4 }
       - { type: custom, id: hullpiercer_arrow,    min: 2, max: 4, weight: 2 }
     vault:
@@ -116,7 +118,7 @@ tiers:
         - { type: custom, id: harborguard_pike,   weight: 5 }
         - { type: armor, tier: 2, weight: 10 }
         - { type: armor, tier: 3, weight: 2 }
-        - { type: token, level: 2, weight: 6 }
+        - { type: custom, id: chronon,             min: 30, max: 48, weight: 6 }
         - { type: custom, id: hullpiercer_arrow,  min: 3, max: 6, weight: 4 }
   # ── The Midnight Waters — where the Order works openly ──
   3:
@@ -141,9 +143,7 @@ tiers:
       - { type: custom, id: order_ceremonial_blade, weight: 1 }
       - { type: armor, tier: 3, weight: 8 }
       - { type: armor, tier: 4, weight: 1 }
-      - { type: token, level: 2, weight: 2 }
-      - { type: token, level: 3, weight: 2 }
-      - { type: token, level: 4, weight: 1 }
+      - { type: custom, id: chronon,              min: 26, max: 42, weight: 5 }
       - { type: custom, id: chainshot_arrow,      min: 6, max: 10, weight: 3 }
       - { type: custom, id: hullpiercer_arrow,    min: 3, max: 6, weight: 3 }
     vault:
@@ -157,7 +157,7 @@ tiers:
         - { type: custom, id: order_ceremonial_blade, weight: 4 }
         - { type: armor, tier: 3, weight: 10 }
         - { type: armor, tier: 4, weight: 2 }
-        - { type: token, level: 3, weight: 5 }
+        - { type: custom, id: chronon,             min: 45, max: 70, weight: 5 }
         - { type: custom, id: harpoon_gun,        weight: 3 }
   # ── The Abyssal Reaches — the monolith's own hoard ──
   4:
@@ -179,9 +179,7 @@ tiers:
       - { type: custom, id: relic_naxome_heart,   weight: 1 }
       - { type: custom, id: order_ceremonial_blade, weight: 2 }
       - { type: armor, tier: 4, weight: 8 }
-      - { type: token, level: 3, weight: 3 }
-      - { type: token, level: 4, weight: 2 }
-      - { type: token, level: 5, weight: 1 }
+      - { type: custom, id: chronon,              min: 38, max: 60, weight: 6 }
       - { type: custom, id: hullpiercer_arrow,    min: 4, max: 8, weight: 4 }
       - { type: custom, id: harpoon_gun,          weight: 2 }
     vault:
@@ -195,14 +193,12 @@ tiers:
         - { type: custom, id: relic_naxome_heart, weight: 1 }
         - { type: custom, id: order_ceremonial_blade, weight: 4 }
         - { type: armor, tier: 4, weight: 10 }
-        - { type: token, level: 3, weight: 6 }
-        - { type: token, level: 4, weight: 4 }
-        - { type: token, level: 5, weight: 2 }
+        - { type: custom, id: chronon,             min: 60, max: 95, weight: 10 }
   # ── The Sunless Trench — the Order's breeding water ──
   # Ring 5 builds only a couple of islands, and nothing survives out here
   # without full tier-4 plate and a shielded hull. The tables pay for that:
-  # the fattest Chronon piles in the sea, netherite by the ingot, and the
-  # only chests that hand out a level-5 token with any regularity. There is
+  # the fattest Chronon piles in the sea, netherite by the ingot, and the only
+  # chests that pay for a Maelstrom in any reasonable number of runs. There is
   # no tier-5 armor to progress into — the Leviathan set is the ceiling — so
   # the Trench pays in coin, hulls and consumables instead of in plate.
   5:
@@ -227,8 +223,7 @@ tiers:
       - { type: custom, id: order_ceremonial_blade, weight: 3 }
       - { type: custom, id: harpoon_gun,          weight: 3 }
       - { type: armor, tier: 4, weight: 8 }
-      - { type: token, level: 4, weight: 3 }
-      - { type: token, level: 5, weight: 2 }
+      - { type: custom, id: chronon,              min: 50, max: 80, weight: 5 }
       - { type: custom, id: hullpiercer_arrow,    min: 6, max: 12, weight: 4 }
     vault:
       rolls: 8
@@ -243,4 +238,4 @@ tiers:
         - { type: custom, id: order_ceremonial_blade, weight: 5 }
         - { type: custom, id: harpoon_gun,        weight: 5 }
         - { type: armor, tier: 4, weight: 10 }
-        - { type: token, level: 5, weight: 4 }
+        - { type: custom, id: chronon,             min: 90, max: 140, weight: 4 }

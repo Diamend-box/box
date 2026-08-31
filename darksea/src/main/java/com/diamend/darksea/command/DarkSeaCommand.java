@@ -94,14 +94,14 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         msg.sendBare(sender, "help-header");
         helpLine(sender, "/ds status", "your zone, protection and boat", "darksea.use");
         helpLine(sender, "/ds boat", "open the boat wheel (upgrade, repair, stow)", "darksea.use");
-        helpLine(sender, "/ds boat upgrade", "consume a token to upgrade your boat", "darksea.use");
+        helpLine(sender, "/ds boat upgrade", "buy the next boat tier with Chronons", "darksea.use");
         helpLine(sender, "/ds bounty [player] [amount]", "list bounties, or spend Chronons to place one", "darksea.use");
         helpLine(sender, "/ds relic revive", "wake the held relic at the calm center (costs Chronons)", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
         helpLine(sender, "/ds generate [count]", "place islands (all rings, or just <count> at a time)", "darksea.admin");
         helpLine(sender, "/ds reset <soft|full>", "re-paste islands / regenerate the sea", "darksea.admin");
         helpLine(sender, "/ds island list [tier] | tp <id>", "inspect placed islands", "darksea.admin");
-        helpLine(sender, "/ds give <armor|token> <n> [player]", "grant sea armor or tokens", "darksea.admin");
+        helpLine(sender, "/ds give armor <tier> [player]", "grant a set of sea armor", "darksea.admin");
         helpLine(sender, "/ds give item <id> [count] [player]", "grant any registry item (weapons, relics, chronons...)", "darksea.admin");
         helpLine(sender, "/ds boat set <player> <level>", "set a player's boat level", "darksea.admin");
         helpLine(sender, "/ds boat damage [amount]", "test tool: hull-damage the boat you're in", "darksea.admin");
@@ -481,16 +481,6 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                         "tier", String.valueOf(number),
                         "name", style.displayName());
             }
-            case "token" -> {
-                if (!plugin.settings().boat().levels().containsKey(number)) {
-                    msg.send(sender, "invalid-level", "level", String.valueOf(number));
-                    return;
-                }
-                giveItems(target, List.of(SeaArmor.createToken(number)));
-                msg.send(sender, "give-token",
-                        "player", target.getName(),
-                        "level", String.valueOf(number));
-            }
             default -> msg.send(sender, "unknown-command");
         }
     }
@@ -838,7 +828,6 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 case "give" -> {
                     if (admin) {
                         options.add("armor");
-                        options.add("token");
                         options.add("item");
                     }
                 }
@@ -882,12 +871,6 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                     if (admin && args[1].equalsIgnoreCase("armor")) {
                         for (Integer tier : plugin.settings().armor().tiers().keySet()) {
                             options.add(String.valueOf(tier));
-                        }
-                    } else if (admin && args[1].equalsIgnoreCase("token")) {
-                        for (Integer level : plugin.settings().boat().levels().keySet()) {
-                            if (level > 0) {
-                                options.add(String.valueOf(level));
-                            }
                         }
                     } else if (admin && args[1].equalsIgnoreCase("item")) {
                         options.addAll(DarkSeaItems.allIds());

@@ -1,6 +1,7 @@
 package com.diamend.darksea.world.cultist;
 
 import com.diamend.darksea.item.DarkSeaItems;
+import com.diamend.darksea.item.ItemDisplay;
 import com.diamend.darksea.npc.NpcType;
 import com.diamend.darksea.npc.ShopConfig;
 import com.diamend.darksea.npc.ShopOffer;
@@ -228,6 +229,69 @@ class OreConfigTest {
         assertEquals("NETHERITE_PICKAXE", tables.referenceTool());
         assertTrue(tables.referenceSpeed() > 0);
         assertFalse(warnings.isEmpty(), "a bad reference-tool should be named in the log");
+    }
+
+    /**
+     * The shipped {@code items:} block names all three crystals. It exists so
+     * renaming one is a config edit rather than a code change, and it is written
+     * out in full — rather than left implicit — so there is something to edit.
+     */
+    @Test
+    void theShippedFileNamesEveryCrystalItCanDrop() throws Exception {
+        OreTables tables = loadShipped();
+        assertTrue(warnings.isEmpty(), "ores.yml produced warnings: " + warnings);
+        for (String dropId : tables.dropIds()) {
+            ItemDisplay display = tables.displayFor(dropId);
+            assertTrue(display.hasName(), dropId + " has no configured name");
+            assertTrue(display.hasMaterial(), dropId + " has no configured material");
+            assertTrue(display.hasLore(), dropId + " has no configured lore");
+            assertNotNull(Material.matchMaterial(display.materialName()),
+                    dropId + " is configured as a material that does not exist");
+        }
+    }
+
+    /**
+     * Renaming is cosmetic and partial by design: an entry may set one field and
+     * leave the rest, and an absent id changes nothing at all. Anything stricter
+     * would mean restating the parts you were happy with every time you edited a
+     * name.
+     */
+    @Test
+    void aPartialItemEntryOverridesOnlyWhatItSets() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("veins.good.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.good.drop", "emberglass");
+        yaml.set("veins.good.count", 4);
+        yaml.set("items.emberglass.name", "<gold>Sunglass</gold>");
+
+        OreTables tables = OreConfig.load(yaml, log);
+        ItemDisplay display = tables.displayFor("emberglass");
+        assertEquals("<gold>Sunglass</gold>", display.name());
+        assertFalse(display.hasMaterial(), "an unset material must not override");
+        assertFalse(display.hasLore(), "unset lore must not override");
+        assertEquals(List.of("shipped lore"), display.loreOr(List.of("shipped lore")));
+
+        ItemDisplay absent = tables.displayFor("voidbloom");
+        assertFalse(absent.hasName());
+        assertEquals("shipped", absent.nameOr("shipped"));
+    }
+
+    /** A material typo costs you the material, not the crystal. */
+    @Test
+    void aBadDisplayMaterialIsNamedAndTheShippedOneKept() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("veins.good.block", "OCHRE_FROGLIGHT");
+        yaml.set("veins.good.drop", "emberglass");
+        yaml.set("veins.good.count", 4);
+        yaml.set("items.emberglass.material", "NOT_A_REAL_BLOCK");
+        yaml.set("items.emberglass.name", "<gold>Sunglass</gold>");
+
+        OreTables tables = OreConfig.load(yaml, log);
+        ItemDisplay display = tables.displayFor("emberglass");
+        assertFalse(display.hasMaterial(), "a bad material must not be carried forward");
+        assertTrue(display.hasName(), "the rest of the entry should survive");
+        assertEquals(1, tables.types().size(), "the vein itself is unaffected");
+        assertFalse(warnings.isEmpty(), "a bad display material should be named in the log");
     }
 
     @Test

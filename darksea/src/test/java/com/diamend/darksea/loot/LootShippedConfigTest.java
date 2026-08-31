@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 
@@ -247,18 +248,24 @@ class LootShippedConfigTest {
     }
 
     @Test
-    void boatTokensForEveryLevelExistSomewhereInTheProgression() {
-        Set<Integer> levels = new HashSet<>();
+    @DisplayName("every ring can pay for a boat: the treasure band carries real coin, not tokens")
+    void everyRingPaysEnoughCoinToProgressAHull() {
+        // Boat tiers are bought with Chronons now, so the thing that has to be
+        // reachable from chests is money rather than five distinct token levels.
+        // A ring whose richest coin entry is pocket change cannot fund the hull
+        // its own danger assumes you are sailing.
         for (int tier = 1; tier <= maxTier; tier++) {
+            int best = 0;
             for (LootEntry entry : allEntries(tier)) {
-                if (entry.type() == LootEntry.Type.TOKEN) {
-                    levels.add(entry.tokenLevel());
+                if (entry.type() == LootEntry.Type.CUSTOM
+                        && DarkSeaItems.CHRONON.equals(entry.customId())) {
+                    best = Math.max(best, entry.max());
                 }
             }
+            assertTrue(best >= 10 * tier,
+                    "ring " + tier + "'s fattest Chronon entry is only " + best);
         }
-        assertEquals(Set.of(1, 2, 3, 4, 5), levels, "token levels reachable from chests");
     }
-
     @Test
     void deeperRingsRefillSlower() {
         long previous = 0;

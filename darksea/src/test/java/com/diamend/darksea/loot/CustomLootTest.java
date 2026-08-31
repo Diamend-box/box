@@ -1,5 +1,6 @@
 package com.diamend.darksea.loot;
 
+import com.diamend.darksea.item.DarkSeaItems;
 import org.bukkit.Material;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +41,7 @@ class CustomLootTest {
 
     private static LootEntry item(Material material, int weight) {
         return new LootEntry(LootEntry.Type.ITEM, material, 1, 1, null, List.of(),
-                0, 0, null, weight);
+                0, null, weight);
     }
 
     private static LootTables shipped() {
@@ -113,15 +114,15 @@ class CustomLootTest {
         // have no way to tell which click had failed.
         File file = Files.createTempDirectory("darksea-loot").resolve("loot-custom.yml").toFile();
         LootEntry snapshot = new LootEntry(LootEntry.Type.SNAPSHOT, null, 2, 4, null,
-                List.of(), 0, 0, sampleSnapshot(), 7);
+                List.of(), 0, sampleSnapshot(), 7);
         CustomLoot before = CustomLoot.empty()
                 .plus(new CustomLoot.Key(1, false), item(Material.DIAMOND, 3))
                 .plus(new CustomLoot.Key(1, false),
                         new LootEntry(LootEntry.Type.ARMOR, null, 0, 0, null, List.of(),
-                                2, 0, null, 4))
+                                2, null, 4))
                 .plus(new CustomLoot.Key(1, false),
-                        new LootEntry(LootEntry.Type.TOKEN, null, 0, 0, null, List.of(),
-                                0, 3, null, 6))
+                        new LootEntry(LootEntry.Type.CUSTOM, null, 4, 9, null, List.of(),
+                                0, DarkSeaItems.CHRONON, 6))
                 .plus(new CustomLoot.Key(1, true), snapshot);
 
         CustomLootConfig.save(before, file, LOG);

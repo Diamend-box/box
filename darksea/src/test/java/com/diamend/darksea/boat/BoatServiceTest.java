@@ -102,22 +102,25 @@ class BoatServiceTest {
     }
 
     @Test
-    void tokensUpgradeOnlyInSequence() {
-        // The exact next level upgrades.
-        assertEquals(UpgradeResult.UPGRADED, BoatService.evaluateUpgrade(0, 1, true));
-        assertEquals(UpgradeResult.UPGRADED, BoatService.evaluateUpgrade(2, 3, true));
-        // A token for a further level does nothing (no skipping ahead).
-        assertEquals(UpgradeResult.WRONG_TOKEN, BoatService.evaluateUpgrade(0, 2, true));
-        // A token at or below the current level does nothing.
-        assertEquals(UpgradeResult.WRONG_TOKEN, BoatService.evaluateUpgrade(2, 2, true));
-        // A non-token (level 0) does nothing.
-        assertEquals(UpgradeResult.WRONG_TOKEN, BoatService.evaluateUpgrade(1, 0, true));
+    void anUpgradeIsBoughtOnlyWhenTheChrononsAreThere() {
+        // Exact change buys it: the price is a threshold, not a strict climb.
+        assertEquals(UpgradeResult.UPGRADED, BoatService.evaluateUpgrade(45, 45, true));
+        assertEquals(UpgradeResult.UPGRADED, BoatService.evaluateUpgrade(900, 800, true));
+        // A coin short is still short.
+        assertEquals(UpgradeResult.TOO_POOR, BoatService.evaluateUpgrade(44, 45, true));
+        assertEquals(UpgradeResult.TOO_POOR, BoatService.evaluateUpgrade(0, 45, true));
     }
 
     @Test
-    void aMaxedBoatCannotUpgradeRegardlessOfToken() {
-        assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(3, 4, false));
-        assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(3, 0, false));
+    @DisplayName("an unpriced tier is free, so a config gap opens progression rather than closing it")
+    void anUnpricedTierIsFree() {
+        assertEquals(UpgradeResult.UPGRADED, BoatService.evaluateUpgrade(0, 0, true));
+    }
+
+    @Test
+    void aMaxedBoatCannotUpgradeHoweverRichTheCaptainIs() {
+        assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(10_000, 0, false));
+        assertEquals(UpgradeResult.AT_MAX, BoatService.evaluateUpgrade(0, 800, false));
     }
 
     @Test

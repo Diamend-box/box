@@ -370,10 +370,14 @@ public final class BoatMenuService implements Listener {
         lore.add("<gray>Current: <aqua>" + plugin.boat().stats(current).name()
                 + "</aqua> (level " + current + ")");
         lore.add("<gray>Next: <aqua>" + nextName + "</aqua> (level " + next + ")");
-        if (plugin.boat().hasUpgradeToken(player, next)) {
-            lore.add("<green>Click to spend a level-" + next + " token.</green>");
+        int cost = plugin.boat().upgradeCost(player);
+        int have = DarkSeaItems.countChronons(player.getInventory());
+        lore.add("<gray>Cost: <aqua>" + cost + " Chronons</aqua> <dark_gray>(you have "
+                + have + ")</dark_gray>");
+        if (have >= cost) {
+            lore.add("<green>Click to buy the " + nextName + ".</green>");
         } else {
-            lore.add("<red>Bring a level-" + next + " Boat Upgrade Token.</red>");
+            lore.add("<red>Not enough Chronons — " + (cost - have) + " short.</red>");
         }
         return button(Material.NAUTILUS_SHELL, "<aqua>Upgrade Boat</aqua>", lore);
     }

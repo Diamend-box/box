@@ -245,7 +245,6 @@ public final class LootEditorService implements Listener {
         return switch (entry.type()) {
             case ITEM -> entry.material().name().toLowerCase(Locale.ROOT);
             case ARMOR -> "sea armour, tier " + entry.armorTier();
-            case TOKEN -> "boat token, level " + entry.tokenLevel();
             case CUSTOM -> entry.customId();
             case SNAPSHOT -> "item snapshot";
         };
@@ -413,18 +412,18 @@ public final class LootEditorService implements Listener {
         String registryId = relic != null ? relic.id() : DarkSeaItems.idOf(stack);
         if (registryId != null) {
             return new LootEntry(LootEntry.Type.CUSTOM, null, amount, amount, null,
-                    List.of(), 0, 0, registryId, DEFAULT_WEIGHT);
+                    List.of(), 0, registryId, DEFAULT_WEIGHT);
         }
         if (isPlain(stack)) {
             return new LootEntry(LootEntry.Type.ITEM, stack.getType(), amount, amount, null,
-                    List.of(), 0, 0, null, DEFAULT_WEIGHT);
+                    List.of(), 0, null, DEFAULT_WEIGHT);
         }
         try {
             ItemStack one = stack.clone();
             one.setAmount(1);
             String data = Base64.getEncoder().encodeToString(one.serializeAsBytes());
             return new LootEntry(LootEntry.Type.SNAPSHOT, null, amount, amount, null,
-                    List.of(), 0, 0, data, DEFAULT_WEIGHT);
+                    List.of(), 0, data, DEFAULT_WEIGHT);
         } catch (RuntimeException ex) {
             plugin.getLogger().warning("Could not snapshot " + stack.getType()
                     + " for the loot pool: " + ex.getMessage());

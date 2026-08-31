@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,6 +34,9 @@ class DarkSeaItemsTest {
 
     @AfterEach
     void tearDown() {
+        // Displays are static and survive between tests; anything that installs
+        // an override has to hand the registry back the way it found it.
+        DarkSeaItems.setDisplays(Map.of());
         MockBukkit.unmock();
     }
 
@@ -118,5 +124,39 @@ class DarkSeaItemsTest {
         assertEquals(5, DarkSeaItems.countChronons(inventory));
         // The vanilla stack was never touched.
         assertEquals(64, inventory.getItem(9).getAmount());
+    }
+
+    /**
+     * Crystal names, lore and materials are config, not code. Identity is the
+     * PDC tag, so a rename must not disturb it — that is what makes renaming
+     * safe to do on a live server with the old name already sitting in chests.
+     */
+    @Test
+    void configuredDisplaysRenameCrystalsWithoutTouchingIdentity() {
+        DarkSeaItems.setDisplays(Map.of(DarkSeaItems.EMBERGLASS,
+                new ItemDisplay("COPPER_INGOT", "<gold>Sunglass</gold>",
+                        List.of("<gray>Renamed in ores.yml.</gray>"))));
+
+        ItemStack renamed = DarkSeaItems.create(DarkSeaItems.EMBERGLASS, 3);
+        assertEquals(Material.COPPER_INGOT, renamed.getType());
+        assertEquals(3, renamed.getAmount());
+        assertEquals(1, renamed.getItemMeta().lore().size());
+        assertEquals(DarkSeaItems.EMBERGLASS, DarkSeaItems.idOf(renamed),
+                "renaming a crystal must not change what it is");
+
+        // An id with no entry is untouched — overriding one crystal is not
+        // implicitly a decision about the other two.
+        ItemStack untouched = DarkSeaItems.create(DarkSeaItems.GODSPORE, 1);
+        assertEquals(Material.SLIME_BALL, untouched.getType());
+    }
+
+    /** A half-filled entry overrides only the fields it sets. */
+    @Test
+    void anEmptyDisplayLeavesTheShippedItemAlone() {
+        DarkSeaItems.setDisplays(Map.of(DarkSeaItems.VOIDBLOOM, ItemDisplay.NONE));
+        ItemStack shipped = DarkSeaItems.create(DarkSeaItems.VOIDBLOOM, 1);
+        assertEquals(Material.AMETHYST_SHARD, shipped.getType());
+        assertTrue(shipped.getItemMeta().hasDisplayName());
+        assertFalse(shipped.getItemMeta().lore().isEmpty());
     }
 }

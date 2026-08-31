@@ -18,7 +18,7 @@
 # Two rules worth keeping when you edit this file
 #
 #   1. Nothing that ends a run should be on a 'buy' list — the Undrowned
-#      Heart, the Soulwake Compass, boat upgrade tokens, and the Vector
+#      Heart, the Soulwake Compass, and the Vector
 #      relic. Shops should make a run cheaper to attempt, never skippable.
 #      There is a unit test that fails the build if one appears.
 #

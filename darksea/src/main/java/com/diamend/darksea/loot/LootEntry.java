@@ -21,7 +21,7 @@ import org.bukkit.inventory.ItemStack;
 /**
  * One weighted line of a loot table: a vanilla item stack (optionally renamed
  * and lored — flavor salvage), a sea-armor piece (the progression engine —
- * ring N chests are the source of tier N armor), a boat upgrade token, or a
+ * ring N chests are the source of tier N armor), or a
  * CUSTOM registry item ({@link DarkSeaItems} — Chronons, relics, weapons,
  * consumables; identity guaranteed by PDC, so a typo'd id fails at parse
  * time where CI catches it, never as a silently plain item in a chest), or a
@@ -35,10 +35,10 @@ import org.bukkit.inventory.ItemStack;
  */
 public record LootEntry(Type type, Material material, int min, int max,
                         String name, List<String> lore,
-                        int armorTier, int tokenLevel, String customId, int weight) {
+                        int armorTier, String customId, int weight) {
 
     public enum Type {
-        ITEM, ARMOR, TOKEN, CUSTOM, SNAPSHOT
+        ITEM, ARMOR, CUSTOM, SNAPSHOT
     }
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
@@ -64,15 +64,11 @@ public record LootEntry(Type type, Material material, int min, int max,
                         lore.add(String.valueOf(line));
                     }
                 }
-                return new LootEntry(type, material, min, max, name, List.copyOf(lore), 0, 0, null, weight);
+                return new LootEntry(type, material, min, max, name, List.copyOf(lore), 0, null, weight);
             }
             case ARMOR -> {
                 int tier = toInt(map.get("tier"), 1);
-                return new LootEntry(type, null, 0, 0, null, List.of(), tier, 0, null, weight);
-            }
-            case TOKEN -> {
-                int level = toInt(map.get("level"), 1);
-                return new LootEntry(type, null, 0, 0, null, List.of(), 0, level, null, weight);
+                return new LootEntry(type, null, 0, 0, null, List.of(), tier, null, weight);
             }
             case CUSTOM -> {
                 String id = map.get("id") != null ? String.valueOf(map.get("id")) : null;
@@ -81,7 +77,7 @@ public record LootEntry(Type type, Material material, int min, int max,
                 }
                 int min = Math.max(1, toInt(map.get("min"), 1));
                 int max = Math.max(min, toInt(map.get("max"), min));
-                return new LootEntry(type, null, min, max, null, List.of(), 0, 0, id, weight);
+                return new LootEntry(type, null, min, max, null, List.of(), 0, id, weight);
             }
             case SNAPSHOT -> {
                 String data = map.get("data") != null ? String.valueOf(map.get("data")) : null;
@@ -90,7 +86,7 @@ public record LootEntry(Type type, Material material, int min, int max,
                 }
                 int min = Math.max(1, toInt(map.get("min"), 1));
                 int max = Math.max(min, toInt(map.get("max"), min));
-                return new LootEntry(type, null, min, max, null, List.of(), 0, 0, data, weight);
+                return new LootEntry(type, null, min, max, null, List.of(), 0, data, weight);
             }
         }
         throw new IllegalArgumentException("unknown entry type: " + typeName);
@@ -131,7 +127,6 @@ public record LootEntry(Type type, Material material, int min, int max,
                 SeaArmor.Piece[] pieces = SeaArmor.Piece.values();
                 yield SeaArmor.createPiece(armor, armorTier, pieces[rng.nextInt(pieces.length)]);
             }
-            case TOKEN -> SeaArmor.createToken(tokenLevel);
             case CUSTOM -> {
                 int amount = min + rng.nextInt(max - min + 1);
                 if (DarkSeaItems.CHRONON.equals(customId)) {
@@ -184,7 +179,6 @@ public record LootEntry(Type type, Material material, int min, int max,
                 }
             }
             case ARMOR -> map.put("tier", armorTier);
-            case TOKEN -> map.put("level", tokenLevel);
             case CUSTOM -> {
                 map.put("id", customId);
                 map.put("min", min);
@@ -203,14 +197,14 @@ public record LootEntry(Type type, Material material, int min, int max,
     /** The same entry at a different weight — the editor's weight buttons. */
     public LootEntry withWeight(int newWeight) {
         return new LootEntry(type, material, min, max, name, lore, armorTier,
-                tokenLevel, customId, Math.max(1, newWeight));
+                customId, Math.max(1, newWeight));
     }
 
     /** The same entry at a different stack size, keeping min and max in order. */
     public LootEntry withAmount(int newMin, int newMax) {
         int lo = Math.max(1, newMin);
         return new LootEntry(type, material, lo, Math.max(lo, newMax), name, lore,
-                armorTier, tokenLevel, customId, weight);
+                armorTier, customId, weight);
     }
 
     private static Component noItalic(Component component) {

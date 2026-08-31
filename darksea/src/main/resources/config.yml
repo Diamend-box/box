@@ -331,13 +331,23 @@ boat:
   #   57.6 — a Maelstrom is ~5.8x a Rowboat, not 12x.
   # Ram Power (naval.ram.power-per-level, default 0.15) scales offense by
   #   level automatically: level 4 = 1.60x, level 5 = 1.75x.
+  # cost = Chronons to buy this tier at the boat wheel, paid a tier at a time
+  #   and in sequence. This replaced per-level upgrade tokens: a token for a
+  #   level you had not reached yet was a dead item you had to carry, and the
+  #   only thing finding one could tell you was "not yet". A price is legible,
+  #   and it can be worked towards.
+  #   The curve roughly doubles each step and then jumps at the Maelstrom, so
+  #   the last hull is deliberately a project rather than the next purchase.
+  #   Level 0 has no cost — it is what you start with. A tier with no cost set
+  #   is free, so a config that forgets a number opens progression rather than
+  #   closing it.
   levels:
-    0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0, hp: 0 }
-    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.25, hp: 11 }
-    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 1.5, hp: 13 }
-    3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 1.8, hp: 14 }
-    4: { name: "Tempest",     speed: 1.55, shield: 2, toughness: 2.1, hp: 18 }
-    5: { name: "Maelstrom",   speed: 1.65, shield: 2, toughness: 2.4, hp: 24 }
+    0: { name: "Rowboat",     speed: 1.00, shield: 0, toughness: 1.0, hp: 0,  cost: 0 }
+    1: { name: "Sloop",       speed: 1.15, shield: 0, toughness: 1.25, hp: 11, cost: 45 }
+    2: { name: "Cutter",      speed: 1.30, shield: 1, toughness: 1.5, hp: 13, cost: 110 }
+    3: { name: "Stormrunner", speed: 1.45, shield: 1, toughness: 1.8, hp: 14, cost: 240 }
+    4: { name: "Tempest",     speed: 1.55, shield: 2, toughness: 2.1, hp: 18, cost: 450 }
+    5: { name: "Maelstrom",   speed: 1.65, shield: 2, toughness: 2.4, hp: 24, cost: 800 }
 
 # Boat-vs-boat combat: rams, wounded hulls, the surge, naval ammo.
 naval:
@@ -471,7 +481,6 @@ messages:
   reset-unload-failed: "<red>Could not unload the Dark Sea world — is it the server's main world?"
 
   give-armor: "<green>Gave {player} the full tier-{tier} set ({name}<green>)."
-  give-token: "<green>Gave {player} a level-{level} boat upgrade token."
   give-item: "<green>Gave {player} {count}x {id}."
   invalid-tier: "<red>Unknown armor tier {tier}."
   invalid-level: "<red>Unknown boat level {level}."
@@ -498,7 +507,7 @@ messages:
   boat-upgraded: "<green>Your boat is now a <aqua>{name}</aqua> (level {level})!"
   boat-max: "<yellow>Your boat is already fully upgraded."
   boat-wrecked: "<red>Your boat is wrecked — you're adrift in the Dark Sea!"
-  boat-need-token: "<red>You need a level-{level} Boat Upgrade Token to upgrade."
+  boat-need-chronons: "<red>The {name} costs {cost} Chronons — you have {have}."
   boat-set: "<green>Set {player}'s boat level to {level} ({name}<green>)."
 
   boat-menu-none: "<red>No boat here — sit in your boat or stand beside it, then try again."

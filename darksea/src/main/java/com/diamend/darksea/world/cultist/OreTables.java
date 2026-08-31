@@ -1,6 +1,9 @@
 package com.diamend.darksea.world.cultist;
 
+import com.diamend.darksea.item.ItemDisplay;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * The parsed {@code ores.yml}: what vein types exist and how far apart they
@@ -21,11 +24,26 @@ import java.util.List;
  * @param referenceTool       material name of the pickaxe the numbers assume
  * @param referenceEfficiency Efficiency level that pickaxe is assumed to carry
  * @param floorSeconds        no block may take less than this, however stacked
+ * @param displays            per-drop-id cosmetic overrides from the {@code items:}
+ *                            section: what each crystal is called, what it reads
+ *                            as in the hand, and which material carries it. Keyed
+ *                            by drop id, and every entry is optional — an absent
+ *                            id, or an absent field within one, means "ship what
+ *                            the plugin ships".
  */
 public record OreTables(List<OreType> types, int minSpacing, int maxPlacementTries,
-                        String referenceTool, int referenceEfficiency, double floorSeconds) {
+                        String referenceTool, int referenceEfficiency, double floorSeconds,
+                        Map<String, ItemDisplay> displays) {
+
+    /** Without cosmetic overrides — the shipped names and materials stand. */
+    public OreTables(List<OreType> types, int minSpacing, int maxPlacementTries,
+                     String referenceTool, int referenceEfficiency, double floorSeconds) {
+        this(types, minSpacing, maxPlacementTries, referenceTool, referenceEfficiency,
+                floorSeconds, Map.of());
+    }
 
     public OreTables {
+        displays = displays == null ? Map.of() : Map.copyOf(displays);
         types = List.copyOf(types);
         minSpacing = Math.max(1, minSpacing);
         maxPlacementTries = Math.max(1, maxPlacementTries);
@@ -68,6 +86,11 @@ public record OreTables(List<OreType> types, int minSpacing, int maxPlacementTri
             }
         }
         return null;
+    }
+
+    /** The cosmetic override for a drop id — never null, empty if unconfigured. */
+    public ItemDisplay displayFor(String dropId) {
+        return displays.getOrDefault(dropId, ItemDisplay.NONE);
     }
 
     /** Every drop id this config can produce — asserted to be unsellable. */

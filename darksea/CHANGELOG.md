@@ -18,6 +18,45 @@ time.
 
 ---
 
+## 0.5.3 — 2026-08-31
+
+Two things you asked for: crystals you can name yourself, and boat upgrades
+that cost money instead of tokens.
+
+### Changed
+
+- **Boat upgrades are bought with Chronons at the boat wheel.** Per-level
+  upgrade tokens are gone. A token for a level you had not reached yet was a
+  dead item you had to carry, and the only thing finding one could tell you was
+  "not yet" — a price is legible, and it can be worked towards. Prices are in
+  `config.yml` under `boat.levels` and roughly double per tier, then jump at the
+  last hull: 45 / 110 / 240 / 450 / 800. Tiers are still bought one at a time
+  and in sequence, so there is no saving up to skip ahead. An unpriced tier is
+  free, so a config that forgets a number opens progression rather than closing
+  it.
+- **Chest treasure pays in coin where it used to pay in tokens.** Every token
+  entry in `loot.yml` became a fat Chronon cache scaled to its ring, up to
+  90–140 in a Trench vault. The sea still pays out boat progress; it now pays in
+  something you can spend on anything else instead.
+- **`/ds give token` is gone** — `/ds boat set <player> <level>` already did the
+  job it was for.
+
+### Added
+
+- **Crystal names, lore and materials are config.** A new `items:` section at
+  the bottom of `ores.yml` sets what emberglass, voidbloom and godspore are
+  called, what they read as in the hand, and which vanilla item carries them.
+  Every field is optional and a missing one keeps the shipped value, so you can
+  change a name and leave the lore alone. `/ds reload` applies it.
+  Identity is the hidden PDC tag rather than the name, so renaming a crystal
+  cannot break a loot table, a shop rule, or a stack already sitting in a chest
+  — and the rename decision, if you ever make it, is now a config edit.
+
+Crystals remain upgrade material with no sink, which is still open decision 2 in
+`PLAYTEST.md`. Nothing consumes them yet.
+
+---
+
 ## 0.5.2 — 2026-08-05
 
 Everything reported from playtest 6, including the chests — which were

@@ -37,7 +37,7 @@ public final class CustomLootConfig {
             "actually matters.",
             "",
             "Entry types are loot.yml's: ITEM (a material), CUSTOM (a DarkSea item id),",
-            "ARMOR, TOKEN, and SNAPSHOT — a base64 image of a whole item stack, written",
+            "ARMOR, and SNAPSHOT — a base64 image of a whole item stack, written",
             "when you add something the plugin has no id for. Editing a SNAPSHOT's data",
             "by hand is not useful; delete it in game and re-add the item instead.",
             "",

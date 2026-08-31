@@ -56,7 +56,6 @@ class LootTableTest {
                       - { type: item, material: IRON_INGOT, min: 2, max: 5, weight: 10 }
                       - { type: item, material: NOT_A_MATERIAL, min: 1, max: 1, weight: 5 }
                       - { type: armor, tier: 2, weight: 2 }
-                      - { type: token, level: 1, weight: 1 }
                 """);
         LootTable table = tables.base().get(2);
         assertNotNull(table);
@@ -111,7 +110,7 @@ class LootTableTest {
     }
 
     @Test
-    void armorAndTokenEntriesRollTaggedItems() throws Exception {
+    void armorEntriesRollTaggedItems() throws Exception {
         LootTable table = parse("""
                 tiers:
                   2:
@@ -125,16 +124,6 @@ class LootTableTest {
         for (ItemStack item : loot) {
             assertEquals(2, SeaArmor.tierOf(item));
         }
-
-        LootTable tokens = parse("""
-                tiers:
-                  1:
-                    rolls: 1
-                    refill-cooldown-minutes: 10
-                    entries:
-                      - { type: token, level: 3, weight: 1 }
-                """).base().get(1);
-        assertEquals(3, SeaArmor.tokenLevelOf(tokens.rollLoot(new Random(6), armor).get(0)));
     }
 
     @Test

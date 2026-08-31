@@ -104,7 +104,7 @@ class ShopConfigTest {
     void nothingRunEndingIsForSaleInAnyRotation() throws Exception {
         ShopStock stock = loadShipped();
         Set<String> forbidden = Set.of("undrowned_heart", "soulwake_compass",
-                "boat_upgrade_token", "relic_mariphage_vector");
+                "relic_mariphage_vector");
         for (NpcType type : NpcType.values()) {
             for (long cycle = 0L; cycle < 25L; cycle++) {
                 for (ShopOffer offer : stock.offers(type, cycle)) {

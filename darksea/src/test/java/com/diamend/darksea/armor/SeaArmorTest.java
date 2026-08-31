@@ -89,14 +89,4 @@ class SeaArmorTest {
         assertEquals(0, SeaArmor.effectiveTier(faked));
     }
 
-    @Test
-    void tokenRoundTrip() {
-        ItemStack token = SeaArmor.createToken(2);
-        assertEquals(Material.HEART_OF_THE_SEA, token.getType());
-        assertEquals(2, SeaArmor.tokenLevelOf(token));
-        assertEquals(0, SeaArmor.tokenLevelOf(new ItemStack(Material.HEART_OF_THE_SEA)));
-        assertEquals(0, SeaArmor.tokenLevelOf(null));
-        // Armor tags and token tags don't cross-read.
-        assertEquals(0, SeaArmor.tierOf(token));
-    }
 }

@@ -133,8 +133,19 @@ public record DarkSeaSettings(
      * A boat tier's stats. {@code hp} is the tier's own hull max HP; 0 means
      * "use the global {@code naval.hull.max-hp}", so only the tiers that want a
      * bigger hull than the default need to set it.
+     *
+     * <p>{@code cost} is what buying this tier costs in Chronons, paid at the
+     * boat wheel. It is a property of the level rather than of a curve formula
+     * so the ramp can be shaped by hand — the jump into the last hull should be
+     * felt, and a formula would only ever make it smooth.
      */
-    public record BoatLevel(String name, double speed, int shield, double toughness, double hp) {
+    public record BoatLevel(String name, double speed, int shield, double toughness, double hp,
+                            int cost) {
+
+        /** A level with no price — level 0, and any tier a config forgets to price. */
+        public BoatLevel(String name, double speed, int shield, double toughness, double hp) {
+            this(name, speed, shield, toughness, hp, 0);
+        }
     }
 
     public record BoatSettings(double speedCapBase, Map<Integer, BoatLevel> levels,
@@ -566,7 +577,8 @@ public record DarkSeaSettings(
                         Math.max(1.0, sec.getDouble(key + ".speed", 1.0)),
                         Math.max(0, sec.getInt(key + ".shield", 0)),
                         Math.max(1.0, sec.getDouble(key + ".toughness", 1.0)),
-                        Math.max(0, sec.getDouble(key + ".hp", 0.0))));
+                        Math.max(0, sec.getDouble(key + ".hp", 0.0)),
+                        Math.max(0, sec.getInt(key + ".cost", 0))));
             }
         }
         if (!levels.containsKey(0)) {

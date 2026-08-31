@@ -141,3 +141,58 @@ veins:
       max: 90
     mine-seconds: 4.0
     regrow-minutes: 25
+
+
+# ---------------------------------------------------------------------------
+# What the crystals are CALLED.
+#
+# Cosmetics only, and yours to change. Identity is a hidden tag on the item, not
+# its name, so renaming a crystal cannot break a loot table, a shop rule, or
+# anything already sitting in a chest — and nobody can counterfeit one with an
+# anvil either. Rename freely, then /ds reload.
+#
+# Keys are the DROP ids used above (emberglass / voidbloom / godspore), not the
+# vein names, though here they happen to match.
+#
+# Every field is optional. Leave one out and the shipped value stands, so you
+# can change just a name and keep the lore, or just the material and keep both.
+#
+#   material  the vanilla item it appears as. Stackable, and ideally something
+#             that reads as a raw material rather than a tool or a food.
+#   name      MiniMessage. <color:#rrggbb>...</color>, <gold>, <gray> and so on.
+#   lore      MiniMessage, one entry per line. Two or three short lines read far
+#             better in a tooltip than one long one.
+#
+# The values below ARE the shipped ones — they are written out rather than left
+# implicit so you have something to edit instead of something to invent. Delete
+# the whole section and nothing changes.
+items:
+
+  emberglass:
+    material: GLOWSTONE_DUST
+    name: "<color:#e8a33d>Emberglass</color>"
+    lore:
+      - "<gray>A shard of warm gold, still lit</gray>"
+      - "<gray>from somewhere inside itself.</gray>"
+      - "<dark_gray>The artificer knows what to do with it.</dark_gray>"
+
+  voidbloom:
+    material: AMETHYST_SHARD
+    name: "<color:#c9a0dc>Voidbloom</color>"
+    lore:
+      - "<gray>It hums against the palm at a pitch</gray>"
+      - "<gray>you feel rather than hear.</gray>"
+      - "<dark_gray>It was growing before you broke it off.</dark_gray>"
+
+  # Deliberately not an amethyst shard: voidbloom already is one and the geode
+  # rind is studded with amethyst, so the god's own growth reading as the same
+  # purple crystal as everything around it was the first thing the fourth live
+  # test called out.
+  godspore:
+    material: SLIME_BALL
+    name: "<color:#8bc34a>Godspore</color>"
+    lore:
+      - "<gray>The green in it moves when you</gray>"
+      - "<gray>are not looking at it.</gray>"
+      - "<dark_gray>Whatever seeded this rock is still</dark_gray>"
+      - "<dark_gray>further down, and still growing.</dark_gray>"

@@ -187,7 +187,7 @@ public final class ShopConfig {
             "",
             "Two rules worth keeping when you edit this file:",
             "  1. Nothing that ends a run should be on a 'buy' list — the Undrowned Heart,",
-            "     the Soulwake Compass, boat upgrade tokens, or relics. Shops should make a",
+            "     the Soulwake Compass, or relics. Shops should make a",
             "     run cheaper to attempt, never skippable. A unit test enforces this.",
             "  2. The artificer should pay less for a dormant relic than waking one costs,",
             "     or selling relics becomes a way to fund waking them.");

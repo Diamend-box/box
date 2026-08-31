@@ -28,8 +28,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * The registry of every custom DarkSea item that is not sea armor or a boat
- * token: weapons, the Chronon currency, and consumables. Like {@link
+ * The registry of every custom DarkSea item that is not sea armor: weapons,
+ * the Chronon currency, and consumables. Like {@link
  * com.diamend.darksea.armor.SeaArmor}, identity lives in the
  * PersistentDataContainer ({@link #ID_KEY}) — names are cosmetic and nothing
  * can be counterfeited with an anvil.
@@ -288,13 +288,55 @@ public final class DarkSeaItems {
         };
     }
 
+    // ------------------------------------------------------------------
+    // Configured cosmetics
+    // ------------------------------------------------------------------
+
+    /**
+     * Per-id name, lore and material overrides from the {@code items:} section
+     * of ores.yml, installed at load and swapped by {@code /ds reload}.
+     *
+     * <p>Volatile and replaced wholesale rather than mutated, because items are
+     * built on whichever thread asked for one and a reload must never be
+     * half-applied. Empty by default, so the shipped strings below are what a
+     * server with no {@code items:} section sees.
+     *
+     * <p>Cosmetics only. Identity is {@link #ID_KEY}, so renaming a crystal
+     * cannot break a loot table, a shop rule, or anything already in a chest.
+     */
+    private static volatile Map<String, ItemDisplay> displays = Map.of();
+
+    /** Install configured cosmetics. Called at startup and on every reload. */
+    public static void setDisplays(Map<String, ItemDisplay> configured) {
+        displays = configured == null ? Map.of() : Map.copyOf(configured);
+    }
+
+    /** The override for an id — never null, and changes nothing if unconfigured. */
+    public static ItemDisplay displayOf(String id) {
+        return displays.getOrDefault(id, ItemDisplay.NONE);
+    }
+
     /**
      * A cave ore drop: a plain stackable material carrying the registry tag.
      * No stats and no behavior — its whole job is to be spent at the artificer,
      * so it deliberately has no combat or economy value of its own.
+     *
+     * <p>The name, lore and material passed in are the shipped defaults; a
+     * matching {@code items:} entry in ores.yml overrides any of the three.
      */
     private static ItemStack createOre(String id, int amount, Material material,
                                        String name, List<String> loreLines) {
+        ItemDisplay display = displayOf(id);
+        if (display.hasMaterial()) {
+            Material configured = Material.matchMaterial(display.materialName());
+            // Already validated at parse time; this guard is for the case where
+            // someone installs a display map by hand, e.g. in a test.
+            if (configured != null) {
+                material = configured;
+            }
+        }
+        name = display.nameOr(name);
+        loreLines = display.loreOr(loreLines);
         ItemStack item = new ItemStack(material, Math.max(1, amount));
         ItemMeta meta = item.getItemMeta();
         meta.displayName(noItalic(MM.deserialize(name)));

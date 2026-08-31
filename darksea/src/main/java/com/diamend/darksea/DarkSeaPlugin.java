@@ -15,6 +15,7 @@ import com.diamend.darksea.diag.StartupReport;
 import com.diamend.darksea.island.IslandPlacer;
 import com.diamend.darksea.island.IslandRegistry;
 import com.diamend.darksea.item.ConsumableService;
+import com.diamend.darksea.item.DarkSeaItems;
 import com.diamend.darksea.item.SoulwakeService;
 import com.diamend.darksea.loot.ChestRefillService;
 import com.diamend.darksea.loot.CustomLoot;
@@ -381,6 +382,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
         File file = new File(getDataFolder(), "ores.yml");
         OreTables loaded = OreConfig.load(
                 YamlConfiguration.loadConfiguration(file), getLogger());
+        // Crystal names and lore are config, not code. Installing them here
+        // rather than at the call sites means /ds reload renames them too,
+        // since this is the one path both startup and reload run through.
+        DarkSeaItems.setDisplays(loaded.displays());
         getLogger().info("Loaded " + loaded.totalVeins() + " ore veins across "
                 + loaded.types().size() + " types");
         return loaded;

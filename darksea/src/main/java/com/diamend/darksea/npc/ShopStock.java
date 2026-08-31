@@ -23,7 +23,7 @@ import java.util.Set;
  * the honest baseline and the black market is derived from him — marked up on
  * what it sells, better on what it buys — so walking the extra thirty blocks
  * is always worth something. And nothing that ends a run is for sale: the
- * Undrowned Heart, relics, upgrade tokens and the Soulwake Compass are earned
+ * Undrowned Heart, relics and the Soulwake Compass are earned
  * in the water, so shops make a run cheaper to attempt but never skippable.
  */
 public final class ShopStock {

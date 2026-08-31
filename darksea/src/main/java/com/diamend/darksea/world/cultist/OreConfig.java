@@ -1,10 +1,14 @@
 package com.diamend.darksea.world.cultist;
 
+import com.diamend.darksea.item.ItemDisplay;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -93,6 +97,36 @@ public final class OreConfig {
         if (types.isEmpty()) {
             log.warning("ores.yml defined no usable veins");
         }
-        return new OreTables(types, spacing, tries, refTool, refEff, floor);
+        return new OreTables(types, spacing, tries, refTool, refEff, floor,
+                loadDisplays(root.getConfigurationSection("items"), log));
+    }
+
+    /**
+     * The {@code items:} section: what each crystal is called and what it looks
+     * like in the hand. Cosmetics only — identity is the PDC tag — so a bad
+     * entry here costs a name, never an item, and is dropped field by field
+     * rather than whole.
+     */
+    private static Map<String, ItemDisplay> loadDisplays(ConfigurationSection section, Logger log) {
+        if (section == null) {
+            return Map.of();
+        }
+        Map<String, ItemDisplay> displays = new LinkedHashMap<>();
+        for (String id : section.getKeys(false)) {
+            ConfigurationSection entry = section.getConfigurationSection(id);
+            if (entry == null) {
+                log.warning("ores.yml items '" + id + "': not an item block — ignored");
+                continue;
+            }
+            String material = entry.getString("material", "");
+            if (!material.isBlank() && Material.matchMaterial(material) == null) {
+                log.warning("ores.yml items '" + id + "': '" + material
+                        + "' is not a material — keeping the shipped one");
+                material = "";
+            }
+            displays.put(id, new ItemDisplay(material, entry.getString("name", ""),
+                    entry.getStringList("lore")));
+        }
+        return displays;
     }
 }

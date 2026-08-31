@@ -11,7 +11,7 @@ it happens again, that is the thing to send.
 
 Order is by how likely I am to have got it wrong, not by importance.
 
-**Build: 0.5.2 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
+**Build: 0.5.3 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
 `/version DarkSea` reports the same string. CHANGELOG.md has what each version
 changed.
 
@@ -39,7 +39,8 @@ changed.
 | Rebuilt watchtower and spire stairs | Built in 0.5.0, **never judged by eye** | Pass 2 |
 | Island counts / ring spread / shape mix | Config, **untried** | Pass 8 |
 | Chest refill cooldown | Shipped pre-camp, **never tested** | Pass 9 |
-| Boat tokens end-to-end | Shipped pre-camp, **never tested** | Pass 9 |
+| Boat upgrades (now bought with Chronons) | **Rebuilt in 0.5.3**, untested | Pass 9 |
+| Renaming a crystal in ores.yml | New in 0.5.3, untested | Pass 9 |
 
 Five decisions are still open at the bottom. None have been answered across four
 rounds.
@@ -206,17 +207,28 @@ one knob to scale the whole sea at once, say so.
 
 ---
 
-## Pass 9 — two I nearly lost
+## Pass 9 — the two I nearly lost, and the two new ones
 
-These were owed a live test before camp and were sitting in `ROADMAP.md`
-where the ledger could not see them. Same rule as everything else: they stay
-here until you say otherwise.
+One was owed a live test before camp; the other two are new in 0.5.3. Same rule
+as everything else: they stay here until you say otherwise.
 
 - **Chest refill cooldown.** Open the same chest twice quickly. The second
   open must *not* restock until the tier's cooldown has passed.
-- **Boat tokens end-to-end.** Find a token in loot → `/ds boat upgrade` →
-  measurable speed and shield ring → the level survives a relog and a
-  restart.
+- **Boat upgrades, end to end.** Boat tokens are gone: tiers are bought with
+  Chronons at the boat wheel, 45 / 110 / 240 / 450 / 800. Earn the coin →
+  `/ds boat upgrade` (or the wheel's Upgrade tile) → the Chronons leave your
+  pack, the hull changes class, and measurable speed and shield follow → the
+  level survives a relog and a restart. Try it one coin short as well: it should
+  tell you the price and how much you have, and take nothing.
+  Say whether the prices feel right. They are the one number here I have no way
+  to test, and they are a config line each.
+
+- **Rename a crystal.** Open `ores.yml`, find the `items:` block at the bottom,
+  change `emberglass`'s `name` to anything, `/ds reload`, mine one. It should
+  come out with the new name — and an emberglass already in a chest should still
+  work as emberglass, because identity is a hidden tag rather than the name.
+  This is the cheap way to settle the rename decision if you want to try names
+  in game rather than on paper.
 
 ---
 
@@ -227,7 +239,8 @@ Unchanged for four rounds. None block anything; all get more expensive later.
 1. **The rename.** "The Mariphage" or "The Naxian Sea" over "Vironic Sea".
 2. **What crystals buy.** Still no sink at all — three cave materials that do
    nothing is why that dimension feels optional. Waking relics for crystals is
-   still my suggestion.
+   still my suggestion. (Boat tiers now cost Chronons, so that sink is taken;
+   crystals need one of their own.)
 3. **Should `/ds tp` land you on the highest block?**
 4. **Chest placement** — redo it so every chest has a square-on face, or leave
    the 124 that are diagonal-only?

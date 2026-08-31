@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Item factory and tag reader for sea armor and boat upgrade tokens. The
+ * Item factory and tag reader for sea armor. The
  * authority on what an item "is" lives in its PersistentDataContainer —
  * names and lore are cosmetic, tags survive anvils, and nothing can be
  * faked with a renamed vanilla piece.
@@ -27,9 +27,6 @@ public final class SeaArmor {
     /** Integer PDC tag: which sea-armor tier a piece belongs to. */
     public static final NamespacedKey TIER_KEY =
             Objects.requireNonNull(NamespacedKey.fromString("darksea:tier"));
-    /** Integer PDC tag: which boat level a token unlocks. */
-    public static final NamespacedKey TOKEN_KEY =
-            Objects.requireNonNull(NamespacedKey.fromString("darksea:boat_token"));
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
@@ -102,29 +99,6 @@ public final class SeaArmor {
             slots++;
         }
         return slots == 0 ? 0 : Math.max(0, min == Integer.MAX_VALUE ? 0 : min);
-    }
-
-    public static ItemStack createToken(int level) {
-        ItemStack item = new ItemStack(Material.HEART_OF_THE_SEA);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(noItalic(MM.deserialize(
-                "<gold>Boat Upgrade Token</gold> <gray>(level " + level + ")</gray>")));
-        meta.lore(List.of(
-                noItalic(MM.deserialize("<gray>Unlocks boat level <aqua>" + level + "</aqua>.")),
-                noItalic(MM.deserialize("<gray>Hold it and run <white>/ds boat upgrade</white>."))));
-        meta.getPersistentDataContainer().set(TOKEN_KEY, PersistentDataType.INTEGER, level);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    /** The boat level a token unlocks; 0 if the item is not a token. */
-    public static int tokenLevelOf(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
-            return 0;
-        }
-        Integer level = item.getItemMeta().getPersistentDataContainer()
-                .get(TOKEN_KEY, PersistentDataType.INTEGER);
-        return level != null ? level : 0;
     }
 
     private static Component noItalic(Component component) {
