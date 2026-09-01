@@ -31,6 +31,18 @@ public final class Targets {
             return online != null;
         }
 
+        /**
+         * The same target under a name we trust more than the server's.
+         *
+         * <p>A UUID nobody has logged in as since the last restart has no name
+         * as far as Bukkit is concerned, even when the server's own
+         * {@code usercache.json} says otherwise.
+         */
+        public Target named(String better) {
+            return better == null || better.isBlank()
+                    ? this : new Target(online, offline, uuid, better);
+        }
+
         /** How the report should label them. */
         public String label() {
             return name + (isOnline() ? " (online)" : " (offline)");

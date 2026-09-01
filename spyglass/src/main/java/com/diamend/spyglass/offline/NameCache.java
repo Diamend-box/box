@@ -121,7 +121,7 @@ public final class NameCache {
                 }
                 JsonObject entry = element.getAsJsonObject();
                 String name = string(entry, "name");
-                UUID uuid = uuid(string(entry, "uuid"));
+                UUID uuid = parseUuid(string(entry, "uuid"));
                 if (name == null || name.isBlank() || uuid == null) {
                     continue;
                 }
@@ -148,7 +148,7 @@ public final class NameCache {
         return value != null && value.isJsonPrimitive() ? value.getAsString() : null;
     }
 
-    private static UUID uuid(String text) {
+    private static UUID parseUuid(String text) {
         if (text == null) {
             return null;
         }

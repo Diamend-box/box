@@ -499,7 +499,12 @@ public final class SpyCommand implements TabExecutor {
             return target;
         }
         UUID cached = plugin.names().uuid(name);
-        return cached == null ? null : Targets.resolve(plugin.getServer(), cached.toString());
+        if (cached == null) {
+            return null;
+        }
+        Targets.Target found = Targets.resolve(plugin.getServer(), cached.toString());
+        // The cache knew the name; the server, by definition, did not.
+        return found == null ? null : found.named(plugin.names().name(cached));
     }
 
     /** The same, telling the sender when nobody answers to it. */

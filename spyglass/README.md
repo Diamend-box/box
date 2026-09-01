@@ -47,7 +47,10 @@ Two halves, one command:
 ```
 
 `<player>` is a name (exact, or a unique prefix of someone online) or a UUID.
-The default section is `overview`.
+A name nobody has logged in as recently still works: it is looked up in the
+server's own `usercache.json`, which is also where tab completion gets the
+offline names it offers, so what it suggests is what the command accepts. The
+default section is `overview`.
 
 ```
 > spy Notch

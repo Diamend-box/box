@@ -138,5 +138,8 @@ class OfflineSearchTest {
         assertEquals("Notch", names.name(UUID_NOTCH));
         assertNull(names.name(UUID_JEB));
         assertTrue(names.names().contains("Notch"));
+        // And back the other way, which is how an offline name resolves.
+        assertEquals(UUID_NOTCH, names.uuid("notch"));
+        assertNull(names.uuid("SomeoneElse"));
     }
 }
