@@ -2,6 +2,7 @@ package com.diamend.spyglass.offline;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import com.diamend.spyglass.nbt.NbtCompound;
 import com.diamend.spyglass.nbt.NbtList;
@@ -25,6 +26,9 @@ public final class NbtItems {
 
     /** The slot number a save uses for an item that is not in the grid. */
     public static final int OFFHAND_SLOT = -106;
+
+    /** Matches the online side: a few levels down, then stop. */
+    private static final int MAX_NESTING = 4;
 
     private NbtItems() {
     }
@@ -93,6 +97,44 @@ public final class NbtItems {
             out.append("  custom_data");
         }
         return out.toString();
+    }
+
+    /**
+     * The same nested search the online inspector does, over a saved item.
+     *
+     * @param wanted lower-case text to look for
+     * @return null when nothing matches; an empty string when the item itself
+     *         matches; otherwise the trail down to the one that did
+     */
+    public static String matchTrail(NbtCompound item, String wanted) {
+        return matchTrail(item, wanted, 0);
+    }
+
+    private static String matchTrail(NbtCompound item, String wanted, int depth) {
+        if (isEmpty(item)) {
+            return null;
+        }
+        if (line(item).toLowerCase(Locale.ROOT).contains(wanted)) {
+            return "";
+        }
+        if (depth >= MAX_NESTING) {
+            return null;
+        }
+        for (NbtCompound inside : contents(item)) {
+            String deeper = matchTrail(inside, wanted, depth + 1);
+            if (deeper != null) {
+                return " > " + line(inside) + deeper;
+            }
+        }
+        return null;
+    }
+
+    /** What this item holds — a shulker box's items, a bundle's items. */
+    public static List<NbtCompound> contents(NbtCompound item) {
+        if (item == null) {
+            return List.of();
+        }
+        return contents(item.compound("components"), item.compound("tag"));
     }
 
     /** Everything about one item, including the whole component tree. */

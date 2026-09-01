@@ -241,8 +241,8 @@ public final class SpyCommand implements TabExecutor {
             hits += findIn(report, player, wanted);
         }
         if (hits == 0) {
-            report.note("Nothing matching \"" + wanted + "\" in any online player's inventory "
-                    + "or ender chest.");
+            report.note("Nothing matching \"" + wanted + "\" in any online player's inventory, "
+                    + "ender chest, or anything they are carrying it inside.");
         } else {
             report.note(hits + " stack(s) found. Offline players are not searched — "
                     + "read one with /spy <player> inventory.");
@@ -266,13 +266,15 @@ public final class SpyCommand implements TabExecutor {
             if (ItemFormatter.isEmpty(item)) {
                 continue;
             }
-            String line = ItemFormatter.line(item);
-            if (!line.toLowerCase(Locale.ROOT).contains(wanted)) {
+            // Not just the stack itself: a shulker box in slot 13 is where the
+            // thing you are looking for usually is.
+            String trail = ItemFormatter.matchTrail(item, wanted);
+            if (trail == null) {
                 continue;
             }
             hits++;
             report.text(String.format("%-16s %-10s slot %-4d %s",
-                    Safe.text(player::getName), where, slot, line));
+                    Safe.text(player::getName), where, slot, ItemFormatter.line(item) + trail));
         }
         return hits;
     }

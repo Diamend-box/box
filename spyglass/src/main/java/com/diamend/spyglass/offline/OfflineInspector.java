@@ -3,7 +3,6 @@ package com.diamend.spyglass.offline;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import com.diamend.spyglass.inspect.Query;
@@ -16,6 +15,7 @@ import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Attributes;
 import com.diamend.spyglass.util.Fmt;
 import com.diamend.spyglass.util.Safe;
+import com.diamend.spyglass.util.Statistics;
 
 /**
  * Reads a player who is not logged in, out of their save file.
@@ -437,13 +437,19 @@ public final class OfflineInspector {
             return;
         }
         int shown = 0;
+        String wanted = query.needle();
         for (NbtCompound item : items.compounds()) {
             if (NbtItems.isEmpty(item)) {
                 continue;
             }
             String line = NbtItems.line(item);
-            if (!query.matches(line)) {
-                continue;
+            if (wanted != null) {
+                // Same rule as online: a filter looks inside containers too.
+                String trail = NbtItems.matchTrail(item, wanted);
+                if (trail == null) {
+                    continue;
+                }
+                line += trail;
             }
             shown++;
             int slot = NbtItems.slot(item);
@@ -607,13 +613,6 @@ public final class OfflineInspector {
 
     /** Same treatment the online statistics get: ticks, centimetres or a count. */
     static String statValue(String name, long value) {
-        String lower = name.toLowerCase(Locale.ROOT);
-        if (lower.endsWith("one_cm")) {
-            return Fmt.centimetres(value);
-        }
-        if (lower.contains("time") || lower.contains("one_minute")) {
-            return Fmt.ticks(value);
-        }
-        return Fmt.count(value);
+        return Statistics.value(name, value);
     }
 }

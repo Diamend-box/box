@@ -22,6 +22,7 @@ import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Attributes;
 import com.diamend.spyglass.util.Fmt;
 import com.diamend.spyglass.util.Safe;
+import com.diamend.spyglass.util.Statistics;
 import com.diamend.spyglass.watch.Watch;
 import com.diamend.spyglass.watch.WatchCategory;
 
@@ -121,6 +122,26 @@ class UnitsTest {
         assertEquals("max_health", Attributes.fold("GENERIC_MAX_HEALTH"));
         assertEquals("max_health", Attributes.fold("minecraft:max_health"));
         assertEquals("movement_speed", Attributes.fold("generic.movement-speed"));
+    }
+
+    @Test
+    void statisticsGetTheNameTheFileUses() {
+        // Bukkit's spelling on the left, the one in stats/<uuid>.json on the right.
+        assertEquals("mined.stone", Statistics.typed("MINE_BLOCK", "stone"));
+        assertEquals("killed.zombie", Statistics.typed("KILL_ENTITY", "ZOMBIE"));
+        assertEquals("killed_by.creeper", Statistics.typed("ENTITY_KILLED_BY", "minecraft:creeper"));
+        assertEquals("custom.play_time", Statistics.untyped("PLAY_ONE_MINUTE"));
+        assertEquals("custom.open_shulker_box", Statistics.untyped("SHULKER_BOX_OPENED"));
+        // Anything the two already agree about is just lower-cased.
+        assertEquals("custom.jump", Statistics.untyped("JUMP"));
+        assertEquals("custom.walk_one_cm", Statistics.untyped("WALK_ONE_CM"));
+        // And a name that has already been folded survives a second folding,
+        // which is what happens when an offline key is passed back through.
+        assertEquals("custom.play_time", Statistics.untyped("play_time"));
+
+        assertEquals("12.5 blocks", Statistics.value("custom.walk_one_cm", 1250));
+        assertTrue(Statistics.value("custom.play_time", 1200).startsWith("1m"));
+        assertEquals("48,210", Statistics.value("mined.stone", 48_210));
     }
 
     @Test

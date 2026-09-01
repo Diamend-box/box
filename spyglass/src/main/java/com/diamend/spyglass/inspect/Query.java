@@ -30,6 +30,14 @@ public record Query(String argument, boolean sensitive) {
         return text != null && text.toLowerCase(Locale.ROOT).contains(argument.toLowerCase(Locale.ROOT));
     }
 
+    /**
+     * The filter as lower-case text ready to search for, or null when there is
+     * no filter and everything matches.
+     */
+    public String needle() {
+        return hasArgument() ? argument.trim().toLowerCase(Locale.ROOT) : null;
+    }
+
     /** The argument as a slot number, or null when it isn't one. */
     public Integer slot() {
         if (!hasArgument()) {
