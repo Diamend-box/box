@@ -3,9 +3,11 @@ package com.diamend.spyglass.command;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -24,6 +26,7 @@ import com.diamend.spyglass.nbt.NbtCompound;
 import com.diamend.spyglass.nbt.NbtPath;
 import com.diamend.spyglass.nbt.NbtPrinter;
 import com.diamend.spyglass.nbt.NbtTag;
+import com.diamend.spyglass.offline.OfflineSearch;
 import com.diamend.spyglass.offline.OfflineSnapshot;
 import com.diamend.spyglass.report.DumpFile;
 import com.diamend.spyglass.report.Report;
@@ -54,6 +57,12 @@ public final class SpyCommand implements TabExecutor {
     /** How deep and how wide a raw NBT dump goes before it stops. */
     private static final int NBT_DEPTH = 12;
     private static final int NBT_ELEMENTS = 96;
+
+    /** Enough to answer "who has one of these"; not enough to fill a terminal. */
+    private static final int MAX_FIND_HITS = 200;
+
+    /** A completion list longer than this is not a list, it is a wall. */
+    private static final int MAX_COMPLETIONS = 100;
 
     private static final List<String> VERBS = List.of("list", "watch", "unwatch", "watching",
             "dump", "dumps", "diff", "find", "sections", "reload", "help");
@@ -228,11 +237,15 @@ public final class SpyCommand implements TabExecutor {
 
     private void find(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            error(sender, "Usage: /spy find <item> [player|all]");
+            error(sender, "Usage: /spy find <item> [player|all|saves]");
             return;
         }
         String wanted = args[1].toLowerCase(Locale.ROOT);
         String who = args.length > 2 ? args[2] : "all";
+        if (who.equalsIgnoreCase("saves") || who.equalsIgnoreCase("offline")) {
+            findInSaves(sender, wanted);
+            return;
+        }
         Report report = new Report().title("Searching for \"" + wanted + "\"");
         int hits = 0;
         for (Player player : plugin.getServer().getOnlinePlayers()) {
@@ -246,10 +259,11 @@ public final class SpyCommand implements TabExecutor {
         }
         if (hits == 0) {
             report.note("Nothing matching \"" + wanted + "\" in any online player's inventory, "
-                    + "ender chest, or anything they are carrying it inside.");
+                    + "ender chest, or anything they are carrying it inside. "
+                    + "Try /spy find " + wanted + " saves for everyone else.");
         } else {
-            report.note(hits + " stack(s) found. Offline players are not searched — "
-                    + "read one with /spy <player> inventory.");
+            report.note(hits + " stack(s) found among the players online. "
+                    + "Search the save files too with /spy find " + wanted + " saves.");
         }
         report.send(sender, 1, plugin.settings().pageSize(), null);
     }
@@ -281,6 +295,61 @@ public final class SpyCommand implements TabExecutor {
                     Safe.text(player::getName), where, slot, ItemFormatter.line(item) + trail));
         }
         return hits;
+    }
+
+    /**
+     * The same search, over every save on the disk rather than over the handful
+     * of people who happen to be connected.
+     *
+     * <p>This is the one command here that can be genuinely expensive, so it is
+     * bounded by {@code find.max-saves} and {@code find.time-budget} and says
+     * plainly when it stopped early. What it reads is cached against each file's
+     * timestamp, so asking again costs nothing.
+     */
+    private void findInSaves(CommandSender sender, String wanted) {
+        // Gathered here, on the main thread, because it is the only place the
+        // permissions of the people currently online can be asked about.
+        Set<UUID> hidden = new HashSet<>();
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (isExempt(sender, player)) {
+                hidden.add(player.getUniqueId());
+            }
+        }
+        int maxSaves = plugin.settings().findMaxSaves();
+        long budget = plugin.settings().findSeconds() * 1000L;
+        info(sender, "Reading save files for \"" + wanted + "\"...");
+        plugin.async(() -> {
+            OfflineSearch.Result result =
+                    plugin.search().search(wanted, maxSaves, budget, MAX_FIND_HITS);
+            Report report = new Report().title("Searching saves for \"" + wanted + "\"");
+            int shown = 0;
+            for (OfflineSearch.Hit hit : result.hits()) {
+                if (hidden.contains(hit.uuid())) {
+                    continue;
+                }
+                shown++;
+                report.text(String.format("%-16s %-10s slot %-4s %s",
+                        Fmt.clip(hit.name(), 16), hit.where(), slotText(hit.slot()), hit.line()));
+            }
+            report.note(shown == 0
+                    ? "Nothing matching \"" + wanted + "\" in " + result.scanned() + " save(s)."
+                    : shown + " stack(s) across " + result.scanned() + " save(s) of "
+                            + result.total() + ".");
+            if (result.failed() > 0) {
+                report.note(result.failed() + " save(s) could not be read — being written as we "
+                        + "looked, or written by a version this cannot parse.");
+            }
+            if (!result.complete()) {
+                report.note("Incomplete: " + result.stopped() + ".");
+            }
+            report.note("These are the files on disk, so an online player's row is as old as "
+                    + "their last save; /spy find " + wanted + " reads those live.");
+            plugin.sync(() -> report.send(sender, 1, plugin.settings().pageSize(), null));
+        });
+    }
+
+    private static String slotText(int slot) {
+        return slot == Integer.MIN_VALUE ? "?" : String.valueOf(slot);
     }
 
     // ------------------------------------------------------------------
@@ -528,7 +597,7 @@ public final class SpyCommand implements TabExecutor {
         report.field("/spy <player> stats <filter>", "filter any long section; add a page number");
         report.field("/spy sections", "what you can ask for");
         report.field("/spy list [world]", "everyone online at a glance");
-        report.field("/spy find <item> [player]", "find an item in online inventories");
+        report.field("/spy find <item> [who]", "find an item; \"saves\" searches the whole disk");
         report.field("/spy watch <player> [cats]", "follow what they do, live");
         report.field("/spy unwatch <player|all>", "stop following");
         report.field("/spy watching", "who is being followed");
@@ -616,19 +685,13 @@ public final class SpyCommand implements TabExecutor {
         }
         if (args.length == 1) {
             out.addAll(VERBS);
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                out.add(player.getName());
-            }
+            addPlayerNames(out, args[0]);
             return prefixed(out, args[0]);
         }
         String verb = args[0].toLowerCase(Locale.ROOT);
         if (args.length == 2) {
             switch (verb) {
-                case "watch", "dump", "dumps", "diff" -> {
-                    for (Player player : plugin.getServer().getOnlinePlayers()) {
-                        out.add(player.getName());
-                    }
-                }
+                case "watch", "dump", "dumps", "diff" -> addPlayerNames(out, args[1]);
                 case "unwatch" -> {
                     out.add("all");
                     for (Watch watch : plugin.watches().watchesBy(sender)) {
@@ -641,6 +704,12 @@ public final class SpyCommand implements TabExecutor {
                 default -> out.addAll(Section.names());
             }
             return prefixed(out, args[1]);
+        }
+        if (verb.equals("find") && args.length == 3) {
+            out.add("all");
+            out.add("saves");
+            addPlayerNames(out, args[2]);
+            return prefixed(out, args[2]);
         }
         if (verb.equals("watch")) {
             out.addAll(WatchCategory.names());
@@ -661,6 +730,31 @@ public final class SpyCommand implements TabExecutor {
             return prefixed(out, args[2]);
         }
         return out;
+    }
+
+    /**
+     * Everyone online, then everyone this server remembers.
+     *
+     * <p>The point of the plugin is that a name does not have to be logged in to
+     * be inspectable, so completion should not pretend otherwise. The offline
+     * half comes from the cache the server already keeps, filtered here rather
+     * than afterwards because there can be tens of thousands of them.
+     */
+    private void addPlayerNames(List<String> out, String typed) {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            out.add(player.getName());
+        }
+        String wanted = typed == null ? "" : typed.toLowerCase(Locale.ROOT);
+        int added = 0;
+        for (String name : plugin.names().names()) {
+            if (added >= MAX_COMPLETIONS) {
+                break;
+            }
+            if (name.toLowerCase(Locale.ROOT).startsWith(wanted)) {
+                out.add(name);
+                added++;
+            }
+        }
     }
 
     private static List<String> prefixed(List<String> options, String typed) {

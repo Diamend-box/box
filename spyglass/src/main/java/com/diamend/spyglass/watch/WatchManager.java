@@ -33,16 +33,19 @@ public final class WatchManager {
     private final Plugin plugin;
     private final Server server;
     private final java.util.function.Supplier<SpyglassConfig> config;
+    private final WatchLog log;
 
     private final List<Watch> watches = new CopyOnWriteArrayList<>();
 
     /** Last time each watched player's position was reported, for sampling. */
     private final Map<UUID, Long> lastPositionReport = new ConcurrentHashMap<>();
 
-    public WatchManager(Plugin plugin, java.util.function.Supplier<SpyglassConfig> config) {
+    public WatchManager(Plugin plugin, java.util.function.Supplier<SpyglassConfig> config,
+                        WatchLog log) {
         this.plugin = plugin;
         this.server = plugin.getServer();
         this.config = config;
+        this.log = log;
     }
 
     // ------------------------------------------------------------------
@@ -157,6 +160,11 @@ public final class WatchManager {
             return;
         }
         String name = Safe.text(player::getName);
+        if (log != null && config.get().watchLog()) {
+            // Whatever the watchers were shown, including the rate limiting, so
+            // the file and the console tell the same story.
+            log.append(name, now, what, detail);
+        }
         Component line = Component.text("[spy] ", NamedTextColor.DARK_AQUA)
                 .append(Component.text(Fmt.clock(now) + " ", NamedTextColor.DARK_GRAY))
                 .append(Component.text(name + " ", NamedTextColor.YELLOW))

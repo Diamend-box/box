@@ -8,13 +8,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.diamend.spyglass.command.SpyCommand;
 import com.diamend.spyglass.config.SpyglassConfig;
 import com.diamend.spyglass.inspect.OnlineInspector;
+import com.diamend.spyglass.offline.NameCache;
 import com.diamend.spyglass.offline.OfflineInspector;
+import com.diamend.spyglass.offline.OfflineSearch;
 import com.diamend.spyglass.offline.PlayerFiles;
 import com.diamend.spyglass.report.DumpWriter;
 import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Safe;
 import com.diamend.spyglass.watch.WatchCategory;
 import com.diamend.spyglass.watch.WatchListener;
+import com.diamend.spyglass.watch.WatchLog;
 import com.diamend.spyglass.watch.WatchManager;
 
 /**
@@ -38,9 +41,12 @@ public class SpyglassPlugin extends JavaPlugin {
     private volatile SpyglassConfig settings;
 
     private PlayerFiles files;
+    private NameCache names;
+    private OfflineSearch search;
     private OnlineInspector online;
     private OfflineInspector offline;
     private WatchManager watches;
+    private WatchLog watchLog;
     private DumpWriter dumps;
 
     @Override
@@ -49,9 +55,12 @@ public class SpyglassPlugin extends JavaPlugin {
         this.settings = SpyglassConfig.load(getConfig());
 
         this.files = new PlayerFiles(getServer());
+        this.names = new NameCache(files);
+        this.search = new OfflineSearch(files, names, settings.findMaxSaves());
         this.online = new OnlineInspector(getServer());
         this.offline = new OfflineInspector();
-        this.watches = new WatchManager(this, this::settings);
+        this.watchLog = new WatchLog(this, new File(getDataFolder(), "logs"));
+        this.watches = new WatchManager(this, this::settings, watchLog);
         this.dumps = buildDumpWriter();
 
         getServer().getPluginManager().registerEvents(
@@ -64,6 +73,9 @@ public class SpyglassPlugin extends JavaPlugin {
         }
 
         startConfiguredWatches();
+        // Warm the offline names so tab completion has something to offer; it
+        // reads a file, so it does not happen on this thread.
+        async(names::refresh);
 
         getLogger().info("Spyglass enabled with " + Section.values().length + " sections and "
                 + WatchCategory.values().length + " watch categories"
@@ -76,6 +88,9 @@ public class SpyglassPlugin extends JavaPlugin {
     public void onDisable() {
         if (watches != null) {
             watches.clear();
+        }
+        if (watchLog != null) {
+            watchLog.close();
         }
     }
 
@@ -90,6 +105,15 @@ public class SpyglassPlugin extends JavaPlugin {
 
     public PlayerFiles files() {
         return files;
+    }
+
+    /** Who the UUIDs on disk belong to, read from the server's own usercache. */
+    public NameCache names() {
+        return names;
+    }
+
+    public OfflineSearch search() {
+        return search;
     }
 
     public OnlineInspector online() {
@@ -113,6 +137,11 @@ public class SpyglassPlugin extends JavaPlugin {
         reloadConfig();
         this.settings = SpyglassConfig.load(getConfig());
         this.dumps = buildDumpWriter();
+        // The search cache is sized from the config and holds what the disk said
+        // some time ago; a reload is the natural moment to drop both.
+        this.names.clear();
+        this.search = new OfflineSearch(files, names, settings.findMaxSaves());
+        async(names::refresh);
         startConfiguredWatches();
         getLogger().info("Spyglass configuration reloaded.");
     }

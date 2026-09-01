@@ -15,34 +15,36 @@ import com.diamend.spyglass.watch.WatchCategory;
  *
  * <p>Every value has a sane default, so a config that is missing, empty or
  * half-edited still produces a working plugin.
+ *
+ * @param pageSize              lines per page of console output
+ * @param maskIp                hide IP addresses even from the console
+ * @param saveBeforeNbt         ask the server to write an online player out
+ *                              before reading their save file
+ * @param logUsage              log who inspected whom
+ * @param dumpFolder            where dumps go, under the plugin folder
+ * @param dumpKeep              how many dumps to keep; 0 keeps every one
+ * @param findMaxSaves          how many save files one disk-wide search may read
+ * @param findSeconds           how long that search may take before it gives up
+ * @param defaultCategories     what {@code /spy watch} follows when not told
+ * @param movementSampleSeconds how often a moving player is reported
+ * @param maxLinesPerSecond     per-watch budget, so a fight cannot outrun the console
+ * @param watchLog              also write watch lines to a per-player log file
+ * @param autoWatch             lower-cased names the console follows across restarts
  */
-public final class SpyglassConfig {
-
-    private final int pageSize;
-    private final boolean maskIp;
-    private final boolean saveBeforeNbt;
-    private final boolean logUsage;
-    private final String dumpFolder;
-    private final int dumpKeep;
-    private final Set<WatchCategory> defaultCategories;
-    private final int movementSampleSeconds;
-    private final int maxLinesPerSecond;
-    private final List<String> autoWatch;
-
-    private SpyglassConfig(int pageSize, boolean maskIp, boolean saveBeforeNbt, boolean logUsage,
-                           String dumpFolder, int dumpKeep, Set<WatchCategory> defaultCategories,
-                           int movementSampleSeconds, int maxLinesPerSecond, List<String> autoWatch) {
-        this.pageSize = pageSize;
-        this.maskIp = maskIp;
-        this.saveBeforeNbt = saveBeforeNbt;
-        this.logUsage = logUsage;
-        this.dumpFolder = dumpFolder;
-        this.dumpKeep = dumpKeep;
-        this.defaultCategories = defaultCategories;
-        this.movementSampleSeconds = movementSampleSeconds;
-        this.maxLinesPerSecond = maxLinesPerSecond;
-        this.autoWatch = autoWatch;
-    }
+public record SpyglassConfig(
+        int pageSize,
+        boolean maskIp,
+        boolean saveBeforeNbt,
+        boolean logUsage,
+        String dumpFolder,
+        int dumpKeep,
+        int findMaxSaves,
+        int findSeconds,
+        Set<WatchCategory> defaultCategories,
+        int movementSampleSeconds,
+        int maxLinesPerSecond,
+        boolean watchLog,
+        List<String> autoWatch) {
 
     public static SpyglassConfig load(FileConfiguration config) {
         int pageSize = clamp(config.getInt("page-size", 30), 5, 500);
@@ -56,6 +58,11 @@ public final class SpyglassConfig {
         }
         int dumpKeep = Math.max(0, config.getInt("dumps.keep", 50));
 
+        // Reading every save on a long-running server is minutes of disk, so the
+        // search is bounded twice: by how many files and by how long.
+        int findMaxSaves = clamp(config.getInt("find.max-saves", 500), 1, 100_000);
+        int findSeconds = clamp(config.getInt("find.time-budget", 10), 1, 600);
+
         List<String> categoryNames = config.getStringList("watch.default-categories");
         Set<WatchCategory> categories = WatchCategory.parse(categoryNames);
         if (categories.isEmpty()) {
@@ -64,6 +71,7 @@ public final class SpyglassConfig {
 
         int sample = clamp(config.getInt("watch.movement-sample-seconds", 3), 1, 3600);
         int maxLines = clamp(config.getInt("watch.max-lines-per-second", 20), 0, 1000);
+        boolean watchLog = config.getBoolean("watch.log", false);
 
         List<String> auto = new ArrayList<>();
         for (String name : config.getStringList("watch.auto")) {
@@ -73,52 +81,12 @@ public final class SpyglassConfig {
         }
 
         return new SpyglassConfig(pageSize, maskIp, saveBeforeNbt, logUsage, dumpFolder, dumpKeep,
-                categories, sample, maxLines, List.copyOf(auto));
+                findMaxSaves, findSeconds, Set.copyOf(categories), sample, maxLines, watchLog,
+                List.copyOf(auto));
     }
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    public int pageSize() {
-        return pageSize;
-    }
-
-    public boolean maskIp() {
-        return maskIp;
-    }
-
-    public boolean saveBeforeNbt() {
-        return saveBeforeNbt;
-    }
-
-    public boolean logUsage() {
-        return logUsage;
-    }
-
-    public String dumpFolder() {
-        return dumpFolder;
-    }
-
-    public int dumpKeep() {
-        return dumpKeep;
-    }
-
-    public Set<WatchCategory> defaultCategories() {
-        return Set.copyOf(defaultCategories);
-    }
-
-    public int movementSampleSeconds() {
-        return movementSampleSeconds;
-    }
-
-    public int maxLinesPerSecond() {
-        return maxLinesPerSecond;
-    }
-
-    /** Lower-cased names the console follows automatically. */
-    public List<String> autoWatch() {
-        return autoWatch;
     }
 
     public boolean isAutoWatched(String name) {

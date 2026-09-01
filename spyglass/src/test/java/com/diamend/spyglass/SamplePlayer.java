@@ -124,6 +124,14 @@ public final class SamplePlayer {
         return root;
     }
 
+    /** The same player, having put everything down. */
+    public static NbtCompound emptyHanded() {
+        NbtCompound root = playerData();
+        root.put("Inventory", NbtTag.of(new NbtList(NbtType.COMPOUND, List.of())));
+        root.put("EnderItems", NbtTag.of(new NbtList(NbtType.COMPOUND, List.of())));
+        return root;
+    }
+
     /** A named, enchanted, part-worn sword in the modern component layout. */
     private static NbtCompound sword(int slot) {
         NbtCompound item = new NbtCompound();

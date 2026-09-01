@@ -5,17 +5,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
 import com.diamend.spyglass.watch.Watch;
 import com.diamend.spyglass.watch.WatchCategory;
+import com.diamend.spyglass.watch.WatchLog;
 
 /**
  * The command and the plugin around it, against a real Bukkit API.
@@ -286,6 +292,32 @@ class SpyCommandTest {
 
         assertTrue(found.contains("Notch"), found);
         assertTrue(found.contains("diamond"), found);
+    }
+
+    @Test
+    void findCanBePointedAtTheSaveFiles() {
+        PlayerMock staff = staff();
+
+        String reply = run(staff, "spy find beacon saves");
+
+        // No world folder means no saves; the point is that it answers rather
+        // than throwing, and that it says how much it looked at.
+        assertTrue(reply.contains("Searching saves"), reply);
+        assertTrue(reply.contains("save(s)"), reply);
+    }
+
+    @Test
+    void watchLinesCanBeWrittenToAFile(@TempDir Path folder) throws IOException {
+        WatchLog log = new WatchLog(plugin, folder.toFile());
+
+        log.append("Notch", 1_700_000_000_000L, "chat", "where is everyone");
+        log.append("Notch", 1_700_000_001_000L, "block break", "diamond_ore at world -814 12 341");
+        log.close();
+
+        List<String> lines = Files.readAllLines(folder.resolve("Notch.log"));
+        assertEquals(2, lines.size(), () -> String.valueOf(lines));
+        assertTrue(lines.get(0).contains("chat  where is everyone"), lines.get(0));
+        assertTrue(lines.get(1).contains("block break  diamond_ore"), lines.get(1));
     }
 
     @Test

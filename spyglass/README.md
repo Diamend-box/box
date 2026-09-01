@@ -138,7 +138,7 @@ read is current rather than as old as the last autosave (`save-before-nbt`).
 | Command | Purpose |
 |---|---|
 | `/spy list [world]` | everyone online: world, position, health, mode, ping |
-| `/spy find <item> [player]` | find an item in online inventories and ender chests, containers included |
+| `/spy find <item> [player\|all\|saves]` | find an item, containers included; `saves` reads every save on disk |
 | `/spy watch <player> [categories]` | follow what someone does, live, in the console |
 | `/spy unwatch <player\|all>` | stop following |
 | `/spy watching` | who is being followed, by whom |
@@ -168,6 +168,33 @@ join, and `watch.auto` in the config re-arms chosen names after a restart.
 
 Busy players can outrun a console, so each watch has a lines-per-second budget;
 anything over it is dropped and counted (`… 14 line(s) dropped to keep up`).
+
+Turn `watch.log` on and the same lines are also appended to
+`plugins/Spyglass/logs/<player>.log`, which is what makes a watch left running
+overnight worth anything in the morning. Lines go on a queue and a background
+task drains it once a second, so the disk stays off the server tick and a burst
+of two hundred lines is one write. Files rotate at 16 MB.
+
+### Finding an item
+
+```
+> spy find beacon
+Staff            inventory  slot 13   shulker_box  holds:4 > beacon x2
+
+> spy find beacon saves
+[Spyglass] Reading save files for "beacon"...
+=== Searching saves for "beacon" ===
+  Notch            inventory  slot 22   beacon x3
+  jeb_             enderchest slot 0    bundle  holds:1 > beacon x1
+  2 stack(s) across 431 save(s) of 431.
+```
+
+Without `saves` this reads the people who are connected, live. With it, the
+plugin reads `playerdata` itself — which is the only way to answer "does anyone
+on this server have one" rather than "does anyone here right now". That is real
+disk work, so it is bounded: most-recently-played first, stopping at
+`find.max-saves` files or `find.time-budget` seconds and saying which. What it
+read is cached against each file's timestamp, so the second question is free.
 
 ### Dumping
 
@@ -248,12 +275,17 @@ log-usage: false           # log who inspected whom
 
 dumps:
   folder: dumps
-  keep: 50                 # 0 keeps every dump
+  keep: 50                 # 0 keeps every dump (.txt and .json pruned together)
+
+find:
+  max-saves: 500           # ceiling on "/spy find <item> saves"
+  time-budget: 10          # ...and the other ceiling, in seconds
 
 watch:
   default-categories: [chat, command, connection, inventory, blocks, combat, state]
   movement-sample-seconds: 3
   max-lines-per-second: 20
+  log: false               # also append to plugins/Spyglass/logs/<player>.log
   auto: []                 # names the console follows automatically, across restarts
 ```
 
@@ -264,10 +296,9 @@ watch:
 - **It never writes to a player.** No editing inventories, no setting health,
   no moving anyone. The only write it asks for is Bukkit's own
   `Player#saveData()` before reading raw NBT, so the tree you read is current.
-- **It does not search offline players' inventories** (`/spy find` covers
-  people who are online). Reading every save on disk for one query is not
-  something a command should do on a whim — read one player at a time with
-  `/spy <player> inventory`.
+- **It does not search a disk-wide find without bounds.** `/spy find <item>
+  saves` reads real files, so it stops at `find.max-saves` or
+  `find.time-budget`, whichever comes first, and tells you it did.
 - A player's IP is not in their save file, so `connection` is thinner offline.
 
 ---

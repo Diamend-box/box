@@ -23,10 +23,21 @@ save-before-nbt: true
 log-usage: false
 
 dumps:
-  # Folder under plugins/Spyglass for /spy dump reports.
+  # Folder under plugins/Spyglass for /spy dump reports. Each dump is written
+  # twice — <name>.txt to read and <name>.json for /spy diff and other tooling —
+  # and the pair is created and pruned together.
   folder: dumps
   # Keep at most this many reports, deleting the oldest. 0 keeps everything.
   keep: 50
+
+find:
+  # "/spy find <item> saves" reads player save files off the disk, and a server
+  # that has been up for years has a lot of them. The scan stops at whichever of
+  # these two comes first, and says so, rather than holding a thread all day.
+  # Files are read most-recently-played first, so the useful ones come first.
+  max-saves: 500
+  # Seconds.
+  time-budget: 10
 
 watch:
   # What /spy watch follows when you don't name categories yourself.
@@ -42,6 +53,11 @@ watch:
   # A watched player in a busy fight can outrun your console. Above this many
   # lines a second the rest of that second is dropped and counted instead.
   max-lines-per-second: 20
+
+  # Also append every watch line to plugins/Spyglass/logs/<player>.log, so a
+  # watch left running overnight is still readable in the morning. Written off
+  # the main thread; the console output is unchanged either way.
+  log: false
 
   # Players the console follows automatically, by name, from the moment they
   # join — and again after a restart. Survives them logging out.
