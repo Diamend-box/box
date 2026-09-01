@@ -19,6 +19,17 @@ public class PlayerData {
     private final UUID uuid;
     private final Set<String> completed = new HashSet<>();
     private final Map<String, Integer> progress = new HashMap<>();
+    // Requirements already seeded from this player's lifetime statistics. Tracked
+    // separately from progress because "has progress" can't stand in for "was
+    // seeded": a single kill before the backfill ran would otherwise lock the
+    // objective out of it forever.
+    private final Set<String> backfilled = new HashSet<>();
+    // Objectives this player had already been seeded for when their
+    // achievements were wiped, recorded without the reader's schema version.
+    // A plain marker can't carry this: markers are deliberately schema-scoped
+    // so that a version able to read more than the last one reconsiders every
+    // objective — which would hand a reset player their whole history back.
+    private final Set<String> resetSeeded = new HashSet<>();
     // Reward items that couldn't fit in the player's inventory when unlocked,
     // held here until they claim them (so they're never dropped/lost).
     private final List<ItemStack> pendingRewards = new ArrayList<>();
@@ -71,6 +82,53 @@ public class PlayerData {
         return achievementId.toLowerCase(Locale.ROOT) + "#" + index;
     }
 
+    /** Whether this requirement has already been seeded from the player's statistics. */
+    public boolean isBackfilled(String marker) {
+        return backfilled.contains(key(marker));
+    }
+
+    /** Records that a requirement has been seeded, so it is never seeded twice. */
+    public void markBackfilled(String marker) {
+        if (backfilled.add(key(marker))) {
+            dirty = true;
+        }
+    }
+
+    public Set<String> getBackfilled() {
+        return backfilled;
+    }
+
+    /**
+     * Whether this objective had already been seeded when the player was reset,
+     * and so must not be seeded again however much the reader improves.
+     *
+     * @param signature the marker without its trailing schema version
+     */
+    public boolean isResetSeeded(String signature) {
+        return resetSeeded.contains(key(signature));
+    }
+
+    /**
+     * Lifts the reset suppression for one objective, after an admin has
+     * explicitly forced it to be seeded again.
+     */
+    public void clearResetSeeded(String signature) {
+        if (resetSeeded.remove(key(signature))) {
+            dirty = true;
+        }
+    }
+
+    public Set<String> getResetSeeded() {
+        return resetSeeded;
+    }
+
+    /** Restores the reset watermark from disk. */
+    public void addResetSeeded(String signature) {
+        if (resetSeeded.add(key(signature))) {
+            dirty = true;
+        }
+    }
+
     public void setCompleted(String id) {
         completed.add(key(id));
         progress.remove(key(id));
@@ -87,7 +145,29 @@ public class PlayerData {
         completed.clear();
         progress.clear();
         pendingRewards.clear();
+        // The backfill markers deliberately survive a reset: re-seeding the
+        // player straight back from their statistics would undo it on next join.
+        // They're also copied here without their schema version, because a later
+        // version that can read more than this one re-examines every objective
+        // and would otherwise walk straight through the reset.
+        for (String marker : backfilled) {
+            resetSeeded.add(stripSchema(marker));
+        }
         dirty = true;
+    }
+
+    /** Drops a marker's trailing {@code @v<n>}, leaving what the objective asked for. */
+    private static String stripSchema(String marker) {
+        int at = marker.lastIndexOf("@v");
+        if (at < 0) {
+            return marker;
+        }
+        for (int i = at + 2; i < marker.length(); i++) {
+            if (!Character.isDigit(marker.charAt(i))) {
+                return marker;
+            }
+        }
+        return at + 2 == marker.length() ? marker : marker.substring(0, at);
     }
 
     // ------------------------------------------------------------------

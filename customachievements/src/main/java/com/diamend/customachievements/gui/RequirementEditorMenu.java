@@ -119,6 +119,14 @@ public class RequirementEditorMenu implements Menu {
                                 "<yellow>Left-click: use your current location",
                                 "<yellow>Right-click: type world x y z [radius]"));
             }
+            case ACHIEVEMENT_UNLOCK -> Items.of(Material.BOOK,
+                    Text.item("<aqua>Counts: <white>"
+                            + (requirement.getTarget() == null || requirement.getTarget().isBlank()
+                            || requirement.getTarget().equalsIgnoreCase("ANY")
+                            ? "Every achievement" : requirement.getTarget())),
+                    lore("<gray>Which of your achievements count",
+                            "<gray>toward this one.", "",
+                            "<yellow>Click to pick a category"));
             case MYTHIC_MOB_KILL -> Items.of(Material.WITHER_SKELETON_SKULL, Text.item("<aqua>Target Mythic Mob"),
                     lore("<white>" + requirement.getTarget(),
                             "",
@@ -195,7 +203,12 @@ public class RequirementEditorMenu implements Menu {
             }
             case MYTHIC_MOB_KILL -> promptText("Enter the MythicMobs internal name (or ANY):",
                     input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
-            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN -> {
+            // A custom key is invented by the server owner, so there is nothing
+            // to list in a picker — it's typed, then fired with /ca trigger.
+            case CUSTOM -> promptText("Enter a trigger key, e.g. boss_kill (or ANY):",
+                    input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
+            case ACHIEVEMENT_UNLOCK -> openCategoryPicker(requirement);
+            case ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ITEM_HAVE -> {
                 if (requirement.isMatchByName()) {
                     promptText("Enter the custom item name to match (or ANY):",
                             input -> requirement.setTarget(input.trim().isEmpty() ? "ANY" : input.trim()));
@@ -205,6 +218,25 @@ public class RequirementEditorMenu implements Menu {
             }
             default -> openTargetPicker(trigger, requirement);
         }
+    }
+
+    /**
+     * Unlike a custom trigger key, categories are something the server already
+     * has, so they can be listed instead of typed. "ANY" (the picker's own
+     * button) counts every achievement.
+     */
+    private void openCategoryPicker(Requirement requirement) {
+        List<TargetOption> options = new ArrayList<>();
+        for (String category : plugin.getAchievementManager().categories()) {
+            options.add(new TargetOption(category, Material.BOOK, category,
+                    List.of("Only achievements in this category")));
+        }
+        new TargetPickerMenu(plugin, viewer, "Count Which Achievements?", options,
+                value -> {
+                    requirement.setTarget(value == null || value.isBlank() ? "ANY" : value);
+                    open(viewer);
+                },
+                () -> open(viewer)).open(viewer);
     }
 
     private void openTargetPicker(TriggerType trigger, Requirement requirement) {

@@ -106,6 +106,15 @@ public class Requirement {
         this.matchByName = matchByName;
     }
 
+    /**
+     * Identifies what this requirement asks for, so the statistics backfill can
+     * seed it exactly once per player — and seed it afresh if the objective is
+     * later edited to ask for something different.
+     */
+    public String backfillSignature() {
+        return trigger.name() + ":" + (target == null ? "" : target) + (matchByName ? ":name" : "");
+    }
+
     /** Units of progress needed to finish this requirement. */
     public int requiredAmount() {
         return trigger.isProgress() ? Math.max(1, amount) : 1;
@@ -140,12 +149,22 @@ public class Requirement {
     public String describe() {
         return switch (trigger) {
             case MANUAL -> "Granted by staff";
+            case CUSTOM -> isWildcard()
+                    ? "Any custom trigger x" + amount
+                    : "Trigger \"" + target + "\" x" + amount;
             case REACH_LOCATION -> {
                 LocationTarget loc = getLocationTarget();
                 yield "Reach " + (loc != null ? loc.pretty() : target);
             }
             case REACH_DIMENSION -> "Enter " + target + (amount > 1 ? " (x" + amount + ")" : "");
             case PLAYTIME_HOURS -> "Play for " + amount + " hour(s)";
+            case PLAYER_DEATH -> isWildcard()
+                    ? "Die " + amount + " time(s)"
+                    : "Die to " + targetLabel() + " x" + amount;
+            case ITEM_HAVE -> "Have " + targetLabel() + " x" + amount + " at once";
+            case ACHIEVEMENT_UNLOCK -> isWildcard()
+                    ? "Unlock " + amount + " achievement(s)"
+                    : "Unlock " + amount + " achievement(s) in " + target;
             case AURASKILLS_LEVEL -> "Reach level " + amount
                     + (target != null && !target.equalsIgnoreCase("ANY") ? " in " + target : " in any skill");
             default -> {

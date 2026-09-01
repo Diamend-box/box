@@ -28,6 +28,10 @@ public class ConnectionListener implements Listener {
         plugin.getPlayerDataManager().load(player.getUniqueId());
         plugin.syncPlaytime(player);
         plugin.syncAuraSkills(player);
+        // Credit anything they'd already done before an achievement existed,
+        // count what they've unlocked toward any capstone, and hand over
+        // anything that finished while they were away.
+        plugin.getAchievementService().backfill(player);
         notifyPendingRewards(player);
     }
 

@@ -14,9 +14,13 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * The achievement editor: presentation/reward fields plus a list of objectives.
@@ -37,6 +41,7 @@ public class EditorMenu implements Menu {
     private static final int SLOT_XP = 22;
     private static final int SLOT_ITEMS = 23;
     private static final int SLOT_COMMANDS = 24;
+    private static final int SLOT_REQUIRES = 25;
     private static final int SLOT_ADD = 45;
     private static final int SLOT_CLONE = 46;
     private static final int SLOT_SAVE = 48;
@@ -145,6 +150,24 @@ public class EditorMenu implements Menu {
         cmdLines.add("<yellow>Left: add   <yellow>Right: clear");
         inventory.setItem(SLOT_COMMANDS, Items.of(Material.COMMAND_BLOCK, Text.item("<aqua>Reward Commands"),
                 lore(cmdLines)));
+
+        List<String> reqLines = new ArrayList<>();
+        if (draft.getRequires().isEmpty()) {
+            reqLines.add("<dark_gray>Available from the start");
+        } else {
+            for (String required : draft.getRequires()) {
+                Achievement gate = plugin.getAchievementManager().get(required);
+                reqLines.add("<white>• " + (gate != null ? gate.getDisplayName() : "<red>" + required
+                        + " <dark_gray>(no such achievement)"));
+            }
+        }
+        reqLines.add("");
+        reqLines.add("<gray>Locked until these are unlocked.");
+        reqLines.add("<gray>While locked it earns nothing at all.");
+        reqLines.add("<yellow>Left: add   <yellow>Right: clear");
+        inventory.setItem(SLOT_REQUIRES, Items.of(
+                draft.getRequires().isEmpty() ? Material.IRON_DOOR : Material.TRIPWIRE_HOOK,
+                Text.item("<aqua>Requires"), lore(reqLines)));
 
         // Objectives.
         List<Requirement> requirements = draft.getRequirements();
@@ -290,6 +313,14 @@ public class EditorMenu implements Menu {
                     });
                 }
             }
+            case SLOT_REQUIRES -> {
+                if (click.isRightClick()) {
+                    draft.getRequires().clear();
+                    rebuild();
+                } else {
+                    openRequiresPicker();
+                }
+            }
             case SLOT_ADD -> {
                 if (draft.getRequirements().size() < OBJECTIVE_SLOTS.length) {
                     draft.getRequirements().add(new Requirement());
@@ -330,6 +361,69 @@ public class EditorMenu implements Menu {
                 // background
             }
         }
+    }
+
+    /**
+     * Picks another achievement to gate this one behind. Offered as a list
+     * because a prerequisite has to name an achievement that exists — a typo'd
+     * id would lock the achievement forever with nothing to say why.
+     */
+    private void openRequiresPicker() {
+        List<TargetOption> options = new ArrayList<>();
+        for (Achievement candidate : plugin.getAchievementManager().all()) {
+            if (candidate.getId().equalsIgnoreCase(draft.getId())
+                    || draft.getRequires().contains(candidate.getId())) {
+                continue;
+            }
+            options.add(new TargetOption(candidate.getId(),
+                    candidate.getIcon() == null ? Material.NETHER_STAR : candidate.getIcon(),
+                    candidate.getDisplayName(),
+                    List.of("<dark_gray>" + candidate.getId())));
+        }
+        new TargetPickerMenu(plugin, viewer, "Requires Which Achievement?", options,
+                value -> {
+                    // "ANY" is the picker's own wildcard button; it means nothing
+                    // for a prerequisite, so treat it as backing out.
+                    if (value != null && !value.equalsIgnoreCase("ANY")) {
+                        addRequirement(value);
+                    }
+                    open(viewer);
+                },
+                () -> open(viewer)).open(viewer);
+    }
+
+    private void addRequirement(String id) {
+        if (wouldLoop(id)) {
+            viewer.sendMessage(Text.parse("<red>That would make a loop — <white>" + id
+                    + "<red> already waits on this achievement, so neither could ever unlock."));
+            return;
+        }
+        draft.getRequires().add(id);
+    }
+
+    /**
+     * Whether gating this achievement behind {@code candidate} would close a
+     * loop back to it. Two achievements each waiting on the other are locked
+     * forever, and nothing in-game would explain why, so it's refused up front.
+     */
+    private boolean wouldLoop(String candidate) {
+        Set<String> seen = new HashSet<>();
+        Deque<String> pending = new ArrayDeque<>();
+        pending.add(candidate);
+        while (!pending.isEmpty()) {
+            String id = pending.poll();
+            if (id == null || id.isBlank() || !seen.add(id.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            if (id.equalsIgnoreCase(draft.getId())) {
+                return true;
+            }
+            Achievement next = plugin.getAchievementManager().get(id);
+            if (next != null) {
+                pending.addAll(next.getRequires());
+            }
+        }
+        return false;
     }
 
     private void handleIcon(InventoryClickEvent event) {
@@ -374,6 +468,9 @@ public class EditorMenu implements Menu {
             }
         }
         plugin.getAchievementManager().put(draft);
+        // A brand new achievement should immediately credit what players have
+        // already done, rather than waiting for each of them to reconnect.
+        plugin.getAchievementService().backfillOnline();
         viewer.sendMessage(Text.parse("<green>Saved achievement <white>" + draft.getId() + "<green>."));
         new AchievementMenu(plugin, viewer, true).open(viewer);
     }

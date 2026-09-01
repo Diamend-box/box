@@ -4,6 +4,122 @@ All notable changes to **CustomAchievements** are documented here.
 
 > This plugin was written with AI assistance (Anthropic's Claude).
 
+## [1.14.0]
+### Added
+- **Prerequisites — `requires: [id]`.** An achievement can now be locked behind
+  others. While any is missing it doesn't advance and isn't seeded, and the menu
+  shows 🔒 and what it's waiting on instead of a progress bar that can't move, so
+  a tree can't be finished out of order. `/ca grant` still goes around the gate.
+  The editor refuses a prerequisite that would close a loop, since two
+  achievements waiting on each other could never unlock and nothing in-game
+  would explain why.
+- **`/ca backfill` works on players who aren't online.** Statistics are kept on
+  disk, and the player stuck at zero is often exactly the one who has logged
+  off. Anything that completes while they're away is awarded on their next join,
+  since rewards and broadcasts need them present.
+
+### Fixed
+- **A reset now survives a later upgrade.** `/ca reset` relied on the backfill
+  markers to stop a player being seeded straight back on their next join, but
+  1.13.0 made those markers version-scoped so that an improved reader
+  reconsiders every objective — which would have walked through the reset and
+  handed the player their whole history back. The wipe now records what had
+  already been seeded independently of the reader's version. Achievements
+  created after the reset still seed normally.
+
+## [1.13.0]
+### Added
+- **`ACHIEVEMENT_UNLOCK` — an achievement for earning achievements.** A capstone
+  can now require "unlock 20 achievements", or "unlock 20 in Mining" by naming a
+  category as its target. The count is read from what the player has actually
+  unlocked rather than accumulated as it happens, so it needs no backfill, it
+  credits everything earned before the capstone existed, and it follows a revoke
+  back down. Capstones stack: unlocking one is itself an unlock.
+
+### Fixed
+- **A version that learns to read a new statistic now reaches the players it was
+  for.** An objective is marked seeded even when the read comes back empty — so
+  when 1.12.0 taught the backfill to total "any block", every player who had
+  already joined was shut out of it by a marker set when there was no answer to
+  give, and their block totals stayed at zero unless an admin ran
+  `/ca backfill <player> redo`. The marker now records which version of the
+  reader set it, so gaining an answer re-examines every objective once on the
+  next join. Seeding only ever raises progress, so the retry costs nothing.
+
+## [1.12.0]
+### Added
+- **"Break any 10,000 blocks" now credits the blocks you'd already broken.** An
+  objective targeting `ANY` had nothing to seed from, because Minecraft keeps no
+  overall "blocks mined" counter — it counts one row per block. Those rows are
+  now added together, so a player with 4,000 stone and 1,500 dirt starts at
+  5,500 rather than 0. The same goes for placing any block, crafting any item
+  and picking up any item. `ITEM_CONSUME` targeting `ANY` is deliberately left
+  alone: the "items used" statistic counts blocks placed and tools swung as
+  well, so its total isn't the number that objective asks for.
+
+## [1.11.0]
+### Added
+- **`CUSTOM` trigger — drive achievements from Skript, other plugins, command
+  blocks and datapacks.** An objective can now listen for a **key you invent**
+  (`boss_kill`, `quest:step3`, …) instead of a Minecraft value, fired with
+  `/ca trigger <player> <key> [amount]`. Because it's an ordinary console
+  command, anything that can run one can advance an achievement with no API and
+  nothing to compile against — including plugins that run reward commands
+  (MythicMobs skills, quest and crate plugins, ExecutableItems, Citizens).
+  `/ca trigger <player> <key> set <value>` sets an absolute value instead of
+  adding, for scripts that already keep their own total. Keys are matched
+  case-insensitively, and a target of `ANY` matches every custom key.
+- **A small Java API** (`CustomAchievementsAPI`) for plugins that would rather
+  call directly than run a command: `trigger`, `set`, `hasCompleted`, `grant`
+  and `isAvailable`. Every call is a no-op when the plugin isn't installed, so
+  soft-dependants don't have to guard each one.
+- **`/ca backfill [player] [redo]` — find out why a statistic didn't show up.**
+  Re-runs the seeding for a player and prints, per unfinished objective, the
+  statistic value it actually read and whether that was credited, already
+  seeded, unreadable or simply zero. Because an objective is marked seeded even
+  when the read comes back empty, a first run that found nothing is never
+  retried on later joins; `redo` forces a fresh re-seed of every unfinished
+  objective, which is how to recover from that. Seeding still never lowers
+  progress, so forcing it is safe.
+
+## [1.10.0]
+### Added
+- **Achievements now credit what you'd already done before they existed.** Add a
+  "kill 200 players" achievement to a server where someone already has 150 kills
+  and they start at 150/200 rather than 0. On join — and the moment a new
+  achievement is saved — every objective with no progress yet is seeded from
+  Minecraft's own lifetime statistics: blocks mined and placed, items crafted
+  and picked up, mobs and players killed (including whole mob families, summed),
+  fish caught and deaths. Objectives the server keeps no statistic for start at
+  zero as before: custom item names, a death with a specific cause, `ITEM_HAVE`,
+  locations, dimensions, MythicMobs and AuraSkills. Each objective is seeded
+  once per player and seeding never lowers progress, so this never
+  double-counts — and because that's recorded per player rather than inferred
+  from "has no progress yet", testing a new achievement by going and scoring a
+  kill doesn't cost you the ones you already had. Toggle with
+  `backfill-from-statistics` (default `true`) — note that players may
+  immediately complete achievements they'd already earned, rewards included.
+- **Deaths can now require a cause.** `PLAYER_DEATH` used to count *any* death;
+  its target now narrows how you died, matching against either the damage cause
+  (`LAVA`, `FALL`, `DROWNING`, `VOID`, `FREEZE`, …) **or** whatever killed you
+  (`CREEPER`, `ZOMBIE`, or a whole family like `#HOSTILE`). Both are checked
+  because the damage cause of a creeper kill is only `ENTITY_EXPLOSION` — the
+  mob has to be matched separately — and projectiles resolve to whoever fired
+  them, so a skeleton's arrow counts as a skeleton. Existing death objectives
+  keep counting every death: an unset target (or `ANY`) is still a wildcard.
+- **`ITEM_HAVE` trigger — "have X of an item right now".** A live count of the
+  player's inventory rather than a running total, so it sees items that arrive
+  with no event at all: `/give`, plugin grants, creative mode. Like the other
+  item triggers it can match a **custom item name** instead of a material, which
+  is the usual way to track a named quest item or currency. It refreshes on
+  pickup, on closing a container, and on a periodic sweep that is skipped
+  entirely while no achievement uses the trigger.
+### Changed
+- **`ITEM_OBTAIN` now counts items taken out of containers**, not just items
+  picked up off the ground — chests, barrels, furnace output, villager trades
+  and loot all count toward it now. Rearranging your own inventory or crafting
+  grid still doesn't, and neither does clicking through this plugin's own menus.
+
 ## [1.9.0]
 ### Fixed
 - **Unlocking an achievement now shows its whole description, not just its

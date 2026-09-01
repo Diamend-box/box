@@ -82,6 +82,10 @@ public class PlayerDataManager {
         }
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
         data.getCompleted().addAll(config.getStringList("completed"));
+        data.getBackfilled().addAll(config.getStringList("backfilled"));
+        for (String signature : config.getStringList("reset-seeded")) {
+            data.addResetSeeded(signature);
+        }
         if (config.isConfigurationSection("progress")) {
             for (String key : config.getConfigurationSection("progress").getKeys(false)) {
                 data.getProgressMap().put(key, config.getInt("progress." + key));
@@ -126,6 +130,12 @@ public class PlayerDataManager {
     private YamlConfiguration snapshot(PlayerData data) {
         YamlConfiguration config = new YamlConfiguration();
         config.set("completed", new ArrayList<>(data.getCompleted()));
+        if (!data.getBackfilled().isEmpty()) {
+            config.set("backfilled", new ArrayList<>(data.getBackfilled()));
+        }
+        if (!data.getResetSeeded().isEmpty()) {
+            config.set("reset-seeded", new ArrayList<>(data.getResetSeeded()));
+        }
         for (Map.Entry<String, Integer> entry : data.getProgressMap().entrySet()) {
             config.set("progress." + entry.getKey(), entry.getValue());
         }

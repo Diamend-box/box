@@ -67,8 +67,13 @@ jobs:
         run: |
           set -uo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; uploading/overwriting the jar asset."
+            echo "Release $TAG already exists; refreshing the jar asset and notes."
             gh release upload "$TAG" "$JAR" --clobber
+            # Re-running a release should also pick up any correction to its
+            # notes, not leave the published text frozen at the first run.
+            if [ -f ".github/release-notes/${TAG}.md" ]; then
+              gh release edit "$TAG" --notes-file ".github/release-notes/${TAG}.md"
+            fi
           else
             gh release create "$TAG" "$JAR" \
               --target "$GITHUB_SHA" \

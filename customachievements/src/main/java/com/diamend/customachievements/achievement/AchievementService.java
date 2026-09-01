@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -62,7 +63,7 @@ public class AchievementService {
         Achievement closest = null;
         double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
-            if (data.isCompleted(achievement.getId())) {
+            if (data.isCompleted(achievement.getId()) || !isAvailable(achievement, data)) {
                 continue;
             }
             List<Requirement> requirements = achievement.getRequirements();
@@ -107,18 +108,32 @@ public class AchievementService {
         if (value < 0) {
             return;
         }
+        handleGauge(player, type, requirement -> requirement.matchesTarget(targetKey) ? value : -1);
+    }
+
+    /**
+     * Gauge update where each requirement gets its own current value (used by
+     * "have X items", where the count depends on what that objective targets).
+     * A negative value means the requirement doesn't apply.
+     */
+    public void handleGauge(Player player, TriggerType type,
+                            java.util.function.ToIntFunction<Requirement> valueOf) {
         PlayerData data = playerData.get(player.getUniqueId());
         Achievement closest = null;
         double closestFraction = -1.0;
         for (Achievement achievement : achievements.all()) {
-            if (data.isCompleted(achievement.getId())) {
+            if (data.isCompleted(achievement.getId()) || !isAvailable(achievement, data)) {
                 continue;
             }
             List<Requirement> requirements = achievement.getRequirements();
             boolean changed = false;
             for (int i = 0; i < requirements.size(); i++) {
                 Requirement requirement = requirements.get(i);
-                if (requirement.getTrigger() != type || !requirement.matchesTarget(targetKey)) {
+                if (requirement.getTrigger() != type) {
+                    continue;
+                }
+                int value = valueOf.applyAsInt(requirement);
+                if (value < 0) {
                     continue;
                 }
                 int capped = Math.min(value, requirement.requiredAmount());
@@ -248,7 +263,293 @@ public class AchievementService {
         handle(player, type, requirement -> requirement.matchesItem(material, name), false, amount);
     }
 
-    private String itemName(org.bukkit.inventory.ItemStack item) {
+    /**
+     * Credits an objective with what the player had already done before the
+     * achievement existed, read from Minecraft's lifetime statistics: 150 player
+     * kills already on the board leave 50 to go on a "kill 200 players"
+     * objective rather than 200.
+     *
+     * <p>Each objective is seeded at most once per player, recorded against the
+     * objective's own shape, so this can run as often as it likes without ever
+     * double-counting. It is deliberately <em>not</em> keyed on "has no progress
+     * yet": a player who scored a single kill between creating the achievement
+     * and the first backfill would otherwise be locked out of it permanently.
+     *
+     * <p>Repeats until nothing further changes, because unlocking one
+     * achievement can open a gate on another and make it seedable in turn.
+     */
+    public void backfill(Player player) {
+        PlayerData data = playerData.get(player.getUniqueId());
+        boolean fromStatistics = plugin.getConfig().getBoolean("backfill-from-statistics", true);
+        int before;
+        do {
+            before = data.getCompleted().size();
+            if (fromStatistics) {
+                seed(player, false, null);
+            }
+            handleUnlockCount(player);
+            awardCompleted(player, data);
+        } while (data.getCompleted().size() != before);
+    }
+
+    /**
+     * Hands over anything already finished but never awarded: an objective
+     * seeded while the player was offline, or one whose required amount was
+     * lowered below what they'd already done.
+     */
+    private void awardCompleted(Player player, PlayerData data) {
+        for (Achievement achievement : achievements.all()) {
+            if (!data.isCompleted(achievement.getId())
+                    && isAvailable(achievement, data)
+                    && isComplete(achievement, data)) {
+                award(player, achievement, data);
+            }
+        }
+    }
+
+    /**
+     * Whether the player has unlocked everything this achievement waits on.
+     * A locked achievement doesn't advance and isn't seeded, so a tree can't be
+     * finished out of order; {@code /ca grant} goes around the gate.
+     */
+    public static boolean isAvailable(Achievement achievement, PlayerData data) {
+        for (String required : achievement.getRequires()) {
+            if (required != null && !required.isBlank() && !data.isCompleted(required)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Runs the seeding and reports what it did to every unfinished objective —
+     * the statistic it read, and why an objective was or wasn't credited. Used
+     * by {@code /ca backfill}, so an admin can see what the plugin actually
+     * reads rather than guessing why a total didn't appear.
+     *
+     * @param redo re-seeds objectives already seeded once, which is the only way
+     *             to retry after fixing whatever made the first attempt read zero
+     */
+    public List<String> seedWithReport(org.bukkit.OfflinePlayer player, boolean redo) {
+        List<String> report = new ArrayList<>();
+        PlayerData data = playerData.get(player.getUniqueId());
+        boolean force = redo;
+        int before;
+        do {
+            before = data.getCompleted().size();
+            seed(player, force, report);
+            force = false; // forcing is meant to happen once, not on every pass
+            if (player instanceof Player online) {
+                handleUnlockCount(online);
+                awardCompleted(online, data);
+            }
+        } while (data.getCompleted().size() != before);
+        return report;
+    }
+
+    private void seed(org.bukkit.OfflinePlayer player, boolean redo, List<String> report) {
+        PlayerData data = playerData.get(player.getUniqueId());
+        for (Achievement achievement : achievements.all()) {
+            if (data.isCompleted(achievement.getId())) {
+                continue;
+            }
+            if (!isAvailable(achievement, data)) {
+                note(report, achievement.getId() + " — locked until "
+                        + String.join(", ", achievement.getRequires()) + " is unlocked");
+                continue;
+            }
+            List<Requirement> requirements = achievement.getRequirements();
+            boolean changed = false;
+            for (int i = 0; i < requirements.size(); i++) {
+                Requirement requirement = requirements.get(i);
+                String key = PlayerData.requirementKey(achievement.getId(), i);
+                // The schema rides along so that a version which can answer more
+                // than the last one re-examines this objective once, instead of
+                // being shut out by a marker set when the answer wasn't there.
+                String signature = key + "@" + requirement.backfillSignature();
+                String marker = signature + "@v" + StatisticBackfill.SCHEMA;
+                String label = achievement.getId() + " #" + i + " "
+                        + requirement.getTrigger().name() + " " + requirement.targetLabel();
+                // Counted from the player's own unlocked achievements every time
+                // one is awarded, so there is nothing here to seed — and no
+                // marker to spend on it.
+                if (requirement.getTrigger() == TriggerType.ACHIEVEMENT_UNLOCK) {
+                    note(report, label + " — counted live from unlocked achievements");
+                    continue;
+                }
+                // A reset is meant to stick. The marker alone can't say so —
+                // it's schema-scoped, and a better reader reconsiders it — so
+                // the wipe leaves its own schema-free record behind.
+                if (data.isResetSeeded(signature)) {
+                    if (!redo) {
+                        note(report, label + " — seeded before a reset; add \"redo\" to seed it again");
+                        continue;
+                    }
+                    data.clearResetSeeded(signature);
+                }
+                if (data.isBackfilled(marker) && !redo) {
+                    note(report, label + " — already seeded once; add \"redo\" to force");
+                    continue;
+                }
+                // Marked even when the statistics can't answer it, so an
+                // objective is considered once and not re-examined every join.
+                data.markBackfilled(marker);
+                int total = StatisticBackfill.total(player, requirement);
+                if (total < 0) {
+                    note(report, label + " — no statistic exists for this objective");
+                    continue;
+                }
+                if (total == 0) {
+                    note(report, label + " — statistic reads 0, nothing to credit");
+                    continue;
+                }
+                int seeded = Math.min(total, requirement.requiredAmount());
+                if (seeded <= data.getProgress(key)) {
+                    note(report, label + " — statistic " + total + ", but progress is already "
+                            + data.getProgress(key));
+                    continue;
+                }
+                data.setProgress(key, seeded);
+                changed = true;
+                note(report, label + " — statistic " + total + ", set to " + seeded + "/"
+                        + requirement.requiredAmount());
+            }
+            if (changed && isComplete(achievement, data)) {
+                if (player instanceof Player online) {
+                    award(online, achievement, data);
+                    note(report, achievement.getId() + " — completed and awarded");
+                } else {
+                    // Rewards, messages and broadcasts all need them present, so
+                    // the unlock waits; awardCompleted() hands it over on join.
+                    note(report, achievement.getId() + " — complete, awarded when they next join");
+                }
+            }
+        }
+    }
+
+    private static void note(List<String> report, String line) {
+        if (report != null) {
+            report.add(line);
+        }
+    }
+
+    /** Backfills every online player — used after achievements are added or reloaded. */
+    public void backfillOnline() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            backfill(player);
+        }
+    }
+
+    /**
+     * Fires a custom trigger key for a player, advancing every {@code CUSTOM}
+     * objective whose key matches. This is the integration point for anything
+     * outside the plugin — Skript, other plugins, command blocks, datapacks —
+     * so the key is free text the server owner invents, not a Minecraft value.
+     */
+    public void handleCustom(Player player, String key, int amount) {
+        handle(player, TriggerType.CUSTOM, key, amount);
+    }
+
+    /**
+     * Sets matching {@code CUSTOM} objectives to an absolute value instead of
+     * adding to them, for scripts that already track their own running total.
+     */
+    public void setCustom(Player player, String key, int value) {
+        handleGauge(player, TriggerType.CUSTOM, key, value);
+    }
+
+    // Players whose unlock count is being recomputed, so awarding a capstone
+    // from inside the recount doesn't start a second one underneath it.
+    private final java.util.Set<java.util.UUID> recounting =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * Refreshes {@code ACHIEVEMENT_UNLOCK} objectives — "unlock 20 achievements"
+     * — from the achievements this player has actually completed. Counted rather
+     * than accumulated, so it can run as often as it likes: it never
+     * double-counts, it follows a revoke back down, and a player who unlocked
+     * things before the capstone existed is credited the moment they log in.
+     *
+     * <p>Awarding a capstone can complete another one, so the count is redone
+     * until nothing new finishes. That terminates because every pass either
+     * completes an achievement — and there are finitely many — or changes
+     * nothing and ends the loop.
+     */
+    public void handleUnlockCount(Player player) {
+        java.util.UUID uuid = player.getUniqueId();
+        if (!recounting.add(uuid)) {
+            // Re-entered through award(); the pass already running will loop
+            // again and see whatever just completed.
+            return;
+        }
+        try {
+            PlayerData data = playerData.get(uuid);
+            int before;
+            do {
+                before = data.getCompleted().size();
+                handleGauge(player, TriggerType.ACHIEVEMENT_UNLOCK,
+                        requirement -> unlockedCount(data, requirement));
+            } while (data.getCompleted().size() != before);
+        } finally {
+            recounting.remove(uuid);
+        }
+    }
+
+    /**
+     * How many achievements this player has unlocked that the requirement asks
+     * about: all of them for a target of {@code ANY}, otherwise only those in
+     * the category it names.
+     */
+    private int unlockedCount(PlayerData data, Requirement requirement) {
+        int total = 0;
+        for (Achievement achievement : achievements.all()) {
+            if (data.isCompleted(achievement.getId())
+                    && requirement.matchesTarget(achievement.getCategory())) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Advances PLAYER_DEATH requirements. A death matches on either the damage
+     * cause ({@code FALL}, {@code LAVA}, ...) or what killed the player
+     * ({@code CREEPER}, a mob family like {@code #HOSTILE}, ...), so "die to
+     * lava" and "die to a creeper" are both expressible. Either may be null.
+     */
+    public void handleDeath(Player player, String cause, String killer) {
+        handle(player, TriggerType.PLAYER_DEATH,
+                requirement -> requirement.matchesTarget(cause)
+                        || (killer != null && requirement.matchesTarget(killer)),
+                false, 1);
+    }
+
+    /**
+     * Refreshes ITEM_HAVE requirements from what the player is currently
+     * carrying. Unlike ITEM_OBTAIN (which counts each item as it's received),
+     * this reads the inventory, so it also sees items that arrive without an
+     * event — {@code /give}, plugin grants, creative mode.
+     */
+    public void handleItemInventory(Player player) {
+        org.bukkit.inventory.ItemStack[] contents = player.getInventory().getContents();
+        handleGauge(player, TriggerType.ITEM_HAVE, requirement -> countMatching(contents, requirement));
+    }
+
+    /** How many items in the given contents match a requirement's target. */
+    private static int countMatching(org.bukkit.inventory.ItemStack[] contents, Requirement requirement) {
+        int total = 0;
+        for (org.bukkit.inventory.ItemStack item : contents) {
+            if (item == null || item.getType().isAir()) {
+                continue;
+            }
+            if (requirement.matchesItem(item.getType().name(), itemName(item))) {
+                total += item.getAmount();
+            }
+        }
+        return total;
+    }
+
+    private static String itemName(org.bukkit.inventory.ItemStack item) {
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName()) {
             return null;
@@ -411,6 +712,10 @@ public class AchievementService {
         }
 
         playerData.save(player.getUniqueId());
+
+        // This unlock is itself progress toward a "unlock N achievements"
+        // capstone, so recount before leaving.
+        handleUnlockCount(player);
     }
 
     /** Fills a message template's {@code <name>} and {@code <description>} placeholders. */

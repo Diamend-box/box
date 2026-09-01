@@ -143,6 +143,41 @@ public class AchievementManager {
         return !categories().isEmpty();
     }
 
+    /**
+     * Whether any achievement uses a trigger. Lets the periodic tasks skip work
+     * entirely when nothing on the server needs it.
+     */
+    public boolean usesTrigger(TriggerType trigger) {
+        for (Achievement achievement : all()) {
+            for (Requirement requirement : achievement.getRequirements()) {
+                if (requirement.getTrigger() == trigger) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Every distinct key a {@code CUSTOM} objective listens for, so the command
+     * can suggest the keys this server actually uses rather than nothing at all.
+     */
+    public java.util.Set<String> customTriggerKeys() {
+        java.util.Set<String> keys = new java.util.TreeSet<>();
+        for (Achievement achievement : all()) {
+            for (Requirement requirement : achievement.getRequirements()) {
+                if (requirement.getTrigger() != TriggerType.CUSTOM) {
+                    continue;
+                }
+                String target = requirement.getTarget();
+                if (target != null && !target.isBlank() && !target.equalsIgnoreCase("ANY")) {
+                    keys.add(target);
+                }
+            }
+        }
+        return keys;
+    }
+
     /** Adds or replaces an achievement and persists to disk. */
     public void put(Achievement achievement) {
         achievements.put(achievement.getId().toLowerCase(Locale.ROOT), achievement);
@@ -181,6 +216,7 @@ public class AchievementManager {
         achievement.setAnnounce(section.getBoolean("announce", true));
         achievement.setHidden(section.getBoolean("hidden", false));
         achievement.setCategory(section.getString("category", ""));
+        achievement.setRequires(new ArrayList<>(section.getStringList("requires")));
         achievement.setRewardXp(section.getInt("reward-xp", 0));
         achievement.setRewardCommands(new ArrayList<>(section.getStringList("reward-commands")));
 
@@ -235,6 +271,9 @@ public class AchievementManager {
         config.set(base + ".announce", achievement.isAnnounce());
         config.set(base + ".hidden", achievement.isHidden());
         config.set(base + ".category", achievement.getCategory());
+        if (!achievement.getRequires().isEmpty()) {
+            config.set(base + ".requires", achievement.getRequires());
+        }
         config.set(base + ".reward-xp", achievement.getRewardXp());
         config.set(base + ".reward-commands", achievement.getRewardCommands());
         if (!achievement.getRewardItems().isEmpty()) {

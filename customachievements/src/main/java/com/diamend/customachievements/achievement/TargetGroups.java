@@ -25,9 +25,10 @@ public final class TargetGroups {
             return List.of();
         }
         return switch (trigger) {
-            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN ->
+            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ITEM_HAVE ->
                     List.of(MaterialGroup.values());
-            case ENTITY_KILL -> List.of(EntityGroup.values());
+            // A death can name the mob that caused it, so mob families apply there too.
+            case ENTITY_KILL, PLAYER_DEATH -> List.of(EntityGroup.values());
             default -> List.of();
         };
     }
@@ -41,9 +42,9 @@ public final class TargetGroups {
             return null;
         }
         return switch (trigger) {
-            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN ->
+            case BLOCK_BREAK, BLOCK_PLACE, ITEM_CRAFT, ITEM_CONSUME, ITEM_OBTAIN, ITEM_HAVE ->
                     MaterialGroup.byId(target);
-            case ENTITY_KILL -> EntityGroup.byId(target);
+            case ENTITY_KILL, PLAYER_DEATH -> EntityGroup.byId(target);
             default -> null;
         };
     }

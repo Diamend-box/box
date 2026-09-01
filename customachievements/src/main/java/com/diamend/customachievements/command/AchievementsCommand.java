@@ -55,6 +55,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             case "list" -> list(sender);
             case "admin", "manage" -> openMenu(sender, true);
             case "create", "new" -> create(sender);
+            case "trigger", "fire" -> trigger(sender, args);
+            case "backfill", "seed" -> backfill(sender, args);
             case "grant", "give" -> grant(sender, args);
             case "revoke", "take" -> revoke(sender, args);
             case "reset" -> reset(sender, args);
@@ -129,6 +131,140 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse(" <dark_gray>- " + status + " <white>" + achievement.getDisplayName()
                     + " <dark_gray>(" + achievement.getId() + ")"));
         }
+    }
+
+    /**
+     * {@code /ca backfill [player] [redo]} — re-runs the statistics seeding and
+     * reports what it read for every unfinished objective, so a total that
+     * didn't appear can be diagnosed instead of guessed at. {@code redo} seeds
+     * objectives already seeded once, which is the only way to retry after
+     * fixing whatever made the first attempt come up empty.
+     *
+     * <p>The player needn't be online: statistics are kept on disk, and someone
+     * stuck at zero is often exactly the person who has logged off. Anything
+     * that completes while they're away is handed over on their next join,
+     * since rewards and broadcasts need them present.
+     */
+    private void backfill(CommandSender sender, String[] args) {
+        if (!hasAdmin(sender)) {
+            return;
+        }
+        boolean redo = args.length > 1 && args[args.length - 1].equalsIgnoreCase("redo");
+        String name = args.length > 1 && !args[1].equalsIgnoreCase("redo") ? args[1] : null;
+        org.bukkit.OfflinePlayer target;
+        if (name != null) {
+            target = resolve(name);
+            if (target == null) {
+                sender.sendMessage(Text.parse("<red>No player called <white>" + name
+                        + "<red> has played on this server."));
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            sender.sendMessage(Text.parse("<red>From the console, name a player: /ca backfill <player> [redo]"));
+            return;
+        }
+        if (!plugin.getConfig().getBoolean("backfill-from-statistics", true)) {
+            sender.sendMessage(Text.parse("<yellow>Note: <white>backfill-from-statistics<yellow> is off in "
+                    + "config.yml, so this won't run on join. Running now because you asked."));
+        }
+        // Seeding pulls their file into the cache; an offline player mustn't be
+        // left sitting there, so it's written back out and evicted afterwards.
+        boolean offline = !(target instanceof Player);
+        List<String> report;
+        try {
+            report = plugin.getAchievementService().seedWithReport(target, redo);
+        } finally {
+            if (offline) {
+                plugin.getPlayerDataManager().unload(target.getUniqueId());
+            }
+        }
+        sender.sendMessage(Text.parse("<gold>Backfill for <white>" + target.getName()
+                + "<gold>" + (offline ? " <gray>(offline)" : "") + (redo ? " <gray>(redo)" : "") + ":"));
+        if (report.isEmpty()) {
+            sender.sendMessage(Text.parse("<gray>  Nothing to do — every achievement is already completed."));
+            return;
+        }
+        for (String line : report) {
+            sender.sendMessage(Text.parse("<gray>  " + line));
+        }
+    }
+
+    /**
+     * Finds a player by name, online or not. Statistics live on disk per player,
+     * so a backfill doesn't need them present — which matters most for the case
+     * it exists to fix, where the player is stuck at zero and not logged in.
+     *
+     * <p>Deliberately not {@code Bukkit.getOfflinePlayer(String)}: that invents a
+     * profile for any string you hand it, so a typo would silently "succeed"
+     * against an empty statistics file.
+     */
+    private static org.bukkit.OfflinePlayer resolve(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return online;
+        }
+        for (org.bukkit.OfflinePlayer candidate : Bukkit.getOfflinePlayers()) {
+            if (name.equalsIgnoreCase(candidate.getName())) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@code /ca trigger <player> <key> [amount|set <value>]} — fires a custom
+     * trigger key. Anything that can run a console command can drive an
+     * achievement through this: Skript, other plugins' reward commands, command
+     * blocks, datapacks.
+     */
+    private void trigger(CommandSender sender, String[] args) {
+        if (!hasAdmin(sender)) {
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(Text.parse("<red>Usage: /ca trigger <player> <key> [amount|set <value>]"));
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            // Progress needs the player's loaded data (and an unlock needs
+            // someone to hand the rewards to), so this one is online-only.
+            sender.sendMessage(Text.parse("<red><white>" + args[1] + "<red> is not online."));
+            return;
+        }
+        String key = args[2];
+        boolean set = args.length > 3 && args[3].equalsIgnoreCase("set");
+        String number = set ? (args.length > 4 ? args[4] : null) : (args.length > 3 ? args[3] : "1");
+        if (number == null) {
+            sender.sendMessage(Text.parse("<red>Usage: /ca trigger <player> <key> set <value>"));
+            return;
+        }
+        int value;
+        try {
+            value = Integer.parseInt(number.trim());
+        } catch (NumberFormatException ex) {
+            sender.sendMessage(Text.parse("<red><white>" + number + "<red> is not a whole number."));
+            return;
+        }
+        if (set) {
+            if (value < 0) {
+                sender.sendMessage(Text.parse("<red>A value to set can't be negative."));
+                return;
+            }
+            plugin.getAchievementService().setCustom(target, key, value);
+            sender.sendMessage(Text.parse("<green>Set <white>" + key + "<green> to <white>" + value
+                    + "<green> for <white>" + target.getName() + "<green>."));
+            return;
+        }
+        if (value <= 0) {
+            sender.sendMessage(Text.parse("<red>An amount to add must be 1 or more."));
+            return;
+        }
+        plugin.getAchievementService().handleCustom(target, key, value);
+        sender.sendMessage(Text.parse("<green>Fired <white>" + key + "<green> x<white>" + value
+                + "<green> for <white>" + target.getName() + "<green>."));
     }
 
     private void grant(CommandSender sender, String[] args) {
@@ -364,6 +500,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         }
         plugin.reloadConfig();
         plugin.getAchievementManager().load();
+        // Achievements edited on disk may be new to players who are already on.
+        plugin.getAchievementService().backfillOnline();
         sender.sendMessage(Text.parse("<green>CustomAchievements reloaded. <gray>("
                 + plugin.getAchievementManager().count() + " achievements)"));
     }
@@ -382,6 +520,9 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Text.parse("<yellow>/ca grant <player> <id> <gray>- Grant an achievement"));
             sender.sendMessage(Text.parse("<yellow>/ca revoke <player> <id> <gray>- Revoke an achievement"));
             sender.sendMessage(Text.parse("<yellow>/ca reset <player> <gray>- Reset a player's achievements"));
+            sender.sendMessage(Text.parse("<yellow>/ca trigger <player> <key> <gray>- Fire a custom trigger"));
+            sender.sendMessage(Text.parse("<yellow>/ca backfill <player> [redo] "
+                    + "<gray>- Re-seed from statistics (works offline)"));
             sender.sendMessage(Text.parse("<yellow>/ca reload <gray>- Reload configuration"));
         }
     }
@@ -404,7 +545,8 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("list", "info", "top", "claim", "reopen"));
             if (sender.hasPermission(PERM_ADMIN)) {
-                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "reload"));
+                subs.addAll(List.of("admin", "create", "grant", "revoke", "reset", "trigger",
+                        "backfill", "reload"));
             }
             String prefix = args[0].toLowerCase(Locale.ROOT);
             for (String sub : subs) {
@@ -427,10 +569,20 @@ public class AchievementsCommand implements CommandExecutor, TabCompleter {
             return out;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset"))) {
+        if (args.length == 3 && sub.equals("backfill")) {
+            out.add("redo");
+        } else if (args.length == 2 && (sub.equals("grant") || sub.equals("revoke") || sub.equals("reset")
+                || sub.equals("trigger") || sub.equals("backfill"))) {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (online.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
                     out.add(online.getName());
+                }
+            }
+        } else if (args.length == 3 && sub.equals("trigger")) {
+            // Suggest the keys the server's own achievements actually listen for.
+            for (String key : plugin.getAchievementManager().customTriggerKeys()) {
+                if (key.toLowerCase(Locale.ROOT).startsWith(args[2].toLowerCase(Locale.ROOT))) {
+                    out.add(key);
                 }
             }
         } else if (args.length == 3 && (sub.equals("grant") || sub.equals("revoke"))) {

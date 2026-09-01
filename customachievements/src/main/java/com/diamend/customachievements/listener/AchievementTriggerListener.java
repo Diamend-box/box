@@ -104,6 +104,13 @@ public class AchievementTriggerListener implements Listener {
         if (event.getEntity() instanceof Player player) {
             ItemStack stack = event.getItem().getItemStack();
             service.handleItem(player, TriggerType.ITEM_OBTAIN, stack, Math.max(1, stack.getAmount()));
+            // The item lands in the inventory after this event, so re-read the
+            // "have X items" gauges on the next tick rather than now.
+            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    service.handleItemInventory(player);
+                }
+            });
         }
     }
 
@@ -116,6 +123,76 @@ public class AchievementTriggerListener implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
-        service.handle(event.getEntity(), TriggerType.PLAYER_DEATH, (String) null, 1);
+        Player player = event.getEntity();
+        org.bukkit.event.entity.EntityDamageEvent damage = player.getLastDamageCause();
+        String cause = damage != null ? damage.getCause().name() : null;
+        service.handleDeath(player, cause, killerName(player, damage));
+    }
+
+    /**
+     * What killed the player, as an entity type name, or null when nothing did
+     * (fall damage, lava, ...). Projectiles resolve to whoever fired them, so
+     * "killed by a skeleton" counts rather than "killed by an arrow".
+     */
+    private static String killerName(Player player, org.bukkit.event.entity.EntityDamageEvent damage) {
+        org.bukkit.entity.Entity source = player.getKiller();
+        if (source == null && damage instanceof org.bukkit.event.entity.EntityDamageByEntityEvent byEntity) {
+            source = byEntity.getDamager();
+        }
+        if (source instanceof org.bukkit.entity.Projectile projectile
+                && projectile.getShooter() instanceof org.bukkit.entity.Entity shooter) {
+            source = shooter;
+        }
+        return source == null ? null : source.getType().name();
+    }
+
+    /**
+     * Counts items taken out of a container — chests, furnace and trade results,
+     * loot — toward ITEM_OBTAIN, which otherwise only sees items picked up off
+     * the ground. Rearranging your own inventory or crafting grid isn't
+     * obtaining anything, and neither is clicking one of this plugin's menus.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onInventoryTake(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (event.getView().getTopInventory().getHolder()
+                instanceof com.diamend.customachievements.gui.Menu) {
+            return;
+        }
+        org.bukkit.inventory.Inventory clicked = event.getClickedInventory();
+        if (clicked == null) {
+            return;
+        }
+        org.bukkit.event.inventory.InventoryType type = clicked.getType();
+        if (type == org.bukkit.event.inventory.InventoryType.PLAYER
+                || type == org.bukkit.event.inventory.InventoryType.CRAFTING
+                || type == org.bukkit.event.inventory.InventoryType.WORKBENCH
+                || type == org.bukkit.event.inventory.InventoryType.CREATIVE) {
+            return;
+        }
+        ItemStack taken = event.getCurrentItem();
+        if (taken == null || taken.getType().isAir()) {
+            return;
+        }
+        int amount = switch (event.getAction()) {
+            case PICKUP_ALL, PICKUP_SOME, MOVE_TO_OTHER_INVENTORY, HOTBAR_SWAP, HOTBAR_MOVE_AND_READD ->
+                    taken.getAmount();
+            case PICKUP_HALF -> (taken.getAmount() + 1) / 2;
+            case PICKUP_ONE -> 1;
+            default -> 0;
+        };
+        if (amount > 0) {
+            service.handleItem(player, TriggerType.ITEM_OBTAIN, taken, amount);
+        }
+    }
+
+    /** Re-reads "have X items" gauges once a player finishes with a container. */
+    @EventHandler
+    public void onInventoryClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (event.getPlayer() instanceof Player player) {
+            service.handleItemInventory(player);
+        }
     }
 }
