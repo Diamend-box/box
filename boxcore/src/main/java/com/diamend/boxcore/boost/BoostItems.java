@@ -42,13 +42,24 @@ public final class BoostItems {
         }
     }
 
-    /** What one boost item grants. */
+    /**
+     * What one boost item grants.
+     *
+     * @param global whether using it boosts the whole server rather than the
+     *               player who used it
+     */
     public record Payload(String id,
                           List<BoostType> types,
                           double multiplier,
-                          long durationMillis) {
+                          long durationMillis,
+                          boolean global) {
 
-        /** {@code "Ore drops & Collections"}, or the single type's name. */
+        /** A personal boost item — the ordinary kind. */
+        public Payload(String id, List<BoostType> types, double multiplier, long durationMillis) {
+            this(id, types, multiplier, durationMillis, false);
+        }
+
+        /** {@code "Drops & Collections"}, or the single type's name. */
         public String typeNames() {
             List<String> names = new ArrayList<>();
             for (BoostType type : types) {
@@ -62,12 +73,14 @@ public final class BoostItems {
     private final NamespacedKey multiplierKey;
     private final NamespacedKey durationKey;
     private final NamespacedKey idKey;
+    private final NamespacedKey globalKey;
 
     public BoostItems(Plugin plugin) {
         this.typesKey = new NamespacedKey(plugin, "boost_types");
         this.multiplierKey = new NamespacedKey(plugin, "boost_multiplier");
         this.durationKey = new NamespacedKey(plugin, "boost_duration");
         this.idKey = new NamespacedKey(plugin, "boost_id");
+        this.globalKey = new NamespacedKey(plugin, "boost_global");
     }
 
     /** Builds a stack of boost items. */
@@ -91,10 +104,12 @@ public final class BoostItems {
         data.set(multiplierKey, PersistentDataType.DOUBLE, payload.multiplier());
         data.set(durationKey, PersistentDataType.LONG, payload.durationMillis());
         data.set(idKey, PersistentDataType.STRING, payload.id() == null ? "" : payload.id());
+        data.set(globalKey, PersistentDataType.BYTE, (byte) (payload.global() ? 1 : 0));
 
         meta.displayName(Text.item(resolve(
                 look.name() == null
-                        ? "<light_purple>" + Text.decimal(payload.multiplier()) + "x "
+                        ? (payload.global() ? "<gold>Server " : "<light_purple>")
+                                + Text.decimal(payload.multiplier()) + "x "
                                 + payload.typeNames() + " Boost"
                         : look.name(),
                 payload)));
@@ -112,11 +127,19 @@ public final class BoostItems {
     private List<Component> lore(Appearance look, Payload payload) {
         List<String> lines = look.lore();
         if (lines == null || lines.isEmpty()) {
-            lines = List.of(
-                    "<gray>Multiplies <white><type></white> by <white><multiplier>x</white>",
-                    "<gray>for <white><duration></white>.",
-                    "",
-                    "<dark_gray>Right-click to use.");
+            // Spending a server-wide boost is not undoable and not private.
+            // The item says so before it is used, not after.
+            lines = payload.global()
+                    ? List.of(
+                            "<gray>Multiplies <white><type></white> by <white><multiplier>x</white>",
+                            "<gray>for <white><duration></white>, <gold>for everyone online<gray>.",
+                            "",
+                            "<dark_gray>Right-click to start it for the server.")
+                    : List.of(
+                            "<gray>Multiplies <white><type></white> by <white><multiplier>x</white>",
+                            "<gray>for <white><duration></white>.",
+                            "",
+                            "<dark_gray>Right-click to use.");
         }
         List<Component> parsed = new ArrayList<>();
         for (String line : lines) {
@@ -155,7 +178,11 @@ public final class BoostItems {
             return null;
         }
         String id = data.get(idKey, PersistentDataType.STRING);
-        return new Payload(id == null ? "" : id, types, multiplier, duration);
+        // Items written before global boosts existed carry no flag, and every
+        // one of them was personal.
+        Byte global = data.get(globalKey, PersistentDataType.BYTE);
+        return new Payload(id == null ? "" : id, types, multiplier, duration,
+                global != null && global != 0);
     }
 
     public boolean isBoostItem(ItemStack item) {

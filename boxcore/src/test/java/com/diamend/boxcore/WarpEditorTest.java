@@ -155,6 +155,10 @@ class WarpEditorTest {
         assertEquals("old_mine", WarpEditorMenu.idFrom("Old Mine"));
         assertEquals("pvp_arena", WarpEditorMenu.idFrom("  PvP  Arena!! "));
         assertEquals("", WarpEditorMenu.idFrom("!!!"), "a name with nothing usable in it");
+        assertEquals("abandoned_mines", WarpEditorMenu.idFrom("&7Abandoned Mines"),
+                "a colour code is how it looks, not part of what it is called");
+        assertEquals("abandoned_mines", WarpEditorMenu.idFrom("<gray>Abandoned Mines"));
+        assertEquals("", WarpEditorMenu.idFrom("&7&l"), "a name that is only colour");
     }
 
     @Test

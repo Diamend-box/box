@@ -48,10 +48,10 @@ public class SkillsModule implements BoxModule {
         this.service = new SkillService(plugin, treeManager, plugin.profiles(), effectApplier,
                 plugin.messages());
 
-        plugin.getServer().getPluginManager().registerEvents(
-                new SkillListener(plugin, plugin.profiles(), service, effectApplier), plugin);
-        plugin.getServer().getPluginManager().registerEvents(
-                new PerkListener(plugin, perkService, plugin.messages()), plugin);
+        plugin.modules().listen(this,
+                new SkillListener(plugin, plugin.profiles(), service, effectApplier));
+        plugin.modules().listen(this,
+                new PerkListener(plugin, perkService, plugin.messages()));
 
         startRefreshTask();
 

@@ -46,6 +46,10 @@ class TravelMenuTest {
         server = MockBukkit.mock();
         plugin = MockBukkit.load(BoxCorePlugin.class);
         world = server.addSimpleWorld("travel-menu-test");
+        // These tests use walking as shorthand for "has found it", which
+        // ships off — the gate itself is TravelTest's subject, not this one's.
+        plugin.getConfig().set("travel.discover-by-walking", true);
+        plugin.travel().reload();
     }
 
     @AfterEach

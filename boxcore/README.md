@@ -18,11 +18,17 @@ and is built to keep growing into whatever the server needs next.
 ## Why it's built as modules
 
 Everything BoxCore does is a **module** — a class implementing `BoxModule` that
-gets a config toggle, a slot in the `/box` hub and a line in `/box modules` for
+gets a config toggle, a slot in the `/box` hub and a row in `/box modules` for
 free. Adding the next utility (an economy hook, quests, staff tools) means
 writing one class and registering it in `BoxCorePlugin`, not reworking the
 plugin. A module that fails to start is logged and skipped; the rest keep
 running.
+
+`/box modules` opens a menu that switches them on and off, writing the choice
+to `config.yml` as it goes so it survives a restart. Switching one off takes it
+all the way off — listeners unregistered, commands refusing, placeholders
+blank, hub icon gone — and `/box reload` applies changes made in the file, so
+neither route needs a restart.
 
 Six ship today:
 
@@ -32,8 +38,8 @@ Six ship today:
 | `collections` | Hypixel SkyBlock-style "everything you've ever gathered" counters whose tiers pay out skill points. |
 | `playtime` | Records hours played into a collection, so time online pays out through the same tiers as everything else. |
 | `compressor` | Personal compactor: a carried item that folds up whichever recipes the player slots into it. |
-| `boosts` | Temporary multipliers on ore drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
-| `travel` | Fast travel to staff-set destinations, found by walking into them, with a warmup that can't be used to leave a fight. |
+| `boosts` | Temporary multipliers on block drops and collection progress — server-wide, per player, scheduled, or from a consumable item. |
+| `travel` | Fast travel to staff-set destinations, unlocked with maps, with a warmup that can't be used to leave a fight. |
 
 ---
 
@@ -86,33 +92,66 @@ Six ship today:
   decision rather than an accident. Recipes aren't limited to ore: anything with
   a recipe compacts, and each one can be given its own material, name, lore,
   model data and glow. `/box give <item> [units]` mints a unit to check a skin
-  without gathering for it.
+  without gathering for it. Units glint by default, because a compacted unit is
+  the same material as the raw item and two identical-looking stacks in a hotbar
+  is how a right-click ends up on the wrong one. Right-click a unit to unfold
+  one, sneak-right-click for the whole stack, or use `/box expand [all]` — a
+  command can't be swallowed by a region or an anticheat the way an interact
+  can.
 - 🛠️ **Recipes are edited in game** — `/box compactor recipes` adds, retunes and
   deletes them without touching YAML or restarting. Most of it needs no typing:
   hold the item to add a recipe for it, step the amount with buttons, and set the
   compacted unit's skin, name, lore and model data by holding an item you've
-  already named in an anvil. The name and the lore can also be typed in chat,
-  which is the only way to use the `<ratio>` and `<ore>` tokens — an anvil writes
-  a fixed string, and "Worth 64 coal" stops being true the moment somebody
-  retunes the ratio. Every change writes `compactor.yml` immediately, and
+  already named in an anvil. The name and the lore can also be typed, which is
+  the only way to use the `<ratio>` and `<ore>` tokens — a fixed string like
+  "Worth 64 coal" stops being true the moment somebody retunes the ratio. A
+  recipe can also be added for an item you can't hold, by clicking Add with an
+  empty hand and naming it. Every change writes `compactor.yml` immediately, and
   that file is the plugin's to rewrite — your commented `config.yml` is never
   touched.
-- ✨ **Boosts** — temporary multipliers on ore drops and on collection progress,
+- ✨ **Boosts** — temporary multipliers on block drops and on collection progress,
   running server-wide or for one player. Start them by command, on a recurring
-  schedule, or from a consumable item players right-click. They multiply
-  together and are clamped by a configured ceiling; every boost expires on the
-  wall clock, so one survives a relog and a global one survives a restart.
+  schedule, or from a consumable item players right-click. One server-wide and
+  one personal boost run per type at a time — starting another replaces the one
+  it matches rather than stacking, so the most anyone can have is those two
+  multiplied, clamped by a configured ceiling. Every boost expires on the wall
+  clock, so one survives a relog and a global one survives a restart.
   `/box boost` opens a menu showing what's running for you and what the server
   is running, with live countdowns and a row of the boost items you're carrying
-  that you can click to start. An actionbar line keeps the multiplier and the
+  that you can click to start. An item with `global: true` starts a server-wide
+  boost instead of a personal one, announced and saved exactly as if staff had
+  run the command. Boost items come at any strength: everything after the id is
+  read by its shape rather than its position, so `5x` is a strength and `5` is a
+  count — `/box boost item drops-2x 3 5x 1h` is three 5x-for-an-hour items. A
+  bare boost type works as the id (`/box boost item drops 6x 1d`) and mints one
+  no config entry has to exist for, and `/box boost item` can override how long any of them
+  lasts or how strong it is — `<id> [player] [amount] [duration] [multiplier]`
+  — without a config entry existing to support the one-off. Both overrides are
+  written onto the item along with everything else, so its name and lore (built
+  from the `<multiplier>` and `<duration>` tokens, not typed numbers) always
+  describe what it actually does.
+  Drop boosts multiply the items that actually appear next to a broken block
+  rather than only the ones the game itself produced — a plugin that replaces
+  drops entirely cancels the break and spawns its own, which no event priority
+  reaches. What they never multiply is an item carrying an inventory — a shulker
+  box drops as one item holding all of its contents, so doubling it would
+  duplicate everything inside, and that refusal isn't configurable. Unstackable
+  items are left alone too by default (`boosts.drops.multiply-unstackable`),
+  along with anything listed in `boosts.drops.never-multiply`.
+  An actionbar line keeps the multiplier and the
   time left on screen while it runs, and a boost never ends silently — there's a
   warning before, and a line when it does.
 - 🧭 **Fast travel** — staff set destinations with `/box warp set <id>` while
   standing where they want it, using the held item as the icon. Players don't
-  get them handed over: a place shows in the menu as somewhere they haven't been
-  until they walk into it, so the list is a reason to explore rather than a
-  locked door. Travelling takes a configurable warmup that cancels the moment
-  you move or take damage, and is refused outright while you're combat-tagged —
+  get them handed over: a place shows in the menu as `???` until it's on their
+  list, and nothing will travel them to one that isn't — a ticket buys the trip,
+  never the place. A **map** is what puts one on the list; set
+  `travel.discover-by-walking: true` to also unlock places by walking into them,
+  which makes the list a reason to explore instead of something you buy. What a
+  locked entry looks like is `travel.locked` — material, name and lore, with a
+  `<warp>` token if you'd rather tease the name than hide it.
+  Travelling takes a configurable warmup that cancels the moment you move or
+  take damage, and is refused outright while you're combat-tagged —
   on a PvP server, fast travel that can be used to leave a losing fight is a
   different feature entirely. Only player-versus-player damage tags, so a mob
   farm doesn't lock you out of it. The menu is on `/box travel` and on
@@ -120,10 +159,23 @@ Six ship today:
   it's open, so a combat tag running out unlocks the list in front of you rather
   than when you next reopen it. Places you've found sort to the top by default,
   and `travel.menu-order` can make that alphabetical, nearest-first, or the
-  order staff added them. Staff build the list from inside the
+  order staff added them. A destination placed by standing there lands on the
+  centre of the block and rounds to the nearest quarter turn, so nobody has to
+  line themselves up first; `travel.snap` controls both, and any one
+  destination can be turned afterwards from its own screen. Staff build the list from inside the
   game: `/box warp` opens an editor where a destination is made where you stand,
   wears whatever you're holding, and has its description, permission and
   discovery radius set by clicking. Nothing needs a text editor or a restart.
+  Destinations can also be sold or given as items — `/box warp item <destination>
+  map` mints one for a place you just made, and `travel.items` dresses up the
+  ones you sell: a **ticket** is one trip, spent when you arrive
+  rather than when you use it, so a trip cut short by a sword doesn't cost you
+  the ticket too; a **map** adds the place to your list for good, and `warp: any`
+  makes one that adds every place you're allowed to see. A ticket stands in for
+  the destination's permission — that's what buying one is for — but never for
+  the combat tag or the found check: an item that teleports you out of a fight
+  would be worth more as an escape than as travel, and one that took you
+  somewhere you'd never found would sell the reward for finding it.
 - 🔒 **Finite by construction** — every point in the plugin comes from a tier,
   and there are only so many tiers. Nothing is farmable forever.
 - 🔌 **PlaceholderAPI** support (optional).
@@ -147,8 +199,24 @@ cd boxcore
 mvn clean package
 ```
 
-The jar lands in `boxcore/target/BoxCore-1.0.0.jar`. Drop it into `plugins/`
-and restart. The build fetches the Paper API from `https://repo.papermc.io`.
+The jar lands in `boxcore/target/BoxCore-<version>-dev.jar`. Drop it into
+`plugins/` and restart. The build fetches the Paper API from
+`https://repo.papermc.io`.
+
+### Versioning
+
+The version is `<base>-<build>`, e.g. `1.5.0-8d108b9`:
+
+- the **base** is `<version>` in `pom.xml`, bumped by hand when something
+  worth calling a release lands;
+- the **build** is the commit it was cut from — CI passes
+  `-Dboxcore.build=-$(git rev-parse --short HEAD)`, and a build made by hand
+  says `-dev` instead.
+
+It shows up in three places: the jar's filename, `/plugins` in game, and the
+server log on enable (`BoxCore 1.5.0-8d108b9 enabled with …`). Two jars from
+different commits are otherwise identical to look at, and "which build is on
+the server?" is the first thing any bug report needs to answer.
 
 ---
 
@@ -164,6 +232,7 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box points` | Show your points | `boxcore.use` |
 | `/box respec` | Refund every node you own | `boxcore.respec` |
 | `/box compress [on\|off]` | Open your compactor, or pause compacting | `boxcore.use` |
+| `/box expand [all]` | Unfold the compacted units in your hand | `boxcore.use` |
 | `/box boost` | Open the boosts menu (chat summary from console) | `boxcore.use` |
 | `/box travel` | Open the places you've found | `boxcore.use` |
 | `/fasttravel`, `/fastravel`, `/ft` | The same menu, on its own command | `boxcore.use` |
@@ -182,12 +251,13 @@ Base command: `/box` (aliases `/boxcore`, `/bx`)
 | `/box warp perm <id> [permission\|none]` | Who can use it | `boxcore.admin` |
 | `/box warp radius <id> <blocks>` | How close counts as finding it | `boxcore.admin` |
 | `/box warp <tp\|delete\|list> [id]` | Go there, remove it, or list them | `boxcore.admin` |
+| `/box warp item <id\|destination> [map\|ticket] [player] [amount]` | Give a travel ticket or map | `boxcore.admin` |
 | `/box boost global <type> <mult> <duration>` | Boost everyone | `boxcore.admin` |
 | `/box boost player <name> <type> <mult> <duration>` | Boost one player | `boxcore.admin` |
-| `/box boost item <id> [player] [amount]` | Give a boost item | `boxcore.admin` |
+| `/box boost item <id\|type> [player] [amount] [30m] [5x] [global]` | Give a boost item, any strength | `boxcore.admin` |
 | `/box boost clear [global\|<player>]` | End boosts early | `boxcore.admin` |
 | `/box reset <player>` | Wipe a player's BoxCore data | `boxcore.admin` |
-| `/box modules` | List modules and their state | `boxcore.admin` |
+| `/box modules [list]` | Switch modules on and off in a menu, or list them as text | `boxcore.admin` |
 | `/box reload` | Re-read every config | `boxcore.admin` |
 
 Admin commands work on offline players (anyone the server has seen before).

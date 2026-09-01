@@ -7,17 +7,24 @@ import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Event surface for boosts: multiplying drops, and spending boost items.
@@ -38,47 +45,333 @@ public class BoostListener implements Listener {
     }
 
     /**
-     * Adds the boosted share of a block's drops.
+     * How far from a broken block an item can appear and still be its drop.
      *
-     * <p>The extra is dropped as its own stacks rather than by inflating the
-     * ones the game made. An item entity holding more than a stack is not
-     * something the rest of the game handles well, and splitting is free.
+     * <p>Vanilla drops spawn inside the block. A plugin spawning its own picks
+     * its own spot near it — CustomDrops uses a block above or below, measured
+     * from the block's corner rather than its middle, which is already 1.7
+     * away. Three blocks leaves room for that kind of choice without reaching
+     * far enough to adopt something unrelated.
      */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onDrop(BlockDropItemEvent event) {
+    private static final double CAPTURE_RADIUS = 3.0;
+
+    /**
+     * A block a boosted player just broke, and what its drops are worth.
+     *
+     * <p>Mutable because {@link #captured} is written after the fact: whether
+     * anything was found on the ground decides whether the inventory is worth
+     * looking at, and that is only known once the tick has played out.
+     */
+    private static final class Recent {
+        private final UUID player;
+        private final Location at;
+        private final double multiplier;
+        private final long expiresAt;
+        /** Whether an item entity was boosted for this break. */
+        private boolean captured;
+        /** What the breaker was carrying, when the inventory is being watched. */
+        private List<ItemStack> before;
+
+        private Recent(UUID player, Location at, double multiplier, long expiresAt) {
+            this.player = player;
+            this.at = at;
+            this.multiplier = multiplier;
+            this.expiresAt = expiresAt;
+        }
+    }
+
+    /** Breaks still inside their capture window, oldest first. */
+    private final List<Recent> recent = new ArrayList<>();
+
+    /** Item entities already boosted, so the safety net never doubles them. */
+    private final Set<UUID> boosted = new HashSet<>();
+
+    /** True while spawning our own extra drops, which must not be boosted again. */
+    private boolean minting;
+
+    /**
+     * Notes that a boosted player broke a block here.
+     *
+     * <p>This runs at {@code LOWEST}, before anything else has had a turn, and
+     * that is the whole reason the note is useful. A drop-replacing plugin
+     * spawns its items from inside its own {@code BlockBreakEvent} handler —
+     * CustomDrops does it at {@code HIGHEST} — so the item has already appeared
+     * and gone by the time a later handler runs. Recording at {@code MONITOR}
+     * meant the note was always written a moment too late and every one of
+     * those drops was missed, which is exactly what the playtest saw.
+     *
+     * <p>It also does not ignore cancelled breaks, because replacing a block's
+     * drops usually means cancelling the vanilla ones. Recording grants
+     * nothing on its own; an unused note simply expires.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         double multiplier = module.multiplier(player, BoostType.DROPS);
         if (multiplier <= 1.0) {
             return;
         }
-        List<Item> dropped = event.getItems();
-        if (dropped.isEmpty()) {
+        long now = System.currentTimeMillis();
+        prune(now);
+        Recent note = new Recent(player.getUniqueId(),
+                event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                multiplier, now + module.dropWindowTicks() * 50L);
+        recent.add(note);
+
+        if (!module.captureInventory()) {
             return;
         }
-        Location at = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
+        note.before = snapshot(player);
+        // Look again once the tick has finished. Anything that reached the
+        // player without ever being an item on the ground shows up as the
+        // difference, and nothing else does — a block break and an unrelated
+        // inventory change inside the same tick is not a thing that happens.
+        plugin.getServer().getScheduler().runTask(plugin, () -> settle(note));
+    }
+
+    /**
+     * The last resort: boost what the player gained, when nothing was dropped.
+     *
+     * <p>Some plugins hand a block's yield straight to the inventory and never
+     * spawn an item at all. There is no event for that — no drop event, no
+     * spawn event, no pickup event — so the only evidence it happened is that
+     * the player is holding more than they were a tick ago. This runs only when
+     * the other two paths found nothing, so a drop that did hit the ground is
+     * never counted twice.
+     */
+    private void settle(Recent note) {
+        if (note.captured || note.before == null) {
+            return;
+        }
+        Player player = plugin.getServer().getPlayer(note.player);
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        for (ItemStack gained : gains(note.before, snapshot(player))) {
+            if (!module.guard().allows(gained)) {
+                continue;
+            }
+            if (module.oresOnly() && !plugin.ores().isOre(gained.getType())) {
+                continue;
+            }
+            long extra = Boost.scale(gained.getAmount(), note.multiplier) - gained.getAmount();
+            int max = Math.max(1, gained.getType().getMaxStackSize());
+            while (extra > 0) {
+                ItemStack copy = gained.clone();
+                copy.setAmount((int) Math.min(extra, max));
+                extra -= copy.getAmount();
+                // Straight to the inventory, because that is where the drop
+                // this is doubling went. Only the overflow hits the floor.
+                for (ItemStack spill : player.getInventory().addItem(copy).values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), spill);
+                }
+            }
+        }
+    }
+
+    /** Everything the player is carrying, as independent copies. */
+    private List<ItemStack> snapshot(Player player) {
+        List<ItemStack> items = new ArrayList<>();
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (item != null && !item.getType().isAir()) {
+                items.add(item.clone());
+            }
+        }
+        return items;
+    }
+
+    /**
+     * What is in {@code after} that wasn't in {@code before}.
+     *
+     * <p>Matched by {@link ItemStack#isSimilar}, not by material, so a custom
+     * item another plugin minted is doubled as itself rather than as a plain
+     * stack of whatever it happens to be made of.
+     */
+    private List<ItemStack> gains(List<ItemStack> before, List<ItemStack> after) {
+        List<ItemStack> gained = new ArrayList<>();
+        for (ItemStack now : after) {
+            int had = 0;
+            for (ItemStack was : before) {
+                if (was.isSimilar(now)) {
+                    had += was.getAmount();
+                }
+            }
+            int has = 0;
+            for (ItemStack other : after) {
+                if (other.isSimilar(now)) {
+                    has += other.getAmount();
+                }
+            }
+            boolean counted = false;
+            for (ItemStack already : gained) {
+                if (already.isSimilar(now)) {
+                    counted = true;
+                    break;
+                }
+            }
+            if (counted || has <= had) {
+                continue;
+            }
+            ItemStack delta = now.clone();
+            delta.setAmount(has - had);
+            gained.add(delta);
+        }
+        return gained;
+    }
+
+    /**
+     * Boosts a block's drops as the game hands them over.
+     *
+     * <p>This is the precise path: the drop list belongs to a known block and a
+     * known player, so there is no guessing involved. It runs at
+     * {@code HIGHEST} to let every other plugin finish editing the list first,
+     * which is what makes the boost multiply their result rather than land
+     * beside it.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDrop(BlockDropItemEvent event) {
+        double multiplier = module.multiplier(event.getPlayer(), BoostType.DROPS);
+        if (multiplier <= 1.0) {
+            return;
+        }
+        Recent note = nearest(event.getBlock().getLocation().add(0.5, 0.5, 0.5),
+                System.currentTimeMillis());
+        if (note != null) {
+            note.captured = true;
+        }
+        for (Item entity : event.getItems()) {
+            grow(entity, multiplier);
+        }
+    }
+
+    /**
+     * The safety net: anything that appeared next to a block a boosted player
+     * just broke, however it got there.
+     *
+     * <p>{@link BlockDropItemEvent} only carries drops the <em>game</em>
+     * produced. A plugin that cancels the break and spawns its own item
+     * entities never passes through it, and no event priority reaches that —
+     * which is what the first playtest found. Item entities always spawn,
+     * though, so watching for one near a recent break catches every source
+     * without needing that plugin's API.
+     *
+     * <p>Two things stop this double-counting: entities already boosted through
+     * the drop event are remembered and skipped, and our own extra drops are
+     * spawned behind a flag.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onItemSpawn(ItemSpawnEvent event) {
+        if (minting) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        prune(now);
+        if (recent.isEmpty()) {
+            return;
+        }
+        Item entity = event.getEntity();
+        if (boosted.contains(entity.getUniqueId())) {
+            return;
+        }
+        Recent from = nearest(entity.getLocation(), now);
+        if (from != null) {
+            from.captured = true;
+            grow(entity, from.multiplier);
+        }
+    }
+
+    /**
+     * Multiplies one item entity in place, spilling the overflow into new
+     * stacks.
+     *
+     * <p>Growing the entity rather than spawning a replacement is what keeps
+     * this from recursing: no new entity means no new spawn event. Only what
+     * will not fit in a single stack has to be dropped separately, and an item
+     * entity holding more than a stack is not something the rest of the game
+     * handles well.
+     */
+    private void grow(Item entity, double multiplier) {
+        ItemStack stack = entity.getItemStack();
+        // Never multiply something whose worth is inside it rather than in its
+        // count — a shulker box full of loot doubles as its contents, not as a
+        // block. DropGuard has the whole argument.
+        if (!module.guard().allows(stack)) {
+            return;
+        }
+        if (module.oresOnly() && !plugin.ores().isOre(stack.getType())) {
+            return;
+        }
+        long extra = Boost.scale(stack.getAmount(), multiplier) - stack.getAmount();
+        if (extra <= 0) {
+            return;
+        }
+        boosted.add(entity.getUniqueId());
+
+        int max = Math.max(1, stack.getType().getMaxStackSize());
+        int room = Math.max(0, max - stack.getAmount());
+        int fits = (int) Math.min(extra, room);
+        if (fits > 0) {
+            stack.setAmount(stack.getAmount() + fits);
+            entity.setItemStack(stack);
+            extra -= fits;
+        }
+        if (extra <= 0) {
+            return;
+        }
+        Location at = entity.getLocation();
         if (at.getWorld() == null) {
             return;
         }
-        for (Item entity : dropped) {
-            ItemStack stack = entity.getItemStack();
-            if (module.oresOnly() && !plugin.ores().isOre(stack.getType())) {
-                continue;
-            }
-            long extra = Boost.scale(stack.getAmount(), multiplier) - stack.getAmount();
-            int max = Math.max(1, stack.getType().getMaxStackSize());
+        minting = true;
+        try {
             while (extra > 0) {
                 ItemStack copy = stack.clone();
                 copy.setAmount((int) Math.min(extra, max));
                 at.getWorld().dropItemNaturally(at, copy);
                 extra -= copy.getAmount();
             }
+        } finally {
+            minting = false;
+        }
+    }
+
+    /** The recent break this location belongs to, or null. */
+    private Recent nearest(Location at, long now) {
+        if (at == null || at.getWorld() == null) {
+            return null;
+        }
+        for (Recent candidate : recent) {
+            Location from = candidate.at;
+            if (candidate.expiresAt < now || from.getWorld() == null
+                    || !from.getWorld().equals(at.getWorld())) {
+                continue;
+            }
+            if (from.distanceSquared(at) <= CAPTURE_RADIUS * CAPTURE_RADIUS) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /** Drops breaks and remembered entities once their window has passed. */
+    private void prune(long now) {
+        if (recent.removeIf(entry -> entry.expiresAt < now) && recent.isEmpty()) {
+            // Nothing is being watched, so nothing needs remembering either.
+            boosted.clear();
         }
     }
 
     /** Right-click a boost item to start it. */
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        // Deliberately not ignoreCancelled: a right-click on *air* arrives with
+        // the block result already DENY, because there is no block to use, so
+        // ignoring cancelled events would drop exactly the case this handler
+        // exists for. What matters is whether something denied the item use.
+        if (event.useItemInHand() == Event.Result.DENY) {
             return;
         }
         Action action = event.getAction();
@@ -103,10 +396,15 @@ public class BoostListener implements Listener {
         module.activate(player, payload);
         held.setAmount(held.getAmount() - 1);
 
-        plugin.messages().send(player, "boost-activated",
-                "type", payload.typeNames(),
-                "multiplier", Text.decimal(payload.multiplier()),
-                "duration", Durations.format(payload.durationMillis()));
+        // A global boost has already announced itself to the whole server,
+        // this player included. Sending the personal line too would tell them
+        // twice and imply the boost was only theirs.
+        if (!payload.global()) {
+            plugin.messages().send(player, "boost-activated",
+                    "type", payload.typeNames(),
+                    "multiplier", Text.decimal(payload.multiplier()),
+                    "duration", Durations.format(payload.durationMillis()));
+        }
     }
 
     /** Tells a joining player what is already running, if anything. */

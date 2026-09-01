@@ -5,17 +5,24 @@ import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.gui.TravelMenu;
 import com.diamend.boxcore.module.BoxModule;
 import com.diamend.boxcore.module.HubEntry;
+import com.diamend.boxcore.util.Items;
 import com.diamend.boxcore.util.Sounds;
 import com.diamend.boxcore.util.Text;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Fast travel: a list of destinations a player finds by walking into them.
@@ -62,20 +69,31 @@ public class TravelModule implements BoxModule {
         }
     }
 
+    /** A travel item as configured: what it grants, and how it looks. */
+    public record ItemDefinition(TravelItems.Payload payload, TravelItems.Appearance appearance) {
+    }
+
     private final BoxCorePlugin plugin;
     private final WarpManager warps;
     private final CombatTagger combat;
     private final TravelService travel;
+    private final TravelItems items;
+    private final Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
 
     private boolean announceDiscovery = true;
+    private boolean discoverByWalking = false;
+    private LockedLook locked = LockedLook.defaults();
     private boolean sounds = true;
     private Order order = Order.FOUND;
+    private boolean snapCentre = true;
+    private Facing facing = Facing.NEAREST;
 
     public TravelModule(BoxCorePlugin plugin) {
         this.plugin = plugin;
         this.warps = new WarpManager(plugin);
         this.combat = new CombatTagger();
         this.travel = new TravelService(plugin, combat);
+        this.items = new TravelItems(plugin);
     }
 
     @Override
@@ -91,8 +109,7 @@ public class TravelModule implements BoxModule {
     @Override
     public void enable() {
         loadConfig();
-        plugin.getServer().getPluginManager()
-                .registerEvents(new TravelListener(plugin, this), plugin);
+        plugin.modules().listen(this, new TravelListener(plugin, this));
     }
 
     @Override
@@ -110,10 +127,326 @@ public class TravelModule implements BoxModule {
                 plugin.getConfig().getBoolean("travel.cancel-on-move", true));
         combat.setSeconds(plugin.getConfig().getLong("travel.combat-tag-seconds", 15L));
         announceDiscovery = plugin.getConfig().getBoolean("travel.announce-discovery", true);
+        discoverByWalking = plugin.getConfig().getBoolean("travel.discover-by-walking", false);
+        locked = loadLocked(plugin.getConfig().getConfigurationSection("travel.locked"));
         sounds = plugin.getConfig().getBoolean("travel.sounds", true);
         order = Order.parse(plugin.getConfig().getString("travel.menu-order", "found"));
+        snapCentre = plugin.getConfig().getBoolean("travel.snap.centre", true);
+        facing = Facing.parse(plugin.getConfig().getString("travel.snap.facing", "nearest"));
         travel.setSounds(sounds);
         warps.load();
+        loadItems();
+    }
+
+    // ------------------------------------------------------------------
+    // Travel items
+    // ------------------------------------------------------------------
+
+    private void loadItems() {
+        definitions.clear();
+        ConfigurationSection root = plugin.getConfig().getConfigurationSection("travel.items");
+        if (root == null) {
+            return;
+        }
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection entry = root.getConfigurationSection(id);
+            if (entry == null) {
+                continue;
+            }
+            String where = "travel.items." + id;
+            String warpId = entry.getString("warp", "");
+            if (warpId == null || warpId.isBlank()) {
+                plugin.getLogger().warning(where + ".warp names no destination, skipping.");
+                continue;
+            }
+            warpId = warpId.trim().toLowerCase(Locale.ROOT);
+            TravelItems.Mode mode = TravelItems.Mode.parse(entry.getString("mode", "travel"));
+            if (mode == TravelItems.Mode.TRAVEL && TravelItems.ANY.equals(warpId)) {
+                // A ticket has to know where it is taking you before it is
+                // spent. "Anywhere" only makes sense for the kind that unlocks.
+                plugin.getLogger().warning(where + ": warp 'any' only works with mode 'unlock',"
+                        + " skipping.");
+                continue;
+            }
+            definitions.put(id.toLowerCase(Locale.ROOT), new ItemDefinition(
+                    new TravelItems.Payload(id, warpId, mode),
+                    readAppearance(entry.getConfigurationSection("item"), mode)));
+        }
+    }
+
+    private LockedLook loadLocked(ConfigurationSection section) {
+        LockedLook fallback = LockedLook.defaults();
+        if (section == null) {
+            return fallback;
+        }
+        List<String> lore = section.isList("lore") ? section.getStringList("lore") : null;
+        return new LockedLook(
+                Items.material(section.getString("material"), fallback.material()),
+                section.getString("name", fallback.name()),
+                lore == null ? fallback.lore() : List.copyOf(lore));
+    }
+
+    private TravelItems.Appearance readAppearance(ConfigurationSection item, TravelItems.Mode mode) {
+        if (item == null) {
+            return TravelItems.Appearance.defaults(mode);
+        }
+        Material fallback = mode == TravelItems.Mode.UNLOCK ? Material.FILLED_MAP : Material.PAPER;
+        List<String> lore = item.isList("lore") ? item.getStringList("lore") : null;
+        return new TravelItems.Appearance(
+                Items.material(item.getString("material"), fallback),
+                item.getString("name"),
+                lore == null || lore.isEmpty() ? null : lore,
+                Math.max(0, item.getInt("model-data", 0)),
+                item.getBoolean("glow", true));
+    }
+
+    public TravelItems items() {
+        return items;
+    }
+
+    public Set<String> itemIds() {
+        return Collections.unmodifiableSet(definitions.keySet());
+    }
+
+    /** Builds a configured travel item, or null when no such item is configured. */
+    public ItemStack createItem(String id, int amount) {
+        ItemDefinition definition = definitions.get(id == null
+                ? ""
+                : id.trim().toLowerCase(Locale.ROOT));
+        if (definition == null) {
+            return null;
+        }
+        return items.create(definition.payload(), definition.appearance(), amount,
+                warps.get(definition.payload().warpId()));
+    }
+
+    /**
+     * Builds a travel item for a destination that has no config entry.
+     *
+     * <p>Staff place a destination in-game; needing to stop, edit config and
+     * reload before they can hand out a ticket to it is a poor answer to
+     * "and one of those, please". The item still carries everything it does
+     * on itself, so one minted this way is no less durable than a configured
+     * one — it just wears the plain look.
+     *
+     * @return the stack, or null when there is no such destination
+     */
+    public ItemStack createItem(String warpId, TravelItems.Mode mode, int amount) {
+        String key = warpId == null ? "" : warpId.trim().toLowerCase(Locale.ROOT);
+        if (key.isEmpty()) {
+            return null;
+        }
+        if (TravelItems.ANY.equals(key)) {
+            // Same rule as config: a ticket has to know where it is taking you.
+            if (mode != TravelItems.Mode.UNLOCK) {
+                return null;
+            }
+        } else if (warps.get(key) == null) {
+            return null;
+        }
+        return items.create(new TravelItems.Payload(key, key, mode),
+                TravelItems.Appearance.defaults(mode), amount, warps.get(key));
+    }
+
+    /**
+     * Spends a travel item, or explains why it can't be spent.
+     *
+     * <p>Nothing is taken from the player unless the item actually did
+     * something. A ticket to a destination that has since been deleted, or one
+     * used in combat, stays in the inventory to be used later or refunded — the
+     * alternative is a player who paid for a trip, didn't get one, and has
+     * nothing left to show a staff member.
+     *
+     * @return whether to take the item now. A ticket answers no even when it
+     *         started a trip, because it pays for itself on arrival instead.
+     */
+    public boolean useItem(Player player, TravelItems.Payload payload) {
+        if (player == null || payload == null) {
+            return false;
+        }
+        return payload.mode() == TravelItems.Mode.UNLOCK
+                ? unlock(player, payload)
+                : ticket(player, payload);
+    }
+
+    /** Puts one destination — or all of them — on the player's list for good. */
+    private boolean unlock(Player player, TravelItems.Payload payload) {
+        List<Warp> targets = new ArrayList<>();
+        if (payload.isAny()) {
+            targets.addAll(visibleTo(player));
+        } else {
+            Warp warp = warps.get(payload.warpId());
+            if (warp == null) {
+                plugin.messages().send(player, "travel-unavailable", "warp", payload.warpId());
+                return false;
+            }
+            targets.add(warp);
+        }
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        int found = 0;
+        for (Warp warp : targets) {
+            if (profile.discoverWarp(warp.id())) {
+                found++;
+                plugin.messages().send(player, "travel-discovered",
+                        "warp", Text.plain(warp.display()));
+            }
+        }
+        if (found == 0) {
+            // Already knew everywhere it would have shown them. Saying so and
+            // keeping the item is better than eating it for nothing.
+            plugin.messages().send(player, "travel-item-known");
+            return false;
+        }
+        if (sounds) {
+            Sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.0f);
+        }
+        return true;
+    }
+
+    /**
+     * Starts a one-trip ticket, spending it only once the player arrives.
+     *
+     * <p>The ticket stands in for the warp's permission — that is what buying
+     * one is for — but not for the combat tag, which is the module's whole
+     * safety model and not something a shop should be able to sell around.
+     */
+    private boolean ticket(Player player, TravelItems.Payload payload) {
+        Warp warp = warps.get(payload.warpId());
+        if (warp == null) {
+            plugin.messages().send(player, "travel-unavailable", "warp", payload.warpId());
+            return false;
+        }
+        TravelService.Outcome outcome = travel.begin(player, warp,
+                () -> consumeOne(player, payload), true);
+        if (outcome == TravelService.Outcome.ALREADY_TRAVELLING) {
+            plugin.messages().send(player, "travel-item-busy");
+        }
+        // Whether it started or not, nothing is taken here. A trip that started
+        // pays for itself on arrival; one that didn't costs nothing.
+        return false;
+    }
+
+    /**
+     * Takes one matching travel item out of the player's inventory.
+     *
+     * <p>Searched for rather than held onto, because a warmup is long enough to
+     * move the item to another slot, and a stack that has been moved is not the
+     * same object any more.
+     */
+    private void consumeOne(Player player, TravelItems.Payload payload) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            ItemStack held = contents[slot];
+            TravelItems.Payload carried = items.read(held);
+            if (carried == null
+                    || !carried.warpId().equalsIgnoreCase(payload.warpId())
+                    || carried.mode() != payload.mode()) {
+                continue;
+            }
+            int left = held.getAmount() - 1;
+            // Written back by slot rather than by mutating what getContents
+            // handed over, so this doesn't depend on that array being live.
+            if (left <= 0) {
+                player.getInventory().setItem(slot, null);
+            } else {
+                held.setAmount(left);
+                player.getInventory().setItem(slot, held);
+            }
+            return;
+        }
+    }
+
+    /**
+     * Which way a warp faces you when you arrive.
+     *
+     * <p>Staff place a destination by standing where it should be, and standing
+     * squarely on a block looking at a cardinal direction is fiddly to do by
+     * hand. Snapping means the arrival always looks deliberate without anyone
+     * having to line themselves up first.
+     */
+    public enum Facing {
+        /** However the placer happened to be looking. */
+        KEEP(Float.NaN),
+        /** The nearest quarter turn to however they were looking. */
+        NEAREST(Float.NaN),
+        SOUTH(0f),
+        WEST(90f),
+        NORTH(180f),
+        EAST(-90f);
+
+        private final float yaw;
+
+        Facing(float yaw) {
+            this.yaw = yaw;
+        }
+
+        public static Facing parse(String raw) {
+            if (raw == null) {
+                return NEAREST;
+            }
+            return switch (raw.trim().toLowerCase(Locale.ROOT)) {
+                case "keep", "off", "none", "exact" -> KEEP;
+                case "north" -> NORTH;
+                case "east" -> EAST;
+                case "south" -> SOUTH;
+                case "west" -> WEST;
+                default -> NEAREST;
+            };
+        }
+
+        /** The next one round, for a menu button that cycles. */
+        public Facing next() {
+            Facing[] all = values();
+            return all[(ordinal() + 1) % all.length];
+        }
+
+        public String display() {
+            return switch (this) {
+                case KEEP -> "As placed";
+                case NEAREST -> "Nearest quarter turn";
+                default -> name().charAt(0) + name().substring(1).toLowerCase(Locale.ROOT);
+            };
+        }
+    }
+
+    /**
+     * Where a warp placed from this player's feet should actually sit.
+     *
+     * <p>Every path that places or moves a destination goes through here, so a
+     * warp set by command lands in the same place as one set from the menu.
+     */
+    public Location placementFor(Player player) {
+        return snap(player.getLocation().clone());
+    }
+
+    /** Applies the configured centring and facing to a location. */
+    public Location snap(Location raw) {
+        if (raw == null) {
+            return null;
+        }
+        Location at = raw.clone();
+        if (snapCentre) {
+            // Feet on the middle of the block, not wherever in it they stopped.
+            at.setX(at.getBlockX() + 0.5);
+            at.setZ(at.getBlockZ() + 0.5);
+            at.setY(at.getBlockY());
+        }
+        if (facing == Facing.NEAREST) {
+            at.setYaw(Math.round(at.getYaw() / 90f) * 90f);
+            at.setPitch(0f);
+        } else if (facing != Facing.KEEP) {
+            at.setYaw(facing.yaw);
+            at.setPitch(0f);
+        }
+        return at;
+    }
+
+    public boolean snapCentre() {
+        return snapCentre;
+    }
+
+    public Facing facing() {
+        return facing;
     }
 
     public Order order() {
@@ -137,13 +470,16 @@ public class TravelModule implements BoxModule {
     // ------------------------------------------------------------------
 
     /**
-     * Records any warp this player is now standing near.
+     * Records any warp this player is now standing near, when
+     * {@code travel.discover-by-walking} says walking counts.
      *
-     * <p>Permission is checked before discovery, so a warp someone can't use
-     * doesn't quietly appear in their list the first time they walk past it.
+     * <p>Off by default: a map you can sell is worth nothing if the same place
+     * arrives free the first time somebody wanders past it. With it on,
+     * permission is still checked before discovery, so a warp someone can't use
+     * doesn't quietly appear in their list either way.
      */
     public void checkDiscovery(Player player, Location where) {
-        if (player == null || where == null || warps.size() == 0) {
+        if (!discoverByWalking || player == null || where == null || warps.size() == 0) {
             return;
         }
         PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
@@ -165,8 +501,49 @@ public class TravelModule implements BoxModule {
         }
     }
 
+    /** How a destination nobody has found yet is drawn in the travel menu. */
+    public record LockedLook(Material material, String name, List<String> lore) {
+
+        public static LockedLook defaults() {
+            return new LockedLook(Material.GRAY_DYE, "<dark_gray>???",
+                    List.of("<gray>Somewhere you haven't been.",
+                            "<dark_gray>Find it and it opens up here."));
+        }
+    }
+
+    public LockedLook locked() {
+        return locked;
+    }
+
+    /** Whether walking within a destination's radius is enough to find it. */
+    public boolean discoverByWalking() {
+        return discoverByWalking;
+    }
+
     public boolean hasDiscovered(Player player, Warp warp) {
         return plugin.profiles().get(player.getUniqueId()).hasDiscovered(warp.id());
+    }
+
+    /**
+     * Puts a place on someone's travel list by hand.
+     *
+     * <p>Used where being there is not in question: staff who just placed a
+     * destination are standing on it, and with walking discovery off they would
+     * otherwise have to mint themselves a map to reach somewhere they made.
+     *
+     * @return whether this added anything
+     */
+    public boolean discover(Player player, Warp warp) {
+        if (player == null || warp == null
+                || !plugin.profiles().get(player.getUniqueId()).discoverWarp(warp.id())) {
+            return false;
+        }
+        plugin.messages().send(player, "travel-discovered",
+                "warp", Text.plain(warp.display()));
+        if (sounds) {
+            Sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.0f);
+        }
+        return true;
     }
 
     /** Warps this player is allowed to see at all, found or not. */

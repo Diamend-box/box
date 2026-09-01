@@ -65,6 +65,10 @@ public class WarpManager {
         warnings.clear();
         File file = file();
         if (!file.exists()) {
+            // Write the empty book straight away. A staff member looking for
+            // warps.yml should find it and see the shape they are editing,
+            // rather than a missing file they have to guess the name of.
+            save();
             return;
         }
         YamlConfiguration config = new YamlConfiguration();

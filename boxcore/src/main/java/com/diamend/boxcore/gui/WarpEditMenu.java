@@ -4,6 +4,7 @@ import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.util.Items;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -11,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -32,6 +34,7 @@ public class WarpEditMenu extends AbstractMenu {
     private static final int TELEPORT_SLOT = 16;
 
     private static final int RADIUS_SLOT = 22;
+    private static final int FACING_SLOT = 28;
     private static final int DESCRIPTION_SLOT = 30;
     private static final int PERMISSION_SLOT = 32;
 
@@ -80,8 +83,13 @@ public class WarpEditMenu extends AbstractMenu {
                         "<yellow>Click, then type it in chat"), false));
         set(MOVE_SLOT, Items.text(Material.ENDER_EYE, "<yellow>Move it here",
                 List.of("<gray>Currently at <white>" + warp.where(),
-                        "<gray>Puts it where you're standing, facing",
-                        "<gray>the way you're facing.",
+                        "<gray>Puts it where you're standing —",
+                        module.snapCentre()
+                                ? "<gray>centred on the block, so you don't"
+                                : "<gray>exactly where you stand, so line",
+                        module.snapCentre()
+                                ? "<gray>have to line yourself up."
+                                : "<gray>yourself up first.",
                         "",
                         "<yellow>Click to move it"), false));
         set(TELEPORT_SLOT, Items.text(Material.ENDER_PEARL, "<yellow>Go there",
@@ -99,6 +107,7 @@ public class WarpEditMenu extends AbstractMenu {
                         "<gray>this place to open up for them.",
                         "<dark_gray>Bigger is easier to stumble across."), false));
 
+        set(FACING_SLOT, facingButton(warp));
         set(DESCRIPTION_SLOT, descriptionButton(warp));
         set(PERMISSION_SLOT, permissionButton(warp));
 
@@ -191,6 +200,40 @@ public class WarpEditMenu extends AbstractMenu {
     // Clicks
     // ------------------------------------------------------------------
 
+    /** The four cardinal yaws, in the order the button cycles them. */
+    private static final float[] CARDINALS = {0f, 90f, 180f, -90f};
+    private static final String[] CARDINAL_NAMES = {"South", "West", "North", "East"};
+
+    /** Which cardinal a stored yaw is closest to. */
+    private static int cardinalOf(float yaw) {
+        float wrapped = yaw % 360f;
+        if (wrapped < -180f) {
+            wrapped += 360f;
+        } else if (wrapped > 180f) {
+            wrapped -= 360f;
+        }
+        return Math.floorMod(Math.round(wrapped / 90f), 4);
+    }
+
+    /**
+     * Turns the destination a quarter turn at a time.
+     *
+     * <p>Which way you end up looking when you arrive is the difference between
+     * a warp that feels placed and one that feels dropped, and it is the part
+     * hardest to get right by standing still and hoping.
+     */
+    private ItemStack facingButton(Warp warp) {
+        Location at = warp.location();
+        int index = at == null ? 0 : cardinalOf(at.getYaw());
+        List<String> lore = new ArrayList<>();
+        lore.add("<gray>You arrive looking <white>" + CARDINAL_NAMES[index] + "</white>.");
+        lore.add("<dark_gray>New destinations start out: "
+                + module.facing().display().toLowerCase(Locale.ROOT));
+        lore.add("");
+        lore.add("<yellow>Click to turn it a quarter");
+        return Items.text(Material.COMPASS, "<gold>Facing " + CARDINAL_NAMES[index], lore, false);
+    }
+
     @Override
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) {
@@ -230,8 +273,19 @@ public class WarpEditMenu extends AbstractMenu {
             player.teleport(warp.location());
             return;
         }
+        if (raw == FACING_SLOT) {
+            Location at = warp.location();
+            if (at == null) {
+                return;
+            }
+            Location turned = at.clone();
+            turned.setYaw(CARDINALS[(cardinalOf(at.getYaw()) + 1) % CARDINALS.length]);
+            turned.setPitch(0f);
+            save(player, warp.withLocation(turned));
+            return;
+        }
         if (raw == MOVE_SLOT) {
-            save(player, warp.withLocation(player.getLocation().clone()));
+            save(player, warp.withLocation(module.placementFor(player)));
             plugin.messages().sendLiteral(player,
                     "<green>Moved <white>" + warp.id() + "<green> to where you're standing.");
             return;
@@ -274,6 +328,7 @@ public class WarpEditMenu extends AbstractMenu {
         click(player);
         plugin.prompts().ask(player,
                 "<gold>What should <white>" + warp.id() + "</white> be called?",
+                warp.display(),
                 answer -> {
                     Warp current = warp();
                     if (current != null) {
@@ -327,6 +382,7 @@ public class WarpEditMenu extends AbstractMenu {
         click(player);
         plugin.prompts().ask(player,
                 "<gold>Which permission should it need?",
+                warp.permission(),
                 answer -> {
                     Warp current = warp();
                     if (current != null) {

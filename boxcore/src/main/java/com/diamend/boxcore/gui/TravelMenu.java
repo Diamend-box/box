@@ -6,6 +6,7 @@ import com.diamend.boxcore.travel.TravelService;
 import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.util.Durations;
 import com.diamend.boxcore.util.Items;
+import com.diamend.boxcore.util.Text;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -87,7 +88,7 @@ public class TravelMenu extends AbstractMenu {
                 offered.put(at, warp.id());
                 set(at, found(player, warp));
             } else {
-                set(at, unfound());
+                set(at, unfound(warp));
             }
         }
         if (warps.isEmpty()) {
@@ -121,7 +122,11 @@ public class TravelMenu extends AbstractMenu {
         List<String> lore = new ArrayList<>();
         lore.add("<gray>Found: <white>" + module.discoveredCount(player)
                 + "</white>/" + total);
-        lore.add("<gray>Walk into somewhere to add it here.");
+        // Telling players to go walking is wrong when walking isn't what
+        // unlocks anything.
+        lore.add(module.discoverByWalking()
+                ? "<gray>Walk into somewhere to add it here."
+                : "<gray>Use a map to add somewhere here.");
         lore.add("");
         TravelService travel = module.travel();
         if (travel.warmupSeconds() > 0) {
@@ -152,10 +157,23 @@ public class TravelMenu extends AbstractMenu {
         return Items.text(warp.icon(), "<green>" + warp.display(), lore, false);
     }
 
-    private ItemStack unfound() {
-        return Items.text(Material.GRAY_DYE, "<dark_gray>???",
-                List.of("<gray>Somewhere you haven't been.",
-                        "<dark_gray>Find it and it opens up here."), false);
+    /**
+     * A destination this player hasn't found, drawn however
+     * {@code travel.locked} says.
+     *
+     * <p>The {@code <warp>} token is offered because "Locked: Abandoned Mines"
+     * is a coherent thing to want — the name teases the place while the menu
+     * still won't take you there. Leave it out and nothing about the
+     * destination is revealed, which is the shipped behaviour.
+     */
+    private ItemStack unfound(Warp warp) {
+        TravelModule.LockedLook look = module.locked();
+        String name = Text.plain(warp.display());
+        List<String> lore = new ArrayList<>();
+        for (String line : look.lore()) {
+            lore.add(line.replace("<warp>", name));
+        }
+        return Items.text(look.material(), look.name().replace("<warp>", name), lore, false);
     }
 
     // ------------------------------------------------------------------

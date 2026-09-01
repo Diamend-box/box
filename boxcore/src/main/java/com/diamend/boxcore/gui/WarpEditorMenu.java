@@ -4,6 +4,7 @@ import com.diamend.boxcore.BoxCorePlugin;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.util.Items;
+import com.diamend.boxcore.util.Text;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -214,17 +215,26 @@ public class WarpEditorMenu extends AbstractMenu {
             new WarpEditorMenu(plugin, module, page).open(player);
             return;
         }
-        Warp warp = new Warp(id, name, icon, List.of(), player.getLocation().clone(), "",
+        Warp warp = new Warp(id, name, icon, List.of(), module.placementFor(player), "",
                 plugin.getConfig().getDouble("travel.default-radius", 8.0));
         module.warps().put(warp);
+        module.discover(player, warp);
         plugin.messages().sendLiteral(player,
                 "<green>Created <white>" + id + "<green> where you're standing.");
         new WarpEditMenu(plugin, module, id).open(player);
     }
 
-    /** Turns a typed name into an id a file can hold: {@code Old Mine} → {@code old_mine}. */
+    /**
+     * Turns a typed name into an id a file can hold: {@code Old Mine} →
+     * {@code old_mine}.
+     *
+     * <p>Colours come off first. Somebody naming a place {@code &7Abandoned
+     * Mines} means the place is called Abandoned Mines and is grey; they don't
+     * mean its id is {@code 7abandoned_mines}. Left in, the stray digit follows
+     * the destination into every command that has to name it.
+     */
     public static String idFrom(String name) {
-        String cleaned = name.toLowerCase(Locale.ROOT)
+        String cleaned = Text.plain(name).toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "_")
                 .replaceAll("^_+|_+$", "");
         return cleaned.length() > 32 ? cleaned.substring(0, 32) : cleaned;

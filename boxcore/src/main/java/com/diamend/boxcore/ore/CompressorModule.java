@@ -78,7 +78,7 @@ public class CompressorModule implements BoxModule {
     @Override
     public void enable() {
         loadConfig();
-        plugin.getServer().getPluginManager().registerEvents(new CompressorListener(plugin, this), plugin);
+        plugin.modules().listen(this, new CompressorListener(plugin, this));
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::sweep, sweepTicks, sweepTicks);
     }
 
@@ -342,6 +342,44 @@ public class CompressorModule implements BoxModule {
                 inventory.setItem(slot, item);
             }
         }
+    }
+
+    /**
+     * Expands what is in the player's hand and tells them what happened.
+     *
+     * <p>Silence is the one outcome this must never produce. A right click that
+     * does nothing and says nothing is indistinguishable from a broken item,
+     * and that is exactly how expansion read on its first playtest.
+     *
+     * @param all expand the whole held stack rather than a single unit
+     * @return how many units were expanded
+     */
+    public int expandInHand(Player player, boolean all) {
+        if (player == null) {
+            return 0;
+        }
+        ItemStack held = player.getInventory().getItemInMainHand();
+        CompressedOre compressed = plugin.ores().compressed();
+        boolean wasCompressed = compressed.isCompressed(held);
+        // Read the ore off the stack before expanding it. Emptying the hand
+        // turns this stack into AIR, so a message naming the ore has to be
+        // built from what it was, not from what the slot holds afterwards.
+        Material ore = wasCompressed ? compressed.sourceOre(held) : null;
+
+        int expanded = expand(player, all ? held.getAmount() : 1);
+        if (expanded > 0) {
+            plugin.messages().send(player, "compressor-expanded",
+                    "amount", expanded,
+                    "plural", expanded == 1 ? "" : "s",
+                    "ore", ore == null ? "items" : CompressedOre.displayName(ore),
+                    "seconds", graceSeconds);
+            return expanded;
+        }
+        // Say which of the two reasons it was: "no room" and "that isn't a
+        // compacted unit" call for opposite fixes.
+        plugin.messages().send(player,
+                wasCompressed ? "compressor-no-room" : "compressor-not-compacted");
+        return 0;
     }
 
     /**
