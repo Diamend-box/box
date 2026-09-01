@@ -25,7 +25,9 @@ import com.diamend.spyglass.nbt.NbtPath;
 import com.diamend.spyglass.nbt.NbtPrinter;
 import com.diamend.spyglass.nbt.NbtTag;
 import com.diamend.spyglass.offline.OfflineSnapshot;
+import com.diamend.spyglass.report.DumpFile;
 import com.diamend.spyglass.report.Report;
+import com.diamend.spyglass.report.ReportDiff;
 import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Fmt;
 import com.diamend.spyglass.util.Safe;
@@ -53,8 +55,8 @@ public final class SpyCommand implements TabExecutor {
     private static final int NBT_DEPTH = 12;
     private static final int NBT_ELEMENTS = 96;
 
-    private static final List<String> VERBS =
-            List.of("list", "watch", "unwatch", "watching", "dump", "find", "sections", "reload", "help");
+    private static final List<String> VERBS = List.of("list", "watch", "unwatch", "watching",
+            "dump", "dumps", "diff", "find", "sections", "reload", "help");
 
     private final SpyglassPlugin plugin;
 
@@ -80,6 +82,8 @@ public final class SpyCommand implements TabExecutor {
             case "unwatch" -> unwatch(sender, args);
             case "watching" -> watching(sender);
             case "dump" -> dump(sender, args);
+            case "dumps" -> dumps(sender, args);
+            case "diff" -> diff(sender, args);
             case "find" -> find(sender, args);
             case "reload" -> reload(sender);
             default -> inspect(sender, args);
@@ -288,54 +292,138 @@ public final class SpyCommand implements TabExecutor {
             error(sender, "Usage: /spy dump <player>");
             return;
         }
-        Targets.Target target = Targets.resolve(plugin.getServer(), args[1]);
-        if (target == null) {
-            error(sender, "No player called \"" + args[1] + "\" is online, and none has ever played here.");
+        Targets.Target target = resolveOrComplain(sender, args[1]);
+        if (target == null || !allowedToInspect(sender, target)) {
             return;
         }
-        if (!allowedToInspect(sender, target)) {
-            return;
-        }
-        Query query = new Query(null, canSeeSensitive(sender));
-        // The live half has to be read on the main thread; the file half and the
-        // writing do not.
-        Report live = target.isOnline()
-                ? plugin.online().section(target.online(), Section.ALL, query)
-                : null;
-        if (target.isOnline() && plugin.settings().saveBeforeNbt()) {
-            Safe.run(() -> target.online().saveData());
-        }
+        Report live = livePart(sender, target);
         info(sender, "Building a full report on " + target.name() + "...");
         plugin.async(() -> {
-            Report report = new Report().title(target.label() + " — full report");
-            report.field("generated", Fmt.stamp(System.currentTimeMillis()));
-            report.field("uuid", target.uuid());
-            OfflineSnapshot snapshot = OfflineSnapshot.load(
-                    plugin.files(), target.offline(), target.uuid(), target.name());
-            if (live != null) {
-                report.append(live);
-                report.header("Save file");
-                report.field("file", snapshot.dataFile() == null
-                        ? Safe.UNKNOWN : snapshot.dataFile().getPath());
-                report.field("written", Fmt.stampWithAge(snapshot.savedAt()));
-            } else {
-                report.append(plugin.offline().section(snapshot, Section.ALL, query));
-            }
-            if (snapshot.hasData()) {
-                report.header("Raw NBT");
-                NbtPrinter printer = new NbtPrinter(NBT_DEPTH, NBT_ELEMENTS);
-                for (String line : printer.print("", snapshot.data().asTag())) {
-                    report.text(line);
-                }
-            }
+            Report report = fullReport(sender, target, live);
             try {
-                File written = plugin.dumps().write(target.name(), report.plain());
+                File written = plugin.dumps().write(target.name(), target.uuid().toString(), report);
                 plugin.sync(() -> info(sender, "Wrote " + report.size() + " lines to "
-                        + written.getPath()));
+                        + written.getPath() + " (and the same again as .json)"));
             } catch (Exception ex) {
                 plugin.sync(() -> error(sender, "Could not write the dump: " + ex.getMessage()));
             }
         });
+    }
+
+    /**
+     * The half of a full report that must be read from the live server object,
+     * and so has to happen on the main thread. Null when they are not on.
+     */
+    private Report livePart(CommandSender sender, Targets.Target target) {
+        if (!target.isOnline()) {
+            return null;
+        }
+        Report live = plugin.online().section(
+                target.online(), Section.ALL, new Query(null, canSeeSensitive(sender)));
+        if (plugin.settings().saveBeforeNbt()) {
+            Safe.run(() -> target.online().saveData());
+        }
+        return live;
+    }
+
+    /** Everything there is on one player, in one report. Call it off the main thread. */
+    private Report fullReport(CommandSender sender, Targets.Target target, Report live) {
+        Query query = new Query(null, canSeeSensitive(sender));
+        Report report = new Report().title(target.label() + " — full report");
+        report.field("generated", Fmt.stamp(System.currentTimeMillis()));
+        report.field("uuid", target.uuid());
+        OfflineSnapshot snapshot = OfflineSnapshot.load(
+                plugin.files(), target.offline(), target.uuid(), target.name());
+        if (live != null) {
+            report.append(live);
+            report.header("Save file");
+            report.field("file", snapshot.dataFile() == null
+                    ? Safe.UNKNOWN : snapshot.dataFile().getPath());
+            report.field("written", Fmt.stampWithAge(snapshot.savedAt()));
+        } else {
+            report.append(plugin.offline().section(snapshot, Section.ALL, query));
+        }
+        if (snapshot.hasData()) {
+            report.header("Raw NBT");
+            NbtPrinter printer = new NbtPrinter(NBT_DEPTH, NBT_ELEMENTS);
+            for (String line : printer.print("", snapshot.data().asTag())) {
+                report.text(line);
+            }
+        }
+        return report;
+    }
+
+    private void dumps(CommandSender sender, String[] args) {
+        String player = args.length > 1 ? args[1] : null;
+        List<File> files = plugin.dumps().list(player);
+        Report report = new Report().title(player == null ? "Dumps" : "Dumps of " + player);
+        report.field("folder", plugin.dumps().folder().getPath());
+        if (files.isEmpty()) {
+            report.note(player == null
+                    ? "No dumps yet. Write one with /spy dump <player>."
+                    : "No dumps of " + player + " yet.");
+        } else {
+            for (File file : files) {
+                report.text(String.format("%-44s %s", file.getName(),
+                        Fmt.stampWithAge(file.lastModified())));
+            }
+            report.note("Compare one with /spy diff <player> [file].");
+        }
+        report.send(sender, 1, plugin.settings().pageSize(), null);
+    }
+
+    /**
+     * What changed since a dump. Builds the player's state now, compares it
+     * against the dump named (or the newest one there is), and prints only the
+     * differences.
+     */
+    private void diff(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            error(sender, "Usage: /spy diff <player> [dump-file] [all]");
+            return;
+        }
+        Targets.Target target = resolveOrComplain(sender, args[1]);
+        if (target == null || !allowedToInspect(sender, target)) {
+            return;
+        }
+        List<String> rest = new ArrayList<>(Arrays.asList(args).subList(Math.min(2, args.length), args.length));
+        boolean all = rest.removeIf(word -> word.equalsIgnoreCase("all"));
+        String wanted = rest.isEmpty() ? null : rest.get(0);
+
+        File dump = wanted == null ? plugin.dumps().latest(target.name()) : plugin.dumps().resolve(wanted);
+        if (dump == null) {
+            error(sender, wanted == null
+                    ? "No dump of " + target.name() + " to compare against. Write one with /spy dump "
+                            + target.name() + "."
+                    : "No dump called \"" + wanted + "\" in " + plugin.dumps().folder().getPath()
+                            + ". List them with /spy dumps.");
+            return;
+        }
+        Report live = livePart(sender, target);
+        info(sender, "Comparing " + target.name() + " against " + dump.getName() + "...");
+        plugin.async(() -> {
+            Report now = fullReport(sender, target, live);
+            Report report;
+            try {
+                DumpFile before = DumpFile.read(dump.toPath());
+                report = ReportDiff.between(before, dump.getName(),
+                        DumpFile.of(target.name(), target.uuid().toString(), now), "now", all);
+            } catch (Exception ex) {
+                report = new Report().title(target.label() + " — diff")
+                        .note("Could not read " + dump.getName() + ": " + ex.getMessage());
+            }
+            Report finished = report;
+            plugin.sync(() -> finished.send(sender, 1, plugin.settings().pageSize(), null));
+        });
+    }
+
+    /** Resolves a name, telling the sender when nobody answers to it. */
+    private Targets.Target resolveOrComplain(CommandSender sender, String name) {
+        Targets.Target target = Targets.resolve(plugin.getServer(), name);
+        if (target == null) {
+            error(sender, "No player called \"" + name + "\" is online, and none has ever played here.");
+        }
+        return target;
     }
 
     // ------------------------------------------------------------------
@@ -445,6 +533,8 @@ public final class SpyCommand implements TabExecutor {
         report.field("/spy unwatch <player|all>", "stop following");
         report.field("/spy watching", "who is being followed");
         report.field("/spy dump <player>", "write the whole report, raw NBT included, to a file");
+        report.field("/spy dumps [player]", "the dumps on disk, newest first");
+        report.field("/spy diff <player> [file]", "what changed since that dump; add \"all\"");
         report.field("/spy reload", "re-read config.yml");
         report.send(sender);
     }
@@ -534,7 +624,7 @@ public final class SpyCommand implements TabExecutor {
         String verb = args[0].toLowerCase(Locale.ROOT);
         if (args.length == 2) {
             switch (verb) {
-                case "watch", "dump" -> {
+                case "watch", "dump", "dumps", "diff" -> {
                     for (Player player : plugin.getServer().getOnlinePlayers()) {
                         out.add(player.getName());
                     }
@@ -555,6 +645,13 @@ public final class SpyCommand implements TabExecutor {
         if (verb.equals("watch")) {
             out.addAll(WatchCategory.names());
             return prefixed(out, args[args.length - 1]);
+        }
+        if (verb.equals("diff") && args.length == 3) {
+            out.add("all");
+            for (File file : plugin.dumps().list(args[1])) {
+                out.add(file.getName());
+            }
+            return prefixed(out, args[2]);
         }
         if (args.length == 3 && Section.byName(args[1]) == Section.NBT) {
             // Offer the top-level tags of a save we have already read? Keep it

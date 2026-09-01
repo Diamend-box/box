@@ -241,6 +241,42 @@ class SpyCommandTest {
     }
 
     @Test
+    void dumpsListsWhatHasBeenWritten() {
+        server.addPlayer("Notch");
+        PlayerMock staff = staff();
+        run(staff, "spy dump Notch");
+
+        String reply = run(staff, "spy dumps Notch");
+
+        assertTrue(reply.contains("Notch-"), reply);
+        assertTrue(reply.contains(".json"), reply);
+    }
+
+    @Test
+    void diffReportsWhatChangedSinceTheLastDump() {
+        PlayerMock notch = server.addPlayer("Notch");
+        PlayerMock staff = staff();
+        run(staff, "spy dump Notch");
+
+        notch.setHealth(11.0D);
+        String reply = run(staff, "spy diff Notch");
+
+        assertTrue(reply.contains("diff"), reply);
+        assertTrue(reply.contains("health"), reply);
+        assertTrue(reply.contains("->"), reply);
+    }
+
+    @Test
+    void diffNeedsSomethingToCompareAgainst() {
+        server.addPlayer("Notch");
+        PlayerMock staff = staff();
+
+        String reply = run(staff, "spy diff Notch");
+
+        assertTrue(reply.contains("No dump of Notch"), reply);
+    }
+
+    @Test
     void findLooksThroughOnlineInventories() {
         PlayerMock notch = server.addPlayer("Notch");
         notch.getInventory().addItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.DIAMOND, 5));

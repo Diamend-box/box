@@ -19,6 +19,8 @@ commands:
       /spy unwatch <player|all>               - Stop following
       /spy watching                           - Who is being followed, by whom
       /spy dump <player>                      - Write the full report to a file
+      /spy dumps [player]                     - List the dumps on disk, newest first
+      /spy diff <player> [file] [all]         - What changed since that dump
       /spy find <material> [player|all]       - Find an item in inventories
       /spy reload                             - Reload config.yml
     aliases: [spyglass, inspectplayer]

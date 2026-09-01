@@ -143,6 +143,8 @@ read is current rather than as old as the last autosave (`save-before-nbt`).
 | `/spy unwatch <player\|all>` | stop following |
 | `/spy watching` | who is being followed, by whom |
 | `/spy dump <player>` | write the whole report — raw NBT included — to a file |
+| `/spy dumps [player]` | the dumps on disk, newest first |
+| `/spy diff <player> [file] [all]` | what changed between a dump and now |
 | `/spy sections` | the table above, in the console |
 | `/spy reload` | re-read `config.yml` |
 
@@ -173,10 +175,46 @@ anything over it is dropped and counted (`… 14 line(s) dropped to keep up`).
 > spy dump Notch
 [Spyglass] Building a full report on Notch...
 [Spyglass] Wrote 2,918 lines to plugins/Spyglass/dumps/Notch-20260813-043512-880.txt
+           (and the same again as .json)
 ```
 
-Every section plus the entire NBT tree, as plain text. Old dumps are pruned to
-`dumps.keep`.
+Every section plus the entire NBT tree. Each dump lands as a **pair**: the
+`.txt` is the page you read, and the `.json` beside it is the same report as
+data — `{"entries":[{"section","kind","label","value"}]}` — for `/spy diff` and
+for anything else you want to point at it. The two are written and pruned
+together (`dumps.keep`).
+
+### What changed since then
+
+```
+> spy diff Notch
+[Spyglass] Comparing Notch against Notch-20260813-043512-880.json...
+=== Notch — diff ===
+  from        Notch-20260813-043512-880.json  (2026-08-13 04:35:12 (6h 12m ago))
+  to          now  (2026-08-13 10:47:41 (0s ago))
+
+-- Vitals --
+  ~ health                  [##########] 20/20  ->  [#####-----] 11/20
+  ~ food                    20/20  ->  14/20
+
+-- Inventory --
+  - 13 pack     diamond x12
+  + 13 pack     dirt x1
+
+-- Statistics --
+  ~ mined.stone             482  ->  1,043
+  + custom.damage_taken     26
+
+  6 change(s), plus 9 that always move (add "all" to see them).
+```
+
+Fields are matched by label, so a value that moved reads as one change rather
+than as a removal and an addition; lines with no label (inventory rows, raw NBT)
+are compared as a bag. `/spy diff <player> <file>` picks an older dump —
+`/spy dumps` lists them — and `all` includes the fields that differ between any
+two dumps whatever the player did: timestamps (rendered with their age, so even
+a date that never moved reads as changed), the ping, tick counters, and the
+entity id a player is handed afresh on every login.
 
 ---
 

@@ -16,8 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.diamend.spyglass.inspect.Query;
+import com.diamend.spyglass.report.DumpFile;
 import com.diamend.spyglass.report.DumpWriter;
 import com.diamend.spyglass.report.Report;
+import com.diamend.spyglass.report.ReportDiff;
 import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Attributes;
 import com.diamend.spyglass.util.Fmt;
@@ -28,6 +30,8 @@ import com.diamend.spyglass.watch.WatchCategory;
 
 /** The small pieces: naming, formatting, paging, and the dump file. */
 class UnitsTest {
+
+    private static final String UUID_NOTCH = "069a79f4-44e9-4726-a5be-fca90e38aaf5";
 
     @Test
     void sectionsAnswerToTheirAliases() {
@@ -170,15 +174,17 @@ class UnitsTest {
     void dumpsAreWrittenAndOldOnesPrunedAway(@TempDir Path folder) throws IOException {
         DumpWriter writer = new DumpWriter(folder.toFile(), 2);
 
-        File first = writer.write("Notch", List.of("one"));
-        File second = writer.write("Notch", List.of("two"));
-        File third = writer.write("Notch", List.of("three"));
+        File first = writer.write("Notch", UUID_NOTCH, dump("one"));
+        File second = writer.write("Notch", UUID_NOTCH, dump("two"));
+        File third = writer.write("Notch", UUID_NOTCH, dump("three"));
 
         assertTrue(third.isFile());
-        assertEquals(List.of("three"), Files.readAllLines(third.toPath()));
+        assertEquals(List.of("  three"), Files.readAllLines(third.toPath()));
         File[] kept = folder.toFile().listFiles();
-        assertEquals(2, kept == null ? 0 : kept.length, "keep: 2 means two files");
+        // Two dumps, and each is a .txt with its .json beside it.
+        assertEquals(4, kept == null ? 0 : kept.length, "keep: 2 means two pairs");
         assertFalse(first.isFile(), "the oldest dump is pruned");
+        assertFalse(sidecarOf(first).isFile(), "and its json goes with it");
         assertTrue(second.isFile() || third.isFile());
     }
 
@@ -186,9 +192,90 @@ class UnitsTest {
     void aDumpFileNameIsSafeEvenForAUuidTarget(@TempDir Path folder) throws IOException {
         DumpWriter writer = new DumpWriter(folder.toFile(), 0);
 
-        File file = writer.write("069a79f4-44e9-4726-a5be-fca90e38aaf5", List.of("x"));
+        File file = writer.write(UUID_NOTCH, UUID_NOTCH, dump("x"));
 
         assertTrue(file.getName().startsWith("069a79f4-44e9-4726-a5be-fca90e38aaf5-"));
         assertTrue(file.getName().endsWith(".txt"));
+        assertTrue(sidecarOf(file).isFile(), "the json sidecar is written too");
+    }
+
+    @Test
+    void aDumpCanBeReadBackAsData(@TempDir Path folder) throws IOException {
+        Report report = new Report().title("Notch — full report")
+                .header("Vitals")
+                .field("health", "17.5/20")
+                .header("Inventory")
+                .text(" 0 hotbar   diamond_sword")
+                .note("32 empty slot(s).");
+        Path path = folder.resolve("notch.json");
+
+        DumpFile.of("Notch", UUID_NOTCH, report).write(path);
+        DumpFile back = DumpFile.read(path);
+
+        assertEquals("Notch", back.player());
+        assertEquals(UUID_NOTCH, back.uuid());
+        // Title and blank lines are layout; the other three lines are content.
+        assertEquals(3, back.entries().size());
+        assertEquals(2, back.comparable().size(), "the note is prose, not a value");
+        DumpFile.Entry health = back.entries().get(0);
+        assertEquals("Vitals", health.section());
+        assertEquals("field", health.kind());
+        assertEquals("health", health.label());
+        assertEquals("17.5/20", health.value());
+    }
+
+    @Test
+    void aDiffShowsOnlyWhatMoved() {
+        DumpFile before = DumpFile.of("Notch", UUID_NOTCH, new Report()
+                .header("Vitals").field("health", "20/20").field("ping", "31 ms")
+                .header("Inventory").text(" 0 hotbar   diamond_sword").text(" 1 hotbar   bread x3"));
+        DumpFile after = DumpFile.of("Notch", UUID_NOTCH, new Report()
+                .header("Vitals").field("health", "11/20").field("ping", "180 ms")
+                .header("Inventory").text(" 0 hotbar   diamond_sword").text(" 2 hotbar   tnt x16"));
+
+        String text = String.join("\n", ReportDiff.between(before, "yesterday.json", after, "now", false).plain());
+
+        assertTrue(text.contains("~ health"), text);
+        assertTrue(text.contains("20/20  ->  11/20"), text);
+        assertTrue(text.contains("- 1 hotbar   bread x3"), text);
+        assertTrue(text.contains("+ 2 hotbar   tnt x16"), text);
+        // The sword did not move, so it is not mentioned at all.
+        assertFalse(text.contains("diamond_sword"), text);
+        // Ping always moves, so it is counted rather than listed.
+        assertFalse(text.contains("~ ping"), text);
+        assertTrue(text.contains("1 that always move"), text);
+    }
+
+    @Test
+    void aDiffCanBeAskedForEverything() {
+        DumpFile before = DumpFile.of("Notch", UUID_NOTCH,
+                new Report().header("Vitals").field("ping", "31 ms"));
+        DumpFile after = DumpFile.of("Notch", UUID_NOTCH,
+                new Report().header("Vitals").field("ping", "180 ms"));
+
+        String quiet = String.join("\n", ReportDiff.between(before, "a", after, "b", false).plain());
+        String loud = String.join("\n", ReportDiff.between(before, "a", after, "b", true).plain());
+
+        assertTrue(quiet.contains("Nothing changed, apart from 1 field"), quiet);
+        assertTrue(loud.contains("~ ping"), loud);
+    }
+
+    @Test
+    void volatileFieldsAreTheOnesThatAlwaysMove() {
+        assertTrue(ReportDiff.isVolatile("Connection", "ping"));
+        assertTrue(ReportDiff.isVolatile("Overview", "first played"));
+        assertTrue(ReportDiff.isVolatile("Statistics", "custom.play_time"));
+        // A statistic that only moves when the player does something is news.
+        assertFalse(ReportDiff.isVolatile("Statistics", "custom.damage_dealt"));
+        assertFalse(ReportDiff.isVolatile("Vitals", "health"));
+    }
+
+    private static Report dump(String line) {
+        return new Report().text(line);
+    }
+
+    private static File sidecarOf(File text) {
+        String name = text.getName();
+        return new File(text.getParentFile(), name.substring(0, name.lastIndexOf('.')) + ".json");
     }
 }
