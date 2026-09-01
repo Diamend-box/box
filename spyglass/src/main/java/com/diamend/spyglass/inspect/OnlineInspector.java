@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -41,6 +40,7 @@ import com.diamend.spyglass.report.Section;
 import com.diamend.spyglass.util.Attributes;
 import com.diamend.spyglass.util.Fmt;
 import com.diamend.spyglass.util.Safe;
+import com.diamend.spyglass.util.Statistics;
 
 /**
  * Reads a player who is logged in, straight off the live server objects.
@@ -356,15 +356,16 @@ public final class OnlineInspector {
             }
             report.field(entry.getKey(), statValue(entry.getKey(), entry.getValue()));
         }
+        report.note("Names are vanilla's, as written in stats/<uuid>.json.");
     }
 
     private void collect(Map<String, Long> rows, Player player, Statistic statistic) {
-        String base = statistic.name().toLowerCase(Locale.ROOT);
+        String name = statistic.name();
         switch (statistic.getType()) {
             case UNTYPED -> {
                 int value = Safe.integer(() -> player.getStatistic(statistic), 0);
                 if (value != 0) {
-                    rows.put(base, (long) value);
+                    rows.put(Statistics.untyped(name), (long) value);
                 }
             }
             case BLOCK, ITEM -> {
@@ -375,7 +376,7 @@ public final class OnlineInspector {
                     }
                     int value = Safe.integer(() -> player.getStatistic(statistic, material), 0);
                     if (value != 0) {
-                        rows.put(base + "." + material.getKey().getKey(), (long) value);
+                        rows.put(Statistics.typed(name, material.getKey().getKey()), (long) value);
                     }
                 }
             }
@@ -383,7 +384,7 @@ public final class OnlineInspector {
                 for (EntityType type : EntityType.values()) {
                     int value = Safe.integer(() -> player.getStatistic(statistic, type), 0);
                     if (value != 0) {
-                        rows.put(base + "." + type.name().toLowerCase(Locale.ROOT), (long) value);
+                        rows.put(Statistics.typed(name, type.name()), (long) value);
                     }
                 }
             }
@@ -566,6 +567,7 @@ public final class OnlineInspector {
     private void listSlots(Report report, ItemStack[] contents, Query query, boolean playerLayout) {
         int empty = 0;
         int shown = 0;
+        String wanted = query.needle();
         for (int slot = 0; slot < contents.length; slot++) {
             ItemStack item = contents[slot];
             if (ItemFormatter.isEmpty(item)) {
@@ -573,8 +575,14 @@ public final class OnlineInspector {
                 continue;
             }
             String line = ItemFormatter.line(item);
-            if (!query.matches(line)) {
-                continue;
+            if (wanted != null) {
+                // A filter reaches inside shulker boxes and bundles, so the
+                // answer does not depend on how the player packed their bag.
+                String trail = ItemFormatter.matchTrail(item, wanted);
+                if (trail == null) {
+                    continue;
+                }
+                line += trail;
             }
             shown++;
             String label = playerLayout
@@ -709,13 +717,6 @@ public final class OnlineInspector {
 
     /** Ticks, centimetres or a plain count, depending on what the statistic counts. */
     static String statValue(String name, long value) {
-        String lower = name.toLowerCase(Locale.ROOT);
-        if (lower.endsWith("one_cm")) {
-            return Fmt.centimetres(value);
-        }
-        if (lower.contains("time") || lower.contains("one_minute")) {
-            return Fmt.ticks(value);
-        }
-        return Fmt.count(value);
+        return Statistics.value(name, value);
     }
 }

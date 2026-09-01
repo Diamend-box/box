@@ -60,6 +60,7 @@ public final class SamplePlayer {
                 NbtTag.of(sword(0)),
                 NbtTag.of(simpleItem("minecraft:cooked_beef", 32, 1)),
                 NbtTag.of(shulker(9)),
+                NbtTag.of(bundle(10)),
                 NbtTag.of(simpleItem("minecraft:netherite_helmet", 1, 103)),
                 NbtTag.of(simpleItem("minecraft:shield", 1, -106))))));
 
@@ -155,6 +156,38 @@ public final class SamplePlayer {
 
         NbtCompound components = new NbtCompound();
         components.put("minecraft:container", NbtTag.of(new NbtList(NbtType.COMPOUND, inside)));
+        item.put("components", NbtTag.of(components));
+        return item;
+    }
+
+    /**
+     * A bundle holding a shulker box holding one nether star — two levels of
+     * nesting, and a different component at each, which is what a search has to
+     * cope with before anyone believes it when it says "not found".
+     */
+    private static NbtCompound bundle(int slot) {
+        NbtCompound star = new NbtCompound();
+        star.put("id", NbtTag.of("minecraft:nether_star"));
+        star.put("count", NbtTag.of(1));
+
+        NbtCompound inner = new NbtCompound();
+        inner.put("id", NbtTag.of("minecraft:shulker_box"));
+        inner.put("count", NbtTag.of(1));
+        NbtCompound innerComponents = new NbtCompound();
+        NbtCompound entry = new NbtCompound();
+        entry.put("slot", NbtTag.of(0));
+        entry.put("item", NbtTag.of(star));
+        innerComponents.put("minecraft:container",
+                NbtTag.of(new NbtList(NbtType.COMPOUND, List.of(NbtTag.of(entry)))));
+        inner.put("components", NbtTag.of(innerComponents));
+
+        NbtCompound item = new NbtCompound();
+        item.put("id", NbtTag.of("minecraft:bundle"));
+        item.put("count", NbtTag.of(1));
+        item.put("Slot", NbtTag.of((byte) slot));
+        NbtCompound components = new NbtCompound();
+        components.put("minecraft:bundle_contents",
+                NbtTag.of(new NbtList(NbtType.COMPOUND, List.of(NbtTag.of(inner)))));
         item.put("components", NbtTag.of(components));
         return item;
     }

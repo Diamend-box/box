@@ -110,6 +110,25 @@ class OfflineInspectorTest {
     }
 
     @Test
+    void aFilterLooksInsideAContainer() {
+        // The tnt has no slot of its own — it is in the shulker box in slot 9.
+        String text = render(Section.INVENTORY, "tnt");
+
+        assertTrue(text.contains("shulker_box"), text);
+        assertTrue(text.contains("> tnt x16"), text);
+        assertFalse(text.contains("cooked_beef"), text);
+    }
+
+    @Test
+    void aFilterFollowsContainersInsideContainers() {
+        String text = render(Section.INVENTORY, "nether_star");
+
+        assertTrue(text.contains("bundle"), text);
+        assertTrue(text.contains("> shulker_box"), text);
+        assertTrue(text.contains("> nether_star"), text);
+    }
+
+    @Test
     void armourComesFromTheVanillaSlotNumbers() {
         String text = render(Section.ARMOR);
 

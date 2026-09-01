@@ -80,7 +80,7 @@ The default section is `overview`.
 | `armor` | what they are wearing and holding |
 | `effects` | active potion effects with levels and time left |
 | `attributes` | attribute values and their modifiers |
-| `stats` | every statistic they have a number for |
+| `stats` | every statistic they have a number for, under vanilla's names |
 | `advancements` | done, part-done, and what criteria are left |
 | `permissions` \* | effective permission nodes and which plugin granted them |
 | `scoreboard` \* | team, objectives and scores |
@@ -99,6 +99,15 @@ a **filter** and a **page**:
 > spy Notch stats mined          # only statistics matching "mined"
 > spy Notch permissions essentials 2
 > spy Notch inventory shulker
+```
+
+An item filter looks **inside** shulker boxes and bundles, up to four levels
+down, and prints the trail it took to get there — so the answer does not depend
+on how neatly somebody packed their bag:
+
+```
+> spy Notch inventory tnt
+   9 pack      shulker_box  holds:2 > tnt x16
 ```
 
 ### The raw save tree
@@ -129,7 +138,7 @@ read is current rather than as old as the last autosave (`save-before-nbt`).
 | Command | Purpose |
 |---|---|
 | `/spy list [world]` | everyone online: world, position, health, mode, ping |
-| `/spy find <item> [player]` | find an item in online inventories and ender chests |
+| `/spy find <item> [player]` | find an item in online inventories and ender chests, containers included |
 | `/spy watch <player> [categories]` | follow what someone does, live, in the console |
 | `/spy unwatch <player\|all>` | stop following |
 | `/spy watching` | who is being followed, by whom |
@@ -221,9 +230,6 @@ watch:
   people who are online). Reading every save on disk for one query is not
   something a command should do on a whim — read one player at a time with
   `/spy <player> inventory`.
-- Offline **statistic names are vanilla's** (`mined.stone`), because they come
-  from `stats/<uuid>.json`. Online they are Bukkit's (`mine_block.stone`). Same
-  numbers, different spelling.
 - A player's IP is not in their save file, so `connection` is thinner offline.
 
 ---

@@ -2,6 +2,7 @@ package com.diamend.spyglass.inspect;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.bukkit.NamespacedKey;
@@ -10,6 +11,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
+import org.bukkit.inventory.meta.BundleMeta;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -28,6 +30,14 @@ import net.kyori.adventure.text.Component;
  * one dense line for a slot listing, or a full page for a single slot.
  */
 public final class ItemFormatter {
+
+    /**
+     * How far down to look. A shulker box cannot hold another shulker box in
+     * vanilla, but a bundle can hold one, and a creative-mode or plugin item
+     * can nest deeper than either — so allow a few levels and stop, rather than
+     * trusting the data not to loop.
+     */
+    private static final int MAX_NESTING = 4;
 
     private ItemFormatter() {
     }
@@ -83,6 +93,48 @@ public final class ItemFormatter {
             }
         });
         return out.toString();
+    }
+
+    /**
+     * Looks for {@code wanted} in this stack <em>and in everything it holds</em>,
+     * which is the difference between "no diamonds on this server" and "no
+     * diamonds outside the shulker box in slot 13".
+     *
+     * @param wanted lower-case text to look for
+     * @return null when nothing matches; an empty string when the stack itself
+     *         matches; otherwise the trail down to the stack that did, e.g.
+     *         {@code " > diamond x12"}
+     */
+    public static String matchTrail(ItemStack item, String wanted) {
+        return matchTrail(item, wanted, 0);
+    }
+
+    private static String matchTrail(ItemStack item, String wanted, int depth) {
+        if (isEmpty(item)) {
+            return null;
+        }
+        if (line(item).toLowerCase(Locale.ROOT).contains(wanted)) {
+            return "";
+        }
+        if (depth >= MAX_NESTING) {
+            return null;
+        }
+        for (ItemStack inside : contents(item)) {
+            String deeper = matchTrail(inside, wanted, depth + 1);
+            if (deeper != null) {
+                return " > " + line(inside) + deeper;
+            }
+        }
+        return null;
+    }
+
+    /** What this stack holds — a shulker box's items, a bundle's items. */
+    public static List<ItemStack> contents(ItemStack item) {
+        if (isEmpty(item)) {
+            return List.of();
+        }
+        ItemMeta meta = Safe.call(item::getItemMeta, null);
+        return meta == null ? List.of() : Safe.call(() -> containerContents(meta), List.<ItemStack>of());
     }
 
     /** Everything known about one item, as its own little report. */
@@ -214,7 +266,7 @@ public final class ItemFormatter {
         return String.join(", ", parts);
     }
 
-    /** What is inside a shulker box (or other container item), if anything. */
+    /** What is inside a shulker box, a bundle, or another container item. */
     private static List<ItemStack> containerContents(ItemMeta meta) {
         List<ItemStack> out = new ArrayList<>();
         if (meta instanceof BlockStateMeta blockState && blockState.hasBlockState()
@@ -225,6 +277,16 @@ public final class ItemFormatter {
                 }
             }
         }
+        // Bundles keep their items on the meta rather than in a block state.
+        Safe.run(() -> {
+            if (meta instanceof BundleMeta bundle) {
+                for (ItemStack inside : bundle.getItems()) {
+                    if (!isEmpty(inside)) {
+                        out.add(inside);
+                    }
+                }
+            }
+        });
         return out;
     }
 
