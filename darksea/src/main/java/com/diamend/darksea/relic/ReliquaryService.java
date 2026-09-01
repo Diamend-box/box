@@ -40,6 +40,7 @@ public final class ReliquaryService implements Listener {
     private static final MiniMessage MM = MiniMessage.miniMessage();
     private static final int MENU_SIZE = 54;
     private static final int SLOT_ROW = 0;          // slots 0-8: the bag's equip slots
+    private static final int INFO_SLOT = 11;
     private static final int UPGRADE_SLOT = 13;
     private static final int DEPOSIT_SLOT = 15;
     private static final int COLLECTION_START = 18; // slots 18+: everything owned
@@ -144,6 +145,7 @@ public final class ReliquaryService implements Listener {
         for (int i = 9; i < 18; i++) {
             inv.setItem(i, pane(Material.GRAY_STAINED_GLASS_PANE, "<dark_gray></dark_gray>", List.of()));
         }
+        inv.setItem(INFO_SLOT, infoTile());
         inv.setItem(UPGRADE_SLOT, upgradeTile(player, settings, slots));
         inv.setItem(DEPOSIT_SLOT, depositTile());
 
@@ -193,6 +195,20 @@ public final class ReliquaryService implements Listener {
                 : "<red>Not enough — " + (cost.amount() - have) + " short.</red>");
         lore.add("<dark_gray>Crystals come from the caves.</dark_gray>");
         return tile(Material.AMETHYST_CLUSTER, "<gold>Deepen the Reliquary</gold>", lore);
+    }
+
+    /**
+     * The note that answers the first question anyone opening this asks: does
+     * putting a relic in here cost me anything? It does not, and saying so on
+     * a piece of paper is cheaper than a player never using the bag because
+     * they assumed storage meant switched off.
+     */
+    private ItemStack infoTile() {
+        return tile(Material.PAPER, "<white>How the Reliquary works</white>",
+                List.of("<gray>Relics in the slots above give the</gray>",
+                        "<gray>same bonus as carrying them did.</gray>",
+                        "<dark_gray>They only work from in here now.</dark_gray>",
+                        "<dark_gray>Click one below to put it in a slot.</dark_gray>"));
     }
 
     private ItemStack depositTile() {
