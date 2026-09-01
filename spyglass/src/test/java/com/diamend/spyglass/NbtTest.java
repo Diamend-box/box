@@ -86,7 +86,7 @@ class NbtTest {
 
         assertEquals(4189, root.integer("DataVersion", 0));
         assertEquals(17.5f, root.floatValue("Health", 0f), 1e-7);
-        assertEquals(5, root.list("Inventory").size());
+        assertEquals(6, root.list("Inventory").size());
         assertEquals("minecraft:overworld", root.string("Dimension", ""));
         assertEquals(120.5D, root.list("Pos").doubleAt(0, 0), 1e-9);
     }
