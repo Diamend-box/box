@@ -129,7 +129,7 @@ jobs:
           # written by a separate script, from Mojang's format, so the test
           # cannot pass just because the plugin agrees with itself.
           GHOST=11111111-2222-3333-4444-555555555555
-          python3 ../spyglass/tools/make-playerdata.py world "$GHOST"
+          python3 ../spyglass/tools/make-playerdata.py world "$GHOST" --name Absentee
           # The console is the audience for this plugin, so the console asks.
           echo "spy" >&3
           sleep 2
@@ -160,10 +160,26 @@ jobs:
           sleep 3
           echo "spy $GHOST item 0" >&3
           sleep 3
+          # The tnt is inside the shulker box, so a filter that only reads the
+          # top of each slot finds nothing here.
+          echo "spy $GHOST inventory tnt" >&3
+          sleep 3
           echo "spy $GHOST nbt abilities" >&3
           sleep 3
+          # Nothing is online, so this can only be answered off the disk — and
+          # the nether star is two containers down.
+          echo "spy find nether_star saves" >&3
+          sleep 4
           echo "spy dump $GHOST" >&3
           sleep 4
+          # Same player, different numbers: now there is something to diff.
+          python3 ../spyglass/tools/make-playerdata.py world "$GHOST" \
+            --health 8 --food 6 --beef 5
+          sleep 1
+          echo "spy dumps $GHOST" >&3
+          sleep 3
+          echo "spy diff $GHOST" >&3
+          sleep 5
           echo "spy reload" >&3
           sleep 3
           echo "stop" >&3
@@ -198,7 +214,17 @@ jobs:
           need "elytra"                       "the ender chest is read"
           need "17.5/20"                      "health comes out of the save file"
           need "flySpeed: 0.05f"              "/spy <uuid> nbt <path> walks the raw tree"
+          need "> tnt x16"                    "an item filter looks inside a shulker box"
+          # Read off the disk, for a player nobody has ever seen log in.
+          need "Searching saves"              "/spy find <item> saves ran"
+          need "> nether_star"                "the disk search went two containers down"
+          need "Absentee"                     "a UUID on disk is named from usercache.json"
           need "Wrote"                        "/spy dump wrote a report"
+          need "Dumps of"                     "/spy dumps listed what is on disk"
+          # What changed between the dump and the save as it is now.
+          need "diff ==="                     "/spy diff answered"
+          need "17.5/20  ->  "                "a changed field is reported as one change"
+          need "cooked_beef x5"               "a changed inventory line is reported"
           if ! ls run/plugins/Spyglass/dumps/*.txt >/dev/null 2>&1; then
             echo "::error::MISSING: the dump file itself"
             fail=1
@@ -206,6 +232,14 @@ jobs:
             echo "ok: the dump file is on disk"
             echo "--- dump head ---"
             head -n 40 run/plugins/Spyglass/dumps/*.txt || true
+          fi
+          if ! ls run/plugins/Spyglass/dumps/*.json >/dev/null 2>&1; then
+            echo "::error::MISSING: the json sidecar /spy diff reads"
+            fail=1
+          else
+            echo "ok: the json sidecar is on disk"
+            head -c 400 run/plugins/Spyglass/dumps/*.json | head -n 20 || true
+            echo
           fi
           if grep -nE "Error occurred while enabling Spyglass|Could not load .plugins.*Spyglass|NoClassDefFoundError|NoSuchMethodError|NoSuchFieldError|IncompatibleClassChangeError|Exception while enabling" "$LOG"; then
             echo "::error::linkage or enable error found in server log"
