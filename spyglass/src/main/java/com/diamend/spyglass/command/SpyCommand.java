@@ -128,7 +128,7 @@ public final class SpyCommand implements TabExecutor {
         String argument = rest.isEmpty() ? null : String.join(" ", rest);
         Query query = new Query(argument, canSeeSensitive(sender));
 
-        Targets.Target target = Targets.resolve(plugin.getServer(), name);
+        Targets.Target target = resolve(name);
         if (target == null) {
             error(sender, "No player called \"" + name + "\" is online, and none has ever played here.");
             return;
@@ -486,9 +486,25 @@ public final class SpyCommand implements TabExecutor {
         });
     }
 
-    /** Resolves a name, telling the sender when nobody answers to it. */
-    private Targets.Target resolveOrComplain(CommandSender sender, String name) {
+    /**
+     * Works out who a name or UUID means.
+     *
+     * <p>Falls back to the server's own {@code usercache.json} when Bukkit will
+     * not enumerate them, so a name tab completion offered is a name the command
+     * accepts — the two read the same list.
+     */
+    private Targets.Target resolve(String name) {
         Targets.Target target = Targets.resolve(plugin.getServer(), name);
+        if (target != null) {
+            return target;
+        }
+        UUID cached = plugin.names().uuid(name);
+        return cached == null ? null : Targets.resolve(plugin.getServer(), cached.toString());
+    }
+
+    /** The same, telling the sender when nobody answers to it. */
+    private Targets.Target resolveOrComplain(CommandSender sender, String name) {
+        Targets.Target target = resolve(name);
         if (target == null) {
             error(sender, "No player called \"" + name + "\" is online, and none has ever played here.");
         }
@@ -508,7 +524,7 @@ public final class SpyCommand implements TabExecutor {
             error(sender, "Usage: /spy watch <player> [" + String.join("|", WatchCategory.names()) + "]");
             return;
         }
-        Targets.Target target = Targets.resolve(plugin.getServer(), args[1]);
+        Targets.Target target = resolve(args[1]);
         String name = target == null ? args[1] : target.name();
         if (target != null && !allowedToInspect(sender, target)) {
             return;
@@ -539,7 +555,7 @@ public final class SpyCommand implements TabExecutor {
                     : "Stopped " + stopped + " watch(es).");
             return;
         }
-        Targets.Target target = Targets.resolve(plugin.getServer(), args[1]);
+        Targets.Target target = resolve(args[1]);
         String name = target == null ? args[1] : target.name();
         boolean stopped = plugin.watches().remove(sender, target == null ? null : target.uuid(), name);
         info(sender, stopped ? "No longer watching " + name + "." : "You weren't watching " + name + ".");
@@ -715,12 +731,16 @@ public final class SpyCommand implements TabExecutor {
             out.addAll(WatchCategory.names());
             return prefixed(out, args[args.length - 1]);
         }
-        if (verb.equals("diff") && args.length == 3) {
+        if (verb.equals("diff")) {
+            // "all" is worth offering at either position; the dump to compare
+            // against only makes sense in the first.
             out.add("all");
-            for (File file : plugin.dumps().list(args[1])) {
-                out.add(file.getName());
+            if (args.length == 3) {
+                for (File file : plugin.dumps().list(args[1])) {
+                    out.add(file.getName());
+                }
             }
-            return prefixed(out, args[2]);
+            return prefixed(out, args[args.length - 1]);
         }
         if (args.length == 3 && Section.byName(args[1]) == Section.NBT) {
             // Offer the top-level tags of a save we have already read? Keep it

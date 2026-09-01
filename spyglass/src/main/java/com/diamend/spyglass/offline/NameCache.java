@@ -43,6 +43,7 @@ public final class NameCache {
     private long stamp;
     private long size;
     private Map<UUID, String> byUuid = Map.of();
+    private Map<String, UUID> byName = Map.of();
     private List<String> names = List.of();
 
     public NameCache(PlayerFiles files) {
@@ -59,6 +60,11 @@ public final class NameCache {
         return uuid == null ? null : byUuid.get(uuid);
     }
 
+    /** The player id behind a name, ignoring case; null when it is not cached. */
+    public synchronized UUID uuid(String name) {
+        return name == null ? null : byName.get(name.trim().toLowerCase(Locale.ROOT));
+    }
+
     /** Every cached name, in the order the file lists them (most recent first). */
     public synchronized List<String> names() {
         return names;
@@ -69,6 +75,7 @@ public final class NameCache {
         stamp = 0;
         size = 0;
         byUuid = Map.of();
+        byName = Map.of();
         names = List.of();
     }
 
@@ -94,12 +101,14 @@ public final class NameCache {
             // A half-written cache is the server's business, not ours: keep
             // whatever we had and try again next time it changes.
             byUuid = Map.of();
+            byName = Map.of();
             names = List.of();
         }
     }
 
     private void read(File file) throws IOException {
         Map<UUID, String> uuids = new LinkedHashMap<>();
+        Map<String, UUID> lookup = new LinkedHashMap<>();
         List<String> found = new ArrayList<>();
         try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
             JsonElement root = JsonParser.parseReader(reader);
@@ -119,9 +128,13 @@ public final class NameCache {
                 if (uuids.put(uuid, name) == null) {
                     found.add(name);
                 }
+                // A name can be reused after a rename; the file lists the most
+                // recent entry first, so the first one to claim it wins.
+                lookup.putIfAbsent(name.toLowerCase(Locale.ROOT), uuid);
             }
         }
         byUuid = Map.copyOf(uuids);
+        byName = Map.copyOf(lookup);
         names = List.copyOf(found);
     }
 

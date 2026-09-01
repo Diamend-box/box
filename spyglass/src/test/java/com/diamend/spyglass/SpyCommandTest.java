@@ -67,26 +67,32 @@ class SpyCommandTest {
         return out.toString();
     }
 
-    private String run(PlayerMock sender, String commandLine) {
-        server.dispatchCommand(sender, commandLine);
-        settle();
-        return drain(sender);
-    }
-
     /**
-     * Runs the scheduler until the command has actually finished.
+     * Dispatches a command and collects everything it eventually says.
      *
      * <p>Anything that touches the disk hops to an async task and back to the
-     * main thread to be sent, and each hop needs the scheduler turned. One pass
-     * is not enough: it leaves the reply queued, and the next command then runs
-     * before the previous one's file has been written.
+     * main thread to be sent, so a reply is two scheduler turns away rather than
+     * none. The pause matters as much as the turns: the async task runs on a
+     * real pool thread, and asking whether the async work has finished the
+     * microsecond after submitting it answers "yes" before that thread has so
+     * much as started. Draining inside the loop then keeps a late reply as part
+     * of this command's output rather than the next one's.
      */
-    private void settle() {
-        for (int i = 0; i < 5; i++) {
+    private String run(PlayerMock sender, String commandLine) {
+        server.dispatchCommand(sender, commandLine);
+        StringBuilder out = new StringBuilder(drain(sender));
+        for (int i = 0; i < 20; i++) {
+            try {
+                Thread.sleep(5L);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                break;
+            }
             server.getScheduler().performTicks(2L);
             server.getScheduler().waitAsyncTasksFinished();
+            out.append(drain(sender));
         }
-        server.getScheduler().performTicks(2L);
+        return out.toString();
     }
 
     // ------------------------------------------------------------------
