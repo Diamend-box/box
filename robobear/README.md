@@ -10,9 +10,9 @@ upgrades between them, and payouts at milestone rounds.
 > server before trusting it in production — a timed mode changes how players use
 > the map, and the shipped numbers are a starting point, not gospel.
 
-> This is a separate project from *CustomAchievements*, *AntiCheat* and *BoxCore*
-> in the same repository: different module (`robobear/`), different package
-> (`com.diamend.robobear`), different purpose.
+> This is a separate project from *CustomAchievements*, *AntiCheat*, *BoxCore*
+> and *Spyglass* in the same repository: different module (`robobear/`),
+> different package (`com.diamend.robobear`), different purpose.
 
 📖 **Setting it up on a server? Read the [operator's guide](GUIDE.md).** This
 README explains why the plugin is shaped the way it is; the guide walks through
@@ -107,7 +107,7 @@ cd robobear
 mvn clean package
 ```
 
-The jar lands in `robobear/target/RoboBear-1.0.0.jar`. Drop it into `plugins/`
+The jar lands in `robobear/target/RoboBear-1.1.0.jar`. Drop it into `plugins/`
 and restart.
 
 ---

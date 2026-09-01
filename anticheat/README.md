@@ -10,9 +10,9 @@ reading ambient server data. This plugin fights them on the same layer.
 > human's design. Review it and test it on your own server before trusting it in
 > production — movement checks in particular reward tuning to your playstyle.
 
-> This is a completely separate project from *CustomAchievements*, *BoxCore* and
-> *RoboBear* in the same repository: different module (`anticheat/`), different
-> package (`com.diamend.anticheat`), different purpose.
+> This is a completely separate project from *CustomAchievements*, *BoxCore*,
+> *RoboBear* and *Spyglass* in the same repository: different module
+> (`anticheat/`), different package (`com.diamend.anticheat`), different purpose.
 
 ---
 
