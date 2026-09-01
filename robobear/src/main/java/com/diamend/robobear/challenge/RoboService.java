@@ -4,20 +4,16 @@ import com.diamend.robobear.RoboBearPlugin;
 import com.diamend.robobear.data.PlayerData;
 import com.diamend.robobear.gui.ObjectiveChoiceMenu;
 import com.diamend.robobear.gui.UpgradeShopMenu;
-import com.diamend.robobear.util.Items;
 import com.diamend.robobear.util.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 
 import java.util.HashMap;
@@ -42,12 +38,33 @@ public class RoboService {
 
     private final RoboBearPlugin plugin;
     private final ObjectiveGenerator generator;
+    private final EntryPass pass;
+    private final UpgradeToggles upgrades;
+    private final ObjectiveToggles objectives;
     private final Map<UUID, RoboRun> runs = new HashMap<>();
     private final Map<UUID, BossBar> bars = new HashMap<>();
 
     public RoboService(RoboBearPlugin plugin) {
         this.plugin = plugin;
+        this.objectives = new ObjectiveToggles(plugin);
         this.generator = new ObjectiveGenerator(plugin);
+        this.pass = new EntryPass(plugin);
+        this.upgrades = new UpgradeToggles(plugin);
+    }
+
+    /** Which objective types may be offered, edited from {@code /rb quests}. */
+    public ObjectiveToggles objectives() {
+        return objectives;
+    }
+
+    /** The entry pass, for the menu, {@code /rb pass} and the start check. */
+    public EntryPass pass() {
+        return pass;
+    }
+
+    /** Which upgrades are on sale, edited from {@code /rb upgrades}. */
+    public UpgradeToggles upgrades() {
+        return upgrades;
     }
 
     public RoboRun runOf(Player player) {
@@ -76,8 +93,11 @@ public class RoboService {
             plugin.messages().send(player, "already-running");
             return false;
         }
-        if (plugin.mines().size() == 0
-                && !plugin.getConfig().getBoolean("objectives.kill-mobs.enabled", true)) {
+        // Not "are there mines" — are there any objectives at all? Types can be
+        // switched off from /rb quests, and a mine with nothing worth asking for
+        // is no better than no mine. Taking entry for a run that can't offer a
+        // job is the one failure mode that costs the player something real.
+        if (generator.allowedTypes().isEmpty()) {
             plugin.messages().send(player, "nothing-to-do");
             return false;
         }
@@ -92,8 +112,15 @@ public class RoboService {
 
         // Taken last, once entry is otherwise certain, so a refused start never
         // eats the pass.
-        if (!takeEntryItem(player)) {
-            plugin.messages().send(player, "no-pass", "pass", entryItemLabel());
+        if (!pass.take(player)) {
+            plugin.messages().send(player, "no-pass", "pass", pass.label());
+            // A renamed lookalike is the likeliest reason someone is holding
+            // what they believe is a pass and being turned away, so say so
+            // rather than leaving them to conclude the plugin is broken.
+            if (pass.carriesForgery(player)) {
+                player.sendMessage(Text.parse("<gray>That one wasn't issued by RoboBear — "
+                        + "a renamed item doesn't count."));
+            }
             return false;
         }
 
@@ -146,6 +173,7 @@ public class RoboService {
         run.begin(chosen, seconds, now);
 
         applyUpgradeEffects(player, run);
+        plugin.mobs().beginRound(player, run);
         plugin.messages().send(player, "round-begin",
                 "round", run.round(),
                 "objective", chosen.describe(plugin.mines()),
@@ -271,6 +299,8 @@ public class RoboService {
         int completed = run.round();
         run.finishRound();
         clearDisplay(player);
+        // The clock stops between rounds, and so does everything chasing you.
+        plugin.mobs().endRound(player.getUniqueId());
 
         plugin.messages().send(player, "round-done",
                 "round", completed,
@@ -343,6 +373,12 @@ public class RoboService {
     public boolean buy(Player player, Upgrade upgrade) {
         RoboRun run = runs.get(player.getUniqueId());
         if (run == null) {
+            return false;
+        }
+        // Checked here and not only in the menu: a shop screen left open while
+        // an admin takes something off sale would otherwise still sell it.
+        if (!upgrades.isEnabled(upgrade)) {
+            play(player, Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f);
             return false;
         }
         if (run.levelOf(upgrade) >= upgrade.maxLevel()) {
@@ -427,6 +463,7 @@ public class RoboService {
         runs.remove(run.player());
         clearDisplay(player);
         clearUpgradeEffects(player, run);
+        plugin.mobs().endRound(run.player());
 
         long now = System.currentTimeMillis();
         PlayerData data = plugin.data().get(player);
@@ -448,6 +485,7 @@ public class RoboService {
     public void abandon(UUID uuid) {
         RoboRun run = runs.remove(uuid);
         BossBar bar = bars.remove(uuid);
+        plugin.mobs().endRound(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
             if (bar != null) {
@@ -518,99 +556,11 @@ public class RoboService {
 
     /** The configured pass, or null when entry is free. */
     public ItemStack entryItemPrototype() {
-        Material material = Items.material(
-                plugin.getConfig().getString("run.entry-item.item", ""), null);
-        if (material == null) {
-            return null;
-        }
-        ItemStack item = new ItemStack(material,
-                Math.max(1, plugin.getConfig().getInt("run.entry-item.amount", 1)));
-        String name = plugin.getConfig().getString("run.entry-item.name", "");
-        if (name != null && !name.isBlank()) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.displayName(Text.item(name));
-                item.setItemMeta(meta);
-            }
-        }
-        return item;
+        return pass.prototype();
     }
 
     public String entryItemLabel() {
-        ItemStack prototype = entryItemPrototype();
-        if (prototype == null) {
-            return "nothing";
-        }
-        return prototype.getAmount() + "× " + Items.describe(prototype);
-    }
-
-    /**
-     * Takes the entry pass from the player's inventory.
-     *
-     * <p>Taken only once entry is otherwise certain, so a refused start never
-     * eats the pass — the same rule BoxCore applies to its respec token.
-     */
-    private boolean takeEntryItem(Player player) {
-        ItemStack prototype = entryItemPrototype();
-        if (prototype == null) {
-            return true; // entry is free
-        }
-        int needed = prototype.getAmount();
-        String wantedName = plugin.getConfig().getString("run.entry-item.name", "");
-        boolean matchName = wantedName != null && !wantedName.isBlank();
-        String wantedPlain = matchName ? Text.plain(wantedName) : "";
-
-        // Read and write through getItem/setItem rather than mutating the array
-        // getContents() hands back — those stacks are copies on some server
-        // implementations, and a pass that silently isn't consumed is a free run.
-        PlayerInventory inventory = player.getInventory();
-        int size = inventory.getSize();
-
-        int found = 0;
-        for (int slot = 0; slot < size; slot++) {
-            ItemStack item = inventory.getItem(slot);
-            if (matches(item, prototype.getType(), matchName, wantedPlain)) {
-                found += item.getAmount();
-            }
-        }
-        if (found < needed) {
-            return false;
-        }
-        if (!plugin.getConfig().getBoolean("run.entry-item.consume", true)) {
-            return true;
-        }
-
-        int remaining = needed;
-        for (int slot = 0; slot < size && remaining > 0; slot++) {
-            ItemStack item = inventory.getItem(slot);
-            if (!matches(item, prototype.getType(), matchName, wantedPlain)) {
-                continue;
-            }
-            int take = Math.min(remaining, item.getAmount());
-            remaining -= take;
-            if (item.getAmount() - take <= 0) {
-                inventory.setItem(slot, null);
-            } else {
-                ItemStack reduced = item.clone();
-                reduced.setAmount(item.getAmount() - take);
-                inventory.setItem(slot, reduced);
-            }
-        }
-        return true;
-    }
-
-    private boolean matches(ItemStack item, Material type, boolean matchName, String wantedPlain) {
-        if (item == null || item.getType() != type) {
-            return false;
-        }
-        if (!matchName) {
-            return true;
-        }
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasDisplayName()) {
-            return false;
-        }
-        return Text.plain(Text.serialize(meta.displayName())).equalsIgnoreCase(wantedPlain);
+        return pass.label();
     }
 
     // ------------------------------------------------------------------
@@ -675,6 +625,40 @@ public class RoboService {
     private String displayMode() {
         return plugin.getConfig().getString("display.mode", "actionbar")
                 .toLowerCase(Locale.ROOT).trim();
+    }
+
+    /**
+     * Re-sends the action bar for every live run, without doing any clock work.
+     *
+     * <p><b>Why this exists.</b> The action bar is one line that every plugin on
+     * the server shares, and there is no priority to claim: whoever wrote it last
+     * is what the player sees. A once-a-second clock therefore loses to anything
+     * that writes on its own schedule — a combat tag, an autosell total — and the
+     * run timer disappears for most of a second at a time.
+     *
+     * <p>So RoboBear rewrites it several times a second, and (when Paper offers
+     * the hook) at the very end of the tick, after other plugins have had their
+     * turn. It is a race that can't be won outright, only won often enough that
+     * nobody notices it was a race.
+     *
+     * <p>Cheap by construction: no-op when nothing is running, and it never
+     * touches the bossbar path, which has no such contention.
+     */
+    public void refreshActionBars() {
+        if (runs.isEmpty() || !displayMode().equals("actionbar")) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Map.Entry<UUID, RoboRun> entry : runs.entrySet()) {
+            RoboRun run = entry.getValue();
+            if (run.state() != RoboRun.State.RUNNING) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player != null && player.isOnline()) {
+                updateDisplay(player, run, now);
+            }
+        }
     }
 
     private void updateDisplay(Player player, RoboRun run, long now) {

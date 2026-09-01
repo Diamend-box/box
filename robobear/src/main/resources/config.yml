@@ -39,6 +39,20 @@ mines:
   # time you set this up; noisy afterwards.
   log-on-startup: true
 
+  # How many blocks to read when working out what a mine is made of.
+  #
+  # Asking the mine plugin is tried first, but not every one will say — and
+  # when nothing answers, the only alternative to reading the blocks is
+  # guessing, which is how a quartz mine came to be asked for iron ore.
+  # The survey also sizes each mine's stock, which is what stops an
+  # objective asking for more than the mine holds.
+  #
+  # The stride widens for bigger mines so the cost is about this many reads
+  # whatever the size, and chunks that aren't already loaded are skipped
+  # rather than pulled in. Runs on the same slow timer as refresh-seconds.
+  # Set to 0 to switch surveying off.
+  sample-blocks: 2048
+
 # ---------------------------------------------------------------------
 # The run
 # ---------------------------------------------------------------------
@@ -48,10 +62,23 @@ run:
   entry-item:
     item: NAME_TAG
     amount: 1
-    # Optional: only items with exactly this display name count, so a
-    # plain name tag can't be used as a pass. Blank accepts any of the
-    # type. Supports colour codes.
+    # The pass's display name. Cosmetic when require-tag is on.
+    # Supports colour codes.
     name: "&6Robo Pass"
+    lore:
+      - "&7One entry to the Robo Bear Challenge."
+      - "&8/rb start"
+    # Only passes issued by RoboBear count.
+    #
+    # Leave this ON. With it off, a pass is recognised by its name — and
+    # anyone with an anvil and a name tag can make one, which on a PvP
+    # server is the entry gate gone. With it on, passes carry a hidden
+    # tag that only /rb pass give can apply. Renaming an issued pass
+    # keeps it valid; renaming anything else never makes one.
+    #
+    # Turn it off only to keep passes you handed out before upgrading
+    # working, and turn it back on once they're spent.
+    require-tag: true
     # Whether the pass is consumed. False makes it a key rather than a
     # ticket. It is only ever taken once the run is certain to start.
     consume: true
@@ -117,7 +144,11 @@ objectives:
     growth: 1.28
 
   # "Break N × <material> in <mine>" — one specific material.
-  # Leave 'materials' empty to switch this type off.
+  #
+  # This list is what's worth being sent after, server-wide. It is then
+  # narrowed per mine to what that mine actually contains, so a quartz mine
+  # is never asked for gold. Leave it empty to switch this type off.
+  # Correct an individual mine from /rb quests.
   mine-material:
     enabled: true
     base-amount: 40
@@ -139,11 +170,152 @@ objectives:
       - DEEPSLATE_EMERALD_ORE
 
   # "Kill N hostile mobs" — Bee Swarm's Mechsquitos, more or less.
-  # Turn this off on a server where the box has no mobs in it.
+  # Any hostile mob counts, including the ones the challenge sends after you
+  # (see the 'mobs' section). Turn this off on a server where the box has no
+  # mobs in it and you don't want challenge mobs either.
   kill-mobs:
     enabled: true
     base-amount: 10
     growth: 1.22
+
+  # -------------------------------------------------------------------
+  # Keeping objectives winnable
+  # -------------------------------------------------------------------
+  # The curves above know the round number and nothing else, so left alone
+  # they will ask for 250 blocks from a mine that holds two stacks. On a
+  # ladder that isn't a hard round, it's a round that ends the run.
+  #
+  # RoboBear surveys each mine (see mines.sample-blocks) and trims what it
+  # asks for to what's actually in there. A mine too thin to support a job
+  # is passed over rather than set an impossible one.
+  limits:
+    # How many times a mine refills during one round. Roughly
+    # run.round-seconds divided by your mine's reset interval — with the
+    # default five-minute round and a five-minute reset, that's 1.
+    mine-resets-per-round: 1.0
+
+    # The share of a mine's stock one job may ask for. Nobody strips a mine
+    # bare while racing a clock, so asking for all of it is a coin flip.
+    mine-fraction: 0.6
+
+    # Never build a job smaller than this. A mine that can't manage even
+    # this much is skipped instead.
+    minimum-amount: 10
+
+    # The share of the challenge's own mob supply a kill job may ask for.
+    # Kill objectives are sized against what the challenge can guarantee to
+    # send, since a mine world may have no natural spawns at all.
+    mob-fraction: 0.6
+
+# ---------------------------------------------------------------------
+# The mobs the challenge sends after you
+# ---------------------------------------------------------------------
+# Only the player whose round it is can see them, and they only ever go
+# for that player. Everyone else has them hidden outright — a bystander
+# in the same mine sees nothing and cannot be touched by them.
+#
+# What can't be hidden: sound and particles are positional and are not
+# tied to the entity, so a bystander will hear a fight and see somebody
+# taking damage from nothing. That's a limit of the approach.
+#
+# They exist only while a round's clock is running, and are cleared when
+# it stops — the shop between rounds is a breather. Dying to one ends the
+# run exactly like any other death (see run.fail-on-death).
+mobs:
+  enabled: true
+
+  # Nameplates float above them. Off makes a busy wave less noisy.
+  show-names: true
+
+  # Whether they drop loot and experience. Off by default: a hazard that
+  # follows you around and drops things is a mob farm with extra steps.
+  drops: false
+
+  # How many are alive at once: base + per-round × (round - 1), capped.
+  population:
+    base: 2
+    per-round: 0.5
+    max: 8
+    # Extra on top when the round's job is to kill them.
+    kill-round-bonus: 2
+
+  # How long between reinforcements, in seconds. Shrinks as rounds climb,
+  # and halves again on a kill round.
+  reinforce:
+    base-seconds: 10
+    per-round: 0.5
+    minimum-seconds: 3
+
+  # They spawn out of sight and walk in, rather than appearing in
+  # your face the moment the clock starts.
+  arrival:
+    delay-seconds: 3
+    min-distance: 8
+    max-distance: 16
+
+  follow:
+    # Beyond this many blocks — or in another world — a mob is moved back
+    # to its owner. Mob AI won't path across a mine, let alone follow
+    # someone who ran for it.
+    teleport-distance: 24
+    # How often the wave is checked, in ticks.
+    check-ticks: 20
+
+  # The roster. Difficulty comes from sending *different* things, not the
+  # same husk with more hearts, so each entry has the round it unlocks on
+  # and a weight for how often it turns up after that.
+  #
+  #   type        any vanilla entity name
+  #   min-round   first round it can appear on
+  #   weight      relative chance against everything else unlocked; 0 never
+  #   elite       one at a time, and only on a milestone round
+  #   bonus-health  extra health on top of the vanilla amount
+  #   held-item   put in its main hand; it will never drop
+  #
+  # Creepers and endermen are left out on purpose — one blows holes in
+  # your mine and the other walks off with it. If you add them anyway,
+  # RoboBear refuses their block damage, but they'll still be a nuisance.
+  roster:
+    swarf-mite:
+      type: SILVERFISH
+      name: "&7Swarf Mite"
+      min-round: 1
+      weight: 3
+    sledge-unit:
+      type: HUSK
+      name: "&6Sledge Unit"
+      min-round: 1
+      weight: 3
+      held-item: STONE_SHOVEL
+    bolt-slinger:
+      type: SKELETON
+      name: "&fBolt Slinger"
+      min-round: 3
+      weight: 2
+      held-item: BOW
+    coolant-leak:
+      type: CAVE_SPIDER
+      name: "&2Coolant Leak"
+      min-round: 4
+      weight: 2
+    scrap-drone:
+      type: VEX
+      name: "&bScrap Drone"
+      min-round: 6
+      weight: 1
+    pressure-valve:
+      type: BREEZE
+      name: "&dPressure Valve"
+      min-round: 6
+      weight: 1
+    foreman:
+      type: PIGLIN_BRUTE
+      name: "&c&lThe Foreman"
+      min-round: 1
+      weight: 0
+      elite: true
+      bonus-health: 20
+      held-item: GOLDEN_AXE
 
 # ---------------------------------------------------------------------
 # The workshop
@@ -189,6 +361,22 @@ display:
   # Seconds left at which the clock turns red and a countdown ping plays.
   warn-seconds: 10
 
+  # How often the action bar is rewritten, in ticks. 20 is once a second.
+  #
+  # The action bar is one line the whole server shares and no plugin owns:
+  # whoever writes it last in a tick is what the player sees. A combat tag
+  # or an autosell total will therefore cover the run clock unless RoboBear
+  # writes again. On Paper this write happens at the very end of the tick,
+  # after other plugins have had their turn, so it usually wins outright.
+  #
+  #   4  - five times a second. Sensible default.
+  #   1  - every tick. Wins against anything, at one packet per tick per
+  #        player in a run.
+  #   0  - off. Once a second from the main clock, as it was before.
+  #
+  # Ignored unless mode is actionbar; the bossbar isn't contended.
+  actionbar-refresh-ticks: 4
+
 # ---------------------------------------------------------------------
 # Payouts
 # ---------------------------------------------------------------------
@@ -232,9 +420,11 @@ messages:
   not-enough-cogs: "<red>That costs <white><cost></white> cogs and you have <white><cogs></white>."
   no-rerolls: "<red>You've used your rerolls for this run."
   no-pass: "<red>You need <white><pass></white> to start a run."
+  pass-received: "<green>You were given <white><pass></white> — <gray>/rb start<green> when you're ready."
   cooldown: "<red>You can go again in <white><time></white>."
   no-permission: "<red>You don't have permission to do that."
   already-running: "<red>You're already in a run. <gray>/rb cancel <red>to drop it."
   not-running: "<red>You aren't in a run."
   nothing-to-do: "<red>Nothing is set up for a run yet. Tell an admin."
   mine-missing: "<red>That job points at a mine that doesn't exist any more."
+  mobs-incoming: "<dark_red>Something's coming."

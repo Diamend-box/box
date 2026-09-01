@@ -41,9 +41,24 @@ public class Messages {
         prefix = defaults.getOrDefault("prefix", "");
     }
 
-    /** The raw configured string for a key, or the key itself if unset. */
+    /**
+     * Text for keys added after a server's config.yml was written.
+     *
+     * <p>{@code saveDefaultConfig()} never rewrites a config that already
+     * exists, so any message introduced in a later version is simply absent on
+     * every server that upgraded rather than installed fresh. Without a fallback
+     * here those players would be sent the key itself.
+     */
+    private static final Map<String, String> BUILT_IN = Map.of(
+            "pass-received",
+            "<green>You were given <white><pass></white> — <gray>/rb start<green> when you're ready.",
+            "mobs-incoming",
+            "<dark_red>Something's coming.");
+
+    /** The raw configured string for a key, its built-in text, or the key itself. */
     public String raw(String key) {
-        return defaults.getOrDefault(key, key);
+        String configured = defaults.get(key);
+        return configured != null ? configured : BUILT_IN.getOrDefault(key, key);
     }
 
     /** Builds a message, substituting {@code <name>}-style placeholders. */

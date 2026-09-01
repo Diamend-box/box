@@ -90,7 +90,7 @@ public class StartMenu extends AbstractMenu {
         lore.add("<gray>Each round: <white>"
                 + Text.duration(plugin.getConfig().getInt("run.round-seconds", 300)) + "<gray>.");
         lore.add("");
-        if (plugin.mines().size() == 0
+        if (plugin.mines().enabledSize() == 0
                 && !plugin.getConfig().getBoolean("objectives.kill-mobs.enabled", true)) {
             lore.add("<red>Nothing is set up to do yet.");
         } else {

@@ -1,12 +1,19 @@
 package com.diamend.robobear.command;
 
 import com.diamend.robobear.RoboBearPlugin;
+import com.diamend.robobear.challenge.EntryPass;
 import com.diamend.robobear.challenge.RoboRun;
 import com.diamend.robobear.data.PlayerData;
 import com.diamend.robobear.gui.MilestoneEditorMenu;
+import com.diamend.robobear.gui.MineToggleMenu;
+import com.diamend.robobear.gui.QuestEditorMenu;
 import com.diamend.robobear.gui.StartMenu;
+import com.diamend.robobear.gui.UpgradeEditorMenu;
 import com.diamend.robobear.mine.MineRegion;
+import com.diamend.robobear.mob.MobArchetype;
+import com.diamend.robobear.util.Items;
 import com.diamend.robobear.util.Text;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -62,7 +69,11 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             case "retire", "stop" -> retire(sender);
             case "cancel", "quit" -> cancel(sender);
             case "stats" -> stats(sender, args);
-            case "mines" -> listMines(sender);
+            case "mines" -> listMines(sender, args);
+            case "pass" -> pass(sender, args);
+            case "upgrades", "workshop" -> upgrades(sender);
+            case "quests", "objectives" -> quests(sender);
+            case "mobs" -> mobs(sender, args);
             case "milestones", "edit", "admin" -> milestones(sender);
             case "pos1" -> setCorner(sender, 0);
             case "pos2" -> setCorner(sender, 1);
@@ -177,21 +188,217 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean listMines(CommandSender sender) {
+    /** Opens the picker for which workshop upgrades are on sale. */
+    private boolean upgrades(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.parse("<red>Only a player can open the editor."));
+            return true;
+        }
+        if (!player.hasPermission("robobear.admin")) {
+            plugin.messages().send(player, "no-permission");
+            return true;
+        }
+        new UpgradeEditorMenu(plugin).open(player);
+        return true;
+    }
+
+    /** Opens the quest editor: which job types are offered, and for what. */
+    private boolean quests(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.parse("<red>Only a player can open the editor."));
+            return true;
+        }
+        if (!player.hasPermission("robobear.admin")) {
+            plugin.messages().send(player, "no-permission");
+            return true;
+        }
+        new QuestEditorMenu(plugin).open(player);
+        return true;
+    }
+
+    /**
+     * What the challenge is currently sending, and a way to clear it.
+     *
+     * <p>The clear exists because these mobs are invisible to everyone but their
+     * owner, which makes a leftover the single hardest thing on the server to
+     * diagnose by looking at it.
+     */
+    private boolean mobs(CommandSender sender, String[] args) {
         if (!sender.hasPermission("robobear.admin")) {
             plugin.messages().send(sender, "no-permission");
             return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
+            int cleared = plugin.mobs().despawnAll() + plugin.mobs().sweepEverything();
+            sender.sendMessage(Text.parse("<yellow>Cleared <white>" + cleared
+                    + "</white> challenge mob(s)."));
+            return true;
+        }
+
+        if (!plugin.mobs().enabled()) {
+            sender.sendMessage(Text.parse("<gray>Challenge mobs are switched off"
+                    + (plugin.mobs().roster().isEmpty() ? " — the roster is empty." : ".")));
+            return true;
+        }
+        sender.sendMessage(Text.parse("<gold>Challenge mobs <gray>— <white>"
+                + plugin.mobs().liveCount() + "</white> alive right now."));
+        for (MobArchetype archetype : plugin.mobs().roster()) {
+            String when = archetype.elite()
+                    ? "<light_purple>milestone rounds"
+                    : archetype.weight() <= 0
+                            ? "<dark_gray>never (weight 0)"
+                            : "<gray>round " + archetype.minRound() + "+, weight "
+                                    + archetype.weight();
+            sender.sendMessage(Text.parse("<dark_gray> • " + archetype.name()
+                    + " <dark_gray>(" + archetype.type() + ") " + when));
+        }
+        sender.sendMessage(Text.parse("<dark_gray>/rb mobs clear <gray>removes any left over."));
+        return true;
+    }
+
+    private boolean listMines(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("robobear.admin")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("debug")) {
+            return debugMines(sender);
+        }
+        if (args.length > 1 && (args[1].equalsIgnoreCase("edit")
+                || args[1].equalsIgnoreCase("gui"))) {
+            return editMines(sender);
         }
         sender.sendMessage(Text.parse("<gold>Mines from <white>"
                 + plugin.mines().activeSource() + "<gold>:"));
         if (plugin.mines().size() == 0) {
             sender.sendMessage(Text.parse("<gray>  none"));
+            sender.sendMessage(Text.parse("<gray>Run <white>/rb mines debug<gray> to find out why."));
             return true;
         }
         for (MineRegion mine : plugin.mines().all()) {
-            sender.sendMessage(Text.parse("<dark_gray> • <yellow>" + mine.id()
+            boolean on = plugin.mines().toggles().isEnabled(mine.id());
+            sender.sendMessage(Text.parse("<dark_gray> • "
+                    + (on ? "<yellow>" : "<dark_gray>") + mine.id()
                     + " <gray>" + mine.boundsDescription()
-                    + " <dark_gray>(" + Text.number(mine.volume()) + " blocks)"));
+                    + " <dark_gray>(" + Text.number(mine.volume()) + " blocks)"
+                    + (on ? "" : " <red>[off]")));
+        }
+        int enabled = plugin.mines().enabledSize();
+        sender.sendMessage(Text.parse("<gray>In the objective pool: <white>" + enabled
+                + "<gray> of <white>" + plugin.mines().size()
+                + "<gray>. Change it with <white>/rb mines edit<gray>."));
+        if (enabled == 0) {
+            sender.sendMessage(Text.parse("<red>Every mine is switched off, so no mining "
+                    + "objectives can be rolled."));
+        }
+        return true;
+    }
+
+    /** Opens the picker for which mines objectives may be set in. */
+    private boolean editMines(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.parse("<red>Only a player can open the picker."));
+            return true;
+        }
+        new MineToggleMenu(plugin).open(player);
+        return true;
+    }
+
+    /**
+     * Explains, on demand, exactly what the MineResetLite reader can see.
+     *
+     * <p>The startup warning fires once and can be scrolled past or rotated out
+     * of the log before anyone goes looking. This can be asked for at any time,
+     * and its output is what's needed to add support for an unrecognised build.
+     */
+    private boolean debugMines(CommandSender sender) {
+        sender.sendMessage(Text.parse("<gold>RoboBear mine detection"));
+        sender.sendMessage(Text.parse("<gray>Configured source: <white>"
+                + plugin.getConfig().getString("mines.source", "auto")
+                + " <gray>— active: <white>" + plugin.mines().activeSource()));
+        sender.sendMessage(Text.parse("<gray>Manual regions defined: <white>"
+                + plugin.mines().manualProvider().mines().size()));
+        sender.sendMessage(Text.parse("<dark_gray>— MineResetLite —"));
+
+        for (String line : plugin.mines().mineResetLiteProvider().diagnose()) {
+            sender.sendMessage(Text.parse("<gray>" + Text.escape(line)));
+            plugin.getLogger().info("[mines debug] " + line);
+        }
+        sender.sendMessage(Text.parse("<dark_gray>The same report is in the server log."));
+        return true;
+    }
+
+    /**
+     * {@code /rb pass give [player] [amount]} — the only way a valid pass comes
+     * into existence.
+     *
+     * <p>Passes are stamped when issued and checked by that stamp, so there is
+     * no other route: a crafted or renamed lookalike is refused at entry. That
+     * makes this the mint, which is why it is admin-only and why the amount
+     * defaults to exactly one entry rather than a stack.
+     */
+    private boolean pass(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("robobear.admin")) {
+            plugin.messages().send(sender, "no-permission");
+            return true;
+        }
+        if (args.length < 2 || !args[1].equalsIgnoreCase("give")) {
+            sender.sendMessage(Text.parse("<red>Usage: /rb pass give [player] [amount]"));
+            return true;
+        }
+
+        EntryPass pass = plugin.service().pass();
+        if (pass.prototype() == null) {
+            sender.sendMessage(Text.parse("<red>Entry is free. <gray>Set "
+                    + "<white>run.entry-item.item<gray> in config.yml to have a pass at all."));
+            return true;
+        }
+
+        Player target;
+        if (args.length > 2) {
+            target = Bukkit.getPlayerExact(args[2]);
+            if (target == null) {
+                sender.sendMessage(Text.parse("<red>'" + args[2] + "' isn't online."));
+                return true;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            sender.sendMessage(Text.parse("<red>Name a player: /rb pass give <player> [amount]"));
+            return true;
+        }
+
+        int amount = pass.cost();
+        if (args.length > 3) {
+            try {
+                amount = Integer.parseInt(args[3].trim());
+            } catch (NumberFormatException ignored) {
+                sender.sendMessage(Text.parse("<red>'" + args[3] + "' isn't a number."));
+                return true;
+            }
+            if (amount < 1) {
+                sender.sendMessage(Text.parse("<red>Give at least one."));
+                return true;
+            }
+            if (amount > EntryPass.MAX_GIVE) {
+                sender.sendMessage(Text.parse("<red>At most " + EntryPass.MAX_GIVE
+                        + " at a time. <gray>That's already a full inventory of them."));
+                return true;
+            }
+        }
+
+        int stored = pass.give(target, amount);
+        int dropped = amount - stored;
+        sender.sendMessage(Text.parse("<green>Gave <white>" + amount + "× "
+                + Items.describe(pass.prototype()) + "<green> to <white>"
+                + target.getName() + "<green>."
+                + (dropped > 0 ? " <gray>(" + dropped + " on the floor — inventory was full.)" : "")));
+        if (!target.equals(sender)) {
+            plugin.messages().send(target, "pass-received", "pass", pass.label());
+        }
+        if (!pass.requireTag()) {
+            sender.sendMessage(Text.parse("<yellow>Note: <gray>run.entry-item.require-tag is "
+                    + "<white>false<gray>, so a renamed lookalike still works as a pass."));
         }
         return true;
     }
@@ -325,8 +532,8 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
             options.add("cancel");
             options.add("stats");
             if (sender.hasPermission("robobear.admin")) {
-                options.addAll(List.of("mines", "milestones", "pos1", "pos2", "mine",
-                        "reset", "reload"));
+                options.addAll(List.of("mines", "milestones", "upgrades", "quests", "mobs",
+                        "pass", "pos1", "pos2", "mine", "reset", "reload"));
             }
             return filter(options, args[0]);
         }
@@ -335,6 +542,21 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
                 case "mine" -> {
                     if (sender.hasPermission("robobear.admin")) {
                         options.addAll(List.of("set", "delete"));
+                    }
+                }
+                case "mines" -> {
+                    if (sender.hasPermission("robobear.admin")) {
+                        options.addAll(List.of("edit", "debug"));
+                    }
+                }
+                case "mobs" -> {
+                    if (sender.hasPermission("robobear.admin")) {
+                        options.add("clear");
+                    }
+                }
+                case "pass" -> {
+                    if (sender.hasPermission("robobear.admin")) {
+                        options.add("give");
                     }
                 }
                 case "stats", "reset" -> {
@@ -354,6 +576,22 @@ public class RoboBearCommand implements CommandExecutor, TabCompleter {
                 options.add(mine.id());
             }
             return filter(options, args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("pass")
+                && args[1].equalsIgnoreCase("give")
+                && sender.hasPermission("robobear.admin")) {
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                options.add(online.getName());
+            }
+            return filter(options, args[2]);
+        }
+        if (args.length == 4 && args[0].equalsIgnoreCase("pass")
+                && args[1].equalsIgnoreCase("give")
+                && sender.hasPermission("robobear.admin")) {
+            int cost = plugin.service().pass().cost();
+            options.addAll(List.of(String.valueOf(cost), String.valueOf(cost * 5),
+                    String.valueOf(cost * 10)));
+            return filter(options, args[3]);
         }
         return List.of();
     }

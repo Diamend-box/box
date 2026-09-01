@@ -45,13 +45,19 @@ public class UpgradeShopMenu extends AbstractMenu {
         set(SLOT_HEADER, header());
 
         int slot = UPGRADE_START;
-        for (Upgrade upgrade : Upgrade.values()) {
+        for (Upgrade upgrade : plugin.service().upgrades().enabled()) {
             if (slot >= UPGRADE_START + 7) {
                 break;
             }
             shown.add(upgrade);
             set(slot, icon(upgrade));
             slot++;
+        }
+        if (shown.isEmpty()) {
+            set(13, Items.text(Material.BARRIER, "<gray>Nothing on sale", List.of(
+                    "<gray>This server's workshop is closed.",
+                    "<gray>Cogs still count toward nothing —",
+                    "<gray>the ladder is the whole game here.")));
         }
 
         set(SLOT_RETIRE, Items.text(Material.OAK_DOOR, "<yellow>Retire", List.of(

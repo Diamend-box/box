@@ -14,6 +14,15 @@ name: Release RoboBear
 # robobear-v<that>, and a version that is already released is skipped rather
 # than rebuilt. The tag is scoped because a bare vX.Y.Z in this repository
 # already means CustomAchievements.
+#
+# The notes are assembled per version: an evergreen top and tail around this
+# version's section of robobear/CHANGELOG.md. No entry, no release — a version
+# worth cutting is worth a paragraph saying what is in it.
+#
+# A published page whose notes no longer match the changelog is rewritten in
+# place on the next run, so correcting the changelog is enough to correct the
+# release. That path only ever changes text; the jar and the tag stay as they
+# were shipped.
 
 on:
   push:
@@ -66,46 +75,58 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Target release: $TAG"
 
-      # Idempotence: pushing the branch again must not rebuild or overwrite a
-      # release that already exists. Bump the pom to cut a new one.
-      - name: Has this version already been released?
-        id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # What actually changed comes from robobear/CHANGELOG.md, so a release
+      # page describes its own version rather than repeating a feature list
+      # written for 1.0.0. Missing entry is a hard failure: a version worth
+      # cutting is a version worth a paragraph, and silently publishing stale
+      # notes is exactly the outcome this replaced.
+      #
+      # Built before the release is looked up, so a missing entry fails in
+      # seconds rather than after a full build.
+      - name: Read this version's changelog entry
         run: |
           set -euo pipefail
-          if gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::${{ steps.v.outputs.tag }} is already released — nothing to do."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+          VERSION="${{ steps.v.outputs.version }}"
+          awk -v want="$VERSION" '
+            /^## / {
+              # "## 1.1.0" or "## 1.1.0 — anything"
+              heading = $2
+              inside = (heading == want)
+              next
+            }
+            inside { print }
+          ' robobear/CHANGELOG.md > entry.md
+
+          # Trim leading and trailing blank lines.
+          sed -i -e '/./,$!d' entry.md
+          while [ -s entry.md ] && [ -z "$(tail -n1 entry.md)" ]; do
+            sed -i '$d' entry.md
+          done
+
+          if [ ! -s entry.md ]; then
+            echo "::error::robobear/CHANGELOG.md has no '## $VERSION' section. Add one before bumping the pom."
+            exit 1
           fi
-
-      # Tests run here on purpose: nothing gets a download link without passing
-      # them first.
-      - name: Build and test
-        if: steps.check.outputs.skip == 'false'
-        working-directory: robobear
-        run: mvn -B -ntp clean package
-
-      - name: Name the jar
-        id: jar
-        if: steps.check.outputs.skip == 'false'
-        run: |
-          set -euo pipefail
-          JAR=$(ls robobear/target/RoboBear-*.jar | grep -v -- '-sources\|-javadoc' | head -n1)
-          [ -n "$JAR" ] || { echo "::error::no jar was produced"; exit 1; }
-          echo "path=$JAR" >> "$GITHUB_OUTPUT"
-          ls -la "$JAR"
+          echo "--- changelog entry for $VERSION ---"; cat entry.md
 
       - name: Write the release notes
-        if: steps.check.outputs.skip == 'false'
         run: |
-          cat > notes.md <<'NOTES'
+          set -euo pipefail
+          cat > notes.md <<'HEAD'
           A Bee Swarm Simulator style **Robo Bear Challenge** built on the mines your
           server already has: a ladder of timed rounds, a choice of job at the top of
           each one, Cogs to spend on upgrades between them, and payouts you decide at
           milestone rounds.
+
+          ## What's new in __VERSION__
+
+          HEAD
+
+          cat entry.md >> notes.md
+
+          cat >> notes.md <<'TAIL'
+
+          ---
 
           ### Install
 
@@ -113,24 +134,34 @@ jobs:
           your mines, and `/rb milestones` to fill in what the ladder pays — **a run
           pays nothing until you do**, because the starter tiers ship empty on purpose.
 
+          Upgrading in place is safe: `config.yml` is never rewritten, so your settings
+          survive and anything new runs on built-in defaults until you opt in.
+
           Full setup, tuning and troubleshooting: **[the operator's guide](https://github.com/Diamend-box/box/blob/__TAG__/robobear/GUIDE.md)**.
+          Every version's changes: **[the changelog](https://github.com/Diamend-box/box/blob/__TAG__/robobear/CHANGELOG.md)**.
 
-          ### What's in it
+          ### What the plugin is
 
-          - **Runs on your mines.** Reads them from MineResetLite automatically, with
-            an in-game manual fallback (`/rb pos1`, `/rb pos2`, `/rb mine set <id>`)
-            for servers without it. The mining hot path never calls another plugin.
-          - **A real decision every round.** Two offers, spread across difficulty —
-            the greedy one pays more Cogs and is likelier to end the run.
+          - **Runs on your mines.** Reads them from MineResetLite automatically —
+            including obfuscated builds — with an in-game manual fallback (`/rb pos1`,
+            `/rb pos2`, `/rb mine set <id>`). The mining hot path never calls another
+            plugin. `/rb mines edit` picks which mines are fair game.
+          - **A real decision every round.** Two offers, never the same job twice,
+            spread across difficulty — the greedy one pays more and is likelier to end
+            the run. Nothing is ever asked for that the mine can't supply.
+          - **Something chasing you while you work.** Challenge mobs are visible and
+            dangerous only to the player whose round it is. Off by one setting.
           - **A workshop.** Six upgrades: drill speed, movement, damage, armour, extra
             time and extra Cogs. Costs climb per level, so nobody maxes one thing.
+            `/rb upgrades` chooses what's on sale.
           - **Payouts you set in game.** `/rb milestones` opens a chest — put real
             items in it and that's what a milestone pays. No reward number, no
             multiplier, no economy hook.
           - **Nothing carries out of a run.** Cogs are minted at entry, spent inside,
             and destroyed at the end. Not a second currency.
           - **PvP-aware defaults.** Payouts drop on the floor the way a kill does, the
-            bossbar is left alone, and dying or logging out ends the run.
+            bossbar is left alone, entry passes can't be forged with an anvil, and
+            dying or logging out ends the run.
           - ~20 PlaceholderAPI placeholders, per-player stats, async saves.
 
           ### Requirements
@@ -140,23 +171,92 @@ jobs:
 
           ### Verified
 
-          Compiles against paper-api 1.21.4, passes its unit and MockBukkit suites, and
-          boots clean on a headless Paper 1.21.4 in CI.
+          Every release compiles against paper-api 1.21.4, passes its unit and
+          MockBukkit suites, and boots clean on a headless Paper 1.21.4 in CI. The mine
+          reader is exercised separately against mine objects shaped like real builds,
+          including an obfuscated one.
 
-          **Not verified:** the MineResetLite integration has never been exercised
-          against the real plugin (it is reflective, and it logs the class it found if
-          it cannot read your build), and the balance numbers are unplaytested. Start
-          with `objectives.*.growth` — it decides how long a run lasts.
-          NOTES
-          # Point the docs link at the tagged commit, so it resolves whether or
+          **Worth knowing anyway:** that reader is reflective by necessity —
+          MineResetLite publishes no API and several forks share the name — so it is
+          not guaranteed against a build nobody has run it on yet. `/rb mines debug`
+          reports exactly what it can and cannot see, and `mines.source: manual` runs
+          without it. The balance numbers are unplaytested; start with
+          `objectives.*.growth`, which decides how long a run lasts.
+          TAIL
+
+          # Point the docs links at the tagged commit, so they resolve whether or
           # not this branch has reached the default branch yet.
           sed -i "s|__TAG__|${{ steps.v.outputs.tag }}|g" notes.md
+          sed -i "s|__VERSION__|${{ steps.v.outputs.version }}|g" notes.md
           echo "--- notes.md ---"; cat notes.md
+
+      # Idempotence: pushing the branch again must not rebuild or overwrite a
+      # release that already exists. Bump the pom to cut a new one.
+      #
+      # The exception is the notes themselves. Those are generated from a file
+      # in the repository, so the published page can fall behind a correction
+      # to the changelog — and a release page that contradicts the changelog is
+      # the failure this whole arrangement exists to prevent. When the text
+      # differs it is rewritten in place. The tag, the commit and the jar are
+      # never touched by that path.
+      - name: Has this version already been released?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.v.outputs.tag }}"
+
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "refresh=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > published.md
+
+          # GitHub hands the body back with CRLF line endings. Compare the text
+          # itself — not line endings, trailing spaces, or blank lines at either
+          # end — so the notes aren't rewritten over nothing on every push.
+          normalise() {
+            local text
+            text=$(tr -d '\r' < "$1" | sed -e 's/[[:space:]]*$//' -e '/./,$!d')
+            printf '%s\n' "$text"
+          }
+          normalise published.md > a.txt
+          normalise notes.md     > b.txt
+
+          if diff -q a.txt b.txt >/dev/null; then
+            echo "refresh=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$TAG is already released and its notes are current — nothing to do."
+          else
+            echo "refresh=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$TAG is already released but its notes are out of date — rewriting them."
+            diff a.txt b.txt || true
+          fi
+
+      # Tests run here on purpose: nothing gets a download link without passing
+      # them first.
+      - name: Build and test
+        if: steps.check.outputs.publish == 'true'
+        working-directory: robobear
+        run: mvn -B -ntp clean package
+
+      - name: Name the jar
+        id: jar
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          JAR=$(ls robobear/target/RoboBear-*.jar | grep -v -- '-sources\|-javadoc' | head -n1)
+          [ -n "$JAR" ] || { echo "::error::no jar was produced"; exit 1; }
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          ls -la "$JAR"
 
       # --target is what lets this create the tag: on a branch build the tag
       # does not exist yet, and gh cuts it at the commit that was just built.
       - name: Publish the release
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -167,3 +267,16 @@ jobs:
             --title "RoboBear ${{ steps.v.outputs.version }}" \
             --notes-file notes.md
           gh release view "${{ steps.v.outputs.tag }}" --repo "$GITHUB_REPOSITORY"
+
+      # Prose-only correction to a release that already shipped, so the page
+      # never contradicts the changelog it was generated from.
+      - name: Bring an existing release's notes up to date
+        if: steps.check.outputs.refresh == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release edit "${{ steps.v.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file notes.md
+          echo "::notice::Rewrote the notes on ${{ steps.v.outputs.tag }}."
