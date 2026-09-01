@@ -1,0 +1,41 @@
+name: Spyglass
+version: '${project.version}'
+main: com.diamend.spyglass.SpyglassPlugin
+api-version: '1.21'
+author: diamend
+description: Read any player's data from the server console — online or offline.
+website: https://github.com/diamend-box/box
+
+commands:
+  spy:
+    description: Inspect a player's data from the console (or in game).
+    usage: |
+      /spy <player> [section] [filter] [page] - Inspect a player
+      /spy <player> sections                  - What you can ask for
+      /spy <player> nbt [path]                - Raw player.dat, whole or one branch
+      /spy <player> item <slot>               - Everything about one item
+      /spy list [world]                       - Everyone online, at a glance
+      /spy watch <player> [categories...]     - Follow what a player does, live
+      /spy unwatch <player|all>               - Stop following
+      /spy watching                           - Who is being followed, by whom
+      /spy dump <player>                      - Write the full report to a file
+      /spy find <material> [player|all]       - Find an item in inventories
+      /spy reload                             - Reload config.yml
+    aliases: [spyglass, inspectplayer]
+
+permissions:
+  spyglass.use:
+    description: Inspect players with /spy.
+    default: op
+  spyglass.watch:
+    description: Follow a player's activity live with /spy watch.
+    default: op
+  spyglass.sensitive:
+    description: See sensitive fields (IP addresses) in reports.
+    default: op
+  spyglass.admin:
+    description: Reload Spyglass' configuration.
+    default: op
+  spyglass.exempt:
+    description: Cannot be inspected or watched by anyone.
+    default: false

@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# Spyglass — read any player's data from the server console.
+#
+# Everything here has a working default; the file exists so you can turn the
+# noisy parts down and the private parts off.
+# ---------------------------------------------------------------------------
+
+# How many lines of a long section (stats, advancements, permissions...) go out
+# at once. The rest is reachable with a page number: /spy Notch stats 2
+page-size: 30
+
+# IP addresses are only shown to senders holding spyglass.sensitive. Turn this
+# on to hide them from everyone except the console as well.
+mask-ip: false
+
+# An online player's data lives in memory, so the file on disk is however stale
+# the last autosave left it. With this on, /spy <player> nbt asks the server to
+# save that player first, so the raw tree you read is current.
+save-before-nbt: true
+
+# Write a line to the server log whenever someone inspects a player. Useful if
+# staff have /spy and you want the paper trail; noise if it's only you.
+log-usage: false
+
+dumps:
+  # Folder under plugins/Spyglass for /spy dump reports.
+  folder: dumps
+  # Keep at most this many reports, deleting the oldest. 0 keeps everything.
+  keep: 50
+
+watch:
+  # What /spy watch follows when you don't name categories yourself.
+  # All of them: chat, command, connection, movement, inventory, blocks,
+  #              combat, state
+  # movement is left out on purpose — it is by far the loudest.
+  default-categories: [chat, command, connection, inventory, blocks, combat, state]
+
+  # With the movement category on, position is reported at most this often
+  # (seconds) instead of on every step.
+  movement-sample-seconds: 3
+
+  # A watched player in a busy fight can outrun your console. Above this many
+  # lines a second the rest of that second is dropped and counted instead.
+  max-lines-per-second: 20
+
+  # Players the console follows automatically, by name, from the moment they
+  # join — and again after a restart. Survives them logging out.
+  auto: []
