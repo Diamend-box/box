@@ -403,7 +403,7 @@ public record DarkSeaSettings(
      * skipped rather than failing startup, so a typo costs one rung, not the
      * server.
      */
-    static List<SlotCost> slotCosts(List<String> lines) {
+    public static List<SlotCost> slotCosts(List<String> lines) {
         List<SlotCost> costs = new ArrayList<>();
         for (String line : lines) {
             String[] parts = line.trim().split("\\s+");
