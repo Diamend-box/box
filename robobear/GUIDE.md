@@ -7,7 +7,9 @@ The [README](README.md) explains *why* the plugin is shaped the way it is. This
 document is about *running* it. When you're ready to put it in front of players,
 the [playtest script](../docs/robobear-playtest.md) is the checklist for the
 first real session — including the numbers to bring back so the balance can be
-set from evidence rather than guesswork.
+set from evidence rather than guesswork. The
+[changelog](CHANGELOG.md) is what changed in each release, and what to do about
+it when upgrading.
 
 ---
 
