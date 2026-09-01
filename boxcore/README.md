@@ -147,8 +147,9 @@ cd boxcore
 mvn clean package
 ```
 
-The jar lands in `boxcore/target/BoxCore-1.0.0.jar`. Drop it into `plugins/`
+The jar lands in `boxcore/target/BoxCore-1.4.0.jar`. Drop it into `plugins/`
 and restart. The build fetches the Paper API from `https://repo.papermc.io`.
+What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 

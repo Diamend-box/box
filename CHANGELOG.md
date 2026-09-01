@@ -3,6 +3,7 @@
 All notable changes to **CustomAchievements** are documented here.
 
 The other plugins in this repository keep their own, next to their `pom.xml`:
+[`anticheat/CHANGELOG.md`](anticheat/CHANGELOG.md),
 [`boxcore/CHANGELOG.md`](boxcore/CHANGELOG.md) and
 [`tutorial/CHANGELOG.md`](tutorial/CHANGELOG.md).
 

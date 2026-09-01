@@ -150,7 +150,8 @@ mvn -B clean package
 ```
 
 Drop the single jar in `plugins/` on a **Paper 1.21.4** server. No separate
-packetevents install — it's shaded in.
+packetevents install — it's shaded in. What changed between versions is in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 > CI builds this on every push (`.github/workflows/anticheat.yml`) and uploads
 > the finished jar as the **`AntiCheat-jar`** artifact, plus boots a real Paper
