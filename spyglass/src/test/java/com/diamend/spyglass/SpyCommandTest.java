@@ -69,9 +69,24 @@ class SpyCommandTest {
 
     private String run(PlayerMock sender, String commandLine) {
         server.dispatchCommand(sender, commandLine);
-        server.getScheduler().waitAsyncTasksFinished();
-        server.getScheduler().performTicks(2L);
+        settle();
         return drain(sender);
+    }
+
+    /**
+     * Runs the scheduler until the command has actually finished.
+     *
+     * <p>Anything that touches the disk hops to an async task and back to the
+     * main thread to be sent, and each hop needs the scheduler turned. One pass
+     * is not enough: it leaves the reply queued, and the next command then runs
+     * before the previous one's file has been written.
+     */
+    private void settle() {
+        for (int i = 0; i < 5; i++) {
+            server.getScheduler().performTicks(2L);
+            server.getScheduler().waitAsyncTasksFinished();
+        }
+        server.getScheduler().performTicks(2L);
     }
 
     // ------------------------------------------------------------------

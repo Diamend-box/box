@@ -296,9 +296,12 @@ watch:
 - **It never writes to a player.** No editing inventories, no setting health,
   no moving anyone. The only write it asks for is Bukkit's own
   `Player#saveData()` before reading raw NBT, so the tree you read is current.
-- **It does not search a disk-wide find without bounds.** `/spy find <item>
+- **It does not read a disk-wide search without bounds.** `/spy find <item>
   saves` reads real files, so it stops at `find.max-saves` or
   `find.time-budget`, whichever comes first, and tells you it did.
+- **It does not read other plugins' storage.** Essentials' `userdata`,
+  LuckPerms' database and the rest are their own formats; what shows up here is
+  whatever they wrote into the player's own save (`data` covers that).
 - A player's IP is not in their save file, so `connection` is thinner offline.
 
 ---
@@ -327,16 +330,21 @@ Drop the jar in `plugins/` on a **Paper 1.21.4** server. No dependencies.
 | Package | What lives there |
 |---|---|
 | `nbt` | a defensive binary NBT reader, path lookup and a tree printer — no server API involved, so it is unit tested against a save file the tests build themselves |
-| `offline` | `playerdata/<uuid>.dat`, `stats/*.json` and `advancements/*.json`, and the inspector that renders them |
+| `offline` | `playerdata/<uuid>.dat`, `stats/*.json` and `advancements/*.json`, the inspector that renders them, the disk-wide search and the name cache |
 | `inspect` | the live-player inspector, item formatting, target resolution |
-| `report` | the line model everything renders into: coloured for a console, plain for a file |
-| `watch` | the live tail: categories, rate limiting, and the listener that feeds it |
+| `report` | the line model everything renders into: coloured for a console, plain for a file, structured for a dump — and the diff between two of those |
+| `watch` | the live tail: categories, rate limiting, the log file, and the listener that feeds it |
 
-Two design rules worth knowing if you change it:
+Three design rules worth knowing if you change it:
 
 1. **Never take the report down.** Every field goes through `Safe`, so a call
    this server's fork does not implement prints `n/a` and the other ninety
    fields still arrive.
-2. **Disk work is off the main thread.** Reading a save file, a stats file or a
-   folder listing happens asynchronously and comes back to the main thread only
-   to be sent.
+2. **Disk work is off the main thread.** Reading a save file, a stats file, a
+   folder listing or the name cache happens asynchronously and comes back to the
+   main thread only to be sent. Tab completion runs on the main thread, so it
+   only ever reads what has already been loaded.
+3. **The same question gets the same answer either way.** A filter, a statistic
+   name and an item search behave identically whether the player is connected or
+   is a file on disk — otherwise an answer means "as of this login" rather than
+   "about this player".

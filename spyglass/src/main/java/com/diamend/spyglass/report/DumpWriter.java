@@ -27,6 +27,20 @@ import com.diamend.spyglass.util.Fmt;
  */
 public final class DumpWriter {
 
+    /**
+     * Write order, oldest first.
+     *
+     * <p>The timestamp answers it almost always. When two dumps land in the same
+     * millisecond the name has to, and the name is compared without its
+     * extension on purpose: {@code Notch-<stamp>-2.txt} is the second of the two,
+     * but with the extension attached it sorts <em>before</em> {@code
+     * Notch-<stamp>.txt}, because a hyphen comes before a full stop. Dropping the
+     * extension makes the earlier name a prefix of the later one, which is the
+     * order they were written in.
+     */
+    private static final Comparator<File> OLDEST_FIRST =
+            Comparator.comparingLong(File::lastModified).thenComparing(DumpWriter::baseName);
+
     private final File folder;
     private final int keep;
 
@@ -65,7 +79,7 @@ public final class DumpWriter {
             return List.of();
         }
         List<File> files = new ArrayList<>(Arrays.asList(found));
-        files.sort(Comparator.comparingLong(File::lastModified).thenComparing(File::getName).reversed());
+        files.sort(OLDEST_FIRST.reversed());
         return files;
     }
 
@@ -120,9 +134,7 @@ public final class DumpWriter {
             return;
         }
         List<File> files = new ArrayList<>(Arrays.asList(existing));
-        // Name breaks the tie: dumps written in the same millisecond still
-        // prune oldest-first, because the name carries the time too.
-        files.sort(Comparator.comparingLong(File::lastModified).thenComparing(File::getName));
+        files.sort(OLDEST_FIRST);
         for (int i = 0; i < files.size() - keep; i++) {
             File text = files.get(i);
             // A dump we cannot delete is not worth failing the command over.
@@ -133,9 +145,14 @@ public final class DumpWriter {
 
     /** The {@code .json} that belongs with a {@code .txt}. */
     static File sidecar(File text) {
-        String name = text.getName();
+        return new File(text.getParentFile(), baseName(text) + ".json");
+    }
+
+    /** A filename without its extension. */
+    private static String baseName(File file) {
+        String name = file.getName();
         int dot = name.lastIndexOf('.');
-        return new File(text.getParentFile(), (dot < 0 ? name : name.substring(0, dot)) + ".json");
+        return dot < 0 ? name : name.substring(0, dot);
     }
 
     /** Player names are already tame, but a UUID target or a fork's name might not be. */
