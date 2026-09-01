@@ -169,8 +169,11 @@ public final class ReportDiff {
         }
     }
 
-    /** True for a field nobody wants to be told about on every comparison. */
-    static boolean isVolatile(String section, String label) {
+    /**
+     * True for a field nobody wants to be told about on every comparison —
+     * one that differs between any two dumps whatever the player did.
+     */
+    public static boolean isVolatile(String section, String label) {
         String name = label == null ? "" : label.trim().toLowerCase(Locale.ROOT);
         if (VOLATILE_LABELS.contains(name)) {
             return true;
