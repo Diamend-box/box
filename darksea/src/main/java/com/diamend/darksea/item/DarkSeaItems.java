@@ -140,6 +140,13 @@ public final class DarkSeaItems {
     public static final String UNDROWNED_HEART = "undrowned_heart";
     /** The hunter's charm from the Core nests: right-click to read the nearest soul's heading, consumed on use. */
     public static final String SOULWAKE_COMPASS = "soulwake_compass";
+    /**
+     * The Reliquary: the refugees' bag for woken relics. Right-click to open
+     * it. Relics only work from inside one, so this is the gate on the whole
+     * relic system — and its slots are bought with cave crystals, which is
+     * what makes the caves worth mining.
+     */
+    public static final String RELIQUARY = "reliquary";
 
     /** Tidal Draught: boat speed bonus multiplier and duration. */
     public static final double DRAUGHT_MULTIPLIER = 1.25;
@@ -196,6 +203,7 @@ public final class DarkSeaItems {
         ids.add(GILLWATER_PHILTER);
         ids.add(UNDROWNED_HEART);
         ids.add(SOULWAKE_COMPASS);
+        ids.add(RELIQUARY);
         ids.add(CHAINSHOT_ARROW);
         ids.add(HULLPIERCER_ARROW);
         ids.add(HARPOON_GUN);
@@ -229,6 +237,7 @@ public final class DarkSeaItems {
         }
         return switch (id) {
             case CHRONON -> createChronon(amount);
+            case RELIQUARY -> createReliquary();
             case TIDAL_DRAUGHT -> createDrinkable(id, Material.POTION, Color.fromRGB(38, 198, 218),
                     "<aqua>Tidal Draught</aqua>",
                     List.of("<gray>Drink at the tiller: the sea</gray>",
@@ -473,6 +482,26 @@ public final class DarkSeaItems {
         return item;
     }
 
+    /**
+     * The Reliquary. One per captain is enough — it is a key, not a stack —
+     * so it is deliberately unstackable-looking and carries its own
+     * instructions, because a bag that does nothing visible when you hold it
+     * is a bag people throw away.
+     */
+    private static ItemStack createReliquary() {
+        ItemStack item = new ItemStack(Material.BUNDLE);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(noItalic(MM.deserialize("<gradient:#c9a227:#fff3c4>Naxome Reliquary</gradient>")));
+        meta.lore(List.of(
+                noItalic(MM.deserialize("<gray>The refugees carried their dead</gray>")),
+                noItalic(MM.deserialize("<gray>gods in bags like this one.</gray>")),
+                noItalic(MM.deserialize("<dark_gray>Right-click: open the reliquary.</dark_gray>")),
+                noItalic(MM.deserialize("<dark_gray>Relics only work from inside it.</dark_gray>"))));
+        meta.getPersistentDataContainer().set(ID_KEY, PersistentDataType.STRING, RELIQUARY);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private static ItemStack createChronon(int amount) {
         ItemStack item = new ItemStack(Material.PRISMARINE_CRYSTALS, Math.max(1, amount));
         ItemMeta meta = item.getItemMeta();
@@ -530,13 +559,7 @@ public final class DarkSeaItems {
 
     /** Total Chronons across an inventory (PDC-tagged stacks only). */
     public static int countChronons(Inventory inventory) {
-        int total = 0;
-        for (ItemStack item : inventory.getContents()) {
-            if (isChronon(item)) {
-                total += item.getAmount();
-            }
-        }
-        return total;
+        return countItems(inventory, CHRONON);
     }
 
     /**
@@ -544,14 +567,37 @@ public final class DarkSeaItems {
      * removes nothing if the inventory holds fewer than that.
      */
     public static boolean removeChronons(Inventory inventory, int amount) {
-        if (amount <= 0 || countChronons(inventory) < amount) {
+        return removeItems(inventory, CHRONON, amount);
+    }
+
+    /**
+     * Total of one DarkSea item across an inventory, counted by PDC id so a
+     * renamed crystal still counts. Vanilla look-alikes never do.
+     */
+    public static int countItems(Inventory inventory, String id) {
+        int total = 0;
+        for (ItemStack item : inventory.getContents()) {
+            if (id.equals(idOf(item))) {
+                total += item.getAmount();
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Takes {@code amount} of a DarkSea item out of an inventory. All or
+     * nothing: if the inventory is short, nothing is removed and this returns
+     * false, so a purchase can never half-bill a player.
+     */
+    public static boolean removeItems(Inventory inventory, String id, int amount) {
+        if (amount <= 0 || countItems(inventory, id) < amount) {
             return amount <= 0;
         }
         int remaining = amount;
         ItemStack[] contents = inventory.getContents();
         for (int i = 0; i < contents.length && remaining > 0; i++) {
             ItemStack item = contents[i];
-            if (!isChronon(item)) {
+            if (!id.equals(idOf(item))) {
                 continue;
             }
             int take = Math.min(remaining, item.getAmount());

@@ -22,7 +22,6 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,9 +32,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Applies awake relics riding in player inventories. Once a second every
- * online player's inventory is scanned front to back; the first
- * {@code relics.max-active} DISTINCT awake relics are the active set.
+ * Applies the relics a player is wearing in their reliquary. Once a second
+ * every online player's bag is read and its slotted relics become the active
+ * set; see {@link ReliquaryService}. Without a reliquary in the pack, nothing
+ * is active — carrying a relic loose does nothing at all.
  * Stat boosts are transient attribute modifiers (never persisted — a relog
  * simply re-applies on the next pass), regeneration is an ambient effect
  * re-applied like the exposure task's, and BOAT/VECTOR are answered from
@@ -75,16 +75,10 @@ public final class RelicService extends BukkitRunnable implements Listener {
 
     @Override
     public void run() {
-        int maxActive = plugin.settings().relics().maxActive();
         for (Player player : Bukkit.getOnlinePlayers()) {
-            List<Relic> awake = new ArrayList<>();
-            for (ItemStack item : player.getInventory().getContents()) {
-                Relic relic = Relic.of(item);
-                if (relic != null && Relic.isAwake(item)) {
-                    awake.add(relic);
-                }
-            }
-            Set<Relic.Boost> boosts = boostsOf(selectActive(awake, maxActive));
+            // The bag is the whole rule now: what is in its slots is what
+            // works, and no reliquary means no boosts at all.
+            Set<Relic.Boost> boosts = boostsOf(plugin.reliquary().activeRelics(player));
             active.put(player.getUniqueId(), boosts);
             applyAttribute(player, Attribute.MOVEMENT_SPEED, SPEED_KEY, 0.10,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1, boosts.contains(Relic.Boost.SPEED));
@@ -100,8 +94,8 @@ public final class RelicService extends BukkitRunnable implements Listener {
     }
 
     /**
-     * The active subset: inventory order, duplicates of a relic count once,
-     * capped at {@code maxActive}. Pure — unit tested without a server.
+     * The active subset: bag order, duplicates of a relic count once, capped
+     * at the slot count. Pure — unit tested without a server.
      */
     public static List<Relic> selectActive(List<Relic> awakeInOrder, int maxActive) {
         Set<Relic> picked = new LinkedHashSet<>();

@@ -11,7 +11,7 @@ it happens again, that is the thing to send.
 
 Order is by how likely I am to have got it wrong, not by importance.
 
-**Build: 0.5.3 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
+**Build: 0.5.4 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
 `/version DarkSea` reports the same string. CHANGELOG.md has what each version
 changed.
 
@@ -41,6 +41,7 @@ changed.
 | Chest refill cooldown | Shipped pre-camp, **never tested** | Pass 9 |
 | Boat upgrades (now bought with Chronons) | **Rebuilt in 0.5.3**, untested | Pass 9 |
 | Renaming a crystal in ores.yml | New in 0.5.3, untested | Pass 9 |
+| The reliquary, and buying slots with crystals | **New in 0.5.4**, untested | Pass 9 |
 
 Five decisions are still open at the bottom. None have been answered across four
 rounds.
@@ -223,6 +224,10 @@ as everything else: they stay here until you say otherwise.
   Say whether the prices feel right. They are the one number here I have no way
   to test, and they are a config line each.
 
+- **The reliquary, start to finish.** Buy one from the refugee trader (30 Chronons) and right-click it. File a woken relic with the Chest tile, click it in the collection to wear it, confirm the boost actually lands, then take it off and confirm it stops. Shift-click one to get the item back. Then drop the reliquary out of your pack: every relic boost should switch off while it is gone. Finally buy a slot with emberglass and check the count sticks across a relog and a restart.
+  The thing I most want to know: does the bag read clearly the first time you open it, without me explaining it? If you have to guess what a tile does, it needs different words.
+  Crystal prices are 12 / 20 emberglass, then 16 voidbloom, then 14 godspore. Say whether the caves pay out fast enough to make those feel earned rather than grindy — same as the boat prices, it is a config line each.
+
 - **Rename a crystal.** Open `ores.yml`, find the `items:` block at the bottom,
   change `emberglass`'s `name` to anything, `/ds reload`, mine one. It should
   come out with the new name — and an emberglass already in a chest should still
@@ -258,7 +263,8 @@ Unchanged for four rounds. None block anything; all get more expensive later.
 5. Whether the surge still resets your momentum.
 6. Whether the lever is somewhere sensible now.
 7. Whether the watchtower and spire stairs look like part of the building.
-8. Answers to any of the five decisions.
+8. Whether the reliquary explains itself, and whether the crystal prices feel earned.
+9. Answers to any of the open decisions.
 
 Everything else only if it annoyed you. If you run out of time, just say where
 you stopped — I'll carry the rest forward the same way.

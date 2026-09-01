@@ -291,6 +291,23 @@ combat:
 # anywhere in your inventory; this caps how many work at once.
 relics:
   max-active: 2
+  # The Naxome Reliquary: the bag woken relics work from. No reliquary in the
+  # pack means no relic does anything, so this is the gate on the whole system.
+  # Slots are bought from inside the bag with CAVE CRYSTALS and nothing else —
+  # that is deliberate. Chronons already buy boats, waking and respecs; making
+  # crystals the only currency here is what gives the caves a reason to exist.
+  bag:
+    starting-slots: 2
+    max-slots: 6
+    # One line per extra slot, in order: "<item-id> <amount>". The first line
+    # prices slot 3, the next slot 4, and so on — the list ending is a cap in
+    # its own right, whatever max-slots says. The ladder leans deeper as it
+    # climbs, so the last slots need the deep caves, not the first geode.
+    slot-costs:
+      - "emberglass 12"
+      - "emberglass 20"
+      - "voidbloom 16"
+      - "godspore 14"
   # The Undrowned Heart: the apex reward hidden past the Devouring Rim. It is
   # attuned once (right-click, consumed for good) and then, once every
   # cooldown-seconds, refuses a lethal blow like a Totem of Undying — clearing
@@ -493,6 +510,14 @@ messages:
   relic-woken-title: "<gradient:#c9a227:#fff3c4>{name}</gradient>"
   relic-woken-subtitle: "<white>Awake. <gray>{boost}"
   relic-already-awake: "<yellow>That relic is already awake."
+  reliquary-none: "<red>You need a Naxome Reliquary. The refugees at the calm center keep them."
+  reliquary-full: "<red>All {slots} slots are full — take one off first."
+  reliquary-filed: "<green>Filed <white>{count}</white> relic(s) into the reliquary."
+  reliquary-nothing-to-file: "<yellow>Nothing to file — only woken relics can go in."
+  reliquary-withdrawn: "<gray>Taken back out of the reliquary."
+  reliquary-maxed: "<yellow>The reliquary is as deep as it goes."
+  reliquary-need-crystals: "<red>Deepening it costs <light_purple>{cost} {crystal}</light_purple> — you have {have}."
+  reliquary-deepened: "<green>The reliquary settles deeper. <aqua>{slots} slots.</aqua>"
   relic-only-home: "<red>Only the refugees at the calm center can wake a relic. Sail home first."
   relic-need-chronons: "<red>The refugees ask <aqua>{cost} Chronons</aqua> to wake this — you carry {have}."
   relic-revived: "<green>The refugees gather around {name}<green>... it stirs. <aqua>-{cost} Chronons</aqua>"

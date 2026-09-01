@@ -4,6 +4,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,9 @@ public final class PlayerDataStore {
     private final Map<UUID, Boolean> undrowned = new ConcurrentHashMap<>();
     private final Map<UUID, Long> undrownedLastSave = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> clueLevels = new ConcurrentHashMap<>();
+    private final Map<UUID, List<String>> collections = new ConcurrentHashMap<>();
+    private final Map<UUID, List<String>> equipped = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> slotsBought = new ConcurrentHashMap<>();
 
     public PlayerDataStore(File folder, Logger log) {
         this.folder = folder;
@@ -161,6 +166,71 @@ public final class PlayerDataStore {
                 ? YamlConfiguration.loadConfiguration(file)
                 : new YamlConfiguration();
         yaml.set("heart-clues", level);
+        save(yaml, file);
+    }
+
+    // ------------------------------------------------------------------
+    // The reliquary
+    // ------------------------------------------------------------------
+
+    /**
+     * Every relic this captain has filed away, by relic id. A collection, not
+     * a stack: a relic is in it or it isn't, which matches the boost rules —
+     * a second copy of a relic was never worth anything.
+     */
+    public List<String> relicCollection(UUID player) {
+        return collections.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists()
+                    ? List.copyOf(YamlConfiguration.loadConfiguration(file).getStringList("relics.collection"))
+                    : List.of();
+        });
+    }
+
+    /** The relics in the bag's slots — the ones actually granting boosts. */
+    public List<String> equippedRelics(UUID player) {
+        return equipped.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists()
+                    ? List.copyOf(YamlConfiguration.loadConfiguration(file).getStringList("relics.equipped"))
+                    : List.of();
+        });
+    }
+
+    /** Writes both lists together: equipping is always a move between them. */
+    public void setRelics(UUID player, List<String> collection, List<String> equippedRelics) {
+        collections.put(player, List.copyOf(collection));
+        equipped.put(player, List.copyOf(equippedRelics));
+        File file = fileFor(player);
+        YamlConfiguration yaml = file.exists()
+                ? YamlConfiguration.loadConfiguration(file)
+                : new YamlConfiguration();
+        yaml.set("relics.collection", new ArrayList<>(collection));
+        yaml.set("relics.equipped", new ArrayList<>(equippedRelics));
+        save(yaml, file);
+    }
+
+    /**
+     * How many extra reliquary slots this captain has bought. Added to the
+     * configured starting slots, so lowering the ladder in config never
+     * strands relics a player already paid for.
+     */
+    public int relicSlotsBought(UUID player) {
+        return slotsBought.computeIfAbsent(player, id -> {
+            File file = fileFor(id);
+            return file.exists()
+                    ? YamlConfiguration.loadConfiguration(file).getInt("relics.slots-bought", 0)
+                    : 0;
+        });
+    }
+
+    public void setRelicSlotsBought(UUID player, int bought) {
+        slotsBought.put(player, bought);
+        File file = fileFor(player);
+        YamlConfiguration yaml = file.exists()
+                ? YamlConfiguration.loadConfiguration(file)
+                : new YamlConfiguration();
+        yaml.set("relics.slots-bought", bought);
         save(yaml, file);
     }
 

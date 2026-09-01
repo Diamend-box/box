@@ -184,7 +184,7 @@ public enum Relic {
             lines.add(noItalic(MM.deserialize(line)));
         }
         lines.add(noItalic(MM.deserialize("<green>Awake — " + boostLine + "</green>")));
-        lines.add(noItalic(MM.deserialize("<dark_gray>Works from your inventory.</dark_gray>")));
+        lines.add(noItalic(MM.deserialize("<dark_gray>Works from your reliquary.</dark_gray>")));
         meta.lore(lines);
         meta.getPersistentDataContainer().set(AWAKE_KEY, PersistentDataType.INTEGER, 1);
         item.setItemMeta(meta);

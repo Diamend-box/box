@@ -36,6 +36,7 @@ import com.diamend.darksea.npc.ShopEditorService;
 import com.diamend.darksea.npc.ShopStock;
 import com.diamend.darksea.npc.ShopMenuService;
 import com.diamend.darksea.relic.RelicService;
+import com.diamend.darksea.relic.ReliquaryService;
 import com.diamend.darksea.relic.UndrownedHeartService;
 import com.diamend.darksea.vault.VaultService;
 import com.diamend.darksea.world.ManagedWorld;
@@ -95,6 +96,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private BoatService boat;
     private BoatMenuService boatMenu;
     private RelicService relics;
+    private ReliquaryService reliquary;
     private IslandPlacer placer;
     private NavalCombatService naval;
     private NavalHudService hud;
@@ -161,6 +163,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         boat = new BoatService(this, dataStore);
         boatMenu = new BoatMenuService(this);
         relics = new RelicService(this);
+        reliquary = new ReliquaryService(this);
         placer = new IslandPlacer(this, registry);
         naval = new NavalCombatService(this);
         hud = new NavalHudService(this);
@@ -187,6 +190,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         listener("chest-refill", () -> chestRefill);
         listener("exposure", () -> exposureTask);
         listener("relics", () -> relics);
+        listener("reliquary", () -> reliquary);
         listener("loot-editor", () -> lootEditor);
         listener("consumables", () -> new ConsumableService(this));
         listener("soulwake", () -> new SoulwakeService(this));
@@ -489,6 +493,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
     /** The parsed shops.yml snapshot — re-read by {@code /ds reload}. */
     public ShopStock shopStock() {
         return shopStock;
+    }
+
+    public ReliquaryService reliquary() {
+        return reliquary;
     }
 
     public RelicService relics() {

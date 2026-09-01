@@ -251,7 +251,40 @@ public record DarkSeaSettings(
      * player so relogging can't reset it.
      */
     public record RelicSettings(int maxActive, int undrownedCooldownSeconds,
-                                double undrownedReviveHealth) {
+                                double undrownedReviveHealth,
+                                int bagStartSlots, int bagMaxSlots, List<SlotCost> bagCosts) {
+
+        /** Without a configured bag: the shipped 2-to-6 ladder is used. */
+        public RelicSettings(int maxActive, int undrownedCooldownSeconds,
+                             double undrownedReviveHealth) {
+            this(maxActive, undrownedCooldownSeconds, undrownedReviveHealth,
+                    2, 6, List.of());
+        }
+
+        public RelicSettings {
+            bagCosts = bagCosts == null ? List.of() : List.copyOf(bagCosts);
+            bagStartSlots = Math.max(1, bagStartSlots);
+            bagMaxSlots = Math.max(bagStartSlots, bagMaxSlots);
+        }
+
+        /**
+         * What the {@code bought}-th extra slot costs, or null past the end of
+         * the ladder. A short ladder simply caps the bag earlier than
+         * {@code bagMaxSlots} would — the price list is the real ceiling.
+         */
+        public SlotCost costForSlot(int bought) {
+            return bought >= 0 && bought < bagCosts.size() ? bagCosts.get(bought) : null;
+        }
+    }
+
+    /**
+     * One rung of the reliquary ladder: an amount of one DarkSea item (a cave
+     * crystal, in the shipped config) that buys the next relic slot.
+     */
+    public record SlotCost(String itemId, int amount) {
+        public SlotCost {
+            amount = Math.max(1, amount);
+        }
     }
 
     /**
@@ -343,7 +376,10 @@ public record DarkSeaSettings(
         RelicSettings relics = new RelicSettings(
                 Math.min(9, Math.max(1, cfg.getInt("relics.max-active", 2))),
                 Math.max(1, cfg.getInt("relics.undrowned.cooldown-seconds", 120)),
-                Math.max(1.0, cfg.getDouble("relics.undrowned.revive-health", 1.0)));
+                Math.max(1.0, cfg.getDouble("relics.undrowned.revive-health", 1.0)),
+                Math.max(1, cfg.getInt("relics.bag.starting-slots", 2)),
+                Math.max(1, cfg.getInt("relics.bag.max-slots", 6)),
+                slotCosts(cfg.getStringList("relics.bag.slot-costs")));
 
         Map<String, String> messages = new HashMap<>();
         ConfigurationSection msgSec = cfg.getConfigurationSection("messages");
@@ -359,6 +395,28 @@ public record DarkSeaSettings(
         return new DarkSeaSettings(worldName, cultist, landfallOffsetX, landfallOffsetZ, seaLevel, seabedBaseY, seabedVariation, centerX, centerZ,
                 exposure, zones, armor, generation, mobSpawning, combat, reset, boat, naval,
                 relics, Map.copyOf(messages));
+    }
+
+    /**
+     * Parses the reliquary ladder from {@code "<item-id> <amount>"} lines, in
+     * order: the first line prices the first extra slot. A malformed line is
+     * skipped rather than failing startup, so a typo costs one rung, not the
+     * server.
+     */
+    static List<SlotCost> slotCosts(List<String> lines) {
+        List<SlotCost> costs = new ArrayList<>();
+        for (String line : lines) {
+            String[] parts = line.trim().split("\\s+");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                costs.add(new SlotCost(parts[0], Integer.parseInt(parts[1])));
+            } catch (NumberFormatException ignored) {
+                // not a price — skip the rung
+            }
+        }
+        return List.copyOf(costs);
     }
 
     private static List<Zone> loadZones(FileConfiguration cfg, Logger log) {

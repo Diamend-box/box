@@ -97,6 +97,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds boat upgrade", "buy the next boat tier with Chronons", "darksea.use");
         helpLine(sender, "/ds bounty [player] [amount]", "list bounties, or spend Chronons to place one", "darksea.use");
         helpLine(sender, "/ds relic revive", "wake the held relic at the calm center (costs Chronons)", "darksea.use");
+        helpLine(sender, "/ds relic bag", "open your reliquary — relics only work from inside it", "darksea.use");
         helpLine(sender, "/ds tp", "teleport to the home island", "darksea.tp");
         helpLine(sender, "/ds generate [count]", "place islands (all rings, or just <count> at a time)", "darksea.admin");
         helpLine(sender, "/ds reset <soft|full>", "re-paste islands / regenerate the sea", "darksea.admin");
@@ -351,6 +352,18 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             plugin.relics().revive(player);
+            return;
+        }
+        if (action.equals("bag")) {
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            if (!plugin.reliquary().hasReliquary(player)) {
+                msg.send(player, "reliquary-none");
+                return;
+            }
+            plugin.reliquary().open(player);
             return;
         }
         msg.send(sender, "unknown-command");
@@ -802,7 +815,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                         options.add("damage");
                     }
                 }
-                case "relic" -> options.add("revive");
+                case "relic" -> options.addAll(List.of("revive", "bag"));
                 case "diag" -> {
                     if (admin) {
                         options.add("warnings");

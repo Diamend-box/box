@@ -98,6 +98,9 @@ shops:
     takes-salvage: true
     buy:
       - {item: dark_sea_boat, price: 40}
+      # The reliquary: cheap on purpose. It is the gate on relics, not a
+      # reward — a captain who cannot afford it simply cannot use the system.
+      - {item: reliquary, price: 30}
       - {item: gillwater_philter, price: 15}
       - {item: deepsight_tonic, price: 15}
       - {item: sea_salve, price: 20}

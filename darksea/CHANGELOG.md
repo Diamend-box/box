@@ -18,6 +18,33 @@ time.
 
 ---
 
+## 0.5.4 — 2026-09-01
+
+**The Naxome Reliquary.** Relics no longer work from your pack. They work from
+a bag, and the bag's slots are bought with cave crystals — which is the point:
+the caves produced three materials that did nothing, so a dimension you could
+skip entirely stayed skippable. Relic power now runs through them.
+
+- **A new item, the Naxome Reliquary,** sold by the refugee trader for 30
+  Chronons. Right-click it (or `/ds relic bag`) to open it. Carrying no
+  reliquary means no relic does anything at all.
+- **Relics are filed, not carried.** The bag's Chest tile files every woken
+  relic in your pack into a collection; clicking one in the collection wears
+  it, clicking it again takes it off, and shift-clicking hands the item back
+  so relics stay tradeable. Duplicates never stacked a boost, so the
+  collection holds one of each.
+- **The bag starts at 2 slots and reaches 6.** Extra slots are bought from
+  inside it for emberglass, then voidbloom, then godspore — the ladder leans
+  deeper as it climbs, so the last slots need the deep caves rather than the
+  first geode. Prices are `relics.bag.slot-costs` in config.yml, one line per
+  slot; the list running out caps the bag whatever `max-slots` says.
+- **Crystals are the only currency for slots.** Chronons already buy boats,
+  waking and respecs; letting them buy slots too would have let a captain skip
+  the caves and kept the dimension optional.
+- The once-a-second boost pass no longer scans inventories, which also kills
+  the old surprise where reshuffling your pack silently changed which relics
+  were active.
+
 ## 0.5.3 — 2026-08-31
 
 Two things you asked for: crystals you can name yourself, and boat upgrades
