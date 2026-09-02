@@ -309,6 +309,16 @@ watch:
 
 ---
 
+## Installing
+
+Grab the jar from the
+**[latest release](https://github.com/Diamend-box/box/releases?q=spyglass&expanded=true)**,
+drop it in `plugins/` on a **Paper 1.21.4** server, and restart. No
+dependencies. What changed between versions is in
+[CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## Building
 
 Standard Maven project targeting Java 21:
@@ -319,12 +329,14 @@ mvn -B clean package
 # -> target/Spyglass-1.0.0.jar
 ```
 
-Drop the jar in `plugins/` on a **Paper 1.21.4** server. No dependencies.
-
 > CI builds this on every push (`.github/workflows/spyglass.yml`), runs the
 > tests, and boots a real Paper server to drive `/spy` from an actual console
-> before publishing the **`Spyglass-jar`** artifact. That artifact is the
-> download.
+> before publishing the **`Spyglass-jar`** artifact.
+>
+> Releases are cut by pushing a `spyglass-v<version>` tag
+> (`.github/workflows/spyglass-release.yml`), which builds and tests that exact
+> commit, checks the jar matches the tag, takes the notes from
+> `CHANGELOG.md`, and attaches the jar. Nothing that fails is published.
 
 ---
 

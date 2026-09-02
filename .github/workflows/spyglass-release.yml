@@ -1,0 +1,83 @@
+name: Release Spyglass
+
+# Push a spyglass-v<version> tag and this publishes the release: it builds the
+# jar from that exact commit, runs the tests, and refuses to publish anything
+# that does not pass or does not match the tag.
+on:
+  push:
+    tags: [ "spyglass-v*" ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing spyglass-v* tag to publish
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # Through the environment rather than straight into the script: a tag
+      # name is text somebody chose, and it is not going to become a command.
+      - name: Read the version out of the tag
+        env:
+          RAW_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -uo pipefail
+          case "$RAW_TAG" in
+            spyglass-v*) ;;
+            *) echo "::error::$RAW_TAG is not a spyglass-v<version> tag"; exit 1 ;;
+          esac
+          echo "TAG=$RAW_TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${RAW_TAG#spyglass-v}" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        working-directory: spyglass
+        run: mvn -B -ntp clean package
+
+      - name: Check the jar matches the tag
+        run: |
+          set -uo pipefail
+          if [ ! -f "spyglass/target/Spyglass-$VERSION.jar" ]; then
+            echo "::error::spyglass/pom.xml is not version $VERSION"
+            ls -la spyglass/target || true
+            exit 1
+          fi
+
+      - name: Take the release notes out of the changelog
+        run: |
+          set -uo pipefail
+          awk -v want="## [$VERSION]" '
+            $0 == want { found = 1; next }
+            found && /^## / { exit }
+            found { print }' spyglass/CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::no \"## [$VERSION]\" section in spyglass/CHANGELOG.md"
+            exit 1
+          fi
+          echo "--- release notes ---"
+          cat notes.md
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Spyglass $VERSION" \
+            --notes-file notes.md \
+            "spyglass/target/Spyglass-$VERSION.jar"
