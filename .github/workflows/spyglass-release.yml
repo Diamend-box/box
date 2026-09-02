@@ -1,15 +1,16 @@
 name: Release Spyglass
 
-# Push a spyglass-v<version> tag and this publishes the release: it builds the
-# jar from that exact commit, runs the tests, and refuses to publish anything
-# that does not pass or does not match the tag.
+# Two ways in, one path out. Push a spyglass-v<version> tag, or run this by
+# hand with a version and let it create the tag on the commit it ran from.
+# Either way it builds the jar from that exact commit, runs the tests, and
+# refuses to publish anything that does not pass or does not match the version.
 on:
   push:
     tags: [ "spyglass-v*" ]
   workflow_dispatch:
     inputs:
-      tag:
-        description: An existing spyglass-v* tag to publish
+      version:
+        description: Version to release, e.g. 1.0.0 (must match spyglass/pom.xml)
         required: true
 
 permissions:
@@ -20,8 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -32,23 +31,35 @@ jobs:
 
       # Through the environment rather than straight into the script: a tag
       # name is text somebody chose, and it is not going to become a command.
-      - name: Read the version out of the tag
+      - name: Work out what is being released
         env:
-          RAW_TAG: ${{ inputs.tag || github.ref_name }}
+          RAW_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          RAW_VERSION: ${{ inputs.version }}
         run: |
           set -uo pipefail
-          case "$RAW_TAG" in
-            spyglass-v*) ;;
-            *) echo "::error::$RAW_TAG is not a spyglass-v<version> tag"; exit 1 ;;
+          if [ -n "$RAW_TAG" ]; then
+            case "$RAW_TAG" in
+              spyglass-v*) ;;
+              *) echo "::error::$RAW_TAG is not a spyglass-v<version> tag"; exit 1 ;;
+            esac
+            TAG="$RAW_TAG"
+            VERSION="${RAW_TAG#spyglass-v}"
+          else
+            VERSION="$RAW_VERSION"
+            TAG="spyglass-v$VERSION"
+          fi
+          case "$VERSION" in
+            *[!0-9.]* | '' ) echo "::error::\"$VERSION\" is not a version"; exit 1 ;;
           esac
-          echo "TAG=$RAW_TAG" >> "$GITHUB_ENV"
-          echo "VERSION=${RAW_TAG#spyglass-v}" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Releasing $TAG from $GITHUB_SHA"
 
       - name: Build and test
         working-directory: spyglass
         run: mvn -B -ntp clean package
 
-      - name: Check the jar matches the tag
+      - name: Check the jar matches the version
         run: |
           set -uo pipefail
           if [ ! -f "spyglass/target/Spyglass-$VERSION.jar" ]; then
@@ -71,6 +82,8 @@ jobs:
           echo "--- release notes ---"
           cat notes.md
 
+      # --target creates the tag when it does not already exist, which is what
+      # makes the by-hand route work; on a tag push it is simply ignored.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -78,6 +91,8 @@ jobs:
           set -uo pipefail
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
             --title "Spyglass $VERSION" \
             --notes-file notes.md \
             "spyglass/target/Spyglass-$VERSION.jar"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,tagName,assets
