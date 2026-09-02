@@ -333,10 +333,14 @@ mvn -B clean package
 > tests, and boots a real Paper server to drive `/spy` from an actual console
 > before publishing the **`Spyglass-jar`** artifact.
 >
-> Releases are cut by pushing a `spyglass-v<version>` tag
-> (`.github/workflows/spyglass-release.yml`), which builds and tests that exact
-> commit, checks the jar matches the tag, takes the notes from
-> `CHANGELOG.md`, and attaches the jar. Nothing that fails is published.
+> Releases come from `.github/workflows/spyglass-release.yml`, either by
+> pushing a `spyglass-v<version>` tag or by `pom.xml` naming a version the
+> repository hasn't released yet when the branch lands on `main` — in which
+> case the job cuts the tag itself at the commit it built. The version of
+> record is the pom, the notes are this version's section of
+> [CHANGELOG.md](CHANGELOG.md) (no section, no release), and the tests run
+> before anything gets a download link. A version already released is skipped
+> rather than rebuilt.
 
 ---
 
