@@ -1,0 +1,88 @@
+name: Release CustomAchievements
+
+# Builds the shippable jar in CI (where the plugin's dependencies are
+# reachable) and publishes a GitHub release with the jar attached. Run it
+# from the Actions tab ("Run workflow") and give it the tag to cut, e.g.
+# v1.9.0. The tag is created at the commit the workflow runs on.
+#
+# This builds the customachievements/ module only. A bare vX.Y.Z tag in this
+# repository means CustomAchievements; the other plugins scope their tags
+# (robobear-v*), so they don't collide.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create (e.g. v1.9.0)"
+        required: true
+        default: "v1.9.0"
+
+permissions:
+  contents: write # needed to create the tag and the release
+
+defaults:
+  run:
+    working-directory: customachievements
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Package
+        run: mvn -B -ntp -DskipTests clean package
+      - name: Locate and verify the jar
+        id: jar
+        run: |
+          set -uo pipefail
+          JAR=$(ls target/CustomAchievements-*.jar | head -1)
+          [ -f "$JAR" ] || { echo "::error::no built jar found"; exit 1; }
+          echo "Inspecting $JAR"
+          LIST=$(unzip -l "$JAR")
+          # Guard the shipped artifact: AnvilGUI must be bundled and relocated,
+          # and the original package must not leak (it would clash with other
+          # plugins that also shade AnvilGUI).
+          echo "$LIST" | grep -q "com/diamend/customachievements/libs/anvilgui/AnvilGUI.class" \
+            || { echo "::error::relocated AnvilGUI entrypoint missing from jar (bad shade)"; exit 1; }
+          echo "$LIST" | grep -qE "com/diamend/customachievements/libs/anvilgui/version/.+\.class" \
+            || { echo "::error::AnvilGUI version wrappers missing from jar (bad shade include)"; exit 1; }
+          if echo "$LIST" | grep -qE " net/wesjd/anvilgui/"; then
+            echo "::error::un-relocated net.wesjd.anvilgui classes present in jar"; exit 1
+          fi
+          # Repo-relative, so the publish step below can find it from the root
+          # (where the release-notes files live).
+          echo "path=customachievements/$JAR" >> "$GITHUB_OUTPUT"
+          echo "jar verified: $JAR"
+      - name: Publish release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag }}
+          JAR: ${{ steps.jar.outputs.path }}
+        run: |
+          set -uo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refreshing the jar asset and notes."
+            gh release upload "$TAG" "$JAR" --clobber
+            # Re-running a release should also pick up any correction to its
+            # notes, not leave the published text frozen at the first run.
+            if [ -f ".github/release-notes/${TAG}.md" ]; then
+              gh release edit "$TAG" --notes-file ".github/release-notes/${TAG}.md"
+            fi
+          else
+            gh release create "$TAG" "$JAR" \
+              --target "$GITHUB_SHA" \
+              --title "CustomAchievements $TAG" \
+              --notes-file .github/release-notes/${TAG}.md 2>/dev/null \
+            || gh release create "$TAG" "$JAR" \
+              --target "$GITHUB_SHA" \
+              --title "CustomAchievements $TAG" \
+              --generate-notes
+          fi
+          echo "Release URL:"
+          gh release view "$TAG" --json url -q .url

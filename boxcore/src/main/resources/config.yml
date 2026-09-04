@@ -237,7 +237,12 @@ compressor:
 # so a drops boost gives more ore without inflating collection progress,
 # and neither quietly compounds into the other.
 boosts:
-  # Boosts multiply together: a 2x global and a 2x personal boost make 4x.
+  # One global boost and one personal boost run per type at a time, and
+  # starting another replaces the one it matches rather than stacking on
+  # top. So the most anyone can have is global x personal: a 2x global and
+  # a 2x personal make 4x, and a second 2x item replaces the first rather
+  # than making 8x.
+  #
   # This is the hard ceiling no combination can pass. Raise it on purpose.
   max-multiplier: 8.0
 
@@ -264,10 +269,56 @@ boosts:
     # 20 is once a second, which is what a countdown needs. Minimum 10.
     interval-ticks: 20
 
-  # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
-  # Turn this off to boost every block's drops, cobblestone included.
   drops:
-    ores-only: true
+    # Only multiply drops of whitelisted ore (the 'ore.whitelist' above).
+    # Off by default: a drops boost is understood to mean everything a
+    # block gives, and a plugin that replaces drops with something that
+    # isn't whitelisted ore would otherwise get no boost at all and look
+    # broken. Turn it on to go back to ore only.
+    ores-only: false
+
+    # How long after a block breaks its drops still count as that block's,
+    # in ticks. Boosting reads the items that appear rather than only the
+    # ones the game itself produced, because a plugin that replaces drops
+    # entirely cancels the break and spawns its own — there is no event to
+    # listen to for that, only items appearing next to a block someone
+    # just broke.
+    #
+    # Longer catches slower plugins. Too long starts catching items that
+    # had nothing to do with the block. 5 ticks is a quarter of a second.
+    window-ticks: 5
+
+    # Last resort, for plugins that put a block's yield straight into the
+    # inventory without ever dropping an item. Nothing reports that — no
+    # drop event, no spawn event, no pickup event — so the only evidence
+    # is that the player is carrying more than they were a tick ago.
+    #
+    # Only runs when nothing was found on the ground for that break, so a
+    # normal drop is never counted twice, and only for players who have a
+    # drops boost running. Turn it off if you see drops being doubled.
+    capture-inventory: true
+
+    # Materials a boost must never multiply, on top of the built-in rules.
+    #
+    # Anything holding an inventory is always refused and cannot be turned
+    # back on. A shulker box drops as a single item carrying all of its
+    # contents, so doubling that item doubles every stack inside it — that
+    # is duplication, not a bigger yield. Filled bundles and pre-filled
+    # container items are refused for the same reason.
+    #
+    # This list is for the things specific to your server that are safe by
+    # those rules but still should not double — a crate key, a currency
+    # item, anything you sell.
+    never-multiply: []
+
+    # Whether items that cannot stack may be multiplied.
+    #
+    # Off by default: an unstackable item has no quantity to multiply, so
+    # copying one mints a second unique thing instead of doubling an
+    # amount, and a tool arriving in fours is rarely what a drops boost was
+    # meant to do. Turn it on if your custom drops are unstackable by
+    # design and you do want them boosted.
+    multiply-unstackable: false
 
   # How often (in ticks) to expire finished boosts and open scheduled
   # windows. 100 ticks is five seconds, which is plenty.
@@ -290,8 +341,13 @@ boosts:
   schedule: []
 
   # Boost items players can right-click to start their own boost. Give one
-  # with /box boost item <id> [player] [amount] — sell it, put it in a
-  # crate, hand it out as a reward.
+  # with /box boost item <id> [player] [amount] [duration] [multiplier] —
+  # sell it, put it in a crate, hand it out as a reward. Either override
+  # replaces just that figure, so a one-off 5x-for-24h version of a
+  # configured 2x-for-30m item is a real item rather than a config entry
+  # that has to exist forever to support it. Both are written onto the
+  # item like everything else, so the item is still correct even when
+  # overridden.
   #
   # What an item does is written onto the item when it is created, so
   # re-tuning an entry here changes items made from now on and never
@@ -301,6 +357,12 @@ boosts:
   # material, name, lore, model-data and glow are all optional, and both
   # colour codes (&a, &l, &#ff8800) and MiniMessage tags work. <multiplier>,
   # <duration> and <type> are replaced in name and lore.
+  #
+  # Use the <multiplier> and <duration> tokens rather than typing the
+  # number, even here where it matches the entry below — a name that
+  # spells out "2x" or "(30m)" as literal text goes stale the moment
+  # duration or multiplier changes below it, or the moment somebody hands
+  # one out with an override at the command line.
   items:
     drops-2x:
       type: drops
@@ -308,7 +370,7 @@ boosts:
       duration: 30m
       item:
         material: EXPERIENCE_BOTTLE
-        name: "&d&l2x Drops Boost &7(30m)"
+        name: "&d&l<multiplier>x Drops Boost &7(<duration>)"
         glow: true
     collections-2x:
       type: collections
@@ -316,7 +378,21 @@ boosts:
       duration: 30m
       item:
         material: EXPERIENCE_BOTTLE
-        name: "&b&l2x Collections Boost &7(30m)"
+        name: "&b&l<multiplier>x Collections Boost &7(<duration>)"
+        glow: true
+
+    # 'global: true' makes using it start a server-wide boost instead of a
+    # personal one, exactly as if staff had run /box boost global. It is
+    # announced to everyone and saved, so it survives a restart. Worth
+    # pricing accordingly: one player spends it, the whole server gets it.
+    server-drops-2x:
+      type: drops
+      multiplier: 2.0
+      duration: 1h
+      global: true
+      item:
+        material: DRAGON_BREATH
+        name: "&6&lServer <multiplier>x Drops &7(<duration>)"
         glow: true
 
 # ---------------------------------------------------------------------
@@ -342,6 +418,22 @@ travel:
   # immediately.
   warmup-seconds: 3
 
+  # Where a destination lands when staff place one by standing there.
+  # Lining yourself up on the middle of a block, looking squarely down a
+  # cardinal direction, is fiddly to do by hand and obvious when it's
+  # wrong, so both are tidied up on the way in.
+  snap:
+    # Put the destination on the centre of the block you're standing on
+    # rather than the exact spot your feet stopped at.
+    centre: true
+
+    # Which way you're looking when you arrive:
+    #   nearest  - round to the closest quarter turn (default)
+    #   north / east / south / west - always that way
+    #   keep     - exactly however the placer was looking
+    # Any single destination can be turned afterwards from /box warp.
+    facing: nearest
+
   # Whether stepping off the block you started on cancels the trip.
   # Taking damage always cancels it, regardless of this.
   cancel-on-move: true
@@ -354,8 +446,31 @@ travel:
   # values in warps.yml override this.
   default-radius: 8
 
+  # Whether walking within a destination's radius puts it on your travel
+  # list. Off by default: a map you can sell is worth nothing if the same
+  # place arrives free the first time somebody wanders past it. With this
+  # off, a map (travel.items with mode: unlock, or /box warp item <id> map)
+  # is the only way onto a player's list — staff still get a destination
+  # the moment they place it, since they're standing on it.
+  #
+  # Nothing travels to a place that isn't on your list, ticket or not.
+  discover-by-walking: false
+
   # Whether to say so in chat the first time someone finds a place.
   announce-discovery: true
+
+  # How a destination the player hasn't unlocked looks in the travel menu.
+  # Shown rather than hidden, so the list is a reason to go looking.
+  #
+  # <warp> in the name or lore is replaced with the destination's real
+  # name — leave it out (as below) and the entry gives nothing away.
+  # Set lore to [] for none at all.
+  locked:
+    material: GRAY_DYE
+    name: "<dark_gray>???"
+    lore:
+      - "<gray>Somewhere you haven't been."
+      - "<dark_gray>Find it and it opens up here."
 
   # Sound for finding a place, for the warmup ticking down, for arriving
   # and for a trip being cut short. The cancel sound is the one that
@@ -370,6 +485,57 @@ travel:
   #             at how far away the places you haven't found are
   #   file      however warps.yml happens to list them
   menu-order: found
+
+  # Items that get you to a destination. Hand one out with
+  # /box warp item <id> [player] [amount], or sell it from a shop.
+  #
+  # Entries here are only for items you want to dress up. Any destination
+  # can have a plain one minted on the spot without being listed:
+  #   /box warp item <destination> map      unlocks it for good
+  #   /box warp item <destination> ticket   one trip there
+  #
+  # Two modes:
+  #   travel  a ticket: one trip there, spent when you arrive. Being cut
+  #           short by a sword costs you the trip, not the ticket.
+  #   unlock  a map: puts the place on your travel list for good, exactly
+  #           as if you'd walked to it.
+  #
+  # A ticket stands in for the destination's permission — that is what
+  # buying one is for — but never for the combat tag. An item that
+  # teleports you out of a fight would be worth more as an escape than
+  # as travel, so it refuses while you're tagged and stays in your
+  # inventory.
+  #
+  # 'warp' is a warps.yml id, or 'any' with mode: unlock for every
+  # destination the holder is allowed to see. Names and lore take
+  # <warp>, <mode> and <id>; don't type the destination in by hand or it
+  # goes stale the moment the place is renamed.
+  items:
+    spawn-ticket:
+      warp: spawn
+      mode: travel
+      item:
+        material: PAPER
+        name: "&b&lTravel Ticket &7(<warp>)"
+        lore:
+          - "&7One trip to &f<warp>&7."
+          - "&7Spent when you arrive."
+          - ""
+          - "&8Right-click to use."
+        glow: true
+
+    world-map:
+      warp: any
+      mode: unlock
+      item:
+        material: FILLED_MAP
+        name: "&e&lExplorer's Map"
+        lore:
+          - "&7Adds every destination to your"
+          - "&7travel list, for good."
+          - ""
+          - "&8Right-click to use."
+        glow: true
 
 # ---------------------------------------------------------------------
 # Messages
@@ -395,6 +561,7 @@ messages:
   compressor-off: "<yellow>Compacting <white>paused<yellow>."
   compressor-expanded: "<aqua>Expanded <white><amount></white> compacted <ore><plural><gray> — won't re-compact for <white><seconds></white>s."
   compressor-no-room: "<red>Not enough inventory space to expand that."
+  compressor-not-compacted: "<red>That isn't a compacted unit. <gray>Compacted units glint and say what they are worth."
   compactor-none: "<red>You aren't carrying a personal compactor."
   compactor-kept: "<yellow>Your compactor stays with you."
   compactor-moved: "<red>That compactor isn't where it was."
@@ -412,6 +579,9 @@ messages:
   travel-in-combat: "<red>Not while you're in combat — <white><time></white> left."
   travel-discovered: "<green>You found <white><warp></white>! It's on your travel list now."
   travel-unavailable: "<red><white><warp></white> isn't reachable right now."
+  travel-item-known: "<gray>You already know everywhere that would have shown you — keeping it."
+  travel-item-busy: "<yellow>You're already travelling."
+  travel-not-found: "<red>You haven't found <white><warp></white> yet."
   boost-global-started: "<light_purple><bold>BOOST!</bold> <white><multiplier>x <type></white> for everyone, for <white><duration></white>."
   boost-activated: "<light_purple>Started your <white><multiplier>x <type></white> boost — <white><duration></white>."
   boost-none: "<gray>No boosts are running right now."

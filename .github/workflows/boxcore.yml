@@ -2,7 +2,12 @@ name: Verify BoxCore
 
 on:
   push:
-    branches: [ "claude/box-server-utility-plugin-eukbic" ]
+    branches: [ "main" ]
+    paths:
+      - "boxcore/**"
+      - ".github/workflows/boxcore.yml"
+  pull_request:
+    branches: [ "main" ]
     paths:
       - "boxcore/**"
       - ".github/workflows/boxcore.yml"
@@ -32,7 +37,10 @@ jobs:
           java-version: "21"
           cache: maven
       - name: Package
-        run: mvn -B -ntp -DskipTests clean package
+        # Stamp the build with the commit it came from, so a downloaded jar
+        # says which one it is in its filename, in plugin.yml and in the
+        # server log on enable.
+        run: mvn -B -ntp -DskipTests "-Dboxcore.build=-${GITHUB_SHA::7}" clean package
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
@@ -138,7 +146,8 @@ jobs:
           fail=0
           need() { grep -q "$1" "$LOG" && echo "ok: $2" || { echo "::error::MISSING: $2"; fail=1; }; }
           need "Enabling BoxCore"          "plugin began enabling"
-          need "BoxCore enabled with"      "onEnable completed without throwing"
+          need "BoxCore .* enabled with"   "onEnable completed without throwing"
+          need "BoxCore.*${GITHUB_SHA::7}" "the jar says which commit it was built from"
           need "skill tree(s)"             "trees.yml parsed"
           need "collection(s) in"          "collections.yml parsed"
           need "Skill trees"               "/box modules produced output"

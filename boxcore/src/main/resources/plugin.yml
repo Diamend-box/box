@@ -1,5 +1,5 @@
 name: BoxCore
-version: '${project.version}'
+version: '${project.version}${boxcore.build}'
 main: com.diamend.boxcore.BoxCorePlugin
 api-version: '1.21'
 softdepend: [PlaceholderAPI]
@@ -17,7 +17,8 @@ commands:
       /box points                   - Show your skill points
       /box respec                   - Refund every unlocked node
       /box compress [on|off]        - Toggle your auto-compressor
-      /box modules                  - List loaded modules (admin)
+      /box expand [all]             - Unfold the compacted units you're holding
+      /box modules [list]           - Switch modules on and off (admin)
       /box points <give|take|set> <player> <n> - Adjust points (admin)
       /box unlock <player> <tree.node>         - Force-unlock a node (admin)
       /box collection set <player> <id> <n>    - Set a collection amount (admin)
@@ -29,10 +30,11 @@ commands:
       /box warp                                - Edit destinations in a menu (admin)
       /box warp <set|move|icon|rename> <id>    - Place and dress a destination (admin)
       /box warp <desc|perm|radius|tp|delete> <id> - Everything else about one (admin)
+      /box warp item <id|dest> [map|ticket] [player] - Give a travel ticket or map (admin)
       /box boost                    - Show the boosts running for you
       /box boost global <type> <multiplier> <duration>   - Boost everyone (admin)
       /box boost player <name> <type> <multiplier> <dur> - Boost one player (admin)
-      /box boost item <id> [player] [amount]             - Give a boost item (admin)
+      /box boost item <id|type> [player] [amount] [dur] [5x] - Give a boost item (admin)
       /box boost clear [global|<player>]                 - End boosts early (admin)
       /box reset <player>                      - Wipe a player's BoxCore data (admin)
       /box reload                              - Reload configuration from disk (admin)

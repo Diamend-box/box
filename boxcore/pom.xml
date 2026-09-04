@@ -6,7 +6,7 @@
 
     <groupId>com.diamend</groupId>
     <artifactId>BoxCore</artifactId>
-    <version>1.0.0</version>
+    <version>1.5.0</version>
     <packaging>jar</packaging>
 
     <name>BoxCore</name>
@@ -15,6 +15,14 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Which build this is, appended to the version in plugin.yml and to
+             the jar's name. CI passes the short commit hash; anything built by
+             hand says so. Two jars cut from different commits are otherwise
+             indistinguishable once they're sitting in a plugins folder, and
+             "which one is on the server?" is the first question every bug
+             report needs an answer to. -->
+        <boxcore.build>-dev</boxcore.build>
     </properties>
 
     <repositories>
@@ -70,7 +78,7 @@
     </dependencies>
 
     <build>
-        <finalName>${project.name}-${project.version}</finalName>
+        <finalName>${project.name}-${project.version}${boxcore.build}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -268,6 +268,7 @@ public class RecipeEditMenu extends AbstractMenu {
         click(player);
         plugin.prompts().ask(player,
                 "<gold>What should a unit of <white>" + recipe.display() + "</white> be called?",
+                recipe.appearance().name() == null ? "" : recipe.appearance().name(),
                 answer -> {
                     CompactRecipe now = recipe();
                     if (now != null) {

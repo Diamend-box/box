@@ -2,7 +2,12 @@ name: Verify Spyglass
 
 on:
   push:
-    branches: [ "claude/mc-player-data-spy-v0f49f" ]
+    branches: [ "main" ]
+    paths:
+      - "spyglass/**"
+      - ".github/workflows/spyglass.yml"
+  pull_request:
+    branches: [ "main" ]
     paths:
       - "spyglass/**"
       - ".github/workflows/spyglass.yml"

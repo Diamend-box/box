@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.diamend</groupId>
+    <artifactId>CustomAchievements</artifactId>
+    <version>1.14.0</version>
+    <packaging>jar</packaging>
+
+    <name>CustomAchievements</name>
+    <description>Create GUI-based custom achievements for Minecraft 1.21.4</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <!-- PlaceholderAPI (soft dependency). -->
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+        <!-- AnvilGUI (bundled/shaded; powers the off-chat anvil text editor). -->
+        <repository>
+            <id>mvn-wesjd-net</id>
+            <url>https://mvn.wesjd.net/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Optional soft-dependency: only used when AuraSkills is installed. -->
+        <dependency>
+            <groupId>dev.aurelium</groupId>
+            <artifactId>auraskills-api-bukkit</artifactId>
+            <version>2.3.12</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Optional soft-dependency: only used when PlaceholderAPI is installed. -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Off-chat anvil text entry. Bundled into the plugin jar (shaded and
+             relocated below) because it isn't provided by the server. -->
+        <dependency>
+            <groupId>net.wesjd</groupId>
+            <artifactId>anvilgui</artifactId>
+            <version>1.10.13-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Tests: run the plugin against a real Bukkit/Paper API impl.
+             MockBukkit downloads the matching server implementation at test
+             runtime, so `mvn test` needs network access. -->
+        <!-- MockBukkit 4.45.0 is the release built against paper-api 1.21.4,
+             so the mock server's version check matches this project. -->
+        <dependency>
+            <groupId>org.mockbukkit.mockbukkit</groupId>
+            <artifactId>mockbukkit-v1.21</artifactId>
+            <version>4.45.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.12.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.12.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.name}-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+            <!-- Bundle AnvilGUI into the jar and relocate its package so it can't
+                 clash with another plugin that also shades AnvilGUI. Only the
+                 AnvilGUI artifact is bundled; paper-api and the soft deps stay
+                 provided. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>net.wesjd:*</include>
+                                </includes>
+                            </artifactSet>
+                            <relocations>
+                                <relocation>
+                                    <pattern>net.wesjd.anvilgui</pattern>
+                                    <shadedPattern>com.diamend.customachievements.libs.anvilgui</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+</project>

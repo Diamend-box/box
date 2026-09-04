@@ -86,7 +86,17 @@ public class CompressorListener implements Listener {
     // Right-click: open a compactor, or expand a compacted stack
     // ------------------------------------------------------------------
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    /**
+     * Opening a compactor and expanding a unit both hang off the same click.
+     *
+     * <p>This deliberately does <em>not</em> ignore cancelled events. A right
+     * click that another plugin has denied — a claim, a spawn region, an
+     * anticheat — still arrives here cancelled, and refusing to expand in that
+     * case makes the item look broken in exactly the places players spend most
+     * of their time. Expanding touches nothing but the player's own inventory,
+     * so there is nothing for a protection plugin to protect against.
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
@@ -103,6 +113,7 @@ public class CompressorListener implements Listener {
         }
         // Let doors, chests and buttons win — neither opening a compactor nor
         // expanding a stack is worth making an item unable to open things.
+        // Sneaking is the way past it, and the item says so.
         if (action == Action.RIGHT_CLICK_BLOCK) {
             Block clicked = event.getClickedBlock();
             if (clicked != null && clicked.getType().isInteractable() && !player.isSneaking()) {
@@ -115,18 +126,7 @@ public class CompressorListener implements Listener {
             new CompactorMenu(plugin, module, player.getInventory().getHeldItemSlot()).open(player);
             return;
         }
-
-        int wanted = player.isSneaking() ? held.getAmount() : 1;
-        int expanded = module.expand(player, wanted);
-        if (expanded <= 0) {
-            plugin.messages().send(player, "compressor-no-room");
-            return;
-        }
-        plugin.messages().send(player, "compressor-expanded",
-                "amount", expanded,
-                "plural", expanded == 1 ? "" : "s",
-                "ore", CompressedOre.displayName(held.getType()),
-                "seconds", module.graceSeconds());
+        module.expandInHand(player, player.isSneaking());
     }
 
     // ------------------------------------------------------------------

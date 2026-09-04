@@ -14,7 +14,7 @@ import com.diamend.boxcore.ore.OreValues;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.playtime.PlaytimeModule;
 import com.diamend.boxcore.skill.SkillsModule;
-import com.diamend.boxcore.util.ChatPrompt;
+import com.diamend.boxcore.util.TextPrompt;
 import com.diamend.boxcore.util.Messages;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
@@ -35,7 +35,7 @@ public class BoxCorePlugin extends JavaPlugin {
     private Messages messages;
     private ModuleManager modules;
     private OreValues ores;
-    private ChatPrompt prompts;
+    private TextPrompt prompts;
 
     private SkillsModule skillsModule;
     private CollectionsModule collectionsModule;
@@ -57,7 +57,7 @@ public class BoxCorePlugin extends JavaPlugin {
         this.messages = new Messages(this);
         this.modules = new ModuleManager(this);
         this.ores = new OreValues(this);
-        this.prompts = new ChatPrompt(this);
+        this.prompts = new TextPrompt(this);
 
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
@@ -87,7 +87,10 @@ public class BoxCorePlugin extends JavaPlugin {
             profiles.get(player.getUniqueId()).setName(player.getName());
         }
 
-        getLogger().info("BoxCore enabled with " + modules.activeModules().size()
+        // The version carries the commit it was built from, so the log answers
+        // "which jar is actually on the server?" without anyone having to look.
+        getLogger().info("BoxCore " + getDescription().getVersion() + " enabled with "
+                + modules.activeModules().size()
                 + " of " + modules.registered().size() + " module(s) active.");
     }
 
@@ -228,7 +231,7 @@ public class BoxCorePlugin extends JavaPlugin {
     }
 
     /** Typed answers from chat, for the things a menu can't capture from the world. */
-    public ChatPrompt prompts() {
+    public TextPrompt prompts() {
         return prompts;
     }
 }

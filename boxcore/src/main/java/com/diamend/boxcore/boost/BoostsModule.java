@@ -37,7 +37,9 @@ import java.util.logging.Level;
 /**
  * Temporary multipliers, running server-wide or for one player.
  *
- * <p>Boosts multiply together: a 2× global and a 2× personal boost make 4×.
+ * <p>One global boost and one personal boost run per type, so the most anyone
+ * can have is those two multiplied: a 2× global and a 2× personal make 4×.
+ * Starting another replaces the one it matches rather than stacking on top.
  * That is the intuitive reading, and it is also the explosive one, so
  * {@code boosts.max-multiplier} exists as a hard ceiling no combination can
  * exceed. Raise it deliberately, not by accident.
@@ -71,7 +73,10 @@ public class BoostsModule implements BoxModule {
     private final Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
 
     private double maxMultiplier = 8.0;
-    private boolean oresOnly = true;
+    private boolean oresOnly = false;
+    private int dropWindowTicks = 5;
+    private boolean captureInventory = true;
+    private DropGuard guard = DropGuard.defaults();
     private boolean announce = true;
     private int checkTicks = 100;
     private ZoneId zone = ZoneId.systemDefault();
@@ -106,7 +111,7 @@ public class BoostsModule implements BoxModule {
     public void enable() {
         loadConfig();
         loadGlobal();
-        plugin.getServer().getPluginManager().registerEvents(new BoostListener(plugin, this), plugin);
+        plugin.modules().listen(this, new BoostListener(plugin, this));
         task = plugin.getServer().getScheduler()
                 .runTaskTimer(plugin, this::tick, checkTicks, checkTicks);
         notifier.start();
@@ -135,7 +140,11 @@ public class BoostsModule implements BoxModule {
     private void loadConfig() {
         ConfigurationSection section = plugin.getConfig().getConfigurationSection("boosts");
         maxMultiplier = Math.max(1.0, section == null ? 8.0 : section.getDouble("max-multiplier", 8.0));
-        oresOnly = section == null || section.getBoolean("drops.ores-only", true);
+        oresOnly = section != null && section.getBoolean("drops.ores-only", false);
+        dropWindowTicks = Math.max(1, section == null
+                ? 5 : section.getInt("drops.window-ticks", 5));
+        captureInventory = section == null || section.getBoolean("drops.capture-inventory", true);
+        guard = loadGuard(section);
         announce = section == null || section.getBoolean("announce", true);
         checkTicks = Math.max(20, section == null ? 100 : section.getInt("check-ticks", 100));
 
@@ -151,6 +160,31 @@ public class BoostsModule implements BoxModule {
         }
         loadWindows(section);
         loadItems(section);
+    }
+
+    /**
+     * Builds the rule about what a drops boost is allowed to multiply.
+     *
+     * <p>The built-in half of it is not configurable — see {@link DropGuard} —
+     * so this only reads the two things an operator can say: extra materials to
+     * leave alone, and whether unstackable items are fair game after all.
+     */
+    private DropGuard loadGuard(ConfigurationSection section) {
+        List<Material> denied = new ArrayList<>();
+        List<String> names = section == null
+                ? List.of()
+                : section.getStringList("drops.never-multiply");
+        for (String name : names) {
+            Material material = Items.material(name, null);
+            if (material == null) {
+                plugin.getLogger().warning("boosts.drops.never-multiply: '" + name
+                        + "' is not a material, ignoring it.");
+            } else {
+                denied.add(material);
+            }
+        }
+        return new DropGuard(denied, section != null
+                && section.getBoolean("drops.multiply-unstackable", false));
     }
 
     private void loadItems(ConfigurationSection section) {
@@ -184,7 +218,8 @@ public class BoostsModule implements BoxModule {
                 continue;
             }
             definitions.put(id.toLowerCase(Locale.ROOT), new ItemDefinition(
-                    new BoostItems.Payload(id, types, multiplier, duration),
+                    new BoostItems.Payload(id, types, multiplier, duration,
+                            entry.getBoolean("global", false)),
                     readAppearance(entry.getConfigurationSection("item"))));
         }
     }
@@ -205,12 +240,64 @@ public class BoostsModule implements BoxModule {
 
     /** Builds a configured boost item, or null when no such item is configured. */
     public ItemStack createItem(String id, int amount) {
-        ItemDefinition definition = definitions.get(id == null
-                ? ""
-                : id.trim().toLowerCase(Locale.ROOT));
-        return definition == null
-                ? null
-                : items.create(definition.payload(), definition.appearance(), amount);
+        return createItem(id, amount, 0L, 0.0);
+    }
+
+    /**
+     * Builds a configured boost item, optionally overriding how long it lasts
+     * and how strong it is.
+     *
+     * <p>Either override is written onto the item like every other figure, so a
+     * one-off 5x-for-a-day version of a configured 2x-for-30-minutes item is a
+     * real item rather than a config entry that has to exist forever to support
+     * it — and the name and lore on the item stay correct, because they are
+     * built from tokens, not from whatever the config entry happened to say.
+     *
+     * @param millis     how long it should last, or 0 to use the configured length
+     * @param multiplier how strong it should be, or 0 to use the configured one
+     */
+    public ItemStack createItem(String id, int amount, long millis, double multiplier) {
+        return createItem(id, amount, millis, multiplier, false);
+    }
+
+    /**
+     * The same, and able to build an item no config entry describes.
+     *
+     * <p>When {@code id} names a boost <em>type</em> rather than a configured
+     * item, one is minted on the spot from the default appearance. A one-off
+     * prize — a 6x drops boost for the tournament winner — shouldn't need a
+     * config entry that then has to be kept forever so the item stays valid, and
+     * it doesn't: the item carries what it does.
+     *
+     * @param global whether to force a server-wide item. A configured entry's
+     *               own {@code global} flag stands when this is false.
+     */
+    public ItemStack createItem(String id, int amount, long millis, double multiplier,
+                                boolean global) {
+        String key = id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
+        ItemDefinition definition = definitions.get(key);
+        if (definition == null) {
+            List<BoostType> types = typesFor(key);
+            if (types.isEmpty()) {
+                return null;
+            }
+            // Nothing configured to fall back on, so both figures have to be
+            // given rather than defaulted — an ad-hoc item with a made-up
+            // strength would be a surprise to whoever ends up holding it.
+            if (multiplier <= 1.0 || millis <= 0) {
+                return null;
+            }
+            return items.create(new BoostItems.Payload(key, types, multiplier, millis, global),
+                    BoostItems.Appearance.defaults(), amount);
+        }
+        BoostItems.Payload payload = definition.payload();
+        if (millis > 0 || multiplier > 0 || global) {
+            payload = new BoostItems.Payload(payload.id(), payload.types(),
+                    multiplier > 0 ? multiplier : payload.multiplier(),
+                    millis > 0 ? millis : payload.durationMillis(),
+                    global || payload.global());
+        }
+        return items.create(payload, definition.appearance(), amount);
     }
 
     public Set<String> itemIds() {
@@ -224,9 +311,18 @@ public class BoostsModule implements BoxModule {
      */
     public List<Boost> activate(Player player, BoostItems.Payload payload) {
         List<Boost> started = new ArrayList<>();
+        // A global item starts the same boost everyone else's would, so it goes
+        // through addGlobal rather than a parallel path — the announcement, the
+        // cap and the saved-to-disk behaviour all come along with it. The source
+        // records who spent it, because "who started this" is the first thing
+        // staff ask when a server-wide boost appears.
+        String source = "item:" + payload.id()
+                + (payload.global() && player != null ? " by " + player.getName() : "");
         for (BoostType type : payload.types()) {
-            started.add(addPlayer(player, type, payload.multiplier(),
-                    payload.durationMillis(), "item:" + payload.id()));
+            started.add(payload.global()
+                    ? addGlobal(type, payload.multiplier(), payload.durationMillis(), source)
+                    : addPlayer(player, type, payload.multiplier(),
+                            payload.durationMillis(), source));
         }
         return started;
     }
@@ -334,8 +430,8 @@ public class BoostsModule implements BoxModule {
     /**
      * What this player's boosts come to for a type, with 1.0 meaning no change.
      *
-     * <p>Every running boost of the type multiplies in — global first, then the
-     * player's own — and the result is clamped to the configured ceiling.
+     * <p>At most one global boost and one of the player's own run for a type,
+     * so this is those two multiplied, clamped to the configured ceiling.
      */
     public double multiplier(Player player, BoostType type) {
         return multiplierFor(profileOf(player), type);
@@ -421,9 +517,17 @@ public class BoostsModule implements BoxModule {
     // Granting
     // ------------------------------------------------------------------
 
-    /** Starts a server-wide boost and announces it. */
+    /**
+     * Starts a server-wide boost and announces it.
+     *
+     * <p>Only one global boost of a type runs at a time: starting another
+     * replaces it rather than stacking on top. Two 2x drop boosts running
+     * together came to 4x, which is not something anyone chose — it happened
+     * because two people spent an item within an hour of each other.
+     */
     public Boost addGlobal(BoostType type, double multiplier, long millis, String source) {
         Boost boost = Boost.lasting(type, multiplier, millis, source);
+        global.removeIf(running -> running.type() == type);
         global.add(boost);
         saveGlobal();
         if (announce) {
@@ -442,9 +546,19 @@ public class BoostsModule implements BoxModule {
     }
 
     /** Starts a boost for one player. */
+    /**
+     * Starts a boost for one player, replacing whatever of that type they had.
+     *
+     * <p>One personal boost of a type at a time, the same rule as the global
+     * ones. The multiplier a player ends up with is therefore always one global
+     * times one of their own, which is a number they can work out in their head
+     * and a number the shop can be priced against.
+     */
     public Boost addPlayer(Player player, BoostType type, double multiplier, long millis, String source) {
         Boost boost = Boost.lasting(type, multiplier, millis, source);
-        plugin.profiles().get(player.getUniqueId()).addBoost(boost);
+        PlayerProfile profile = plugin.profiles().get(player.getUniqueId());
+        profile.removeBoosts(type);
+        profile.addBoost(boost);
         return boost;
     }
 
@@ -483,8 +597,42 @@ public class BoostsModule implements BoxModule {
         return Collections.unmodifiableList(active);
     }
 
+    /**
+     * How long after a block breaks its drops still count as that block's.
+     *
+     * <p>Drops that another plugin spawns for itself arrive a tick or two after
+     * the break, so the boost watches a short window rather than a single
+     * event. Longer catches slower plugins; too long starts catching items that
+     * had nothing to do with the block.
+     */
+    public int dropWindowTicks() {
+        return dropWindowTicks;
+    }
+
+    /**
+     * Whether to boost what a player gained when nothing was dropped.
+     *
+     * <p>The last resort, for plugins that hand a block's yield straight to the
+     * inventory without ever spawning an item. It costs an inventory snapshot
+     * per block broken, and only while that player has a drops boost running.
+     */
+    public boolean captureInventory() {
+        return captureInventory;
+    }
+
     public boolean oresOnly() {
         return oresOnly;
+    }
+
+    /**
+     * What a drops boost is allowed to multiply.
+     *
+     * <p>Consulted for every drop, however it reached the player, because the
+     * duplication it exists to stop does not care which of the three capture
+     * paths found the item.
+     */
+    public DropGuard guard() {
+        return guard;
     }
 
     public double maxMultiplier() {

@@ -2,16 +2,22 @@ package com.diamend.boxcore.travel;
 
 import com.diamend.boxcore.BoxCorePlugin;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.projectiles.ProjectileSource;
 
 /**
@@ -97,6 +103,46 @@ public class TravelListener implements Listener {
                 || from.getBlockY() != to.getBlockY()
                 || from.getBlockZ() != to.getBlockZ()
                 || (from.getWorld() != null && !from.getWorld().equals(to.getWorld()));
+    }
+
+    // ------------------------------------------------------------------
+    // Travel items
+    // ------------------------------------------------------------------
+
+    /** Right-click a ticket or a map to use it. */
+    @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        // Deliberately not ignoreCancelled: a right-click on *air* arrives with
+        // the block result already DENY, because there is no block to use, so
+        // ignoring cancelled events would drop exactly the case this handler
+        // exists for. What matters is whether something denied the item use.
+        if (event.useItemInHand() == Event.Result.DENY) {
+            return;
+        }
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        Player player = event.getPlayer();
+        ItemStack held = player.getInventory().getItemInMainHand();
+        TravelItems.Payload payload = module.items().read(held);
+        if (payload == null) {
+            return;
+        }
+        // Opening a chest while carrying a ticket must not spend it.
+        if (action == Action.RIGHT_CLICK_BLOCK) {
+            Block clicked = event.getClickedBlock();
+            if (clicked != null && clicked.getType().isInteractable() && !player.isSneaking()) {
+                return;
+            }
+        }
+        event.setCancelled(true);
+        if (module.useItem(player, payload)) {
+            held.setAmount(held.getAmount() - 1);
+        }
     }
 
     // ------------------------------------------------------------------

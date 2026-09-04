@@ -288,6 +288,18 @@ public class PlayerProfile {
         return active;
     }
 
+    /** Drops every boost of a type, running or not. Returns how many went. */
+    public int removeBoosts(BoostType type) {
+        List<Boost> going = new ArrayList<>();
+        for (Boost boost : boosts) {
+            if (boost.type() == type) {
+                going.add(boost);
+            }
+        }
+        boosts.removeAll(going);
+        return going.size();
+    }
+
     public void addBoost(Boost boost) {
         if (boost != null) {
             boosts.add(boost);

@@ -39,9 +39,18 @@ public final class CompressedOre {
                              int modelData,
                              boolean glow) {
 
-        /** The built-in look for an ore: the ore's own item, named and described. */
+        /**
+         * The built-in look for an ore: the ore's own item, named, described
+         * and glinting.
+         *
+         * <p>The glint is not decoration. A compacted unit is the same material
+         * as the raw item by default, so without it the two sit side by side in
+         * a hotbar looking identical, and a player right-clicking the wrong one
+         * gets no reaction and concludes the feature is broken. A server that
+         * skins its units distinctly can turn it off per recipe.
+         */
         public static Appearance defaultFor(Material ore) {
-            return new Appearance(ore, null, null, 0, false);
+            return new Appearance(ore, null, null, 0, true);
         }
 
         /** The material actually used for the item, falling back to the ore. */

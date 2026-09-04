@@ -22,6 +22,7 @@ import com.diamend.boxcore.ore.CompactorTier;
 import com.diamend.boxcore.ore.CompressedOre;
 import com.diamend.boxcore.ore.CompressorModule;
 import com.diamend.boxcore.skill.RespecCost;
+import com.diamend.boxcore.travel.TravelItems;
 import com.diamend.boxcore.travel.TravelModule;
 import com.diamend.boxcore.travel.Warp;
 import com.diamend.boxcore.skill.SkillNode;
@@ -87,6 +88,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "points", "point" -> points(sender, args);
             case "respec" -> respec(sender);
             case "compress", "compressor" -> compress(sender, args);
+            case "expand", "uncompact" -> expand(sender, args);
             case "compactor" -> compactor(sender, args);
             case "give", "givecompressed" -> giveCompressed(sender, args);
             case "boost", "boosts" -> boost(sender, args);
@@ -94,7 +96,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "warp" -> warp(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reset" -> reset(sender, args);
-            case "modules" -> modules(sender);
+            case "modules" -> modules(sender, args);
             case "reload" -> reload(sender);
             default -> help(sender);
         }
@@ -376,9 +378,22 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         messages().sendLiteral(sender, "<green>Wiped BoxCore data for <white>" + args[1] + "<green>.");
     }
 
-    private void modules(CommandSender sender) {
+    /**
+     * {@code /box modules [list]} — see what is running, and switch it.
+     *
+     * <p>A player gets the menu, because switching a module is the thing staff
+     * actually come here to do and doing it from a file meant a restart.
+     * {@code list} forces the text version, which is also what the console
+     * gets, since it has nowhere to put a menu.
+     */
+    private void modules(CommandSender sender, String[] args) {
         if (!sender.hasPermission(ADMIN)) {
             messages().send(sender, "no-permission");
+            return;
+        }
+        boolean asText = args.length > 1 && args[1].equalsIgnoreCase("list");
+        if (sender instanceof Player player && !asText) {
+            new com.diamend.boxcore.gui.ModuleMenu(plugin).open(player);
             return;
         }
         messages().sendLiteral(sender, "<gray>Modules:");
@@ -435,6 +450,31 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean enabled = choice.equals("on");
         compressor.setEnabled(player, enabled);
         messages().send(player, enabled ? "compressor-on" : "compressor-off");
+    }
+
+    /**
+     * {@code /box expand [all]} — unfold what you are holding.
+     *
+     * <p>Right-clicking a unit is the way this is meant to be done. This exists
+     * because right-clicking runs through {@code PlayerInteractEvent}, which
+     * any protection plugin, region or anticheat on the server can take away
+     * without telling anyone — and when it does, the item looks broken with no
+     * way to prove otherwise. A command cannot be intercepted like that, so
+     * there is always one path that works and one answer about whether the
+     * expansion logic itself is at fault.
+     */
+    private void expand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            messages().send(sender, "players-only");
+            return;
+        }
+        CompressorModule compressor = plugin.compressor();
+        if (compressor == null) {
+            messages().sendLiteral(sender, "<red>The compactor is disabled on this server.");
+            return;
+        }
+        boolean all = args.length > 1 && args[1].equalsIgnoreCase("all");
+        compressor.expandInHand(player, all);
     }
 
     /**
@@ -648,8 +688,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             case "perm", "permission" -> permWarp(sender, module, args);
             case "radius" -> radiusWarp(sender, module, args);
             case "tp", "teleport", "goto" -> tpWarp(sender, module, args);
+            case "item", "ticket" -> warpItem(sender, module, args);
             default -> messages().sendLiteral(sender, "<red>Usage: /box warp "
-                    + "<edit|set|move|icon|rename|desc|perm|radius|tp|delete|list> [id]");
+                    + "<edit|set|move|icon|rename|desc|perm|radius|tp|item|delete|list> [id]");
         }
     }
 
@@ -695,7 +736,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             return;
         }
         requirePlayer(sender, player -> {
-            module.warps().put(warp.withLocation(player.getLocation().clone()));
+            module.warps().put(warp.withLocation(module.placementFor(player)));
             messages().sendLiteral(sender, "<green>Moved <white>" + warp.id()
                     + "<green> to where you're standing.");
         });
@@ -830,6 +871,84 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         });
     }
 
+    /**
+     * {@code /box warp item <id|destination> [map|ticket] [player] [amount]}
+     *
+     * <p>The first word is either a configured item, which knows its own mode
+     * and look, or a destination id, which mints a plain one on the spot. The
+     * rest are read by shape rather than position, so the order they're typed
+     * in doesn't matter: {@code map} is a mode, {@code 16} is an amount, and
+     * anything else is a player.
+     */
+    private void warpItem(CommandSender sender, TravelModule module, String[] args) {
+        if (args.length < 3) {
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box warp item <id|destination> [map|ticket] [player] [amount]"
+                            + (module.itemIds().isEmpty()
+                                    ? " <dark_gray>— no configured items, name a destination"
+                                    : " <dark_gray>— " + String.join(", ", module.itemIds())));
+            return;
+        }
+        Player target = sender instanceof Player self ? self : null;
+        TravelItems.Mode mode = null;
+        int amount = 1;
+        for (int index = 3; index < args.length; index++) {
+            String arg = args[index];
+            TravelItems.Mode word = TravelItems.Mode.match(arg);
+            if (word != null) {
+                mode = word;
+            } else if (arg.matches("\\d+")) {
+                amount = Math.max(1, Math.min(Integer.parseInt(arg), 36 * 64));
+            } else {
+                target = Bukkit.getPlayerExact(arg);
+                if (target == null) {
+                    messages().send(sender, "unknown-player", "name", arg);
+                    return;
+                }
+            }
+        }
+        if (target == null) {
+            messages().sendLiteral(sender, "<red>Name a player: /box warp item <id> <player>");
+            return;
+        }
+
+        String id = args[2];
+        String key = id.toLowerCase(Locale.ROOT);
+        ItemStack item = module.itemIds().contains(key)
+                ? module.createItem(id, amount)
+                : null;
+        if (item == null) {
+            // Not a configured item, so read it as a destination instead.
+            boolean known = TravelItems.ANY.equals(key) || module.warps().get(key) != null;
+            if (!known) {
+                messages().sendLiteral(sender, "<red>No travel item or destination called "
+                        + "<white>" + id + "<red>. Items: <white>"
+                        + (module.itemIds().isEmpty() ? "none" : String.join(", ", module.itemIds()))
+                        + "<red>.");
+                return;
+            }
+            if (mode == null) {
+                // Handing out the wrong one is worse than asking, and the two
+                // are not interchangeable: one is a trip, the other is forever.
+                messages().sendLiteral(sender, "<red>Say which kind: <white>/box warp item "
+                        + key + " map<red> to unlock it for good, or <white>/box warp item "
+                        + key + " ticket<red> for one trip.");
+                return;
+            }
+            item = module.createItem(key, mode, amount);
+            if (item == null) {
+                messages().sendLiteral(sender, "<red>A ticket has to know where it's taking you — "
+                        + "<white>any<red> only works as a map.");
+                return;
+            }
+        }
+        for (ItemStack leftover : target.getInventory().addItem(item).values()) {
+            target.getWorld().dropItemNaturally(target.getLocation(), leftover);
+        }
+        messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
+                + "<green> " + Text.number(amount) + " <white>" + key + "<green>.");
+    }
+
     /** Everything from {@code index} on, joined back into the sentence it was. */
     private String join(String[] args, int index) {
         StringBuilder text = new StringBuilder();
@@ -875,12 +994,13 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 existing == null ? display : existing.display(),
                 icon,
                 existing == null ? List.of() : existing.description(),
-                player.getLocation().clone(),
+                module.placementFor(player),
                 existing == null ? "" : existing.permission(),
                 existing == null
                         ? plugin.getConfig().getDouble("travel.default-radius", 8.0)
                         : existing.radius());
         module.warps().put(warp);
+        module.discover(player, warp);
         messages().sendLiteral(sender, (existing == null
                 ? "<green>Created warp <white>" : "<green>Moved warp <white>") + id
                 + "<green> to where you're standing.");
@@ -1033,48 +1153,99 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 + Durations.format(duration) + "<green>.");
     }
 
+    /**
+     * {@code /box boost item <id|type> [player] [amount] [duration] [strength]}.
+     *
+     * <p>Everything after the id is recognised by its shape rather than by its
+     * position, because five positional arguments in a fixed order means the
+     * only way to say "5x" is to type a player, an amount and a duration you
+     * didn't want first — which reads, from the other end, as if 5x isn't
+     * possible at all. So: <b>{@code 5x} is a strength and {@code 5} is a
+     * count</b>, a duration looks like {@code 30m}, {@code global} says so, and
+     * anything left is a player's name.
+     *
+     * <p>The id may also be a boost <em>type</em> — {@code drops},
+     * {@code collections}, {@code all} — which mints an item that no config
+     * entry has to exist for. A one-off prize shouldn't need a config entry that
+     * then has to be kept forever.
+     */
     private void boostItem(CommandSender sender, BoostsModule boosts, String[] args) {
         if (args.length < 3) {
-            messages().sendLiteral(sender, "<red>Usage: /box boost item <id> [player] [amount]"
+            messages().sendLiteral(sender,
+                    "<red>Usage: /box boost item <id|type> [player] [amount] [duration] [5x]"
                     + (boosts.itemIds().isEmpty() ? "" : " <dark_gray>— "
                             + String.join(", ", boosts.itemIds())));
             return;
         }
-        Player target;
-        if (args.length >= 4) {
-            target = Bukkit.getPlayerExact(args[3]);
-            if (target == null) {
-                messages().send(sender, "unknown-player", "name", args[3]);
-                return;
+        Player target = sender instanceof Player self ? self : null;
+        int amount = 1;
+        long millis = 0L;
+        double multiplier = 0.0;
+        boolean global = false;
+
+        for (int index = 3; index < args.length; index++) {
+            String arg = args[index];
+            String lower = arg.toLowerCase(Locale.ROOT);
+            if (lower.equals("global") || lower.equals("server")) {
+                global = true;
+            } else if (lower.matches("\\d+(\\.\\d+)?x")) {
+                multiplier = Double.parseDouble(lower.substring(0, lower.length() - 1));
+                if (multiplier <= 1.0) {
+                    messages().sendLiteral(sender, "<red>A <white>" + Text.decimal(multiplier)
+                            + "x<red> boost would do nothing — it has to be above 1x.");
+                    return;
+                }
+                if (multiplier > boosts.maxMultiplier()) {
+                    // Creating one stronger than the cap would print a number on
+                    // the item that the boost can never actually reach.
+                    messages().sendLiteral(sender, "<red>The cap is <white>"
+                            + Text.decimal(boosts.maxMultiplier())
+                            + "x<red> (boosts.max-multiplier) — raise it first.");
+                    return;
+                }
+            } else if (lower.matches("\\d+")) {
+                amount = Math.max(1, Math.min(Integer.parseInt(lower), 36 * 64));
+            } else if (Durations.parse(lower) > 0) {
+                millis = Durations.parse(lower);
+            } else {
+                target = Bukkit.getPlayerExact(arg);
+                if (target == null) {
+                    messages().send(sender, "unknown-player", "name", arg);
+                    return;
+                }
             }
-        } else if (sender instanceof Player self) {
-            target = self;
-        } else {
+        }
+        if (target == null) {
             messages().sendLiteral(sender, "<red>Name a player: /box boost item <id> <player>");
             return;
         }
-        int amount = 1;
-        if (args.length >= 5) {
-            try {
-                amount = Math.max(1, Math.min(Integer.parseInt(args[4]), 36 * 64));
-            } catch (NumberFormatException ex) {
-                messages().sendLiteral(sender, "<red><white>" + args[4] + "</white> isn't a number.");
-                return;
-            }
+
+        // An item built from a bare type has no config entry to take the
+        // missing figures from, so say which one is missing rather than
+        // claiming the type doesn't exist.
+        boolean adHoc = !boosts.itemIds().contains(args[2].toLowerCase(Locale.ROOT))
+                && !BoostsModule.typesFor(args[2]).isEmpty();
+        if (adHoc && (multiplier <= 1.0 || millis <= 0)) {
+            messages().sendLiteral(sender, "<red>A <white>" + args[2] + "<red> item needs both a"
+                    + " strength and a length: <white>/box boost item " + args[2] + " 5x 1h<red>.");
+            return;
         }
-        ItemStack item = boosts.createItem(args[2], amount);
+        ItemStack item = boosts.createItem(args[2], amount, millis, multiplier, global);
         if (item == null) {
-            messages().sendLiteral(sender, "<red>No boost item called <white>" + args[2]
+            messages().sendLiteral(sender, "<red>No boost item or type called <white>" + args[2]
                     + "<red>. Configured: <white>"
                     + (boosts.itemIds().isEmpty() ? "none" : String.join(", ", boosts.itemIds()))
-                    + "<red>.");
+                    + "<red>; types: <white>" + String.join(", ", boostTypeNames()) + "<red>.");
             return;
         }
         for (ItemStack leftover : target.getInventory().addItem(item).values()) {
             target.getWorld().dropItemNaturally(target.getLocation(), leftover);
         }
         messages().sendLiteral(sender, "<green>Gave <white>" + target.getName()
-                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>.");
+                + "<green> " + Text.number(amount) + " <white>" + args[2] + "<green>"
+                + (multiplier > 0 ? " <gray>(" + Text.decimal(multiplier) + "x)" : "")
+                + (millis > 0 ? " <gray>(" + Durations.format(millis) + ")" : "")
+                + (global ? " <gray>(server-wide)" : "") + ".");
     }
 
     private void boostClear(CommandSender sender, BoostsModule boosts, String[] args) {
@@ -1154,6 +1325,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             ids.add(warp.id());
         }
         return ids;
+    }
+
+    /** Configured {@code travel.items} entries, for {@code /box warp item}. */
+    private List<String> travelItemIds(TravelModule travel) {
+        return travel == null ? List.of() : new ArrayList<>(travel.itemIds());
     }
 
     private List<String> recipeNames() {
@@ -1260,7 +1436,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
         boolean admin = sender.hasPermission(ADMIN);
 
         if (args.length == 1) {
-            options.addAll(List.of("skills", "collections", "points", "respec", "compress",
+            options.addAll(List.of("skills", "collections", "points", "respec", "compress", "expand",
                     "boost", "travel"));
             if (admin) {
                 options.addAll(List.of("give", "compactor", "warp", "unlock", "collection",
@@ -1291,7 +1467,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 case "warp" -> {
                     if (admin) {
                         options.addAll(List.of("edit", "set", "move", "icon", "rename",
-                                "desc", "perm", "radius", "tp", "delete", "list"));
+                                "desc", "perm", "radius", "tp", "item", "delete", "list"));
                     }
                 }
                 case "boost", "boosts" -> {
@@ -1344,8 +1520,14 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 return switch (mode) {
                     case "global", "server" -> filter(boostTypeNames(), args[2]);
                     case "player", "give" -> filter(onlineNames(), args[2]);
-                    case "item" -> filter(boosts == null
-                            ? List.<String>of() : new ArrayList<>(boosts.itemIds()), args[2]);
+                    case "item" -> {
+                        List<String> ids = boosts == null
+                                ? new ArrayList<String>() : new ArrayList<>(boosts.itemIds());
+                        // Bare types work too, and mint an item with no config
+                        // entry behind it.
+                        ids.addAll(boostTypeNames());
+                        yield filter(ids, args[2]);
+                    }
                     case "clear", "stop" -> {
                         List<String> targets = new ArrayList<>(List.of("global"));
                         targets.addAll(onlineNames());
@@ -1358,7 +1540,11 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 return switch (mode) {
                     case "global", "server" -> filter(List.of("2", "3", "1.5"), args[3]);
                     case "player", "give" -> filter(boostTypeNames(), args[3]);
-                    case "item" -> filter(onlineNames(), args[3]);
+                    case "item" -> {
+                        List<String> options2 = new ArrayList<>(onlineNames());
+                        options2.addAll(List.of("5x", "30m", "global"));
+                        yield filter(options2, args[3]);
+                    }
                     default -> List.of();
                 };
             }
@@ -1366,6 +1552,7 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                 return switch (mode) {
                     case "global", "server" -> filter(List.of("30m", "1h", "2h"), args[4]);
                     case "player", "give" -> filter(List.of("2", "3", "1.5"), args[4]);
+                    case "item" -> filter(List.of("5x", "30m", "1h", "global"), args[4]);
                     default -> List.of();
                 };
             }
@@ -1379,10 +1566,26 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
             TravelModule travel = plugin.travel();
             String mode = args[1].toLowerCase(Locale.ROOT);
             if (args.length == 3 && !mode.equals("set")) {
+                if (mode.equals("item") || mode.equals("ticket")) {
+                    // Either a configured entry, which brings its own mode and
+                    // look, or any destination, minted plain on the spot.
+                    List<String> options2 = new ArrayList<>(travelItemIds(travel));
+                    options2.addAll(warpIds(travel));
+                    options2.add(TravelItems.ANY);
+                    return filter(options2, args[2]);
+                }
                 return filter(warpIds(travel), args[2]);
             }
             if (args.length == 4) {
                 return switch (mode) {
+                    case "item", "ticket" -> {
+                        List<String> options2 = new ArrayList<>();
+                        if (!travel.itemIds().contains(args[2].toLowerCase(Locale.ROOT))) {
+                            options2.addAll(List.of("map", "ticket"));
+                        }
+                        options2.addAll(onlineNames());
+                        yield filter(options2, args[3]);
+                    }
                     case "desc", "description" -> filter(List.of("add", "remove", "clear"), args[3]);
                     case "perm", "permission" -> {
                         List<String> suggestions = new ArrayList<>(List.of("none"));
@@ -1392,6 +1595,9 @@ public class BoxCommand implements CommandExecutor, TabCompleter {
                     case "radius" -> filter(List.of("8", "16", "32"), args[3]);
                     default -> List.of();
                 };
+            }
+            if (args.length == 5 && (mode.equals("item") || mode.equals("ticket"))) {
+                return filter(List.of("1", "8", "16"), args[4]);
             }
             return List.of();
         }

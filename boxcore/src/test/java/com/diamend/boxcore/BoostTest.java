@@ -4,6 +4,7 @@ import com.diamend.boxcore.boost.Boost;
 import com.diamend.boxcore.boost.BoostItems;
 import com.diamend.boxcore.boost.BoostType;
 import com.diamend.boxcore.boost.BoostsModule;
+import com.diamend.boxcore.boost.DropGuard;
 import com.diamend.boxcore.data.PlayerProfile;
 import com.diamend.boxcore.util.Durations;
 import org.bukkit.Material;
@@ -96,13 +97,50 @@ class BoostTest {
 
     @Test
     void theCapIsAHardCeiling() {
-        // Multiplying together is explosive, which is the point of the cap.
+        // One of each still multiplies, so the cap still has work to do.
+        PlayerMock player = server.addPlayer();
+        boosts().addGlobal(BoostType.DROPS, 5.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 5.0, 60_000, "test");
+
+        assertEquals(boosts().maxMultiplier(), boosts().multiplier(player, BoostType.DROPS),
+                "25x worth of boosts still lands on the cap");
+    }
+
+    @Test
+    void aSecondGlobalReplacesTheFirstRatherThanStacking() {
+        // Two people spending an item within the hour used to make 4x without
+        // anyone deciding that should happen.
         PlayerMock player = server.addPlayer();
         for (int i = 0; i < 5; i++) {
             boosts().addGlobal(BoostType.DROPS, 3.0, 60_000, "test");
         }
-        assertEquals(boosts().maxMultiplier(), boosts().multiplier(player, BoostType.DROPS),
-                "243x worth of boosts still lands on the cap");
+        assertEquals(3.0, boosts().multiplier(player, BoostType.DROPS),
+                "five 3x boosts are still one 3x boost");
+        assertEquals(1, boosts().globalBoosts().size(), "and only one is running");
+    }
+
+    @Test
+    void aSecondPersonalBoostReplacesTheFirst() {
+        PlayerMock player = server.addPlayer();
+        boosts().addPlayer(player, BoostType.DROPS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 3.0, 60_000, "test");
+
+        assertEquals(3.0, boosts().multiplier(player, BoostType.DROPS),
+                "the newer one wins outright");
+    }
+
+    @Test
+    void replacingOneTypeLeavesTheOtherAlone() {
+        // Collections and drops are separate boosts, so starting a drops boost
+        // must not quietly end a collections one someone is part way through.
+        PlayerMock player = server.addPlayer();
+        boosts().addPlayer(player, BoostType.COLLECTIONS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 2.0, 60_000, "test");
+        boosts().addPlayer(player, BoostType.DROPS, 4.0, 60_000, "test");
+
+        assertEquals(4.0, boosts().multiplier(player, BoostType.DROPS));
+        assertEquals(2.0, boosts().multiplier(player, BoostType.COLLECTIONS),
+                "the collections boost was never in the argument");
     }
 
     // ------------------------------------------------------------------
@@ -218,6 +256,148 @@ class BoostTest {
         boosts().activate(player, payload);
         assertEquals(payload.multiplier(), boosts().multiplier(player, BoostType.DROPS));
         assertNull(boosts().createItem("no-such-item", 1));
+    }
+
+    @Test
+    void anItemCanOverrideDurationAndMultiplier() {
+        // A staff member handing out a one-off 5x-for-a-day version of the
+        // configured 2x-for-30-minutes item, without needing a second entry
+        // in config to support it.
+        ItemStack item = boosts().createItem("drops-2x", 1, 86_400_000L, 5.0);
+        BoostItems.Payload payload = boosts().items().read(item);
+
+        assertEquals(5.0, payload.multiplier(), "the override wins over config");
+        assertEquals(86_400_000L, payload.durationMillis());
+        assertEquals(BoostType.DROPS, payload.types().get(0), "everything else is unchanged");
+    }
+
+    @Test
+    void anOverrideOfZeroKeepsTheConfiguredFigure() {
+        ItemStack configured = boosts().createItem("drops-2x", 1);
+        ItemStack overridden = boosts().createItem("drops-2x", 1, 0L, 0.0);
+
+        BoostItems.Payload before = boosts().items().read(configured);
+        BoostItems.Payload after = boosts().items().read(overridden);
+        assertEquals(before.multiplier(), after.multiplier());
+        assertEquals(before.durationMillis(), after.durationMillis());
+    }
+
+    @Test
+    void theNameOnAnOverriddenItemMatchesWhatItActuallyDoes() {
+        // The bug this is guarding: config used to spell "(30m)" into the item
+        // name as literal text, which stayed on screen unchanged even when the
+        // duration underneath it was overridden — so the two disagreed.
+        ItemStack item = boosts().createItem("drops-2x", 1, 3_600_000L, 3.0);
+        String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(item.getItemMeta().displayName());
+
+        assertTrue(name.contains("3x"), "the name shows the actual multiplier: " + name);
+        assertTrue(name.contains(Durations.format(3_600_000L)),
+                "the name shows the actual duration: " + name);
+        assertFalse(name.contains("30m") || name.contains("2x"),
+                "no trace of the configured figures is left behind: " + name);
+    }
+
+    // ------------------------------------------------------------------
+    // Items of any strength
+    // ------------------------------------------------------------------
+
+    @Test
+    void anItemCanBeMintedFromATypeWithNoConfigEntry() {
+        // A one-off prize shouldn't need a config entry kept forever so that
+        // the item stays valid.
+        ItemStack item = boosts().createItem("drops", 1, 3_600_000L, 6.0);
+        assertNotNull(item, "a bare type mints an item");
+
+        BoostItems.Payload payload = boosts().items().read(item);
+        assertNotNull(payload);
+        assertEquals(6.0, payload.multiplier());
+        assertEquals(3_600_000L, payload.durationMillis());
+        assertEquals(List.of(BoostType.DROPS), payload.types());
+    }
+
+    @Test
+    void anAdHocItemNeedsBothFiguresSpelledOut() {
+        assertNull(boosts().createItem("drops", 1, 0L, 6.0), "no length to fall back on");
+        assertNull(boosts().createItem("drops", 1, 3_600_000L, 0.0), "no strength either");
+        assertNull(boosts().createItem("nonsense", 1, 3_600_000L, 6.0));
+    }
+
+    @Test
+    void strengthIsReadFromTheArgumentThatLooksLikeOne() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        // 5x is a strength, 3 is a count — that is the whole rule, and it is
+        // what makes strength sayable without typing four other arguments.
+        assertTrue(player.performCommand("box boost item drops-2x 3 5x 1h"));
+
+        ItemStack given = player.getInventory().getItem(0);
+        assertNotNull(given, "they should be holding something");
+        assertEquals(3, given.getAmount(), "3 was the count");
+        BoostItems.Payload payload = boosts().items().read(given);
+        assertNotNull(payload);
+        assertEquals(5.0, payload.multiplier(), "5x was the strength");
+        assertEquals(3_600_000L, payload.durationMillis());
+    }
+
+    @Test
+    void aStrengthOverTheCapIsRefusedRatherThanPrintedOnTheItem() {
+        PlayerMock player = server.addPlayer();
+        player.setOp(true);
+
+        assertTrue(player.performCommand("box boost item drops-2x 99x 1h"));
+
+        assertNull(player.getInventory().getItem(0),
+                "an item claiming more than the cap can deliver is not made");
+    }
+
+    // ------------------------------------------------------------------
+    // What a boost is allowed to multiply
+    // ------------------------------------------------------------------
+
+    @Test
+    void aShulkerBoxIsNeverMultiplied() {
+        // The exploit: a shulker box drops as one item carrying everything
+        // inside it, so doubling the item duplicates twenty-seven stacks.
+        // Refused even by a guard that has been told to allow unstackables,
+        // because this rule is not the unstackable rule.
+        DropGuard permissive = new DropGuard(List.of(), true);
+        assertFalse(permissive.allows(new ItemStack(Material.SHULKER_BOX)));
+        assertFalse(permissive.allows(new ItemStack(Material.RED_SHULKER_BOX)));
+        assertTrue(DropGuard.carriesContents(new ItemStack(Material.CYAN_SHULKER_BOX)));
+    }
+
+    @Test
+    void plainDropsAreStillMultiplied() {
+        DropGuard guard = DropGuard.defaults();
+        assertTrue(guard.allows(new ItemStack(Material.DIAMOND)));
+        assertTrue(guard.allows(new ItemStack(Material.COBBLESTONE, 12)));
+        assertFalse(guard.allows(new ItemStack(Material.AIR)));
+        assertFalse(guard.allows(null));
+    }
+
+    @Test
+    void unstackableItemsAreLeftAloneUnlessAskedFor() {
+        assertFalse(DropGuard.defaults().allows(new ItemStack(Material.DIAMOND_PICKAXE)),
+                "an item with no quantity to multiply is not doubled by default");
+        assertTrue(new DropGuard(List.of(), true).allows(new ItemStack(Material.DIAMOND_PICKAXE)),
+                "unless the server says its custom drops need it");
+    }
+
+    @Test
+    void theNeverMultiplyListIsHonoured() {
+        DropGuard guard = new DropGuard(List.of(Material.DIAMOND), false);
+        assertFalse(guard.allows(new ItemStack(Material.DIAMOND)));
+        assertTrue(guard.allows(new ItemStack(Material.EMERALD)));
+    }
+
+    @Test
+    void theModuleShipsWithTheSafeDefaults() {
+        DropGuard guard = boosts().guard();
+        assertFalse(guard.allows(new ItemStack(Material.SHULKER_BOX)),
+                "shipped config must not leave the dupe open");
+        assertTrue(guard.allows(new ItemStack(Material.DIAMOND)));
     }
 
     // ------------------------------------------------------------------

@@ -1,0 +1,94 @@
+# =====================================================================
+#  CustomAchievements configuration
+# =====================================================================
+# Text values support MiniMessage formatting, e.g. <green>, <bold>,
+# <gradient:#ff0000:#00ff00>text</gradient>, etc.
+
+# Broadcast a message to the whole server when a player unlocks an
+# achievement that has "announce" enabled.
+announce-broadcasts: true
+
+# Play the classic "challenge complete" sound to a player when they
+# unlock an achievement.
+play-sound: true
+
+# Show a title/subtitle on screen when a player unlocks an achievement.
+show-title: true
+
+# Print the achievement's description in chat when it's unlocked, so players see
+# what it was for — e.g. your flavour text on line one and how it's earned on
+# line two — instead of just its name. Set to false to show the name alone.
+show-description-on-unlock: true
+
+# EXPERIMENTAL: show a native Minecraft "advancement toast" pop-up on unlock.
+# Uses runtime advancement registration, which some server builds don't allow;
+# if unsupported it disables itself automatically (unlocks are unaffected).
+advancement-toast: false
+
+# Use an anvil GUI for text entry in the editor instead of chat. This keeps
+# typed text out of chat entirely (so chat-bridge plugins like DiscordSRV can't
+# relay it). Type in the anvil's rename field, then click the right-hand result
+# slot to confirm. Set this to false to use the old method (typing in chat).
+#
+# The anvil input is powered by the bundled AnvilGUI library. If it can't open
+# on your server build for any reason, the editor automatically falls back to
+# chat input, so the editor always works either way.
+use-anvil-input: true
+
+# Track playtime so PLAYTIME_HOURS achievements can be earned.
+playtime-tracking: true
+
+# Credit players for what they'd already done before an achievement existed,
+# read from Minecraft's own lifetime statistics. Add a "kill 200 players"
+# achievement to a server where someone already has 150 kills and they start at
+# 150/200 instead of 0. Only objectives the server actually keeps a statistic
+# for are seeded (blocks mined/placed, items crafted/picked up, mobs and players
+# killed, fish caught, deaths); custom item names and specific death causes have
+# no statistic behind them and start from zero. Each objective is seeded once per
+# player and seeding never lowers progress, so this can never double-count.
+#
+# NOTE: players may immediately complete achievements they had already earned
+# the statistics for, which pays out the rewards and broadcasts. Set this to
+# false if you would rather everyone started fresh.
+backfill-from-statistics: true
+
+# Show an action-bar progress update as players make progress (throttled).
+progress-feedback: true
+
+# Secret (hidden) achievements: when true, players see the achievement's name
+# and a hint (its description) before unlocking it, while the objectives stay
+# concealed. Set to false to fully hide them as an obfuscated "???".
+secret-show-hints: true
+
+# How many description lines to reveal as the hint (only used when
+# secret-show-hints is true). -1 shows the whole description, 0 shows none
+# (just the name), and any positive number shows only the first N lines. Handy
+# if you write flavour text on line one and how-to-earn-it on line two: keep
+# -1 to show both, or set 1 to tease with the flavour text alone.
+secret-hint-lines: -1
+
+# When a player's inventory is full as they unlock an achievement, keep the
+# reward items in a claimable storage (accessed with /ca claim or /reopen) so
+# they can't be lost, instead of dropping them on the ground. Set to false to
+# use the old behaviour (drop overflow items at the player's feet).
+store-overflow-rewards: true
+
+# When false, breaking a block you placed yourself won't count toward
+# BLOCK_BREAK achievements (prevents place-and-break farming).
+count-player-placed-blocks: true
+
+# Save all online players' progress to disk every X minutes (safety net
+# against crashes). Set to 0 to disable periodic saving.
+autosave-minutes: 5
+
+# In the messages below, <name> is the achievement's display name and
+# <description> is its description with all lines joined onto one (handy for the
+# subtitle, which is a single line). <player> works in "broadcast" only.
+messages:
+  prefix: "<gradient:#f9d423:#ff4e50><bold>Achievements</bold></gradient> <dark_gray>»</dark_gray> "
+  unlocked: "<green>You unlocked <white><name></white>!"
+  broadcast: "<yellow><player></yellow> <gray>unlocked the achievement</gray> <white><name></white><gray>!</gray>"
+  title: "<gradient:#f9d423:#ff4e50><bold>Achievement Unlocked</bold></gradient>"
+  # The line under the big title. Use "<description>" to show your lore there
+  # instead, or "<name> <dark_gray>— <description>" to show both.
+  subtitle: "<name>"

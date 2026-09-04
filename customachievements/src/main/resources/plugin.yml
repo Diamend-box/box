@@ -1,0 +1,37 @@
+name: CustomAchievements
+version: '${project.version}'
+main: com.diamend.customachievements.CustomAchievementsPlugin
+api-version: '1.21'
+softdepend: [MythicMobs, AuraSkills, PlaceholderAPI]
+author: diamend
+description: Create and track fully custom, GUI-based achievements.
+website: https://github.com/diamend-box/box
+
+commands:
+  achievements:
+    description: Open the custom achievements menu and manage achievements.
+    usage: |
+      /achievements                - Open your achievements menu
+      /achievements list           - List achievements in chat
+      /achievements claim          - Collect unclaimed reward items
+      /achievements admin          - Open the admin management menu
+      /achievements create         - Open the achievement editor to create one
+      /achievements grant <p> <id> - Grant an achievement to a player
+      /achievements revoke <p> <id>- Revoke an achievement from a player
+      /achievements reset <player>  - Reset all of a player's achievements
+      /achievements trigger <p> <key> [n] - Fire a custom trigger (Skript/plugins)
+      /achievements backfill [p] [redo] - Re-seed from statistics (online or not) and report what it read
+      /achievements reload         - Reload configuration from disk
+    aliases: [ca, ach, customachievements]
+  careopen:
+    description: Reopen the last CustomAchievements menu you had open.
+    usage: /reopen
+    aliases: [reopen]
+
+permissions:
+  customachievements.use:
+    description: Allows viewing your own achievements.
+    default: true
+  customachievements.admin:
+    description: Allows creating, editing and granting achievements.
+    default: op

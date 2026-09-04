@@ -1,275 +1,140 @@
-# CustomAchievements
+# Box
 
-A Minecraft **1.21.4** (Paper) plugin that lets server staff create fully
-**custom achievements** through an in-game **GUI**, and lets every player browse
-a menu of all achievements to see which ones they've **unlocked** and which are
-still **locked** (with live progress bars).
+The Minecraft server plugins behind **Box** — a **Paper 1.21.4** boxpvp server.
 
-> ℹ️ **Made with AI.** This plugin was written by an AI assistant (Anthropic's
-> Claude) working from a human's requests, and is maintained the same way. It's
-> shared here in the interest of transparency — review the code and test it on
-> your own server before relying on it in production.
+This repository is a home for several **independent** plugins rather than one
+project. Each lives in its own module directory with its own Maven build, its
+own Java package, its own README and its own CI workflow. Nothing is shared
+between them: no parent POM, no common library, no cross-dependencies. You can
+run any one of them without the others, and they are built and downloaded
+separately.
 
----
-
-## Features
-
-- 🎨 **GUI-based editor** – build an achievement without touching a config file.
-  Set the icon, name, description, trigger, target, required amount, XP reward,
-  reward commands and broadcast toggle, all by clicking.
-- 📖 **Player achievement menu** – a paginated book of every achievement showing
-  ✔ *Unlocked* / ✖ *Locked* and a progress bar for in-progress goals.
-- ⚙️ **Automatic tracking** for many trigger types (mining, building, killing,
-  crafting, eating, fishing, deaths, playtime, reaching **locations** and
-  **dimensions** – including custom ones) plus **manual/command** grants.
-- 🎯 **Multiple objectives** – an achievement can require several triggers at
-  once; it unlocks only when every objective is complete.
-- 🧭 **GUI pickers** – choose triggers and targets from searchable, paginated
-  menus (no typing IDs from memory).
-- 🎨 **Flexible text** – names/descriptions accept classic `&` colour codes
-  *and* MiniMessage, mixed freely.
-- 🐉 **MythicMobs & AuraSkills** – optional soft-dependencies for mob-kill and
-  skill-level achievements; the plugin runs fine without either.
-- 🪧 **PlaceholderAPI** – optional expansion exposing per-player completion and
-  progress placeholders for holograms, scoreboards and signs.
-- 🕵️ **Secret achievements** – hidden entries show as `???` until unlocked.
-- 🗂️ **Optional categories** – group achievements into tabs (only shown once you
-  actually use categories).
-- 🏆 **Rewards** – grant XP, give **items**, and/or run console commands on unlock.
-- 📊 **Leaderboard & progress** – `/ca top`, per-category completion %, and an
-  optional action-bar progress readout as players advance.
-- 🛡️ **Anti-farm option** – optionally ignore player-placed blocks so
-  place-and-break can't farm break achievements.
-- 📢 **Unlock feedback** – toast sound, on-screen title, personal message and an
-  optional server-wide broadcast.
-- 💾 **Per-player persistence** – progress is saved to disk and survives restarts.
-- 🔌 **Simple API** – other plugins can grant achievements programmatically.
+> ℹ️ **Made with AI.** Everything here was written by an AI assistant
+> (Anthropic's Claude) working from a human's design, and is maintained the same
+> way. It's said up front in the interest of transparency — review the code and
+> test it on your own server before relying on it in production.
 
 ---
 
-## Requirements
+## The plugins
 
-- Java **21**
-- A **Paper** (or Paper-compatible, e.g. Purpur) server running **1.21.4**
+| Plugin | What it is | Module | Version |
+| --- | --- | --- | --- |
+| **[CustomAchievements](customachievements/README.md)** | Fully custom achievements built through an in-game GUI, with a player-facing menu, progress tracking, prerequisites, triggers and rewards. | `customachievements/` | 1.14.0 |
+| **[BoxCore](boxcore/README.md)** | The server's utility and progression core — a modular plugin holding skill trees, collections, boosts, a personal compactor and fast travel. | `boxcore/` | 1.5.0 |
+| **[AntiCheat](anticheat/README.md)** | A packet-level anticheat aimed at the blatant free clients (Meteor, Wurst) — combat, movement, world and passive protections. | `anticheat/` | 2.0.0 |
+| **[RoboBear](robobear/README.md)** | Bee Swarm Simulator's Robo Bear Challenge rebuilt over the server's mines — timed rounds, a job to pick, Cogs to spend and milestone payouts. | `robobear/` | 1.1.0 |
+| **[Spyglass](spyglass/README.md)** | Read any player's data from the console — inventory, stats, advancements, raw NBT — whether they're online or logged off. | `spyglass/` | 1.0.0 |
 
-> The plugin uses the Paper API (Adventure components, MiniMessage, the modern
-> `AsyncChatEvent`). It is built against `io.papermc.paper:paper-api:1.21.4`.
+Each README is the full documentation for that plugin: features, commands,
+permissions, configuration and developer notes. Start there. RoboBear also has
+an **[operator's guide](robobear/GUIDE.md)** covering installation and tuning.
+
+### At a glance
+
+| Plugin | Command | Package | Soft dependencies |
+| --- | --- | --- | --- |
+| CustomAchievements | `/achievements` (`/ca`), `/reopen` | `com.diamend.customachievements` | MythicMobs, AuraSkills, PlaceholderAPI (AnvilGUI is shaded in) |
+| BoxCore | `/box` (`/bx`), `/fasttravel` (`/ft`) | `com.diamend.boxcore` | PlaceholderAPI |
+| AntiCheat | `/anticheat` (`/ac`) | `com.diamend.anticheat` | — (packetevents is shaded in) |
+| RoboBear | `/robobear` (`/rb`, `/robo`) | `com.diamend.robobear` | MineResetLite, PlaceholderAPI |
+| Spyglass | `/spy` (`/spyglass`) | `com.diamend.spyglass` | — |
+
+All five target **Paper 1.21.4** and **Java 21**.
+
+---
+
+## Repository layout
+
+```
+.
+├── customachievements/   # CustomAchievements — plugin, README, CHANGELOG, pom
+├── boxcore/              # BoxCore — plugin, README, pom
+├── anticheat/            # AntiCheat — plugin, README, pom
+├── robobear/             # RoboBear — plugin, README, operator's guide, CHANGELOG, pom
+├── spyglass/             # Spyglass — plugin, README, pom
+├── docs/                 # design notes and playtest scripts (see below)
+└── .github/workflows/    # one verify workflow per plugin, plus releases
+```
 
 ---
 
 ## Building
 
+There is no top-level build. Each plugin is a standalone Maven project — build
+the one you want from its own directory:
+
 ```bash
-mvn clean package
+cd customachievements && mvn -B clean package   # -> target/CustomAchievements-1.14.0.jar
+cd boxcore            && mvn -B clean package   # -> target/BoxCore-1.5.0.jar
+cd anticheat          && mvn -B clean package   # -> target/AntiCheat-2.0.0.jar
+cd robobear           && mvn -B clean package   # -> target/RoboBear-1.1.0.jar
+cd spyglass           && mvn -B clean package   # -> target/Spyglass-1.0.0.jar
 ```
 
-The finished plugin is written to `target/CustomAchievements-1.3.0.jar`.
-Drop that jar into your server's `plugins/` folder and restart.
+Drop the jar you want into your server's `plugins/` folder and restart.
 
-> The build downloads the Paper API from `https://repo.papermc.io`, so the build
-> machine needs access to that repository (any normal dev machine or CI runner
-> does). No other third-party libraries are shaded in — MiniMessage/Adventure
-> ship with Paper.
+> The builds pull `paper-api` (and packetevents / AnvilGUI / PlaceholderAPI)
+> from external Maven repositories, so the build machine needs network access to
+> them. In practice **CI is the build** — see below.
+
+`docs/` and the READMEs are the only things not tied to a single module; there
+is nothing to build at the repository root.
 
 ---
 
-## Commands
+## CI
 
-Base command: `/achievements` (aliases: `/ca`, `/ach`, `/customachievements`)
+`main` is the trunk. Every plugin has its own workflow, triggered only by
+changes under its own directory — on pushes to `main` and on pull requests into
+`main`. Each one packages the jar, runs the unit tests
+(against a real Bukkit/Paper API via MockBukkit) and boots a real headless
+Paper 1.21.4 server to confirm the plugin enables cleanly and answers its
+command.
 
-| Command | Description | Permission |
+| Plugin | Workflow | Jar artifact |
 | --- | --- | --- |
-| `/ca` | Open **your** achievements menu | `customachievements.use` |
-| `/ca list` | List achievements in chat | `customachievements.use` |
-| `/ca top` | Completion leaderboard | `customachievements.use` |
-| `/ca admin` | Open the **management** menu (edit / create) | `customachievements.admin` |
-| `/ca create` | Open the editor to build a new achievement | `customachievements.admin` |
-| `/ca grant <player> <id>` | Grant an achievement (online or offline) | `customachievements.admin` |
-| `/ca revoke <player> <id>` | Revoke an achievement (online or offline) | `customachievements.admin` |
-| `/ca reset <player>` | Reset a player's achievements (online or offline) | `customachievements.admin` |
-| `/ca reload` | Reload config + achievements from disk | `customachievements.admin` |
+| CustomAchievements | `.github/workflows/customachievements.yml` | `CustomAchievements-jar` |
+| BoxCore | `.github/workflows/boxcore.yml` | `BoxCore-jar` |
+| AntiCheat | `.github/workflows/anticheat.yml` | `AntiCheat-jar` |
+| RoboBear | `.github/workflows/robobear.yml` | `RoboBear-jar` |
+| Spyglass | `.github/workflows/spyglass.yml` | `Spyglass-jar` |
 
-### Permissions
+The artifact from the last green run is the download. BoxCore's CI jar is
+additionally stamped with the commit it was built from — in its filename, its
+`plugin.yml` and its startup line — so a jar pulled from an artifact can always
+be traced back to a commit.
 
-| Node | Default | Grants |
-| --- | --- | --- |
-| `customachievements.use` | everyone | Viewing your own achievements |
-| `customachievements.admin` | ops | Creating, editing and granting achievements |
+### Releases
 
----
+Two plugins additionally publish tagged GitHub releases with the jar attached.
+The version of record is always that module's `pom.xml`, and the tags are
+scoped so they can't collide:
 
-## Creating an achievement (GUI walkthrough)
+| Plugin | Workflow | Tag | How it runs | Release notes come from |
+| --- | --- | --- | --- | --- |
+| CustomAchievements | `customachievements-release.yml` | `v<version>` | Actions → *Run workflow*, giving it the tag | `.github/release-notes/<tag>.md` |
+| RoboBear | `robobear-release.yml` | `robobear-v<version>` | Pushing the tag, or automatically on `main` when `robobear/pom.xml` names a version that hasn't been released yet | the matching section of `robobear/CHANGELOG.md` |
 
-1. Run `/ca admin` and click **+ Create New Achievement** (or run `/ca create`).
-2. The **editor** opens. The top row holds the achievement's presentation and
-   rewards; each item is a clickable field:
-   - **Identifier** – the unique key (only editable while creating).
-   - **Icon** – click while holding an item to use it, or click empty-handed to
-     type a material name.
-   - **Display Name** – click to type in chat (`&`-codes and MiniMessage).
-   - **Description** – left-click to rewrite it (use `|` to split lines),
-     right-click to add a line, shift-right-click to remove the last line.
-   - **Broadcast on Unlock** – click to toggle.
-   - **Reward XP** – click to type the amount.
-   - **Reward Commands** – left-click to add one (use `%player%`), right-click to
-     clear.
-3. Below that is the **Objectives** area. Click **+ Add Objective** (or an
-   existing one) to open the objective editor, where you pick:
-   - **Trigger** – click to open the **trigger picker** (a menu of all triggers).
-   - **Target** – click to open the **target picker**, a paginated, searchable
-     grid of the relevant options (materials / entities / skills / dimensions).
-     Special cases: *Reach a Location* captures your current position on
-     left-click (or type `world x y z [radius]`); *Kill Mythic Mobs* is typed.
-   - **Required Amount** – click to type a number.
-   Shift-right-click an objective tile to remove it. An achievement unlocks only
-   when **all** its objectives are complete.
-4. Click **Save**. The achievement is written to `achievements.yml` immediately
-   and appears in every player's menu.
+Both re-read their notes when a release is re-run, so a correction to the text
+reaches the published page without cutting a new version. RoboBear's build
+**fails** if `CHANGELOG.md` has no section for the version in its pom — a
+release page that doesn't say what changed is the thing that file exists to
+prevent.
 
-To edit an existing achievement, open `/ca admin` and click its icon. To delete
-one, open it in the editor and **shift-click** the Delete button.
+A bare `vX.Y.Z` tag in this repository means CustomAchievements — it predates
+the other plugins.
 
 ---
 
-## Trigger types
+## Docs
 
-| Trigger | Uses target? | Counts... |
-| --- | --- | --- |
-| `MANUAL` | – | Only granted by command/API |
-| `BLOCK_BREAK` | Material | Blocks broken |
-| `BLOCK_PLACE` | Material | Blocks placed |
-| `ENTITY_KILL` | EntityType | Mobs killed |
-| `MYTHIC_MOB_KILL` | MythicMobs internal name | MythicMobs mobs killed |
-| `AURASKILLS_LEVEL` | AuraSkills skill (or ANY) | Reach a skill level |
-| `ITEM_CRAFT` | Material | Items crafted |
-| `ITEM_CONSUME` | Material | Items eaten/drunk |
-| `FISH_CAUGHT` | – | Fish reeled in |
-| `PLAYER_DEATH` | – | Deaths |
-| `PLAYTIME_HOURS` | – | Hours played (from server statistics) |
-| `REACH_LOCATION` | `world;x;y;z;radius` | Completes on entering the radius |
-| `REACH_DIMENSION` | World name / key / environment | Times the dimension is entered |
+`docs/` holds material that spans a plugin's design rather than its usage:
 
-### Multiple objectives
-
-An achievement can have **several objectives** (triggers). It unlocks only once
-**all** of them are complete, and each objective tracks its own progress (shown
-per-line in the menu). Add/edit objectives from the editor, or in
-`achievements.yml` under a `requirements:` list.
-
-### Text formatting
-
-Names and descriptions accept **both** classic colour codes (`&a`, `&l`,
-`&#ff8800`) **and** [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
-(`<green>`, `<bold>`, `<gradient:…>`) — you can mix them.
-
-### AuraSkills
-
-If [AuraSkills](https://wiki.aurelium.dev/auraskills) is installed,
-`AURASKILLS_LEVEL` objectives complete when a player reaches the required level
-in the chosen skill (or ANY skill). Soft dependency — the plugin runs fine
-without it.
-
-`target: ANY` (or a blank target) matches everything for that trigger
-(except `REACH_LOCATION`, which always needs a concrete location).
-
-### Location & dimension targets
-
-- **`REACH_LOCATION`** stores its target as `world;x;y;z;radius` (the editor
-  fills this in for you). The achievement completes the moment a player is
-  inside that sphere — walking, teleporting, or logging in there all count.
-- **`REACH_DIMENSION`** matches the world a player just entered against the
-  target in three ways, so **custom dimensions work out of the box**:
-  - the world's *name* (`world_nether`, `spawn`, `skyblock_world`, ...)
-  - the world's *namespaced key* (`minecraft:the_nether`, `mypack:skylands`, ...
-    — this is how datapack/plugin dimensions are addressed)
-  - the world's *environment*: `NORMAL`, `NETHER`, `THE_END` or `CUSTOM`
-    (`NETHER` matches every nether-type world, however it's named).
-
-### MythicMobs
-
-If [MythicMobs](https://mythiccraft.io/) is installed, `MYTHIC_MOB_KILL`
-achievements trigger when a player kills a mob whose **internal name** (the id
-used in your MythicMobs `Mobs/*.yml` config, e.g. `SkeletalKnight`) matches the
-target. `ANY` matches every MythicMobs kill. The integration is a soft
-dependency wired up via reflection — the plugin loads and runs fine without
-MythicMobs, and both MythicMobs **5.x** and **4.x** are supported. Regular
-`ENTITY_KILL` achievements still count MythicMobs kills by their base entity
-type.
-
-### PlaceholderAPI
-
-If [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) is
-installed, the plugin registers an expansion so you can show live, per-player
-achievement info on holograms, scoreboards, signs and in chat. It's a soft
-dependency — the plugin runs fine without it.
-
-| Placeholder | Shows |
-|---|---|
-| `%customachievements_completed%` | how many the player has unlocked |
-| `%customachievements_total%` | number of achievements |
-| `%customachievements_remaining%` | not-yet-unlocked count |
-| `%customachievements_percent%` | overall completion (0–100) |
-| `%customachievements_status_<id>%` | `Unlocked`, `Locked`, or `???` (secret) |
-| `%customachievements_progress_<id>%` | e.g. `7/10`, or `Complete` |
-| `%customachievements_percent_<id>%` | that achievement's progress (0–100) |
-| `%customachievements_name_<id>%` | its display name (coloured; `???` while secret) |
-
-Replace `<id>` with an achievement's identifier, e.g.
-`%customachievements_progress_getting_wood%`. This pairs well with a hologram at
-spawn: the placeholders update per viewer automatically, so each player sees
-their own progress. (Ids may contain underscores — that's fine.)
-
----
-
-## Configuration (`config.yml`)
-
-```yaml
-announce-broadcasts: true   # server-wide message on unlock (per-achievement toggle also applies)
-play-sound: true            # play the challenge-complete sound
-show-title: true            # show an on-screen title
-playtime-tracking: true     # enable PLAYTIME_HOURS achievements
-progress-feedback: true     # action-bar progress readout as players advance
-count-player-placed-blocks: true  # false = don't count breaking blocks you placed
-autosave-minutes: 5         # periodic save of online players (0 to disable)
-
-messages:
-  prefix: "..."
-  unlocked: "<green>You unlocked <name>!"
-  broadcast: "<yellow><player></yellow> unlocked <white><name></white>!"
-  title: "<gold>Achievement Unlocked"
-```
-
-All message strings use [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
-formatting. Placeholders: `<name>` (achievement), `<player>` (player name).
-
-Reward commands support `%player%` and `%uuid%`.
-
----
-
-## Data & files
-
-```
-plugins/CustomAchievements/
-├── config.yml            # general settings & messages
-├── achievements.yml      # every achievement definition (edited by the GUI)
-└── playerdata/
-    └── <uuid>.yml        # each player's completed list + progress
-```
-
-On first run six example achievements are created so you have something to look
-at (Getting Wood, Diamonds Forever, Monster Hunter, Hot Tourist, Veteran, Well Prepared).
-
----
-
-## For developers
-
-Grant an achievement from another plugin:
-
-```java
-CustomAchievementsPlugin ca =
-        (CustomAchievementsPlugin) Bukkit.getPluginManager().getPlugin("CustomAchievements");
-Achievement achievement = ca.getAchievementManager().get("diamonds_forever");
-if (achievement != null) {
-    ca.getAchievementService().grant(player, achievement);
-}
-```
+- **[`risk-banking-spec.md`](docs/risk-banking-spec.md)** — the BoxPvP risk,
+  banking and loss spec: how ore, banking fees and death loss are meant to work.
+- **[`boxcore-playtest.md`](docs/boxcore-playtest.md)** — the playtest script for
+  BoxCore's first real run on the server.
+- **[`robobear-playtest.md`](docs/robobear-playtest.md)** — the playtest script
+  for RoboBear: what to check on a real run, and what the numbers should feel
+  like.
