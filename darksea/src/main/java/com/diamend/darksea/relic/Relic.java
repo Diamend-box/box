@@ -127,6 +127,13 @@ public final class Relic {
      */
     private static volatile List<Relic> customs = List.of();
     private static volatile Map<String, Relic> byId = index(List.of());
+    /**
+     * Shipped and custom in one list, rebuilt only when {@link #setCustom}
+     * changes the roster. {@link #all()} used to build it fresh on every call
+     * — two list allocations for a roster that changes when an admin saves a
+     * relic and at no other time.
+     */
+    private static volatile List<Relic> allRelics = List.copyOf(BUILT_IN);
 
     // ------------------------------------------------------------------
     // Instance state
@@ -239,6 +246,9 @@ public final class Relic {
         }
         customs = List.copyOf(kept);
         byId = index(customs);
+        List<Relic> combined = new ArrayList<>(BUILT_IN);
+        combined.addAll(customs);
+        allRelics = List.copyOf(combined);
     }
 
     /** Whether an id is already spoken for — by a shipped relic, a registry item, or {@code among}. */
@@ -274,14 +284,12 @@ public final class Relic {
 
     /** Every relic in play: the shipped six, then the admin's own. */
     public static Relic[] values() {
-        return all().toArray(new Relic[0]);
+        return allRelics.toArray(new Relic[0]);
     }
 
     /** Every relic in play, as a list. */
     public static List<Relic> all() {
-        List<Relic> all = new ArrayList<>(BUILT_IN);
-        all.addAll(customs);
-        return List.copyOf(all);
+        return allRelics;
     }
 
     /** The six that ship with the plugin, which config files may safely name. */

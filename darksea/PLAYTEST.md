@@ -11,7 +11,7 @@ it happens again, that is the thing to send.
 
 Order is by how likely I am to have got it wrong, not by importance.
 
-**Build: 0.5.5 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
+**Build: 0.5.6 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
 `/version DarkSea` reports the same string. CHANGELOG.md has what each version
 changed.
 
@@ -43,6 +43,7 @@ changed.
 | Renaming a crystal in ores.yml | New in 0.5.3, untested | Pass 9 |
 | The reliquary, and buying slots with crystals | **New in 0.5.4**, untested | Pass 9 |
 | The custom relic editor | **New in 0.5.5**, untested | Pass 9 |
+| The 0.5.6 speed pass | Nothing should look different — **unverified** | Pass 9 |
 
 Five decisions are still open at the bottom. None have been answered across four
 rounds.
@@ -233,6 +234,18 @@ as everything else: they stay here until you say otherwise.
   Two failure modes worth trying on purpose, because both used to be able to break things quietly: type a deliberately broken colour tag like `<gradient:#fff` into the name (it should be refused at the prompt, not saved), and try to name a new relic `chronon` or `relic_trade_coin` (it should say the id is taken).
   The thing I most want to know: **can you build a relic you actually want without me explaining any tile?** If you have to guess what one does, it needs different words.
 
+- **The 0.5.6 speed pass — check that nothing changed.** 0.5.6 is only
+  performance work: no new tile, no new command, no new number. That makes it
+  the release with nothing to demo and the most ways to have broken something
+  quietly, so it is worth a deliberate look rather than a hope. Four things it
+  touched: a relic boost still switches **on** when you slot one and **off**
+  within about a second of taking it out or dropping the bag; mobs still
+  populate an island when you sail up to one, and still clear out when you
+  leave; the boat action bar still tracks your hull HP as it takes damage
+  rather than freezing on a stale number; and ramming another boat still
+  connects. Any of those behaving oddly is this release's fault, not the
+  feature's.
+
 - **Rename a crystal.** Open `ores.yml`, find the `items:` block at the bottom,
   change `emberglass`'s `name` to anything, `/ds reload`, mine one. It should
   come out with the new name — and an emberglass already in a chest should still
@@ -270,7 +283,9 @@ Unchanged for four rounds. None block anything; all get more expensive later.
 7. Whether the watchtower and spire stairs look like part of the building.
 8. Whether the reliquary explains itself, and whether the crystal prices feel earned.
 9. Whether you can build a relic in the editor without asking me what a tile does.
-10. Answers to any of the open decisions.
+10. Whether anything in the sea behaves differently after the 0.5.6 speed pass —
+    it should not, and that is the whole test.
+11. Answers to any of the open decisions.
 
 Everything else only if it annoyed you. If you run out of time, just say where
 you stopped — I'll carry the rest forward the same way.

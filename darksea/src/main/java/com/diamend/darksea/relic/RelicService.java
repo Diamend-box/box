@@ -80,7 +80,19 @@ public final class RelicService extends BukkitRunnable implements Listener {
             // works, and no reliquary means no boosts at all.
             List<Relic> worn = plugin.reliquary().activeRelics(player);
             Set<Relic.Boost> boosts = boostsOf(worn);
-            active.put(player.getUniqueId(), boosts);
+            Set<Relic.Boost> previous = active.put(player.getUniqueId(), boosts);
+            if (boosts.isEmpty() && previous != null && previous.isEmpty()) {
+                // Nothing on, nothing was on a second ago. Every line below
+                // this either adds a modifier or looks for one to take away,
+                // and asking an attribute for its modifier list hands back a
+                // fresh collection each time — three of them per player per
+                // second, for the great majority of players, to discover that
+                // there is still nothing to do. A null previous is not the
+                // same as an empty one: it means this pass has never seen the
+                // player, so the full sweep runs once and clears anything a
+                // reload left behind.
+                continue;
+            }
             applyAttribute(player, Attribute.MOVEMENT_SPEED, SPEED_KEY, 0.10,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1, boosts.contains(Relic.Boost.SPEED));
             applyAttribute(player, Attribute.ATTACK_DAMAGE, DAMAGE_KEY, 1.0,

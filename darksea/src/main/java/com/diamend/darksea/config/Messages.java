@@ -52,6 +52,9 @@ public final class Messages {
 
     private String fill(String key, String... placeholders) {
         String text = raw.getOrDefault(key, key);
+        if (placeholders.length == 0 || text.indexOf('{') < 0) {
+            return text;   // nothing to substitute — skip the scan per placeholder
+        }
         for (int i = 0; i + 1 < placeholders.length; i += 2) {
             text = text.replace("{" + placeholders[i] + "}", placeholders[i + 1]);
         }

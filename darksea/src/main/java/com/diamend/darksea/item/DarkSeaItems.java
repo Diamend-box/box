@@ -20,6 +20,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -195,8 +196,8 @@ public final class DarkSeaItems {
 
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
-        Set<String> ids = nonRelicIds();
-        for (Relic relic : Relic.values()) {
+        Set<String> ids = new TreeSet<>(NON_RELIC_IDS);
+        for (Relic relic : Relic.all()) {
             ids.add(relic.id());
         }
         return ids;
@@ -210,6 +211,18 @@ public final class DarkSeaItems {
      * every relic already loaded is taken.
      */
     public static Set<String> nonRelicIds() {
+        return NON_RELIC_IDS;
+    }
+
+    /**
+     * Built once. The set never changes after class init — every id in it is a
+     * compile-time constant — so rebuilding a sixteen-entry tree on each call
+     * bought nothing, and {@link #isRegistryId} is asked the question once per
+     * keystroke of tab completion.
+     */
+    private static final Set<String> NON_RELIC_IDS = buildNonRelicIds();
+
+    private static Set<String> buildNonRelicIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
         ids.add(CHRONON);
         ids.add(TIDAL_DRAUGHT);
@@ -227,12 +240,12 @@ public final class DarkSeaItems {
         ids.add(EMBERGLASS);
         ids.add(VOIDBLOOM);
         ids.add(GODSPORE);
-        return ids;
+        return Collections.unmodifiableSet(ids);
     }
 
     /** Whether an id names a non-relic registry item. */
     public static boolean isRegistryId(String id) {
-        return id != null && nonRelicIds().contains(id);
+        return id != null && NON_RELIC_IDS.contains(id);
     }
 
     private DarkSeaItems() {
@@ -585,6 +598,24 @@ public final class DarkSeaItems {
      */
     public static boolean removeChronons(Inventory inventory, int amount) {
         return removeItems(inventory, CHRONON, amount);
+    }
+
+    /**
+     * Whether the inventory holds any of a DarkSea item at all.
+     *
+     * <p>Separate from {@link #countItems} because the callers that only need
+     * a yes/no — "is the reliquary in the pack" — were paying for a full walk
+     * of every slot to produce a number they threw away. Stopping at the first
+     * hit is the whole difference, and it matters on a path that runs once a
+     * second for every player online.
+     */
+    public static boolean hasItem(Inventory inventory, String id) {
+        for (ItemStack item : inventory.getContents()) {
+            if (id.equals(idOf(item))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

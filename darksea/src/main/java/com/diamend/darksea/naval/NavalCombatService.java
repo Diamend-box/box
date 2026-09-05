@@ -64,6 +64,12 @@ public final class NavalCombatService implements Listener {
      * its top speed, so a captain can always limp home to the dry-dock. */
     private static final double HULL_SPEED_FLOOR = 0.15;
 
+    /**
+     * How far a boat must travel in one move tick before it is worth sweeping
+     * for something to ram, squared. Roughly two blocks a second.
+     */
+    private static final double RAM_SWEEP_MIN_STEP_SQUARED = 0.01;
+
     private final Map<UUID, HullState> hulls = new ConcurrentHashMap<>();
     private final Map<UUID, SlowState> slows = new ConcurrentHashMap<>();
     private final Map<UUID, Hook> hooks = new ConcurrentHashMap<>();
@@ -327,6 +333,23 @@ public final class NavalCombatService implements Listener {
         }
         Player rider = boatRider(boat);
         if (rider == null) {
+            return;
+        }
+        // The nearby sweep is the expensive half of this handler, and it was
+        // running on every move tick of every crewed boat in the sea — twenty
+        // times a second, each one a region scan that allocates its results.
+        //
+        // A ram needs somebody charging. A boat that has barely moved this
+        // tick cannot be that somebody, and if the *other* boat is charging
+        // then its own move tick runs this same sweep and finds the pair from
+        // the other side. So skipping the near-still ones loses no collision;
+        // it stops the fleet paying for the same lookup twice, and stops
+        // moored boats paying for it at all.
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        double stepX = to.getX() - from.getX();
+        double stepZ = to.getZ() - from.getZ();
+        if (stepX * stepX + stepZ * stepZ < RAM_SWEEP_MIN_STEP_SQUARED) {
             return;
         }
         for (Entity nearby : boat.getNearbyEntities(2.2, 1.5, 2.2)) {

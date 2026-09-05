@@ -57,7 +57,7 @@ public final class ReliquaryService implements Listener {
 
     /** Whether the captain is carrying a reliquary — the gate on every relic boost. */
     public boolean hasReliquary(Player player) {
-        return DarkSeaItems.countItems(player.getInventory(), DarkSeaItems.RELIQUARY) > 0;
+        return DarkSeaItems.hasItem(player.getInventory(), DarkSeaItems.RELIQUARY);
     }
 
     public int slotCount(Player player) {
@@ -72,14 +72,22 @@ public final class ReliquaryService implements Listener {
      * hand, which is the whole point of the gate.
      */
     public List<Relic> activeRelics(Player player) {
-        if (!hasReliquary(player)) {
+        // Cheapest question first, because this runs for every online player
+        // once a second. Reading the bag's slots is one map lookup; proving the
+        // bag is actually in the pack means walking all forty-odd inventory
+        // slots and pulling each stack's meta, which the server hands over as a
+        // fresh copy every time. A captain with nothing filed away gets the
+        // same empty answer either way, so the scan is now only paid for by
+        // someone it could actually say yes to.
+        List<String> equipped = plugin.data().equippedRelics(player.getUniqueId());
+        if (equipped.isEmpty() || !hasReliquary(player)) {
             return List.of();
         }
         List<String> ids = ReliquaryMath.effective(
                 plugin.data().relicCollection(player.getUniqueId()),
-                plugin.data().equippedRelics(player.getUniqueId()),
+                equipped,
                 slotCount(player));
-        List<Relic> relics = new ArrayList<>();
+        List<Relic> relics = new ArrayList<>(ids.size());
         for (String id : ids) {
             Relic relic = Relic.byId(id);
             if (relic != null) {

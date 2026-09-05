@@ -18,6 +18,55 @@ time.
 
 ---
 
+## 0.5.6 — 2026-09-05
+
+**A speed pass over the whole plugin.** Nothing here changes what the sea
+does. It changes what it costs the server to do it, and the work went where a
+profiler would point rather than where the code looked untidy: the handful of
+paths that run for every player every second, or for every boat twenty times a
+second.
+
+- **The relic pass stopped searching everybody's pack.** Once a second, for
+  every player online, the plugin proved you were carrying a reliquary by
+  walking all forty-odd inventory slots and pulling each stack's metadata —
+  which the server hands over as a fresh copy every time. It now reads your
+  filed relics first, one lookup, and only searches the pack if you have
+  something filed that the bag could actually be granting. A player who has
+  never touched a relic — which on day one is all of them — now costs nothing.
+- **And it stops early when there is nothing to do.** A player with no boosts
+  on, who had none a second ago, used to have three attributes interrogated for
+  modifiers to remove. Each of those questions builds a fresh collection to
+  answer. That whole sweep is skipped now, and still runs in full the first
+  time the pass sees a player, so a reload never leaves a stale modifier behind.
+- **Boats stopped sweeping for ram targets while moored.** Every move tick of
+  every crewed boat scanned the water around it for something to ram — twenty
+  times a second per hull, each one a region scan. A boat that has barely moved
+  cannot be the one doing the charging, and if the *other* boat is charging then
+  its own move tick finds the pair from the other side. Still boats are skipped
+  now; no collision is lost, and the fleet stops paying for the same lookup twice.
+- **The boat HUD stopped re-parsing a line that had not changed.** The action
+  bar has to keep being sent, because it fades — but the text behind it only
+  has to be turned into a component when it actually differs, and at cruise it
+  does not differ for seconds at a time.
+- **The mob spawner stopped counting the whole sea once per island.** The
+  global cap was checked by re-summing every island's roster from inside the
+  per-island loop, so looking at one island cost a walk of all of them. On a sea
+  of a hundred and twenty-four islands that is quadratic. It counts once now and
+  keeps the number as it goes.
+- **Caches that were rebuilt on every read now are not.** The relic roster, the
+  non-relic id set, and the armour-tier and boat-level lookups all built
+  something fresh each time they were asked — the last two only to throw it away
+  on a cache hit. Message formatting also skips the substitution pass when
+  there is nothing to substitute.
+- **Two per-player maps in the naval HUD no longer outlive the players.** Log
+  out while sitting in a boat and your entry stayed for the life of the server.
+
+Not a behaviour change anywhere, which is the thing to watch for: if something
+in the sea now acts differently, that is a bug in this release and not a
+feature of it.
+
+---
+
 ## 0.5.5 — 2026-09-05
 
 **Make your own relics.** `/ds relic editor` is a GUI for building a relic

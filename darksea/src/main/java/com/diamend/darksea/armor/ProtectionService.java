@@ -20,8 +20,17 @@ public final class ProtectionService implements Listener {
     private final Map<UUID, Integer> cache = new ConcurrentHashMap<>();
 
     public int tierOf(Player player) {
-        return cache.computeIfAbsent(player.getUniqueId(),
-                id -> SeaArmor.effectiveTier(player.getInventory().getArmorContents()));
+        // Read before write. computeIfAbsent needs its mapping function built
+        // whether or not it ends up being called, and this is asked once per
+        // exposure tick for every player in the sea — so on the hit path, the
+        // only path that is ever hot, the lambda was the entire cost.
+        Integer cached = cache.get(player.getUniqueId());
+        if (cached != null) {
+            return cached;
+        }
+        int tier = SeaArmor.effectiveTier(player.getInventory().getArmorContents());
+        cache.put(player.getUniqueId(), tier);
+        return tier;
     }
 
     @EventHandler

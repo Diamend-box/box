@@ -51,13 +51,18 @@ public final class PlayerDataStore {
     }
 
     public int boatLevel(UUID player) {
-        return boatLevels.computeIfAbsent(player, id -> {
-            File file = fileFor(id);
-            if (!file.exists()) {
-                return 0;
-            }
-            return YamlConfiguration.loadConfiguration(file).getInt("boat-level", 0);
-        });
+        // Hit path first — this is read several times per boat-move tick, and
+        // a move tick happens twenty times a second under every crewed hull.
+        Integer cached = boatLevels.get(player);
+        if (cached != null) {
+            return cached;
+        }
+        File file = fileFor(player);
+        int level = file.exists()
+                ? YamlConfiguration.loadConfiguration(file).getInt("boat-level", 0)
+                : 0;
+        boatLevels.put(player, level);
+        return level;
     }
 
     public void setBoatLevel(UUID player, int level) {
@@ -189,12 +194,18 @@ public final class PlayerDataStore {
 
     /** The relics in the bag's slots — the ones actually granting boosts. */
     public List<String> equippedRelics(UUID player) {
-        return equipped.computeIfAbsent(player, id -> {
-            File file = fileFor(id);
-            return file.exists()
-                    ? List.copyOf(YamlConfiguration.loadConfiguration(file).getStringList("relics.equipped"))
-                    : List.of();
-        });
+        // Hit path first: since the relic pass asks this before anything else
+        // it does, it is now the single most-called read in the plugin.
+        List<String> cached = equipped.get(player);
+        if (cached != null) {
+            return cached;
+        }
+        File file = fileFor(player);
+        List<String> loaded = file.exists()
+                ? List.copyOf(YamlConfiguration.loadConfiguration(file).getStringList("relics.equipped"))
+                : List.<String>of();
+        equipped.put(player, loaded);
+        return loaded;
     }
 
     /** Writes both lists together: equipping is always a move between them. */

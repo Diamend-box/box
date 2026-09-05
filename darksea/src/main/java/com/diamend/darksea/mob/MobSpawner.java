@@ -126,9 +126,22 @@ public final class MobSpawner extends BukkitRunnable {
         long now = System.currentTimeMillis();
         long cooldownMillis = cfg.abandonCooldownMinutes() * 60_000L;
 
-        for (IslandInstance island : registry.all()) {
-            Set<UUID> mobs = tracked.computeIfAbsent(island.id(), id -> new HashSet<>());
-            prune(mobs);
+        // Prune every roster first, then count the sea once.
+        //
+        // The global cap used to be checked by re-summing every island's
+        // roster from inside the per-island loop — so looking at one island
+        // cost a walk of all of them, twice over on the boss path. That is
+        // quadratic in island count, and a sea holds well over a hundred. One
+        // sweep up front makes the number exact before the loop starts, and
+        // the loop keeps it exact by counting its own spawns and despawns.
+        List<IslandInstance> islands = registry.all();
+        for (IslandInstance island : islands) {
+            prune(tracked.computeIfAbsent(island.id(), id -> new HashSet<>()));
+        }
+        int liveTotal = totalTracked();
+
+        for (IslandInstance island : islands) {
+            Set<UUID> mobs = tracked.get(island.id());
 
             boolean near = false;
             for (Player player : players) {
@@ -181,12 +194,13 @@ public final class MobSpawner extends BukkitRunnable {
                         continue;
                     }
                     Pos heart = island.bossSpawn();
-                    if (heart != null && totalTracked() < cfg.globalCap()) {
+                    if (heart != null && liveTotal < cfg.globalCap()) {
                         UUID spawned = spawnMob(new MobPool.MobEntry(boss,
                                 island.bossFallback(), 1, BOSS_LEVEL), heart.toLocation(world));
                         if (spawned != null) {
                             budget.tryConsume(now);
                             mobs.add(spawned);
+                            liveTotal++;
                             bossFell.remove(island.id());
                             bossEverRaised.add(island.id());
                         }
@@ -200,7 +214,7 @@ public final class MobSpawner extends BukkitRunnable {
 
                 if (island.spawnPoints().isEmpty()
                         || mobs.size() >= cfg.perIslandCap() + island.mobCapBonus()
-                        || totalTracked() >= cfg.globalCap()) {
+                        || liveTotal >= cfg.globalCap()) {
                     continue;
                 }
                 // Landmark shapes garrison a deeper ring's roster; fall back
@@ -220,10 +234,12 @@ public final class MobSpawner extends BukkitRunnable {
                     // broken mobs.yml entry cannot silently drain an island.
                     budget.tryConsume(now);
                     mobs.add(spawned);
+                    liveTotal++;
                 }
             } else if (!mobs.isEmpty()) {
                 Long last = lastNear.get(island.id());
                 if (last == null || now - last > cooldownMillis) {
+                    liveTotal -= mobs.size();
                     despawn(mobs);
                 }
             }
