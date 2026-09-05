@@ -78,7 +78,8 @@ public final class RelicService extends BukkitRunnable implements Listener {
         for (Player player : Bukkit.getOnlinePlayers()) {
             // The bag is the whole rule now: what is in its slots is what
             // works, and no reliquary means no boosts at all.
-            Set<Relic.Boost> boosts = boostsOf(plugin.reliquary().activeRelics(player));
+            List<Relic> worn = plugin.reliquary().activeRelics(player);
+            Set<Relic.Boost> boosts = boostsOf(worn);
             active.put(player.getUniqueId(), boosts);
             applyAttribute(player, Attribute.MOVEMENT_SPEED, SPEED_KEY, 0.10,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1, boosts.contains(Relic.Boost.SPEED));
@@ -89,6 +90,26 @@ public final class RelicService extends BukkitRunnable implements Listener {
             if (boosts.contains(Relic.Boost.REGEN)) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION,
                         60, 0, true, false, false));
+            }
+            applyCustomEffects(player, worn);
+        }
+    }
+
+    /**
+     * The EFFECT relics an admin built in {@code /ds relic editor}. Unlike the
+     * shipped six these carry their own effect and level, so they cannot be
+     * collapsed into the boost set — two EFFECT relics are two different
+     * relics, and the set would remember only that one of them was worn.
+     *
+     * <p>Applied ambiently at twice the pass interval, the way REGEN is: the
+     * effect lapses on its own about a second after the relic leaves the bag,
+     * which is the whole of the bookkeeping.
+     */
+    private void applyCustomEffects(Player player, List<Relic> worn) {
+        for (Relic relic : worn) {
+            if (relic.boost() == Relic.Boost.EFFECT && relic.effect() != null) {
+                player.addPotionEffect(new PotionEffect(relic.effect(), 40,
+                        relic.effectAmplifier(), true, false, false));
             }
         }
     }

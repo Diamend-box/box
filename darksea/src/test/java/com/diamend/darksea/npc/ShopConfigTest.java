@@ -139,8 +139,8 @@ class ShopConfigTest {
                     relic.id() + ": pays " + offer.price()
                             + " but waking costs " + relic.reviveCost());
         }
-        assertEquals(Relic.values().length, board.size(),
-                "every relic should have a standing offer");
+        assertEquals(Relic.builtIns().size(), board.size(),
+                "every shipped relic should have a standing offer");
     }
 
     @Test

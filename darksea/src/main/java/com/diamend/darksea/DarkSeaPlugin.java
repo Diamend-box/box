@@ -21,6 +21,9 @@ import com.diamend.darksea.loot.ChestRefillService;
 import com.diamend.darksea.loot.CustomLoot;
 import com.diamend.darksea.loot.CustomLootConfig;
 import com.diamend.darksea.loot.LootEditorService;
+import com.diamend.darksea.relic.CustomRelicConfig;
+import com.diamend.darksea.relic.Relic;
+import com.diamend.darksea.relic.RelicEditorService;
 import com.diamend.darksea.loot.LootConfig;
 import com.diamend.darksea.loot.LootTables;
 import com.diamend.darksea.loot.RunLootService;
@@ -109,6 +112,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private ShopMenuService shops;
     private ShopEditorService shopEditor;
     private LootEditorService lootEditor;
+    private RelicEditorService relicEditor;
     private NodeService nodes;
     private ExtractionChannel extraction;
     private PortalService portals;
@@ -143,6 +147,10 @@ public final class DarkSeaPlugin extends JavaPlugin {
         }
 
         messages = new Messages(settings.messages());
+        // Before the files that name relics by id, so a loot table or a shop
+        // line referring to a custom relic is looking at a registry that
+        // already has it.
+        step("relics-custom.yml", this::loadCustomRelics);
         lootTables = stepGet("loot.yml", this::loadLootTables, LootTables.empty());
         // A failed loot.yml step leaves shippedLoot unset, and the merge has to
         // survive that — a broken loot.yml should cost the shipped tables, not
@@ -176,6 +184,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         shops = new ShopMenuService(this);
         shopEditor = new ShopEditorService(this);
         lootEditor = new LootEditorService(this);
+        relicEditor = new RelicEditorService(this);
         nodes = new NodeService(this);
         extraction = new ExtractionChannel(this, nodes);
         portals = new PortalService(this);
@@ -192,6 +201,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         listener("relics", () -> relics);
         listener("reliquary", () -> reliquary);
         listener("loot-editor", () -> lootEditor);
+        listener("relic-editor", () -> relicEditor);
         listener("consumables", () -> new ConsumableService(this));
         listener("soulwake", () -> new SoulwakeService(this));
         listener("undrowned-heart", () -> new UndrownedHeartService(this));
@@ -356,6 +366,7 @@ public final class DarkSeaPlugin extends JavaPlugin {
         this.settings = loaded;
         this.zoneManager = new ZoneManager(loaded.zones());
         this.messages.reload(loaded.messages());
+        loadCustomRelics();
         this.customLoot = loadCustomLoot();
         this.lootTables = this.customLoot.mergeInto(loadLootTables());
         this.mobDrops = loadMobDrops();
@@ -380,6 +391,20 @@ public final class DarkSeaPlugin extends JavaPlugin {
     private CustomLoot loadCustomLoot() {
         return CustomLootConfig.load(
                 new File(getDataFolder(), "loot-custom.yml"), getLogger());
+    }
+
+    /**
+     * Installs relics-custom.yml into the relic registry. Like the ore
+     * displays, this is done in the one path both startup and reload run
+     * through, so /ds reload picks up a hand edit to the file.
+     */
+    private void loadCustomRelics() {
+        List<Relic> loaded = CustomRelicConfig.load(
+                new File(getDataFolder(), "relics-custom.yml"), getLogger());
+        Relic.setCustom(loaded);
+        if (!Relic.customs().isEmpty()) {
+            getLogger().info("Loaded " + Relic.customs().size() + " custom relic(s)");
+        }
     }
 
     private OreTables loadOreTables() {
@@ -611,6 +636,26 @@ public final class DarkSeaPlugin extends JavaPlugin {
 
     public LootEditorService lootEditor() {
         return lootEditor;
+    }
+
+    public RelicEditorService relicEditor() {
+        return relicEditor;
+    }
+
+    /**
+     * Swaps the custom half of the relic registry and writes
+     * relics-custom.yml. Registering before writing is the point: a relic made
+     * in the editor can be given and worn before the board is even closed.
+     *
+     * <p>What gets written is the registry's own list rather than the one
+     * passed in, because {@link Relic#setCustom} drops anything whose id
+     * collides — writing the unfiltered list would put a relic in the file
+     * that the plugin refuses to load.
+     */
+    public void saveCustomRelics(List<Relic> updated) {
+        Relic.setCustom(updated);
+        CustomRelicConfig.save(Relic.customs(),
+                new File(getDataFolder(), "relics-custom.yml"), getLogger());
     }
 
     public VaultService vaults() {

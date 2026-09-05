@@ -108,6 +108,7 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
         helpLine(sender, "/ds boat damage [amount]", "test tool: hull-damage the boat you're in", "darksea.admin");
         helpLine(sender, "/ds shop", "edit shop prices and stock in game", "darksea.admin");
         helpLine(sender, "/ds loot", "add your own items to the chest loot pools", "darksea.admin");
+        helpLine(sender, "/ds relic editor", "make your own relics — material, name, lore and boost", "darksea.admin");
         helpLine(sender, "/ds diag [warnings]", "what came up, what didn't, and what it warned about", "darksea.admin");
         helpLine(sender, "/ds reload", "reload configuration", "darksea.admin");
     }
@@ -352,6 +353,17 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             plugin.relics().revive(player);
+            return;
+        }
+        if (action.equals("editor")) {
+            if (!requireAdmin(sender)) {
+                return;
+            }
+            if (!(sender instanceof Player player)) {
+                msg.send(sender, "players-only");
+                return;
+            }
+            plugin.relicEditor().openList(player);
             return;
         }
         if (action.equals("bag")) {
@@ -815,7 +827,12 @@ public final class DarkSeaCommand implements CommandExecutor, TabCompleter {
                         options.add("damage");
                     }
                 }
-                case "relic" -> options.addAll(List.of("revive", "bag"));
+                case "relic" -> {
+                    options.addAll(List.of("revive", "bag"));
+                    if (admin) {
+                        options.add("editor");
+                    }
+                }
                 case "diag" -> {
                     if (admin) {
                         options.add("warnings");

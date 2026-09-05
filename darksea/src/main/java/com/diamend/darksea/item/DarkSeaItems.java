@@ -195,6 +195,21 @@ public final class DarkSeaItems {
 
     /** Every id this registry can create, relics included. */
     public static Set<String> allIds() {
+        Set<String> ids = nonRelicIds();
+        for (Relic relic : Relic.values()) {
+            ids.add(relic.id());
+        }
+        return ids;
+    }
+
+    /**
+     * The ids that are not relics. Separate from {@link #allIds()} because a
+     * custom relic being named needs to know what is already spoken for
+     * <em>without</em> asking the relic registry — the registry is mid-rebuild
+     * at exactly the moment that question gets asked, and would answer that
+     * every relic already loaded is taken.
+     */
+    public static Set<String> nonRelicIds() {
         Set<String> ids = new TreeSet<>(WEAPONS.keySet());
         ids.add(CHRONON);
         ids.add(TIDAL_DRAUGHT);
@@ -212,10 +227,12 @@ public final class DarkSeaItems {
         ids.add(EMBERGLASS);
         ids.add(VOIDBLOOM);
         ids.add(GODSPORE);
-        for (Relic relic : Relic.values()) {
-            ids.add(relic.id());
-        }
         return ids;
+    }
+
+    /** Whether an id names a non-relic registry item. */
+    public static boolean isRegistryId(String id) {
+        return id != null && nonRelicIds().contains(id);
     }
 
     private DarkSeaItems() {

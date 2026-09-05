@@ -11,7 +11,7 @@ it happens again, that is the thing to send.
 
 Order is by how likely I am to have got it wrong, not by importance.
 
-**Build: 0.5.4 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
+**Build: 0.5.5 or newer.** The jar is `DarkSea-<version>-b<Actions run>.jar` and
 `/version DarkSea` reports the same string. CHANGELOG.md has what each version
 changed.
 
@@ -42,6 +42,7 @@ changed.
 | Boat upgrades (now bought with Chronons) | **Rebuilt in 0.5.3**, untested | Pass 9 |
 | Renaming a crystal in ores.yml | New in 0.5.3, untested | Pass 9 |
 | The reliquary, and buying slots with crystals | **New in 0.5.4**, untested | Pass 9 |
+| The custom relic editor | **New in 0.5.5**, untested | Pass 9 |
 
 Five decisions are still open at the bottom. None have been answered across four
 rounds.
@@ -228,6 +229,10 @@ as everything else: they stay here until you say otherwise.
   The thing I most want to know: does the bag read clearly the first time you open it, without me explaining it? If you have to guess what a tile does, it needs different words.
   Crystal prices are 12 / 20 emberglass, then 16 voidbloom, then 14 godspore. Say whether the caves pay out fast enough to make those feel earned rather than grindy — same as the boat prices, it is a config line each.
 
+- **The custom relic editor, start to finish.** `/ds relic editor`. Click a shipped relic to copy it, or the Nether Star to start empty and type an id. Then set the item (type a material, or `hand` to use what you're holding), the name, a line of lore, and the boost — cycle it round to `EFFECT` and type a potion effect like `strength`. Click **Give me one** for a dormant copy, wake it at the refugees for whatever cost you set, and put it in your reliquary: the effect should land while it is slotted and lapse about a second after you take it out. Then `/ds reload` and confirm it is all still there.
+  Two failure modes worth trying on purpose, because both used to be able to break things quietly: type a deliberately broken colour tag like `<gradient:#fff` into the name (it should be refused at the prompt, not saved), and try to name a new relic `chronon` or `relic_trade_coin` (it should say the id is taken).
+  The thing I most want to know: **can you build a relic you actually want without me explaining any tile?** If you have to guess what one does, it needs different words.
+
 - **Rename a crystal.** Open `ores.yml`, find the `items:` block at the bottom,
   change `emberglass`'s `name` to anything, `/ds reload`, mine one. It should
   come out with the new name — and an emberglass already in a chest should still
@@ -264,7 +269,8 @@ Unchanged for four rounds. None block anything; all get more expensive later.
 6. Whether the lever is somewhere sensible now.
 7. Whether the watchtower and spire stairs look like part of the building.
 8. Whether the reliquary explains itself, and whether the crystal prices feel earned.
-9. Answers to any of the open decisions.
+9. Whether you can build a relic in the editor without asking me what a tile does.
+10. Answers to any of the open decisions.
 
 Everything else only if it annoyed you. If you run out of time, just say where
 you stopped — I'll carry the rest forward the same way.

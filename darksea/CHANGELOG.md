@@ -18,6 +18,44 @@ time.
 
 ---
 
+## 0.5.5 — 2026-09-05
+
+**Make your own relics.** `/ds relic editor` is a GUI for building a relic
+that has nothing to do with the Dark Sea: pick the item, name it, write its
+lore, choose what it does, and it drops, sells, wakes and wears exactly like a
+shipped one.
+
+- **`/ds relic editor`** lists every relic there is. The shipped six are drawn
+  greyed for scale — their tiers and wake costs are the only yardstick a new
+  relic's numbers mean anything against — and clicking one copies it into
+  something editable. The Nether Star makes an empty one.
+- **Everything about a relic is a tile.** Item, name, lore, boost, tier, wake
+  cost, and the line the woken item says about itself. Numbers and the boost
+  cycle on click; text is typed in chat, because chat is the only input in
+  Minecraft wide enough for a colour string. The relic itself sits at the top
+  of the board, so what you are making is never a guess.
+- **A seventh boost, `EFFECT`.** The shipped six are fixed numbers in code
+  (+10% speed, +1 damage, +3 armor...). `EFFECT` is the open one: name any
+  potion effect and a level, and the relic grants it while it sits in a
+  reliquary slot. This is what makes a custom relic actually custom rather
+  than a reskin of an existing one.
+- **Custom relics are first-class.** `/ds give item <id>`, a line in a loot
+  table, a shop offer, waking at the refugees for the cost you set, and a
+  reliquary slot all work, because every one of those paths looks a relic up
+  by id rather than switching on a constant. The relic enum is now a registry
+  for exactly this reason.
+- **Saved to `relics-custom.yml`,** which the editor owns outright — the same
+  split as `loot-custom.yml`. The shipped six stay in code because loot.yml
+  and shops.yml name them by id, and an edit that renamed one would silently
+  break a file the editor cannot see. Hand edits to the custom file survive
+  `/ds reload`.
+- **An id is set once.** It is a relic's identity in every chest, shop line
+  and reliquary that already holds one, so the editor renames the display name
+  freely and the id never. An id that collides with a shipped relic or a
+  registry item is refused rather than quietly shadowing it.
+- Formatting is validated at the prompt. An unclosed colour tag is refused
+  when you type it, not left to throw every time something draws the item.
+
 ## 0.5.4 — 2026-09-01
 
 **The Naxome Reliquary.** Relics no longer work from your pack. They work from
