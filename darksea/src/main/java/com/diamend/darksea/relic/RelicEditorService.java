@@ -369,11 +369,11 @@ public final class RelicEditorService implements Listener {
         }
         // A shipped relic is read-only, so the only useful thing a click can
         // do is offer the copy the admin actually wanted.
-        clone(admin, relic);
+        cloneRelic(admin, relic);
     }
 
     /** A shipped relic copied into an editable one, under a free id. */
-    private void clone(Player admin, Relic source) {
+    private void cloneRelic(Player admin, Relic source) {
         String id = freeId(source.id() + "_copy");
         Relic copy = Relic.custom(id, source.tier(), source.reviveCost(), source.boost(),
                 source.material(), source.displayName(), source.lore(), source.boostLine(),
